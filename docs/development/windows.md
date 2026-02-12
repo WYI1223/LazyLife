@@ -6,13 +6,45 @@ Document reproducible local setup and diagnostics for Windows contributors.
 
 ## Toolchain (to confirm)
 
-- Flutter: TODO
-- Rust: TODO
-- FRB: TODO
+- Flutter: `3.41.0`
+- Rust: `1.93.0`
+- FRB codegen: `2.11.1`
 
 ## Quick Check
 
 - `scripts/doctor.ps1`
+- `scripts/format.ps1 -Check`
+
+## 常用命令
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/format.ps1 -Check
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen_bindings.ps1
+```
+
+## FRB (PR-A) Quick Commands
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen_bindings.ps1
+
+cd crates
+cargo test -p lazynote_ffi
+
+cd ..\apps\lazynote_flutter
+flutter pub get
+flutter analyze
+```
+
+Expected output for PR-A:
+
+- Rust tests pass for `lazynote_ffi`.
+- Flutter analyze passes.
+- FRB generated files are updated in:
+  - `crates/lazynote_ffi/src/frb_generated.rs`
+  - `apps/lazynote_flutter/lib/core/bindings/`
+  - `apps/lazynote_flutter/lib/core/bindings/api.dart`
+  - `apps/lazynote_flutter/windows/runner/generated_frb.h`
 
 ## Notes
 
@@ -20,5 +52,8 @@ Windows 构建/运行：必须在 Windows 本机执行
 
 Docker：仅用于 Rust 工具链/CI（可选）
 
-- TODO: optional Android setup
-- TODO: common troubleshooting
+- FRB codegen command name may be either:
+  - `frb_codegen`
+  - `flutter_rust_bridge_codegen`
+- `scripts/gen_bindings.ps1` will auto-detect either command.
+- 默认配置在仓库根目录 `.flutter_rust_bridge.yaml`，脚本优先使用该配置。

@@ -18,6 +18,9 @@ v0.1 closes the minimum loop:
 The original PR list is valid. We applied these optimizations:
 
 - Keep baseline order: Repo/DevEx -> CI -> FRB -> Core -> UI -> Integrations.
+- Split PR0003 into two smaller steps:
+  - PR-A: FRB minimal API + codegen/binding artifacts
+  - PR-B: Flutter Windows runtime call to `ping/core_version`
 - Move global hotkey + floating quick-entry window out of v0.1 to v0.2.
 - Split Google Calendar work into two PRs:
   - PR0014: OAuth + one-way bootstrap sync.
@@ -27,7 +30,7 @@ The original PR list is valid. We applied these optimizations:
 ## Execution Order
 
 - PR0000, PR0001, PR0002
-- PR0003, PR0004, PR0005
+- PR0003-A, PR0003-B, PR0004, PR0005
 - PR0006, PR0007
 - PR0008, PR0009, PR0010
 - PR0011, PR0012, PR0013
