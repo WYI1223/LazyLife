@@ -36,6 +36,17 @@ flutter pub get
 flutter analyze
 ```
 
+## PR-B Quick Commands
+
+```powershell
+cd crates
+cargo build -p lazynote_ffi --release
+
+cd ..\apps\lazynote_flutter
+flutter test
+flutter run -d windows
+```
+
 Expected output for PR-A:
 
 - Rust tests pass for `lazynote_ffi`.

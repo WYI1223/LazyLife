@@ -2,7 +2,7 @@
 
 - Proposed title (PR-A): `chore(frb): wire minimal ffi api (ping/core_version)`
 - Proposed title (PR-B): `feat(flutter): call rust ping/core_version on windows`
-- Status: In Progress (A)
+- Status: Ready (B, pending manual `flutter run -d windows`)
 
 ## Goal
 Split FRB wiring into two small PRs, so we can isolate problems:
@@ -35,6 +35,20 @@ Out of scope:
 - Flutter UI integration and lifecycle init calls.
 - any domain/business feature beyond connectivity smoke-check.
 
+## Scope Of This PR (B)
+
+In scope:
+
+- add Flutter-side `rust_bridge` wrapper to call FRB APIs.
+- initialize FRB from app startup flow.
+- show `ping/coreVersion` in Windows UI as smoke proof.
+- keep widget tests independent from local DLL runtime by dependency injection.
+
+Out of scope:
+
+- any feature beyond bridge health-check (notes/tasks/calendar).
+- packaging/distribution of Rust dylib.
+
 ## Planned File Changes
 - [add] `.flutter_rust_bridge.yaml`
 - [edit] `crates/lazynote_ffi/Cargo.toml`
@@ -48,16 +62,22 @@ Out of scope:
 - [gen] `apps/lazynote_flutter/lib/core/bindings/frb_generated.dart`
 - [gen] `apps/lazynote_flutter/lib/core/bindings/frb_generated.io.dart`
 - [gen] `apps/lazynote_flutter/windows/runner/generated_frb.h`
+- [add] `apps/lazynote_flutter/lib/core/rust_bridge.dart`
+- [edit] `apps/lazynote_flutter/lib/main.dart`
+- [edit] `apps/lazynote_flutter/test/widget_test.dart`
 
 ## Dependencies
 - PR0000, PR0001, PR0002
 
 ## Acceptance Criteria
-- [ ] PR-A scope implemented
-- [ ] `scripts/gen_bindings.ps1` can regenerate bindings from config
-- [ ] `cargo test -p lazynote_ffi` passes
-- [ ] `flutter analyze` passes after dependency update
-- [ ] Documentation updated if behavior changes
+- [x] PR-A scope implemented
+- [x] `scripts/gen_bindings.ps1` can regenerate bindings from config
+- [x] `cargo test -p lazynote_ffi` passes
+- [x] `flutter analyze` passes after dependency update
+- [x] PR-B scope implemented
+- [ ] `flutter run -d windows` shows ping/coreVersion in UI
+- [x] `flutter test` passes with injected mock loader
+- [x] Documentation updated if behavior changes
 
 ## Verification Commands (PR-A)
 
@@ -70,6 +90,17 @@ cargo test -p lazynote_ffi
 cd ..\apps\lazynote_flutter
 flutter pub get
 flutter analyze
+```
+
+## Verification Commands (PR-B)
+
+```powershell
+cd crates
+cargo build -p lazynote_ffi --release
+
+cd ..\apps\lazynote_flutter
+flutter test
+flutter run -d windows
 ```
 
 ## Notes
