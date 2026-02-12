@@ -1,0 +1,8 @@
+rust_root: crates/lazynote_ffi
+rust_input: crate::api
+dart_root: apps/lazynote_flutter
+dart_output: apps/lazynote_flutter/lib/core/bindings
+c_output: apps/lazynote_flutter/windows/runner/generated_frb.h
+auto_upgrade_dependency: false
+add_mod_to_lib: false
+web: false
