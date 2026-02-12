@@ -2,10 +2,73 @@
 
 on:
   push:
+    branches: ["main"]
   pull_request:
 
 jobs:
-  placeholder:
-    runs-on: ubuntu-latest
+  flutter_windows:
+    name: Flutter (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/lazynote_flutter
     steps:
-      - run: echo "TODO: CI"
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Dart format check
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Flutter analyze
+        run: flutter analyze
+
+      - name: Flutter test
+        run: flutter test
+
+      - name: Flutter build windows (debug)
+        run: flutter build windows --debug
+
+  rust_ubuntu:
+    name: Rust (Ubuntu)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Detect Rust workspace
+        id: rust_workspace
+        run: |
+          if [ -f Cargo.toml ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cargo fmt
+        if: ${{ steps.rust_workspace.outputs.enabled == 'true' }}
+        run: cargo fmt --all -- --check
+
+      - name: Cargo clippy
+        if: ${{ steps.rust_workspace.outputs.enabled == 'true' }}
+        run: cargo clippy --all -- -D warnings
+
+      - name: Cargo test
+        if: ${{ steps.rust_workspace.outputs.enabled == 'true' }}
+        run: cargo test --all
+
+      - name: Skip Rust checks (workspace not ready)
+        if: ${{ steps.rust_workspace.outputs.enabled != 'true' }}
+        run: echo "No crates/Cargo.toml yet. Rust checks skipped."
