@@ -154,6 +154,7 @@ LazyNote 把笔记、任务、事件统一为“原子（Atom）”，避免多�
 - 默认零遥测（Zero Telemetry）。
 - 无账号强制（本地功能可独立使用）。
 - 数据可导出（Markdown / JSON / ICS），避免厂商锁定。
+- 漏洞报告与响应流程见 `SECURITY.md`。
 
 ## MVP 范围（v0.1）
 
