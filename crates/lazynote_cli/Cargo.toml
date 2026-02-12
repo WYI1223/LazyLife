@@ -1,0 +1,8 @@
+[package]
+name = "lazynote_cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+lazynote_core = { path = "../lazynote_core" }

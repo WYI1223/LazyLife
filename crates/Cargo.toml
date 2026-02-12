@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+  "lazynote_core",
+  "lazynote_ffi",
+  "lazynote_cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# 以后接 FRB 时很关键：在这里统一版本，避免漂移
+[workspace.dependencies]
+flutter_rust_bridge = "=2.11.1"

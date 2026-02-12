@@ -1,3 +1,3 @@
 ﻿# lazynote_cli
 
-TODO: CLI planning notes.
+CLI smoke runner for local development.
