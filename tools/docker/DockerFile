@@ -1,0 +1,13 @@
+FROM rust:1.93-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates curl \
+    cmake ninja-build pkg-config \
+    clang llvm \
+    sqlite3 libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# FRB codegen（Rust 二进制）
+RUN cargo install flutter_rust_bridge_codegen
+
+WORKDIR /work
