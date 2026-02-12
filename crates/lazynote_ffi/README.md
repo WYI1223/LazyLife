@@ -1,3 +1,5 @@
 ﻿# lazynote_ffi
 
-TODO: FFI planning notes.
+FFI bridge crate.
+
+Expose use-case-level APIs for Flutter integration.

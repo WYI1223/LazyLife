@@ -1,3 +1,5 @@
 ﻿# lazynote_core
 
-TODO: Core domain planning notes.
+Core domain crate.
+
+This crate is intended to hold business invariants and core use cases.
