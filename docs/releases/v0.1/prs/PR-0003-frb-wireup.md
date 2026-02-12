@@ -21,6 +21,7 @@ Split FRB wiring into two small PRs, so we can isolate problems:
   - Flutter-side bridge wrapper
   - Windows app actually calls `ping()` / `core_version()`
   - UI shows result (DLL load/runtime chain proof)
+  - workspace DLL path auto-detection to avoid manual env var setup
 
 ## Scope Of This PR (A)
 
@@ -65,6 +66,7 @@ Out of scope:
 - [add] `apps/lazynote_flutter/lib/core/rust_bridge.dart`
 - [edit] `apps/lazynote_flutter/lib/main.dart`
 - [edit] `apps/lazynote_flutter/test/widget_test.dart`
+- [add] `scripts/run_windows_smoke.bat`
 
 ## Dependencies
 - PR0000, PR0001, PR0002
@@ -105,3 +107,4 @@ flutter run -d windows
 
 ## Notes
 - Keep FRB versions aligned (`2.11.1`) across Rust and Flutter runtime/codegen.
+- `rust_bridge.dart` includes workspace DLL path probing for local development.
