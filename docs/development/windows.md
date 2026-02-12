@@ -21,6 +21,7 @@ Document reproducible local setup and diagnostics for Windows contributors.
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/format.ps1 -Check
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen_bindings.ps1
+scripts\run_windows_smoke.bat
 ```
 
 ## FRB (PR-A) Quick Commands
@@ -68,3 +69,6 @@ Docker：仅用于 Rust 工具链/CI（可选）
   - `flutter_rust_bridge_codegen`
 - `scripts/gen_bindings.ps1` will auto-detect either command.
 - 默认配置在仓库根目录 `.flutter_rust_bridge.yaml`，脚本优先使用该配置。
+- Flutter 启动时会优先探测 workspace 动态库路径：
+  - `../../crates/target/release/`
+  - `../../crates/lazynote_ffi/target/release/` (backward compatible)
