@@ -27,6 +27,9 @@ This work is split into four smaller PRs:
    - point: creates event with `event_start` and `event_end = null`
    - range: creates event with both `event_start` and `event_end`
 7. Single Entry is opened from Workbench by a dedicated button; it does not replace Workbench as the landing page.
+8. Input behavior split:
+   - every input change triggers parser/router (and search path where applicable)
+   - `Enter` or send button opens/returns detailed result payload instead of replacing realtime change handling
 
 ## UI Style Specification (Locked)
 

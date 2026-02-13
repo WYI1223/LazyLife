@@ -25,12 +25,15 @@ Out of scope:
 1. `entry_search(text, limit)`:
    - default `limit = 10`
    - routes to core `search_all`
+   - returns structured status: `ok`, `error_code?`, `message`, `items`
 2. `entry_create_note(content)`
 3. `entry_create_task(content)`:
    - sets `task_status = todo`
 4. `entry_schedule(title, start_epoch_ms, end_epoch_ms?)`:
    - `end_epoch_ms = null` means point schedule
    - non-null means range schedule
+
+Entry APIs are async FFI exports to avoid sync-call UI blocking risk on high-frequency input flows.
 
 All FFI exports must include `FFI contract` rustdoc sections.
 
@@ -91,3 +94,9 @@ Phase 2 (completed):
   - schedule point success
   - schedule reversed range rejection
 - Regenerated FRB bindings and verified Flutter side checks/tests.
+
+Review follow-up (completed):
+
+- `entry_search` response now carries machine-readable status fields (`ok`, `error_code`) so UI state machine does not parse message strings.
+- `entry_search`, `entry_create_note`, `entry_create_task`, and `entry_schedule` are now async FFI exports.
+- Removed process-wide `OnceLock` DB-path pinning; DB path is resolved per call (still honoring `LAZYNOTE_DB_PATH` override).

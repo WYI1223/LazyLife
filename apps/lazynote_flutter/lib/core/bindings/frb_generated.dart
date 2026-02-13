@@ -78,17 +78,24 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 abstract class RustLibApi extends BaseApi {
   String crateApiCoreVersion();
 
-  EntryActionResponse crateApiEntryCreateNote({required String content});
+  Future<EntryActionResponse> crateApiEntryCreateNote({
+    required String content,
+  });
 
-  EntryActionResponse crateApiEntryCreateTask({required String content});
+  Future<EntryActionResponse> crateApiEntryCreateTask({
+    required String content,
+  });
 
-  EntryActionResponse crateApiEntrySchedule({
+  Future<EntryActionResponse> crateApiEntrySchedule({
     required String title,
     required PlatformInt64 startEpochMs,
     PlatformInt64? endEpochMs,
   });
 
-  EntrySearchResponse crateApiEntrySearch({required String text, int? limit});
+  Future<EntrySearchResponse> crateApiEntrySearch({
+    required String text,
+    int? limit,
+  });
 
   String crateApiInitLogging({required String level, required String logDir});
 
@@ -126,13 +133,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: 'core_version', argNames: []);
 
   @override
-  EntryActionResponse crateApiEntryCreateNote({required String content}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+  Future<EntryActionResponse> crateApiEntryCreateNote({
+    required String content,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(content, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_entry_action_response,
@@ -151,13 +165,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  EntryActionResponse crateApiEntryCreateTask({required String content}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+  Future<EntryActionResponse> crateApiEntryCreateTask({
+    required String content,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(content, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_entry_action_response,
@@ -176,19 +197,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  EntryActionResponse crateApiEntrySchedule({
+  Future<EntryActionResponse> crateApiEntrySchedule({
     required String title,
     required PlatformInt64 startEpochMs,
     PlatformInt64? endEpochMs,
   }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(title, serializer);
           sse_encode_i_64(startEpochMs, serializer);
           sse_encode_opt_box_autoadd_i_64(endEpochMs, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_entry_action_response,
@@ -207,14 +233,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  EntrySearchResponse crateApiEntrySearch({required String text, int? limit}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+  Future<EntrySearchResponse> crateApiEntrySearch({
+    required String text,
+    int? limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(text, serializer);
           sse_encode_opt_box_autoadd_u_32(limit, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_entry_search_response,
@@ -334,12 +368,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   EntrySearchResponse dco_decode_entry_search_response(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return EntrySearchResponse(
-      items: dco_decode_list_entry_search_item(arr[0]),
-      message: dco_decode_String(arr[1]),
-      appliedLimit: dco_decode_u_32(arr[2]),
+      ok: dco_decode_bool(arr[0]),
+      errorCode: dco_decode_opt_String(arr[1]),
+      items: dco_decode_list_entry_search_item(arr[2]),
+      message: dco_decode_String(arr[3]),
+      appliedLimit: dco_decode_u_32(arr[4]),
     );
   }
 
@@ -455,10 +491,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorCode = sse_decode_opt_String(deserializer);
     var var_items = sse_decode_list_entry_search_item(deserializer);
     var var_message = sse_decode_String(deserializer);
     var var_appliedLimit = sse_decode_u_32(deserializer);
     return EntrySearchResponse(
+      ok: var_ok,
+      errorCode: var_errorCode,
       items: var_items,
       message: var_message,
       appliedLimit: var_appliedLimit,
@@ -603,6 +643,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_opt_String(self.errorCode, serializer);
     sse_encode_list_entry_search_item(self.items, serializer);
     sse_encode_String(self.message, serializer);
     sse_encode_u_32(self.appliedLimit, serializer);
