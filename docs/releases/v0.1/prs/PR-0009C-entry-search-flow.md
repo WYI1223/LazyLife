@@ -152,6 +152,7 @@ C3 completed:
   - split-shell non-regression (debug logs panel remains mounted)
 - Smoke test updated for Workbench launcher visibility:
   - `Open Single Entry` opens panel with input/send controls.
+- Removed legacy Workbench draft validation controls (`Draft Input` + `Validate in Workbench`) to keep home focused on Single Entry flow.
 - Verification passed:
   - `dart format lib test`
   - `flutter analyze`

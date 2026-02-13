@@ -17,7 +17,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('LazyNote Workbench'), findsOneWidget);
-    expect(find.text('Feature Validation Window'), findsOneWidget);
-    expect(find.text('Draft Input'), findsOneWidget);
+    expect(find.text('Workbench Home'), findsOneWidget);
+    expect(find.text('Open Single Entry'), findsOneWidget);
   });
 }

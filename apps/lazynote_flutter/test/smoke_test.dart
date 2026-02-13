@@ -23,23 +23,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  testWidgets('workbench can validate draft input', (
+  testWidgets('workbench home shows single-entry-focused controls', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const LazyNoteApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.enterText(
-      find.byKey(const Key('workbench_input')),
-      'search notes next',
-    );
-    await tapWorkbenchButton(tester, 'Validate in Workbench');
-
-    expect(
-      find.textContaining('Validated draft input: "search notes next"'),
-      findsOneWidget,
-    );
+    expect(find.text('Workbench Home'), findsOneWidget);
+    expect(find.text('Single Entry'), findsWidgets);
+    expect(find.text('Open Single Entry'), findsOneWidget);
   });
 
   testWidgets('notes placeholder route is reachable from workbench', (
