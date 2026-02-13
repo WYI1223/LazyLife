@@ -9,4 +9,4 @@ jobs:
   placeholder:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "TODO: Release pipeline"
+      - run: 'echo "TODO: Release pipeline"'
