@@ -8,12 +8,23 @@
 //! - Service APIs never bypass repository validation/persistence contracts.
 //! - Service layer remains storage-agnostic.
 
-use crate::model::atom::{Atom, AtomId};
+use crate::model::atom::{Atom, AtomId, AtomType, TaskStatus};
 use crate::repo::atom_repo::{AtomListQuery, AtomRepository, RepoResult};
 
 /// Use-case service wrapper for atom CRUD operations.
 pub struct AtomService<R: AtomRepository> {
     repo: R,
+}
+
+/// Request model for scheduling an event atom.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScheduleEventRequest {
+    /// Event title/content stored in atom `content`.
+    pub title: String,
+    /// Event start in epoch milliseconds.
+    pub start_epoch_ms: i64,
+    /// Optional event end in epoch milliseconds.
+    pub end_epoch_ms: Option<i64>,
 }
 
 impl<R: AtomRepository> AtomService<R> {
@@ -25,6 +36,42 @@ impl<R: AtomRepository> AtomService<R> {
     /// Creates a new atom through repository persistence.
     pub fn create_atom(&self, atom: &Atom) -> RepoResult<AtomId> {
         self.repo.create_atom(atom)
+    }
+
+    /// Creates a note atom from single-entry command input.
+    ///
+    /// # Contract
+    /// - Uses `AtomType::Note`.
+    /// - Returns created stable atom ID.
+    pub fn create_note(&self, content: impl Into<String>) -> RepoResult<AtomId> {
+        let atom = Atom::new(AtomType::Note, content);
+        self.repo.create_atom(&atom)
+    }
+
+    /// Creates a task atom with default status `todo`.
+    ///
+    /// # Contract
+    /// - Uses `AtomType::Task`.
+    /// - Sets `task_status = Some(TaskStatus::Todo)`.
+    /// - Returns created stable atom ID.
+    pub fn create_task(&self, content: impl Into<String>) -> RepoResult<AtomId> {
+        let mut atom = Atom::new(AtomType::Task, content);
+        atom.task_status = Some(TaskStatus::Todo);
+        self.repo.create_atom(&atom)
+    }
+
+    /// Schedules an event atom using point or range semantics.
+    ///
+    /// # Contract
+    /// - Uses `AtomType::Event`.
+    /// - Point event: `end_epoch_ms = None`.
+    /// - Range event: `end_epoch_ms = Some(end)`.
+    /// - Returns created stable atom ID.
+    pub fn schedule_event(&self, request: &ScheduleEventRequest) -> RepoResult<AtomId> {
+        let mut atom = Atom::new(AtomType::Event, request.title.clone());
+        atom.event_start = Some(request.start_epoch_ms);
+        atom.event_end = request.end_epoch_ms;
+        self.repo.create_atom(&atom)
     }
 
     /// Updates an existing atom by stable ID.
