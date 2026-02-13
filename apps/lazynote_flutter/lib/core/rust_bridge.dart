@@ -1,18 +1,50 @@
 import 'dart:developer' as dev;
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kReleaseMode, visibleForTesting;
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
+import 'package:path_provider/path_provider.dart';
 
+/// Health-check values returned from Rust smoke APIs.
 class RustHealthSnapshot {
   const RustHealthSnapshot({required this.ping, required this.coreVersion});
 
+  /// Expected to be `pong` when bridge calls are healthy.
   final String ping;
+
+  /// Rust core crate version string.
   final String coreVersion;
 }
 
+/// Result snapshot for startup logging initialization.
+class RustLoggingInitSnapshot {
+  const RustLoggingInitSnapshot.success({
+    required this.level,
+    required this.logDir,
+  }) : errorMessage = null;
+
+  const RustLoggingInitSnapshot.failure({
+    required this.level,
+    required this.logDir,
+    required this.errorMessage,
+  });
+
+  /// Effective log level passed to Rust core.
+  final String level;
+
+  /// Effective log directory passed to Rust core.
+  final String logDir;
+
+  /// Human-readable error on failure; `null` on success.
+  final String? errorMessage;
+
+  /// Whether logging initialization succeeded.
+  bool get isSuccess => errorMessage == null;
+}
+
+/// Pluggable logger sink used by bridge internals.
 typedef RustBridgeLogger =
     void Function({
       required String message,
@@ -20,9 +52,21 @@ typedef RustBridgeLogger =
       StackTrace? stackTrace,
     });
 
+/// Pluggable FFI call used to initialize Rust-side logging.
+typedef RustInitLoggingCall =
+    String Function({required String level, required String logDir});
+
+/// Rust FFI bootstrap helper for app startup and diagnostics flows.
+///
+/// Contract:
+/// - `init()` initializes FRB once and deduplicates concurrent calls.
+/// - `bootstrapLogging()` never throws and never blocks app startup decisions.
+/// - All failures are captured as snapshots/messages for diagnostics UI.
 class RustBridge {
   static bool _initialized = false;
   static Future<void>? _initFuture;
+  static RustLoggingInitSnapshot? _latestLoggingInitSnapshot;
+  static Future<RustLoggingInitSnapshot>? _loggingInitFuture;
 
   @visibleForTesting
   static String Function() operatingSystem = () => Platform.operatingSystem;
@@ -45,6 +89,19 @@ class RustBridge {
       };
 
   @visibleForTesting
+  static Future<Directory> Function() applicationSupportDirectoryResolver =
+      getApplicationSupportDirectory;
+
+  @visibleForTesting
+  static String Function() defaultLogLevelResolver = () =>
+      kReleaseMode ? 'info' : 'debug';
+
+  @visibleForTesting
+  static RustInitLoggingCall initLoggingCall =
+      ({required String level, required String logDir}) =>
+          rust_api.initLogging(level: level, logDir: logDir);
+
+  @visibleForTesting
   static RustBridgeLogger logger =
       ({required String message, Object? error, StackTrace? stackTrace}) {
         dev.log(
@@ -58,10 +115,13 @@ class RustBridge {
   @visibleForTesting
   static List<String>? candidateLibraryPathsOverride;
 
+  /// Resets mutable static hooks to production defaults for isolated tests.
   @visibleForTesting
   static void resetForTesting() {
     _initialized = false;
     _initFuture = null;
+    _latestLoggingInitSnapshot = null;
+    _loggingInitFuture = null;
     operatingSystem = () => Platform.operatingSystem;
     fileExists = (path) => File(path).existsSync();
     externalLibraryOpener = ExternalLibrary.open;
@@ -71,6 +131,10 @@ class RustBridge {
       }
       return RustLib.init();
     };
+    applicationSupportDirectoryResolver = getApplicationSupportDirectory;
+    defaultLogLevelResolver = () => kReleaseMode ? 'info' : 'debug';
+    initLoggingCall = ({required String level, required String logDir}) =>
+        rust_api.initLogging(level: level, logDir: logDir);
     logger =
         ({required String message, Object? error, StackTrace? stackTrace}) {
           dev.log(
@@ -111,6 +175,8 @@ class RustBridge {
         try {
           return externalLibraryOpener(filePath);
         } catch (error, stackTrace) {
+          // Why: continue trying other candidates so one bad file does not
+          // permanently block bridge initialization in local dev layouts.
           logger(
             message: 'Failed to open Rust dylib candidate: $filePath',
             error: error,
@@ -124,6 +190,7 @@ class RustBridge {
     return null;
   }
 
+  /// Initializes FRB bridge runtime once per process.
   static Future<void> init() {
     if (_initialized) {
       return Future.value();
@@ -151,6 +218,79 @@ class RustBridge {
     }
   }
 
+  /// Latest in-process logging bootstrap result for diagnostics UI.
+  static RustLoggingInitSnapshot? get latestLoggingInitSnapshot =>
+      _latestLoggingInitSnapshot;
+
+  /// Initializes Rust logging for the current process.
+  ///
+  /// Non-fatal behavior:
+  /// - Always returns a snapshot.
+  /// - Never throws to callers.
+  /// - On failure, app startup should continue.
+  static Future<RustLoggingInitSnapshot> bootstrapLogging() {
+    final cached = _latestLoggingInitSnapshot;
+    if (cached != null && cached.isSuccess) {
+      return Future.value(cached);
+    }
+
+    final inFlight = _loggingInitFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final future = _bootstrapLoggingInternal();
+    _loggingInitFuture = future;
+    return future;
+  }
+
+  static Future<RustLoggingInitSnapshot> _bootstrapLoggingInternal() async {
+    final level = defaultLogLevelResolver();
+    var resolvedLogDir = 'unresolved';
+
+    RustLoggingInitSnapshot result;
+    try {
+      final supportDir = await applicationSupportDirectoryResolver();
+      // Why: keep platform path resolution in Flutter and pass resolved path
+      // into Rust to avoid platform-specific path guessing in core.
+      resolvedLogDir = Directory(
+        '${supportDir.path}${Platform.pathSeparator}logs',
+      ).path;
+
+      await init();
+      final initError = initLoggingCall(level: level, logDir: resolvedLogDir);
+      if (initError.isEmpty) {
+        result = RustLoggingInitSnapshot.success(
+          level: level,
+          logDir: resolvedLogDir,
+        );
+      } else {
+        logger(message: 'Rust logging init returned error.', error: initError);
+        result = RustLoggingInitSnapshot.failure(
+          level: level,
+          logDir: resolvedLogDir,
+          errorMessage: initError,
+        );
+      }
+    } catch (error, stackTrace) {
+      logger(
+        message: 'Rust logging init failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      result = RustLoggingInitSnapshot.failure(
+        level: level,
+        logDir: resolvedLogDir,
+        errorMessage: error.toString(),
+      );
+    }
+
+    _latestLoggingInitSnapshot = result;
+    _loggingInitFuture = null;
+    return result;
+  }
+
+  /// Runs Rust smoke APIs used by diagnostics UI.
   static Future<RustHealthSnapshot> runHealthCheck() async {
     await init();
     return RustHealthSnapshot(

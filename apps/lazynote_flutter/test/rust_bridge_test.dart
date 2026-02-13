@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
@@ -78,5 +79,47 @@ void main() {
       'second_candidate.dll',
     ]);
     expect(logMessages.length, 2);
+  });
+
+  test('bootstrapLogging de-duplicates concurrent calls', () async {
+    RustBridge.resetForTesting();
+    RustBridge.candidateLibraryPathsOverride = const [];
+
+    var dirCalls = 0;
+    RustBridge.applicationSupportDirectoryResolver = () async {
+      dirCalls += 1;
+      return Directory.systemTemp;
+    };
+
+    var initLoggingCalls = 0;
+    RustBridge.rustLibInit = (_) async {};
+    RustBridge.initLoggingCall = ({required level, required logDir}) {
+      initLoggingCalls += 1;
+      return '';
+    };
+
+    final futures = <Future<RustLoggingInitSnapshot>>[
+      RustBridge.bootstrapLogging(),
+      RustBridge.bootstrapLogging(),
+      RustBridge.bootstrapLogging(),
+    ];
+
+    final snapshots = await Future.wait(futures);
+    expect(dirCalls, 1);
+    expect(initLoggingCalls, 1);
+    expect(snapshots.every((snapshot) => snapshot.isSuccess), isTrue);
+  });
+
+  test('bootstrapLogging returns failure snapshot on init error', () async {
+    RustBridge.resetForTesting();
+    RustBridge.applicationSupportDirectoryResolver = () async =>
+        Directory.systemTemp;
+    RustBridge.rustLibInit = (_) async {
+      throw StateError('ffi init failed');
+    };
+
+    final snapshot = await RustBridge.bootstrapLogging();
+    expect(snapshot.isSuccess, isFalse);
+    expect(snapshot.errorMessage, contains('ffi init failed'));
   });
 }

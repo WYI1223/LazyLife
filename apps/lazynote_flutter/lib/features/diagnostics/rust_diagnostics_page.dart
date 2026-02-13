@@ -32,6 +32,31 @@ class _RustDiagnosticsPageState extends State<RustDiagnosticsPage> {
     return text;
   }
 
+  Widget _buildLoggingStatus() {
+    final snapshot = RustBridge.latestLoggingInitSnapshot;
+    if (snapshot == null) {
+      return const Text('Logging init status: not attempted in this process.');
+    }
+
+    final statusText = snapshot.isSuccess ? 'ok' : 'error';
+    final errorText = snapshot.errorMessage;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('logging_init status: $statusText'),
+            Text('level: ${snapshot.level}'),
+            Text('logDir: ${snapshot.logDir}'),
+            if (errorText != null) Text('error: $errorText'),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,12 +69,14 @@ class _RustDiagnosticsPageState extends State<RustDiagnosticsPage> {
               future: _healthFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const Column(
+                  return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Initializing Rust bridge...'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      const Text('Initializing Rust bridge...'),
+                      const SizedBox(height: 16),
+                      _buildLoggingStatus(),
                     ],
                   );
                 }
@@ -78,6 +105,8 @@ class _RustDiagnosticsPageState extends State<RustDiagnosticsPage> {
                         onPressed: _reload,
                         child: const Text('Retry'),
                       ),
+                      const SizedBox(height: 16),
+                      _buildLoggingStatus(),
                     ],
                   );
                 }
@@ -104,6 +133,8 @@ class _RustDiagnosticsPageState extends State<RustDiagnosticsPage> {
                       onPressed: _reload,
                       child: const Text('Refresh'),
                     ),
+                    const SizedBox(height: 16),
+                    _buildLoggingStatus(),
                   ],
                 );
               },

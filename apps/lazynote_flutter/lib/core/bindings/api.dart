@@ -7,7 +7,26 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
 /// Minimal health-check API for FRB smoke integration.
+///
+/// # FFI contract
+/// - Sync call, non-blocking.
+/// - UI-thread safe for current implementation.
+/// - Never throws; always returns a UTF-8 string.
 String ping() => RustLib.instance.api.crateApiPing();
 
 /// Expose core crate version through FFI.
+///
+/// # FFI contract
+/// - Sync call, non-blocking.
+/// - UI-thread safe for current implementation.
+/// - Never throws; always returns a UTF-8 string.
 String coreVersion() => RustLib.instance.api.crateApiCoreVersion();
+
+/// Initializes Rust core logging once per process.
+///
+/// # FFI contract
+/// - Sync call; may perform small file-system setup work.
+/// - Safe to call repeatedly with the same `log_dir` (idempotent).
+/// - Never panics; returns empty string on success and error message on failure.
+String initLogging({required String level, required String logDir}) =>
+    RustLib.instance.api.crateApiInitLogging(level: level, logDir: logDir);
