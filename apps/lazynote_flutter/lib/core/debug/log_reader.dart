@@ -163,8 +163,32 @@ class LogReader {
     };
     final result = await processRunner(command, [logDir]);
     if (Platform.isWindows) {
-      // Why: `explorer.exe` can return a non-zero exit code even when it has
-      // already opened the target directory successfully.
+      // Why: `explorer.exe` can return non-zero even on success, so exit code
+      // alone is not a reliable signal. Treat explicit stderr output or a
+      // missing target directory as failure to avoid false success messages.
+      if (result.exitCode == 0) {
+        return;
+      }
+
+      final stderrText = result.stderr.toString().trim();
+      if (stderrText.isNotEmpty) {
+        throw ProcessException(
+          command,
+          [logDir],
+          'failed to open log folder: $stderrText',
+          result.exitCode,
+        );
+      }
+
+      final directoryExists = await Directory(logDir).exists();
+      if (!directoryExists) {
+        throw ProcessException(
+          command,
+          [logDir],
+          'failed to open log folder: directory does not exist',
+          result.exitCode,
+        );
+      }
       return;
     }
 
