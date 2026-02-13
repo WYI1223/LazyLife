@@ -13,7 +13,7 @@ This work is split into four smaller PRs:
 
 1. `PR-0009A`: FFI and core use-case surface for entry operations. (Completed)
 2. `PR-0009B`: Flutter parser/state scaffolding and command contract validation. (Completed)
-3. `PR-0009C`: Search execution flow (default input -> search results). (In Progress: C1/C2 completed)
+3. `PR-0009C`: Search execution flow (default input -> search results). (Completed)
 4. `PR-0009D`: Command execution flow (`> new note`, `> task`, `> schedule`).
 
 ## Locked Requirements
