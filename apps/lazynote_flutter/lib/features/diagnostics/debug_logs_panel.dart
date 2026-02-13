@@ -18,7 +18,8 @@ class DebugLogsPanel extends StatefulWidget {
   State<DebugLogsPanel> createState() => _DebugLogsPanelState();
 }
 
-class _DebugLogsPanelState extends State<DebugLogsPanel> {
+class _DebugLogsPanelState extends State<DebugLogsPanel>
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
 
   DebugLogSnapshot? _snapshot;
@@ -28,6 +29,9 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
   DateTime? _lastRefreshAt;
   Timer? _refreshTimer;
   int _latestRefreshRequestId = 0;
+  bool _refreshInFlight = false;
+  bool _hasQueuedRefresh = false;
+  bool _queuedShowLoading = false;
 
   static const Duration _refreshInterval = Duration(seconds: 3);
   static const double _fallbackLogHeight = 320;
@@ -36,19 +40,37 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refreshLogs(showLoading: true);
-    if (_shouldEnableAutoRefresh()) {
-      _refreshTimer = Timer.periodic(_refreshInterval, (_) {
-        _refreshLogs(showLoading: false);
-      });
-    }
+    _startAutoRefreshTimerIfNeeded();
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_shouldEnableAutoRefresh()) {
+      return;
+    }
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _startAutoRefreshTimerIfNeeded();
+        _refreshLogs(showLoading: false);
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _refreshTimer?.cancel();
+        _refreshTimer = null;
+        break;
+    }
   }
 
   bool _shouldEnableAutoRefresh() {
@@ -60,7 +82,28 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
     return !bindingName.contains('TestWidgetsFlutterBinding');
   }
 
+  void _startAutoRefreshTimerIfNeeded() {
+    if (!_shouldEnableAutoRefresh()) {
+      return;
+    }
+    if (_refreshTimer != null) {
+      return;
+    }
+    _refreshTimer = Timer.periodic(_refreshInterval, (_) {
+      _refreshLogs(showLoading: false);
+    });
+  }
+
   Future<void> _refreshLogs({required bool showLoading}) async {
+    if (_refreshInFlight) {
+      // Why: coalesce overlapping refresh requests into one trailing request
+      // to avoid unbounded file-read backlog after long app inactivity.
+      _hasQueuedRefresh = true;
+      _queuedShowLoading = _queuedShowLoading || showLoading;
+      return;
+    }
+
+    _refreshInFlight = true;
     final requestId = ++_latestRefreshRequestId;
 
     if (showLoading && mounted) {
@@ -102,6 +145,14 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
         _error = error;
         _loading = false;
       });
+    } finally {
+      _refreshInFlight = false;
+      if (_hasQueuedRefresh) {
+        final nextShowLoading = _queuedShowLoading;
+        _hasQueuedRefresh = false;
+        _queuedShowLoading = false;
+        unawaited(_refreshLogs(showLoading: nextShowLoading));
+      }
     }
   }
 
