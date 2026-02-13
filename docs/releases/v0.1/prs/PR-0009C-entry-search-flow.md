@@ -1,7 +1,7 @@
 # PR-0009C-entry-search-flow
 
 - Proposed title: `feat(ui): execute default entry input as search flow`
-- Status: In Progress (C1/C2 Completed)
+- Status: Completed
 
 ## Goal
 
@@ -92,9 +92,9 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Default input reliably performs search.
-- [ ] Result limit and error behavior match locked requirements.
-- [ ] Workbench split-shell remains stable.
+- [x] Default input reliably performs search.
+- [x] Result limit and error behavior match locked requirements.
+- [x] Workbench split-shell remains stable.
 
 ## Progress Notes
 
@@ -138,3 +138,21 @@ Infrastructure follow-up completed:
 
 - Added FFI `configure_entry_db_path` and wired Flutter bootstrap to set entry DB path under app-support `data/lazynote_entry.sqlite3`.
 - This removes reliance on temp-file defaults for regular app runs and reduces cross-test data contamination.
+
+C3 completed:
+
+- Controller tests fully cover:
+  - realtime success
+  - empty input reset
+  - structured error mapping
+  - stale response suppression (latest-wins)
+- Widget tests cover:
+  - realtime results rendering
+  - Enter/send detail behavior without dropping result list
+  - split-shell non-regression (debug logs panel remains mounted)
+- Smoke test updated for Workbench launcher visibility:
+  - `Open Single Entry` opens panel with input/send controls.
+- Verification passed:
+  - `dart format lib test`
+  - `flutter analyze`
+  - `flutter test`

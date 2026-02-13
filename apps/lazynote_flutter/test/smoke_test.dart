@@ -107,4 +107,17 @@ void main() {
     expect(find.text('Copy Visible Logs'), findsOneWidget);
     expect(find.text('Open Log Folder'), findsOneWidget);
   });
+
+  testWidgets('single entry launcher is reachable from workbench', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const LazyNoteApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tapWorkbenchButton(tester, 'Open Single Entry');
+
+    expect(find.byKey(const Key('single_entry_input')), findsOneWidget);
+    expect(find.byKey(const Key('single_entry_send_button')), findsOneWidget);
+  });
 }
