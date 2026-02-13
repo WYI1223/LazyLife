@@ -75,6 +75,7 @@
 - `VERSIONING.md`
 - `CHANGELOG.md`
 - `apps/lazynote_flutter/analysis_options.yaml`
+- `docs/architecture/code-comment-standards.md`
 
 ## 5. Exception Process
 
