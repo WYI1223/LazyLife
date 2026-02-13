@@ -32,7 +32,7 @@ Out of scope:
 4. Errors are shown inline; input is preserved.
 5. Search flow uses the minimalist single-entry input surface defined in PR-0009 epic.
 6. Realtime search must avoid stale-response overwrite (latest request wins).
-7. Entry DB file path must be configured from Flutter app-support directory to avoid `%TEMP%` test-data pollution.
+7. Entry DB file path must be configured from unified app root (`%APPDATA%/LazyLife/` on Windows; `<app_support>/LazyLife/` fallback) to avoid `%TEMP%` test-data pollution.
 
 ## Planned File Changes
 
@@ -136,7 +136,7 @@ C2 completed:
 
 Infrastructure follow-up completed:
 
-- Added FFI `configure_entry_db_path` and wired Flutter bootstrap to set entry DB path under app-support `data/lazynote_entry.sqlite3`.
+- Added FFI `configure_entry_db_path` and wired Flutter bootstrap to set entry DB path under unified app root `LazyLife/data/lazynote_entry.sqlite3`.
 - This removes reliance on temp-file defaults for regular app runs and reduces cross-test data contamination.
 - Added `RustBridge.ensureEntryDbPathConfigured()` with in-flight de-duplication and made default search path await it before FFI search calls.
 - Updated bootstrap behavior: entry DB path configuration failure now marks bootstrap as failure snapshot (no silent success fallback).

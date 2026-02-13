@@ -123,6 +123,27 @@ Write path:
 2. Apply UI behavior settings before rendering major shells when possible.
 3. Apply runtime bridge settings before first command/search execution if required.
 
+### Startup policy (v0.1)
+
+- Keep first frame non-blocking.
+- Current bootstrap execution order:
+  1. `LocalSettingsStore.ensureInitialized()`
+  2. `RustBridge.bootstrapLogging()`
+- Both run in background startup orchestration (not before `runApp`).
+
+### Layered loading trigger (future rule)
+
+When any setting changes first-frame UI behavior (for example: home route,
+theme, locale), startup must switch to layered loading:
+
+- critical settings: load before `runApp` (optionally with a short timeout)
+- non-critical settings: continue loading in background
+
+This rule must be reflected in:
+
+- `apps/lazynote_flutter/lib/main.dart`
+- this document (`docs/architecture/settings-config.md`)
+
 ## Flutter-Rust Integration Requirements
 
 Existing FFI API already used:
@@ -149,6 +170,12 @@ Rules:
 
 ## Migration Strategy
 
+- Path migration policy for v0.1:
+  - no old-path data migration is performed in this version
+  - runtime storage location switches directly to the unified `LazyLife` root
+  - this is acceptable because v0.1 has no production user data baseline
+- Future versions may add user-visible migration workflows and configurable
+  storage location policy.
 - Bump `schema_version` only for breaking schema changes.
 - Provide `vN -> vN+1` migration in Flutter settings loader.
 - Keep migration deterministic and idempotent.
