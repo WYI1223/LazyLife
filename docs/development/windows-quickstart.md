@@ -29,3 +29,7 @@ cargo build -p lazynote_ffi --release
 ```
 
 然后回到 `apps/lazynote_flutter` 再次执行 `flutter run -d windows`。
+
+## 进阶验证（PR-0007 / FTS5 搜索）
+
+- `docs/development/windows-pr0007-search-smoke.md`

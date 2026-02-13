@@ -57,3 +57,5 @@ Deliver type-to-results full-text search.
   - `cd crates && cargo fmt --all -- --check`
   - `cd crates && cargo clippy --all -- -D warnings`
   - `cd crates && cargo test --all`
+- Reproduction guide for new contributors:
+  - `docs/development/windows-pr0007-search-smoke.md`
