@@ -32,8 +32,9 @@ The original PR list is valid. We applied these optimizations:
 - PR0000, PR0001, PR0002
 - PR0003-A, PR0003-B, PR0004, PR0005
 - PR0006, PR0007
-- PR0008, PR0009A, PR0009B, PR0009C, PR0009D, PR0010
-- PR0011, PR0012, PR0013
+- PR0008, PR0009A, PR0009B, PR0009C, PR0009D
+- PR0010A, PR0010B, PR0010C, PR0010D
+- PR0011, PR0012, PR0012B, PR0013
 - PR0014, PR0015, PR0016
 - PR0017, PR0018
 
@@ -58,9 +59,22 @@ See `docs/releases/v0.1/prs/`.
 - Completed: `PR-0009C` realtime search flow (`onChanged` search + result list rendering + stale-response guard + startup DB-path readiness hardening)
 - Completed: `PR-0009D` command execution flow (`new note/task/schedule`)
 - Completed: `PR-0018` API contract docs guard (CI gate for contract/doc sync)
-- Next: `PR-0010` notes + tags feature flow
+- Next: `PR-0010A` single entry unified panel UI shell
 
 Execution note:
 
 - Workbench remains the default homepage and debug log viewer.
 - Single Entry is introduced as a Workbench-internal tool (button-triggered), not a homepage replacement.
+- Planned transition: `PR-0012B` will promote Single Entry to primary home entry and move Workbench to a secondary menu.
+
+## Optimization Notes (Post-PR0018)
+
+To reduce delivery risk, remaining PRs follow a "core/FFI first, UI second" split strategy:
+
+- PR-0010: notes/tag core contracts first, then notes UI/editor.
+- PR-0010A: lock unified single-entry floating panel appearance/behavior before note feature UI.
+- PR-0011: task section queries first, then tasks page and interactions.
+- PR-0012: calendar scheduling contracts first, then day/week views.
+- PR-0012B: switch app home entry from Workbench to Single Entry while preserving diagnostics access path.
+- PR-0014 and PR-0015: auth/state foundation before full sync behavior.
+- PR-0016: export path first, then import + reindex flow.
