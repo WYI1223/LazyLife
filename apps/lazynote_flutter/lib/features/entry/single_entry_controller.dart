@@ -12,9 +12,20 @@ typedef EntrySearchInvoker =
       required String text,
       required int limit,
     });
+typedef EntryCreateNoteInvoker =
+    Future<rust_api.EntryActionResponse> Function({required String content});
+typedef EntryCreateTaskInvoker =
+    Future<rust_api.EntryActionResponse> Function({required String content});
+typedef EntryScheduleInvoker =
+    Future<rust_api.EntryActionResponse> Function({
+      required String title,
+      required int startEpochMs,
+      int? endEpochMs,
+    });
 
 /// Pre-search hook used to guarantee prerequisites (for example DB path setup).
 typedef EntrySearchPrepare = Future<void> Function();
+typedef EntryCommandPrepare = Future<void> Function();
 
 /// Stateful controller for the Single Entry panel.
 ///
@@ -26,21 +37,41 @@ class SingleEntryController extends ChangeNotifier {
   SingleEntryController({
     CommandRouter? router,
     EntrySearchInvoker? searchInvoker,
+    EntryCreateNoteInvoker? createNoteInvoker,
+    EntryCreateTaskInvoker? createTaskInvoker,
+    EntryScheduleInvoker? scheduleInvoker,
     EntrySearchPrepare? prepareSearch,
+    EntryCommandPrepare? prepareCommand,
     Duration searchDebounce = const Duration(milliseconds: 150),
   }) : _router = router ?? const CommandRouter(),
        _searchInvoker = searchInvoker ?? _defaultEntrySearch,
+       _createNoteInvoker = createNoteInvoker ?? _defaultEntryCreateNote,
+       _createTaskInvoker = createTaskInvoker ?? _defaultEntryCreateTask,
+       _scheduleInvoker = scheduleInvoker ?? _defaultEntrySchedule,
        _prepareSearch =
            // Why: when tests inject a custom search invoker we should not
            // implicitly touch real bridge/bootstrap side effects unless
            // a test explicitly asks for that behavior.
            prepareSearch ??
            (searchInvoker != null ? _noopPrepareSearch : _defaultPrepareSearch),
+       _prepareCommand =
+           // Why: command tests can inject fake command invokers without
+           // coupling to bridge/bootstrap prerequisites.
+           prepareCommand ??
+           (createNoteInvoker != null ||
+                   createTaskInvoker != null ||
+                   scheduleInvoker != null
+               ? _noopPrepareCommand
+               : _defaultPrepareCommand),
        _searchDebounce = searchDebounce;
 
   final CommandRouter _router;
   final EntrySearchInvoker _searchInvoker;
+  final EntryCreateNoteInvoker _createNoteInvoker;
+  final EntryCreateTaskInvoker _createTaskInvoker;
+  final EntryScheduleInvoker _scheduleInvoker;
   final EntrySearchPrepare _prepareSearch;
+  final EntryCommandPrepare _prepareCommand;
   final Duration _searchDebounce;
   final TextEditingController textController = TextEditingController();
   final FocusNode inputFocusNode = FocusNode();
@@ -50,6 +81,7 @@ class SingleEntryController extends ChangeNotifier {
   List<rust_api.EntrySearchItem> _searchItems = const [];
   int? _searchAppliedLimit;
   int _searchRequestSequence = 0;
+  int _commandRequestSequence = 0;
   Timer? _searchDebounceTimer;
 
   EntryState get state => _state;
@@ -71,6 +103,7 @@ class SingleEntryController extends ChangeNotifier {
   void handleInputChanged(String value) {
     final intent = _router.route(value);
     _isDetailVisible = false;
+    _commandRequestSequence += 1;
     switch (intent) {
       case NoopIntent():
         _cancelPendingSearch();
@@ -145,17 +178,21 @@ class SingleEntryController extends ChangeNotifier {
         );
         _isDetailVisible = true;
       case CommandIntent():
-        final detail =
-            _state.intent is CommandIntent && _state.rawInput == rawInput
-            ? _state.detailPayload
-            : _detailForIntent(intent);
-        _state = EntryState.idle().toSuccess(
+        final requestId = ++_commandRequestSequence;
+        _state = EntryState.idle().toLoading(
           rawInput: rawInput,
           intent: intent,
-          message: 'Detail opened.',
-          detailPayload: detail,
+          message: 'Executing command...',
         );
-        _isDetailVisible = true;
+        notifyListeners();
+        unawaited(
+          _runCommandRequest(
+            requestId: requestId,
+            rawInput: rawInput,
+            intent: intent,
+          ),
+        );
+        return;
     }
 
     notifyListeners();
@@ -262,6 +299,117 @@ class SingleEntryController extends ChangeNotifier {
     _searchRequestSequence += 1;
   }
 
+  Future<void> _runCommandRequest({
+    required int requestId,
+    required String rawInput,
+    required CommandIntent intent,
+  }) async {
+    try {
+      await _prepareCommand();
+      if (requestId != _commandRequestSequence) {
+        return;
+      }
+
+      final response = await _executeCommand(intent.command);
+      if (requestId != _commandRequestSequence) {
+        return;
+      }
+
+      final detail = _commandResultDetail(
+        rawInput: rawInput,
+        command: intent.command,
+        response: response,
+      );
+      if (response.ok) {
+        _state = EntryState.idle().toSuccess(
+          rawInput: rawInput,
+          intent: intent,
+          message: response.message,
+          detailPayload: detail,
+        );
+      } else {
+        _state = EntryState.idle().toError(
+          rawInput: rawInput,
+          intent: intent,
+          message: response.message,
+          detailPayload: detail,
+        );
+      }
+      _isDetailVisible = true;
+      notifyListeners();
+    } catch (error) {
+      if (requestId != _commandRequestSequence) {
+        return;
+      }
+
+      final detail = _commandUnexpectedFailureDetail(
+        rawInput: rawInput,
+        command: intent.command,
+        error: error,
+      );
+      _state = EntryState.idle().toError(
+        rawInput: rawInput,
+        intent: intent,
+        message: 'Command failed unexpectedly: $error',
+        detailPayload: detail,
+      );
+      _isDetailVisible = true;
+      notifyListeners();
+    }
+  }
+
+  Future<rust_api.EntryActionResponse> _executeCommand(EntryCommand command) {
+    return switch (command) {
+      NewNoteCommand(:final content) => _createNoteInvoker(content: content),
+      CreateTaskCommand(:final content) => _createTaskInvoker(content: content),
+      ScheduleCommand(:final title, :final start, :final end) =>
+        _scheduleInvoker(
+          title: title,
+          startEpochMs: start.millisecondsSinceEpoch,
+          endEpochMs: end?.millisecondsSinceEpoch,
+        ),
+    };
+  }
+
+  String _commandResultDetail({
+    required String rawInput,
+    required EntryCommand command,
+    required rust_api.EntryActionResponse response,
+  }) {
+    final buffer = StringBuffer()
+      ..writeln('mode=command_result')
+      ..writeln('raw_input="$rawInput"')
+      ..writeln('action=${_actionLabel(command)}')
+      ..writeln('ok=${response.ok}')
+      ..writeln('message="${_normalizeSingleLine(response.message)}"');
+    if (response.atomId case final atomId?) {
+      buffer.writeln('atom_id=$atomId');
+    }
+    return buffer.toString().trimRight();
+  }
+
+  String _commandUnexpectedFailureDetail({
+    required String rawInput,
+    required EntryCommand command,
+    required Object error,
+  }) {
+    return [
+      'mode=command_result',
+      'raw_input="$rawInput"',
+      'action=${_actionLabel(command)}',
+      'ok=false',
+      'error="${_normalizeSingleLine(error.toString())}"',
+    ].join('\n');
+  }
+
+  String _actionLabel(EntryCommand command) {
+    return switch (command) {
+      NewNoteCommand() => 'new_note',
+      CreateTaskCommand() => 'create_task',
+      ScheduleCommand() => 'schedule',
+    };
+  }
+
   String _searchDetailPayload({
     required SearchIntent intent,
     required rust_api.EntrySearchResponse response,
@@ -324,8 +472,41 @@ Future<rust_api.EntrySearchResponse> _defaultEntrySearch({
   return rust_api.entrySearch(text: text, limit: limit);
 }
 
+Future<rust_api.EntryActionResponse> _defaultEntryCreateNote({
+  required String content,
+}) async {
+  await RustBridge.init();
+  return rust_api.entryCreateNote(content: content);
+}
+
+Future<rust_api.EntryActionResponse> _defaultEntryCreateTask({
+  required String content,
+}) async {
+  await RustBridge.init();
+  return rust_api.entryCreateTask(content: content);
+}
+
+Future<rust_api.EntryActionResponse> _defaultEntrySchedule({
+  required String title,
+  required int startEpochMs,
+  int? endEpochMs,
+}) async {
+  await RustBridge.init();
+  return rust_api.entrySchedule(
+    title: title,
+    startEpochMs: startEpochMs,
+    endEpochMs: endEpochMs,
+  );
+}
+
 Future<void> _defaultPrepareSearch() async {
   await RustBridge.ensureEntryDbPathConfigured();
 }
 
+Future<void> _defaultPrepareCommand() async {
+  await RustBridge.ensureEntryDbPathConfigured();
+}
+
 Future<void> _noopPrepareSearch() async {}
+
+Future<void> _noopPrepareCommand() async {}

@@ -89,6 +89,7 @@ class EntryState {
     required String rawInput,
     required EntryIntent intent,
     required String message,
+    String? detailPayload,
   }) {
     return EntryState(
       phase: EntryPhase.error,
@@ -98,7 +99,7 @@ class EntryState {
         type: EntryStatusMessageType.error,
         text: message,
       ),
-      detailPayload: detailPayload,
+      detailPayload: detailPayload ?? this.detailPayload,
     );
   }
 
