@@ -11,6 +11,7 @@
 //! # See also
 //! - docs/releases/v0.1/prs/PR-0006-core-crud.md
 
+use crate::db::migrations::latest_version;
 use crate::db::DbError;
 use crate::model::atom::{Atom, AtomId, AtomType, AtomValidationError, TaskStatus};
 use rusqlite::types::Value;
@@ -38,6 +39,11 @@ pub enum RepoError {
     Validation(AtomValidationError),
     Db(DbError),
     NotFound(AtomId),
+    UninitializedConnection {
+        expected_version: u32,
+        actual_version: u32,
+    },
+    MissingRequiredTable(&'static str),
     InvalidData(String),
 }
 
@@ -47,6 +53,16 @@ impl Display for RepoError {
             Self::Validation(err) => write!(f, "{err}"),
             Self::Db(err) => write!(f, "{err}"),
             Self::NotFound(id) => write!(f, "atom not found: {id}"),
+            Self::UninitializedConnection {
+                expected_version,
+                actual_version,
+            } => write!(
+                f,
+                "repository requires migrated database schema version {expected_version}, got {actual_version}"
+            ),
+            Self::MissingRequiredTable(table) => {
+                write!(f, "repository requires table `{table}`, but it was not found")
+            }
             Self::InvalidData(message) => write!(f, "invalid persisted atom data: {message}"),
         }
     }
@@ -58,6 +74,8 @@ impl Error for RepoError {
             Self::Validation(err) => Some(err),
             Self::Db(err) => Some(err),
             Self::NotFound(_) => None,
+            Self::UninitializedConnection { .. } => None,
+            Self::MissingRequiredTable(_) => None,
             Self::InvalidData(_) => None,
         }
     }
@@ -105,8 +123,9 @@ pub struct SqliteAtomRepository<'conn> {
 }
 
 impl<'conn> SqliteAtomRepository<'conn> {
-    pub fn new(conn: &'conn Connection) -> Self {
-        Self { conn }
+    pub fn try_new(conn: &'conn Connection) -> RepoResult<Self> {
+        ensure_connection_ready(conn)?;
+        Ok(Self { conn })
     }
 }
 
@@ -233,15 +252,20 @@ impl AtomRepository for SqliteAtomRepository<'_> {
              SET
                 is_deleted = 1,
                 updated_at = (strftime('%s', 'now') * 1000)
-             WHERE uuid = ?1;",
+             WHERE uuid = ?1
+               AND is_deleted = 0;",
             [id.to_string()],
         )?;
 
-        if changed == 0 {
-            return Err(RepoError::NotFound(id));
+        if changed > 0 {
+            return Ok(());
         }
 
-        Ok(())
+        if atom_exists(self.conn, id)? {
+            return Ok(());
+        }
+
+        Err(RepoError::NotFound(id))
     }
 }
 
@@ -331,4 +355,44 @@ fn bool_to_int(value: bool) -> i64 {
     } else {
         0
     }
+}
+
+fn ensure_connection_ready(conn: &Connection) -> RepoResult<()> {
+    let expected_version = latest_version();
+    let actual_version: u32 = conn.query_row("PRAGMA user_version;", [], |row| row.get(0))?;
+    if actual_version != expected_version {
+        return Err(RepoError::UninitializedConnection {
+            expected_version,
+            actual_version,
+        });
+    }
+
+    let atoms_exists: i64 = conn.query_row(
+        "SELECT EXISTS(
+            SELECT 1
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'atoms'
+        );",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if atoms_exists != 1 {
+        return Err(RepoError::MissingRequiredTable("atoms"));
+    }
+
+    Ok(())
+}
+
+fn atom_exists(conn: &Connection, id: AtomId) -> RepoResult<bool> {
+    let exists: i64 = conn.query_row(
+        "SELECT EXISTS(
+            SELECT 1
+            FROM atoms
+            WHERE uuid = ?1
+        );",
+        [id.to_string()],
+        |row| row.get(0),
+    )?;
+    Ok(exists == 1)
 }

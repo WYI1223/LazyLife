@@ -55,7 +55,8 @@ Provide stable core CRUD operations.
   - supports `kind` filter + `include_deleted` + pagination (`limit/offset`)
   - default behavior excludes deleted records
 - `soft_delete_atom(id)`:
-  - sets `is_deleted = 1`, refreshes `updated_at`, idempotent
+  - sets `is_deleted = 1` when active
+  - already-deleted record returns success without changing `updated_at`
 
 ## Error Model (Proposed)
 
@@ -85,6 +86,8 @@ Provide stable core CRUD operations.
 - Soft delete is idempotent
 - Validation failure blocks create/update
 - Query filters by `AtomType`
+- Pagination path: `limit + offset`
+- Pagination path: offset-only (`LIMIT -1 OFFSET`)
 
 ## Acceptance Criteria
 - [x] Scope implemented
@@ -100,6 +103,7 @@ Provide stable core CRUD operations.
   - `soft_delete_atom`
 - Added `AtomService` as use-case wrapper over repository.
 - Enforced `Atom::validate()` on repository write paths.
+- Repository construction now uses `try_new` guard to reject uninitialized/non-migrated connections.
 - Kept PR core-only (no FFI CRUD exposure yet).
 - Added integration tests in `tests/atom_crud.rs` for:
   - create/get roundtrip
@@ -108,6 +112,7 @@ Provide stable core CRUD operations.
   - soft delete idempotency
   - validation failure on create/update
   - type filter query
+  - pagination branches (`limit + offset`, offset-only)
   - service wrapper smoke flow
 - Verification:
   - `cd crates && cargo fmt --all -- --check`
