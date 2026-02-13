@@ -55,7 +55,8 @@ See `docs/releases/v0.1/prs/`.
 - Completed: `PR-0009A` entry FFI surface (async APIs + structured status envelopes)
 - Completed: `PR-0009B` entry parser/state + Workbench-integrated Single Entry panel
 - Completed: `PR-0009C` realtime search flow (`onChanged` search + result list rendering + stale-response guard + startup DB-path readiness hardening)
-- Next: `PR-0009D` command execution flow (`new note/task/schedule`)
+- Completed: `PR-0009D` command execution flow (`new note/task/schedule`)
+- Next: `PR-0010` notes + tags feature flow
 
 Execution note:
 
