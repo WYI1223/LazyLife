@@ -1,7 +1,7 @@
 # PR-0009D-entry-command-flow
 
 - Proposed title: `feat(ui): execute single-entry commands`
-- Status: In Progress
+- Status: Completed
 
 ## Goal
 
@@ -123,11 +123,46 @@ Visual feedback baseline:
 
 ## Acceptance Criteria
 
-- [ ] Three baseline commands execute successfully.
-- [ ] Error states are visible and non-destructive to input.
-- [ ] Schedule point/range behavior matches locked requirements.
+- [x] Three baseline commands execute successfully.
+- [x] Error states are visible and non-destructive to input.
+- [x] Schedule point/range behavior matches locked requirements.
+
+## Progress Notes
+
+D1 implemented:
+
+- `SingleEntryController` now executes `CommandIntent` on `Enter/send`.
+- Added command invoker wiring for:
+  - `entry_create_note`
+  - `entry_create_task`
+  - `entry_schedule`
+- Added command prepare hook with default DB-path readiness (`RustBridge.ensureEntryDbPathConfigured()`).
+- Added command request sequence guard to ignore stale async completions.
+
+D2 implemented:
+
+- Command execution now sets explicit loading/success/error states.
+- Command result detail payload now includes stable fields:
+  - `action`
+  - `ok`
+  - `message`
+  - `atom_id` (when available)
+  - `raw_input`
+- Added controller tests for:
+  - note command success
+  - task command success
+  - schedule range epoch mapping
+  - command failure with preserved input
+- Added widget test for send-button command execution with mocked command invoker.
+
+D3 completed:
+
+- PR doc/business contract and maintenance record updated.
+- Epic tracker (`PR-0009-single-entry-router.md`) and release summary were synchronized.
+- Manual Windows validation passed against the command/search checklist.
 
 ## Maintenance Record
 
 - 2026-02-13: Expanded business logic contract for command execution boundaries (`onChanged` preview vs `Enter/send` commit path).
 - 2026-02-13: Added D1/D2/D3 execution checklist to make implementation and review traceable.
+- 2026-02-13: Marked PR-0009D as completed after local command-flow manual validation.

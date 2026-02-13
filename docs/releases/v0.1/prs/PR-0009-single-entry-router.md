@@ -1,7 +1,7 @@
 # PR-0009-single-entry-router
 
 - Proposed title: `ui(entry): single entry (search + command router)`
-- Status: In Progress (Epic)
+- Status: Completed (Epic)
 
 ## Goal
 Deliver a single input experience that supports both search and commands in Workbench.
@@ -14,7 +14,7 @@ This work is split into four smaller PRs:
 1. `PR-0009A`: FFI and core use-case surface for entry operations. (Completed)
 2. `PR-0009B`: Flutter parser/state scaffolding and command contract validation. (Completed)
 3. `PR-0009C`: Search execution flow (default input -> search results). (Completed)
-4. `PR-0009D`: Command execution flow (`> new note`, `> task`, `> schedule`).
+4. `PR-0009D`: Command execution flow (`> new note`, `> task`, `> schedule`). (Completed)
 
 ## Locked Requirements
 
@@ -82,9 +82,9 @@ Layout constraint:
 - PR0007, PR0008
 
 ## Acceptance Criteria
-- [ ] Scope implemented
-- [ ] Basic verification/tests added
-- [ ] Documentation updated if behavior changes
+- [x] Scope implemented
+- [x] Basic verification/tests added
+- [x] Documentation updated if behavior changes
 
 ## Notes
 - This is now an epic tracker.
@@ -100,3 +100,8 @@ Layout constraint:
 - 2026-02-13: `PR-0009D` business logic contract expanded:
   - `onChanged` remains preview/realtime route only
   - `Enter/send` is the commit/execute boundary for command intents
+- 2026-02-13: `PR-0009D` D1/D2 implementation landed:
+  - command execution wired in `SingleEntryController`
+  - command success/failure detail payload standardized
+  - controller/widget tests added for note/task/schedule command paths
+- 2026-02-13: `PR-0009D` completed and Epic `PR-0009` closed.
