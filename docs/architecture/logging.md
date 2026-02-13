@@ -167,8 +167,15 @@ Constraints:
   - inline live log panel is available in the split-shell workbench
   - panel supports refresh, copy visible logs, open log folder, and periodic polling
   - panel keeps mounted while left-side placeholder pages switch
+  - refresh safety:
+    - only one refresh request runs in-flight
+    - overlapping refresh triggers are coalesced into one trailing refresh
+    - periodic polling pauses while app is background/inactive and resumes on foreground
+  - file-read safety:
+    - for large rolling logs, diagnostics reads from file tail window instead of full-file reads
 
 See also: `docs/releases/v0.1/prs/PR-0017-workbench-debug-logs.md`.
+See also: `docs/development/bug-archive.md` (`BUG-2026-001`).
 
 ### Remaining gap (v0.1)
 

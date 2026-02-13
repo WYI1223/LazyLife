@@ -81,6 +81,15 @@ Docker：仅用于 Rust 工具链/CI（可选）
 
 ## Troubleshooting (Known)
 
+- Foreground-return freeze after long background:
+  - Symptom: after window stays out of focus for a long time, returning to foreground may freeze within 1-2s.
+  - Root cause (fixed): logs panel periodic refresh backlog + full-file log reads on large files.
+  - Fix:
+    - lifecycle-aware pause/resume for periodic refresh
+    - in-flight refresh coalescing (drop overlap backlog)
+    - large-file tail-window reads instead of full-file reads
+  - Archive: `docs/development/bug-archive.md` (`BUG-2026-001`)
+
 - `Open Log Folder` on Windows:
   - `explorer.exe` may return non-zero even when folder opens successfully.
   - Current implementation treats `stderr` output or a missing target directory as failure.

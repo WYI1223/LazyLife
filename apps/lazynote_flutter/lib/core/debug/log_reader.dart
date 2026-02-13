@@ -80,6 +80,12 @@ class LogReader {
       file.readAsString();
 
   @visibleForTesting
+  static Future<String> Function(File file, int maxBytes) fileTailReader =
+      _defaultFileTailReader;
+
+  static const int _tailReadWindowBytes = 256 * 1024;
+
+  @visibleForTesting
   static void resetForTesting() {
     logDirPathResolver = LocalPaths.resolveLogDirPath;
     processRunner = Process.run;
@@ -91,6 +97,7 @@ class LogReader {
     };
     fileEnumerator = _defaultFileEnumerator;
     fileReader = (File file) => file.readAsString();
+    fileTailReader = _defaultFileTailReader;
   }
 
   /// Resolves absolute log directory path used by Rust logging.
@@ -135,7 +142,10 @@ class LogReader {
     });
 
     final activeFile = discovered.first;
-    final activeText = await fileReader(File(activeFile.path));
+    final activeLogFile = File(activeFile.path);
+    final activeText = activeFile.sizeBytes <= _tailReadWindowBytes
+        ? await fileReader(activeLogFile)
+        : await fileTailReader(activeLogFile, _tailReadWindowBytes);
     final tailText = _tailLines(activeText, maxLines);
     return DebugLogSnapshot(
       logDir: logDir,
@@ -195,6 +205,23 @@ class LogReader {
         result.exitCode,
       );
     }
+  }
+}
+
+Future<String> _defaultFileTailReader(File file, int maxBytes) async {
+  if (maxBytes <= 0) {
+    return '';
+  }
+
+  final reader = await file.open();
+  try {
+    final totalBytes = await reader.length();
+    final start = totalBytes > maxBytes ? totalBytes - maxBytes : 0;
+    await reader.setPosition(start);
+    final chunk = await reader.read(totalBytes - start);
+    return utf8.decode(chunk, allowMalformed: true);
+  } finally {
+    await reader.close();
   }
 }
 

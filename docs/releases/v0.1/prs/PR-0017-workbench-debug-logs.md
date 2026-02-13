@@ -46,9 +46,15 @@ Show local rolling logs directly in Workbench so developers can inspect runtime 
 - Windows-specific behavior: `explorer.exe` may return non-zero even when folder opens; implementation now treats explicit `stderr` or missing target directory as failure, and keeps non-fatal compatibility for the non-zero/no-stderr case.
 - Overflow hardening: logs panel uses bounded/expanded layout and message truncation to avoid vertical RenderFlex overflow.
 - Concurrency hardening: logs refresh is request-versioned to prevent stale async completions from overwriting newer snapshots.
+- Post-completion stability hardening (2026-02-13):
+  - lifecycle-aware refresh pause/resume for background/foreground transitions
+  - refresh coalescing to avoid queue buildup when overlap happens
+  - large-file tail-window reads to avoid repeated full-file decoding
 - Added tests:
   - concurrent refresh ordering (`debug_logs_panel_test.dart`)
+  - overlapping refresh coalescing (`debug_logs_panel_test.dart`)
   - open-log-folder failure/success heuristics (`log_reader_test.dart`)
+  - large-log tail-reader selection (`log_reader_test.dart`)
 - Out of scope:
   - in-app log filtering/search syntax
   - zip export workflow
@@ -58,3 +64,4 @@ Show local rolling logs directly in Workbench so developers can inspect runtime 
   - `cd apps/lazynote_flutter && flutter test`
   - `flutter run -d windows` then verify logs update after app actions
 - Verification status: passed locally.
+- Incident archive: `docs/development/bug-archive.md` (`BUG-2026-001`).

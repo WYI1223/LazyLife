@@ -57,6 +57,7 @@ Non-responsibilities:
 3. Rust core opens DB and applies migrations (on DB open path).
 4. UI interacts with core use-cases via FFI (currently smoke + diagnostics-oriented baseline).
 5. Workbench shows right-side live logs panel for local validation.
+   - panel refresh is lifecycle-aware and request-coalesced to avoid background-return freeze regressions.
 
 ## Data Plane
 
@@ -109,6 +110,7 @@ Planned next:
 - `docs/architecture/data-model.md`
 - `docs/architecture/sync-protocol.md`
 - `docs/architecture/logging.md`
+- `docs/development/bug-archive.md`
 - `docs/architecture/settings-config.md`
 - `docs/api/README.md`
 - `docs/governance/API_COMPATIBILITY.md`
