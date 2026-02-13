@@ -137,11 +137,14 @@ class SingleEntryController extends ChangeNotifier {
   String? get searchErrorMessage =>
       hasSearchError ? _state.statusMessage?.text : null;
 
+  /// Whether a command submission is currently in-flight.
+  bool get isCommandSubmitting =>
+      _state.intent is CommandIntent && _state.phase == EntryPhase.loading;
+
   /// Handles realtime routing for each input change.
   void handleInputChanged(String value) {
     final intent = _router.route(value);
     _isDetailVisible = false;
-    _commandRequestSequence += 1;
     switch (intent) {
       case NoopIntent():
         _cancelPendingSearch();
@@ -177,6 +180,10 @@ class SingleEntryController extends ChangeNotifier {
 
   /// Handles explicit "open detail" action (Enter/send button).
   void handleDetailAction() {
+    if (isCommandSubmitting) {
+      return;
+    }
+
     final rawInput = textController.text;
     final intent = _router.route(rawInput);
     _isDetailVisible = false;

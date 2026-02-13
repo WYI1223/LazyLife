@@ -317,6 +317,101 @@ void main() {
     },
   );
 
+  test(
+    'command response is still delivered after input changes post-submit',
+    () async {
+      final commandResponse = Completer<EntryActionResponse>();
+      var commandCalls = 0;
+      var searchCalls = 0;
+
+      final controller = SingleEntryController(
+        prepareCommand: () async {},
+        createTaskInvoker: ({required content}) {
+          commandCalls += 1;
+          return commandResponse.future;
+        },
+        searchInvoker: ({required text, required limit}) async {
+          searchCalls += 1;
+          return const EntrySearchResponse(
+            ok: true,
+            errorCode: null,
+            items: [],
+            message: 'No results.',
+            appliedLimit: 10,
+          );
+        },
+        prepareSearch: () async {},
+        searchDebounce: const Duration(milliseconds: 1),
+      );
+      addTearDown(controller.dispose);
+
+      const commandText = '> task keep receipt';
+      controller.textController.text = commandText;
+      controller.handleInputChanged(commandText);
+      controller.handleDetailAction();
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.state.phase, EntryPhase.loading);
+      expect(commandCalls, 1);
+
+      controller.handleInputChanged('typing after submit');
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      expect(searchCalls, 1);
+
+      commandResponse.complete(
+        const EntryActionResponse(
+          ok: true,
+          atomId: 'atom-receipt-1',
+          message: 'Task created.',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.state.phase, EntryPhase.success);
+      expect(controller.state.statusMessage?.text, 'Task created.');
+      expect(controller.visibleDetail, contains('action=create_task'));
+      expect(controller.visibleDetail, contains('atom_id=atom-receipt-1'));
+    },
+  );
+
+  test('duplicate submit while command is loading is ignored', () async {
+    final commandResponse = Completer<EntryActionResponse>();
+    var commandCalls = 0;
+
+    final controller = SingleEntryController(
+      prepareCommand: () async {},
+      createTaskInvoker: ({required content}) {
+        commandCalls += 1;
+        return commandResponse.future;
+      },
+      searchDebounce: Duration.zero,
+    );
+    addTearDown(controller.dispose);
+
+    const commandText = '> task prevent duplicate';
+    controller.textController.text = commandText;
+    controller.handleInputChanged(commandText);
+
+    controller.handleDetailAction();
+    controller.handleDetailAction();
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.phase, EntryPhase.loading);
+    expect(commandCalls, 1);
+
+    commandResponse.complete(
+      const EntryActionResponse(
+        ok: true,
+        atomId: 'atom-dup-1',
+        message: 'Task created.',
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(commandCalls, 1);
+    expect(controller.state.phase, EntryPhase.success);
+  });
+
   test('search waits for prepare step before invoking search call', () async {
     final prepareGate = Completer<void>();
     var prepareCalls = 0;

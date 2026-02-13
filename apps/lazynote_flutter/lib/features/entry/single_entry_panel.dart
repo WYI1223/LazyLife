@@ -36,6 +36,7 @@ class SingleEntryPanel extends StatelessWidget {
         final sendColor = controller.hasInput
             ? Colors.blue
             : Colors.grey.shade600;
+        final canPressSend = !controller.isCommandSubmitting;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +95,9 @@ class SingleEntryPanel extends StatelessWidget {
                   IconButton(
                     key: const Key('single_entry_send_button'),
                     tooltip: 'Open details',
-                    onPressed: controller.handleDetailAction,
+                    onPressed: canPressSend
+                        ? controller.handleDetailAction
+                        : null,
                     icon: Icon(Icons.send_outlined, color: sendColor),
                   ),
                 ],

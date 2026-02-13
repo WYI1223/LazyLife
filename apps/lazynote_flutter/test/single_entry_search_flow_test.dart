@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart';
@@ -159,4 +161,61 @@ void main() {
       expect(find.textContaining('atom_id=atom-task-widget'), findsOneWidget);
     },
   );
+
+  testWidgets('send button is disabled while command is executing', (
+    WidgetTester tester,
+  ) async {
+    final commandResponse = Completer<EntryActionResponse>();
+    var taskCalls = 0;
+
+    final controller = SingleEntryController(
+      prepareCommand: () async {},
+      createTaskInvoker: ({required content}) {
+        taskCalls += 1;
+        return commandResponse.future;
+      },
+      searchDebounce: Duration.zero,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SingleEntryPanel(controller: controller, onClose: () {}),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('single_entry_input')),
+      '> task disable send while loading',
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('single_entry_send_button')));
+    await tester.pump();
+
+    final sendButton = tester.widget<IconButton>(
+      find.byKey(const Key('single_entry_send_button')),
+    );
+    expect(sendButton.onPressed, isNull);
+    expect(taskCalls, 1);
+
+    commandResponse.complete(
+      const EntryActionResponse(
+        ok: true,
+        atomId: 'atom-finish-1',
+        message: 'Task created.',
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final sendButtonAfter = tester.widget<IconButton>(
+      find.byKey(const Key('single_entry_send_button')),
+    );
+    expect(sendButtonAfter.onPressed, isNotNull);
+  });
 }
