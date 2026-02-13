@@ -75,15 +75,16 @@ fn wire__crate__api__core_version_impl(
     )
 }
 fn wire__crate__api__entry_create_note_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
             debug_name: "entry_create_note",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -97,23 +98,30 @@ fn wire__crate__api__entry_create_note_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_content = <String>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::entry_create_note(api_content))?;
-                Ok(output_ok)
-            })())
+            move |context| async move {
+                transform_result_sse::<_, ()>(
+                    (move || async move {
+                        let output_ok =
+                            Result::<_, ()>::Ok(crate::api::entry_create_note(api_content).await)?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
         },
     )
 }
 fn wire__crate__api__entry_create_task_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
             debug_name: "entry_create_task",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -127,23 +135,30 @@ fn wire__crate__api__entry_create_task_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_content = <String>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::entry_create_task(api_content))?;
-                Ok(output_ok)
-            })())
+            move |context| async move {
+                transform_result_sse::<_, ()>(
+                    (move || async move {
+                        let output_ok =
+                            Result::<_, ()>::Ok(crate::api::entry_create_task(api_content).await)?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
         },
     )
 }
 fn wire__crate__api__entry_schedule_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
             debug_name: "entry_schedule",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -159,27 +174,36 @@ fn wire__crate__api__entry_schedule_impl(
             let api_start_epoch_ms = <i64>::sse_decode(&mut deserializer);
             let api_end_epoch_ms = <Option<i64>>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::entry_schedule(
-                    api_title,
-                    api_start_epoch_ms,
-                    api_end_epoch_ms,
-                ))?;
-                Ok(output_ok)
-            })())
+            move |context| async move {
+                transform_result_sse::<_, ()>(
+                    (move || async move {
+                        let output_ok = Result::<_, ()>::Ok(
+                            crate::api::entry_schedule(
+                                api_title,
+                                api_start_epoch_ms,
+                                api_end_epoch_ms,
+                            )
+                            .await,
+                        )?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
         },
     )
 }
 fn wire__crate__api__entry_search_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
             debug_name: "entry_search",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -194,10 +218,17 @@ fn wire__crate__api__entry_search_impl(
             let api_text = <String>::sse_decode(&mut deserializer);
             let api_limit = <Option<u32>>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::entry_search(api_text, api_limit))?;
-                Ok(output_ok)
-            })())
+            move |context| async move {
+                transform_result_sse::<_, ()>(
+                    (move || async move {
+                        let output_ok = Result::<_, ()>::Ok(
+                            crate::api::entry_search(api_text, api_limit).await,
+                        )?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
         },
     )
 }
@@ -311,10 +342,14 @@ impl SseDecode for crate::api::EntrySearchItem {
 impl SseDecode for crate::api::EntrySearchResponse {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorCode = <Option<String>>::sse_decode(deserializer);
         let mut var_items = <Vec<crate::api::EntrySearchItem>>::sse_decode(deserializer);
         let mut var_message = <String>::sse_decode(deserializer);
         let mut var_appliedLimit = <u32>::sse_decode(deserializer);
         return crate::api::EntrySearchResponse {
+            ok: var_ok,
+            error_code: var_errorCode,
             items: var_items,
             message: var_message,
             applied_limit: var_appliedLimit,
@@ -421,6 +456,10 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
+        2 => wire__crate__api__entry_create_note_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__entry_create_task_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__entry_schedule_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__entry_search_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -434,10 +473,6 @@ fn pde_ffi_dispatcher_sync_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         1 => wire__crate__api__core_version_impl(ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__entry_create_note_impl(ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__entry_create_task_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__entry_schedule_impl(ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__entry_search_impl(ptr, rust_vec_len, data_len),
         6 => wire__crate__api__init_logging_impl(ptr, rust_vec_len, data_len),
         7 => wire__crate__api__ping_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
@@ -491,6 +526,8 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::EntrySearchItem>
 impl flutter_rust_bridge::IntoDart for crate::api::EntrySearchResponse {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
+            self.ok.into_into_dart().into_dart(),
+            self.error_code.into_into_dart().into_dart(),
             self.items.into_into_dart().into_dart(),
             self.message.into_into_dart().into_dart(),
             self.applied_limit.into_into_dart().into_dart(),
@@ -545,6 +582,8 @@ impl SseEncode for crate::api::EntrySearchItem {
 impl SseEncode for crate::api::EntrySearchResponse {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <Option<String>>::sse_encode(self.error_code, serializer);
         <Vec<crate::api::EntrySearchItem>>::sse_encode(self.items, serializer);
         <String>::sse_encode(self.message, serializer);
         <u32>::sse_encode(self.applied_limit, serializer);

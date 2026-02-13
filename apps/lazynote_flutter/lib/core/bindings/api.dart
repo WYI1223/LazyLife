@@ -6,7 +6,7 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_type_label`, `failure`, `normalize_entry_limit`, `resolve_entry_db_path`, `success`, `to_entry_search_item`, `with_atom_service`
+// These functions are ignored because they are not marked as `pub`: `atom_type_label`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `normalize_entry_limit`, `resolve_entry_db_path`, `success`, `to_entry_search_item`, `with_atom_service`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
 
 /// Minimal health-check API for FRB smoke integration.
@@ -42,38 +42,38 @@ String initLogging({required String level, required String logDir}) =>
 /// Searches single-entry text using entry-level defaults.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Never panics.
 /// - Returns deterministic envelope with applied limit.
-EntrySearchResponse entrySearch({required String text, int? limit}) =>
+Future<EntrySearchResponse> entrySearch({required String text, int? limit}) =>
     RustLib.instance.api.crateApiEntrySearch(text: text, limit: limit);
 
 /// Creates a note from single-entry command flow.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Never panics.
 /// - Returns operation result and created atom ID on success.
-EntryActionResponse entryCreateNote({required String content}) =>
+Future<EntryActionResponse> entryCreateNote({required String content}) =>
     RustLib.instance.api.crateApiEntryCreateNote(content: content);
 
 /// Creates a task from single-entry command flow.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Never panics.
 /// - Returns operation result and created atom ID on success.
-EntryActionResponse entryCreateTask({required String content}) =>
+Future<EntryActionResponse> entryCreateTask({required String content}) =>
     RustLib.instance.api.crateApiEntryCreateTask(content: content);
 
 /// Schedules an event from single-entry command flow.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Accepts point (`end_epoch_ms=None`) and range (`Some(end)`) shapes.
 /// - Never panics.
 /// - Returns operation result and created atom ID on success.
-EntryActionResponse entrySchedule({
+Future<EntryActionResponse> entrySchedule({
   required String title,
   required PlatformInt64 startEpochMs,
   PlatformInt64? endEpochMs,
@@ -145,6 +145,12 @@ class EntrySearchItem {
 
 /// Search response envelope for single-entry search flow.
 class EntrySearchResponse {
+  /// Whether search execution succeeded.
+  final bool ok;
+
+  /// Optional stable error code for machine branching.
+  final String? errorCode;
+
   /// Search results (empty when no hits or scaffold mode).
   final List<EntrySearchItem> items;
 
@@ -155,19 +161,28 @@ class EntrySearchResponse {
   final int appliedLimit;
 
   const EntrySearchResponse({
+    required this.ok,
+    this.errorCode,
     required this.items,
     required this.message,
     required this.appliedLimit,
   });
 
   @override
-  int get hashCode => items.hashCode ^ message.hashCode ^ appliedLimit.hashCode;
+  int get hashCode =>
+      ok.hashCode ^
+      errorCode.hashCode ^
+      items.hashCode ^
+      message.hashCode ^
+      appliedLimit.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is EntrySearchResponse &&
           runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
           items == other.items &&
           message == other.message &&
           appliedLimit == other.appliedLimit;

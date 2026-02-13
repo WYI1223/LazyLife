@@ -52,20 +52,46 @@ Date baseline:
   - non-empty input -> highlight (v0.1 default `Colors.blue`)
 - Panel keeps minimalist style and does not replace Workbench shell.
 
-## Step-by-Step
+## Interaction Contract (Locked)
 
-1. Define immutable entry state model (`idle/loading/success/error`).
-2. Implement parser output types (`SearchIntent`, `CommandIntent`).
+- Input `onChanged` triggers parser/router on every text change.
+- Pressing `Enter` or clicking the send icon does not start "typing search mode".
+- `Enter` / send action opens detail view or returns current detail payload for the latest parsed intent.
+- Parse or execution errors must keep original input text unchanged.
+
+## Execution Plan (B1/B2)
+
+### B1: Parser / Router / State (no real FFI execution)
+
+1. Define immutable entry state model (`idle/loading/success/error` + status message type).
+2. Implement parser output types (`SearchIntent`, `CommandIntent`, `NoopIntent`, `ParseErrorIntent`).
 3. Implement command grammar parser with strict validation messages.
 4. Add router function to map raw input to intent.
-5. Add tests for valid/invalid command patterns.
-6. Wire a Workbench button that toggles/focuses the Single Entry panel.
-7. Keep input text preserved on parser or execution error states.
-8. Add widget tests for send-icon state change based on input emptiness.
+5. Add tests for valid/invalid command patterns and router branches.
 
-## Verification
+B1 verification:
 
 - `cd apps/lazynote_flutter && dart format .`
+- `cd apps/lazynote_flutter && flutter analyze`
+- `cd apps/lazynote_flutter && flutter test`
+
+### B2: Workbench Internal Panel Wiring
+
+1. Wire a Workbench button that toggles/focuses the Single Entry panel.
+2. Keep Single Entry inside Workbench left pane (do not replace route/homepage).
+3. Wire `onChanged` as realtime parser/router trigger.
+4. Bind `Enter` + send icon click to "open/return detail" behavior.
+5. Apply locked UI contract (placeholder/icons/send highlight rules).
+6. Keep input text preserved on parser or execution error states.
+7. Add widget tests for:
+   - panel open/close behavior
+   - send-icon state change based on input emptiness
+   - `onChanged` trigger and Enter/send detail action split
+   - input preservation on parse error
+   - no regression to right-side debug logs panel
+
+B2 verification:
+
 - `cd apps/lazynote_flutter && flutter analyze`
 - `cd apps/lazynote_flutter && flutter test`
 

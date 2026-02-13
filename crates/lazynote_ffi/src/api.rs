@@ -17,12 +17,10 @@ use lazynote_core::{
     search_all, AtomService, AtomType, ScheduleEventRequest, SearchQuery, SqliteAtomRepository,
 };
 use std::path::PathBuf;
-use std::sync::OnceLock;
 
 const ENTRY_DEFAULT_LIMIT: u32 = 10;
 const ENTRY_LIMIT_MAX: u32 = 10;
 const ENTRY_DB_FILE_NAME: &str = "lazynote_entry.sqlite3";
-static ENTRY_DB_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 /// Minimal health-check API for FRB smoke integration.
 ///
@@ -79,6 +77,10 @@ pub struct EntrySearchItem {
 /// Search response envelope for single-entry search flow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntrySearchResponse {
+    /// Whether search execution succeeded.
+    pub ok: bool,
+    /// Optional stable error code for machine branching.
+    pub error_code: Option<String>,
     /// Search results (empty when no hits or scaffold mode).
     pub items: Vec<EntrySearchItem>,
     /// Human-readable response message for diagnostics.
@@ -119,11 +121,15 @@ impl EntryActionResponse {
 /// Searches single-entry text using entry-level defaults.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Never panics.
 /// - Returns deterministic envelope with applied limit.
-#[flutter_rust_bridge::frb(sync)]
-pub fn entry_search(text: String, limit: Option<u32>) -> EntrySearchResponse {
+#[flutter_rust_bridge::frb]
+pub async fn entry_search(text: String, limit: Option<u32>) -> EntrySearchResponse {
+    entry_search_impl(text, limit)
+}
+
+fn entry_search_impl(text: String, limit: Option<u32>) -> EntrySearchResponse {
     let normalized_limit = normalize_entry_limit(limit);
     let query_text = text.trim().to_string();
     let db_path = resolve_entry_db_path();
@@ -131,6 +137,8 @@ pub fn entry_search(text: String, limit: Option<u32>) -> EntrySearchResponse {
         Ok(conn) => conn,
         Err(err) => {
             return EntrySearchResponse {
+                ok: false,
+                error_code: Some("db_open_failed".to_string()),
                 items: Vec::new(),
                 message: format!("entry_search failed: {err}"),
                 applied_limit: normalized_limit,
@@ -157,12 +165,16 @@ pub fn entry_search(text: String, limit: Option<u32>) -> EntrySearchResponse {
                 format!("Found {} result(s).", items.len())
             };
             EntrySearchResponse {
+                ok: true,
+                error_code: None,
                 items,
                 message,
                 applied_limit: normalized_limit,
             }
         }
         Err(err) => EntrySearchResponse {
+            ok: false,
+            error_code: Some("search_failed".to_string()),
             items: Vec::new(),
             message: format!("entry_search failed: {err}"),
             applied_limit: normalized_limit,
@@ -173,11 +185,15 @@ pub fn entry_search(text: String, limit: Option<u32>) -> EntrySearchResponse {
 /// Creates a note from single-entry command flow.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Never panics.
 /// - Returns operation result and created atom ID on success.
-#[flutter_rust_bridge::frb(sync)]
-pub fn entry_create_note(content: String) -> EntryActionResponse {
+#[flutter_rust_bridge::frb]
+pub async fn entry_create_note(content: String) -> EntryActionResponse {
+    entry_create_note_impl(content)
+}
+
+fn entry_create_note_impl(content: String) -> EntryActionResponse {
     match with_atom_service(|service| service.create_note(content.trim().to_string())) {
         Ok(atom_id) => EntryActionResponse::success("Note created.", atom_id.to_string()),
         Err(err) => EntryActionResponse::failure(format!("entry_create_note failed: {err}")),
@@ -187,11 +203,15 @@ pub fn entry_create_note(content: String) -> EntryActionResponse {
 /// Creates a task from single-entry command flow.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Never panics.
 /// - Returns operation result and created atom ID on success.
-#[flutter_rust_bridge::frb(sync)]
-pub fn entry_create_task(content: String) -> EntryActionResponse {
+#[flutter_rust_bridge::frb]
+pub async fn entry_create_task(content: String) -> EntryActionResponse {
+    entry_create_task_impl(content)
+}
+
+fn entry_create_task_impl(content: String) -> EntryActionResponse {
     match with_atom_service(|service| service.create_task(content.trim().to_string())) {
         Ok(atom_id) => EntryActionResponse::success("Task created.", atom_id.to_string()),
         Err(err) => EntryActionResponse::failure(format!("entry_create_task failed: {err}")),
@@ -201,12 +221,20 @@ pub fn entry_create_task(content: String) -> EntryActionResponse {
 /// Schedules an event from single-entry command flow.
 ///
 /// # FFI contract
-/// - Sync call, DB-backed execution.
+/// - Async call, DB-backed execution.
 /// - Accepts point (`end_epoch_ms=None`) and range (`Some(end)`) shapes.
 /// - Never panics.
 /// - Returns operation result and created atom ID on success.
-#[flutter_rust_bridge::frb(sync)]
-pub fn entry_schedule(
+#[flutter_rust_bridge::frb]
+pub async fn entry_schedule(
+    title: String,
+    start_epoch_ms: i64,
+    end_epoch_ms: Option<i64>,
+) -> EntryActionResponse {
+    entry_schedule_impl(title, start_epoch_ms, end_epoch_ms)
+}
+
+fn entry_schedule_impl(
     title: String,
     start_epoch_ms: i64,
     end_epoch_ms: Option<i64>,
@@ -232,17 +260,13 @@ fn normalize_entry_limit(limit: Option<u32>) -> u32 {
 }
 
 fn resolve_entry_db_path() -> PathBuf {
-    ENTRY_DB_PATH
-        .get_or_init(|| {
-            if let Ok(raw) = std::env::var("LAZYNOTE_DB_PATH") {
-                let trimmed = raw.trim();
-                if !trimmed.is_empty() {
-                    return PathBuf::from(trimmed);
-                }
-            }
-            std::env::temp_dir().join(ENTRY_DB_FILE_NAME)
-        })
-        .clone()
+    if let Ok(raw) = std::env::var("LAZYNOTE_DB_PATH") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
+        }
+    }
+    std::env::temp_dir().join(ENTRY_DB_FILE_NAME)
 }
 
 fn with_atom_service(
@@ -277,8 +301,8 @@ fn atom_type_label(kind: AtomType) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        core_version, entry_create_note, entry_create_task, entry_schedule, entry_search,
-        init_logging, ping,
+        core_version, entry_create_note_impl, entry_create_task_impl, entry_schedule_impl,
+        entry_search_impl, init_logging, ping,
     };
     use lazynote_core::db::open_db;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -308,21 +332,23 @@ mod tests {
     #[test]
     fn entry_search_normalizes_limit_and_finds_created_note() {
         let token = unique_token("entry-search");
-        let created = entry_create_note(format!("note {token}"));
+        let created = entry_create_note_impl(format!("note {token}"));
         assert!(created.ok, "{}", created.message);
         let created_id = created
             .atom_id
             .clone()
             .expect("created note should return atom_id");
 
-        let response = entry_search(token, Some(42));
+        let response = entry_search_impl(token, Some(42));
         assert_eq!(response.applied_limit, 10);
+        assert!(response.ok, "{}", response.message);
+        assert!(response.error_code.is_none());
         assert!(response.items.iter().any(|item| item.atom_id == created_id));
     }
 
     #[test]
     fn entry_create_task_sets_default_todo_status() {
-        let task = entry_create_task("todo".to_string());
+        let task = entry_create_task_impl("todo".to_string());
         assert!(task.ok, "{}", task.message);
         let atom_id = task.atom_id.expect("task create should return atom_id");
 
@@ -341,7 +367,7 @@ mod tests {
     #[test]
     fn entry_schedule_supports_point_shape() {
         let title = unique_token("entry-schedule-point");
-        let response = entry_schedule(title, 1_700_000_000_000, None);
+        let response = entry_schedule_impl(title, 1_700_000_000_000, None);
         assert!(response.ok, "{}", response.message);
         let atom_id = response.atom_id.expect("schedule should return atom_id");
 
@@ -360,7 +386,7 @@ mod tests {
 
     #[test]
     fn entry_schedule_rejects_reversed_time_range() {
-        let response = entry_schedule("bad range".to_string(), 2_000, Some(1_000));
+        let response = entry_schedule_impl("bad range".to_string(), 2_000, Some(1_000));
         assert!(!response.ok);
         assert!(response.message.contains("event_end"));
     }
