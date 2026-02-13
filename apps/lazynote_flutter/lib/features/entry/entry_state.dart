@@ -12,7 +12,10 @@ enum EntryStatusMessageType { info, success, error }
 class EntryStatusMessage {
   const EntryStatusMessage({required this.type, required this.text});
 
+  /// Message severity used by UI color mapping.
   final EntryStatusMessageType type;
+
+  /// Human-readable status message shown in Single Entry panel.
   final String text;
 }
 
@@ -37,12 +40,22 @@ class EntryState {
       statusMessage = null,
       detailPayload = null;
 
+  /// Current phase in the parser/search/command flow.
   final EntryPhase phase;
+
+  /// Raw input text snapshot associated with this state.
   final String rawInput;
+
+  /// Routed intent for this state; `null` only in pristine idle state.
   final EntryIntent? intent;
+
+  /// Optional status line payload shown under the input.
   final EntryStatusMessage? statusMessage;
+
+  /// Optional detail payload shown when detail view is open.
   final String? detailPayload;
 
+  /// Convenience flag for error-phase rendering branches.
   bool get hasError => phase == EntryPhase.error;
 
   /// Transition used while search/command execution is in-flight.

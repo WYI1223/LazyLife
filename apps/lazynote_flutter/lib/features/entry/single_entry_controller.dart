@@ -7,15 +7,22 @@ import 'package:lazynote_flutter/features/entry/command_parser.dart';
 import 'package:lazynote_flutter/features/entry/command_router.dart';
 import 'package:lazynote_flutter/features/entry/entry_state.dart';
 
+/// Async search executor for default (non-command) single-entry input.
 typedef EntrySearchInvoker =
     Future<rust_api.EntrySearchResponse> Function({
       required String text,
       required int limit,
     });
+
+/// Async command executor for `> new note`.
 typedef EntryCreateNoteInvoker =
     Future<rust_api.EntryActionResponse> Function({required String content});
+
+/// Async command executor for `> task`.
 typedef EntryCreateTaskInvoker =
     Future<rust_api.EntryActionResponse> Function({required String content});
+
+/// Async command executor for `> schedule` (point/range).
 typedef EntryScheduleInvoker =
     Future<rust_api.EntryActionResponse> Function({
       required String title,
@@ -25,6 +32,8 @@ typedef EntryScheduleInvoker =
 
 /// Pre-search hook used to guarantee prerequisites (for example DB path setup).
 typedef EntrySearchPrepare = Future<void> Function();
+
+/// Pre-command hook used to guarantee prerequisites before command execution.
 typedef EntryCommandPrepare = Future<void> Function();
 
 /// Stateful controller for the Single Entry panel.
@@ -34,6 +43,12 @@ typedef EntryCommandPrepare = Future<void> Function();
 /// - Keep detail output hidden until Enter/send is explicitly triggered.
 /// - Preserve user input on parse/execution error states.
 class SingleEntryController extends ChangeNotifier {
+  /// Creates a controller for Single Entry search + command flows.
+  ///
+  /// Contract:
+  /// - `onChanged` path stays realtime and non-destructive.
+  /// - Enter/send path performs explicit detail open or command execution.
+  /// - Injected invokers/hooks are intended for tests and diagnostics.
   SingleEntryController({
     CommandRouter? router,
     EntrySearchInvoker? searchInvoker,
@@ -73,7 +88,11 @@ class SingleEntryController extends ChangeNotifier {
   final EntrySearchPrepare _prepareSearch;
   final EntryCommandPrepare _prepareCommand;
   final Duration _searchDebounce;
+
+  /// Input controller shared with Single Entry panel text field.
   final TextEditingController textController = TextEditingController();
+
+  /// Focus node used by Workbench "open/focus" actions.
   final FocusNode inputFocusNode = FocusNode();
 
   EntryState _state = const EntryState.idle();
@@ -84,18 +103,37 @@ class SingleEntryController extends ChangeNotifier {
   int _commandRequestSequence = 0;
   Timer? _searchDebounceTimer;
 
+  /// Current immutable state snapshot rendered by the panel.
   EntryState get state => _state;
+
+  /// Whether detail payload card is currently visible.
   bool get isDetailVisible => _isDetailVisible;
+
+  /// Whether trimmed input is non-empty (send icon highlight contract).
   bool get hasInput => textController.text.trim().isNotEmpty;
+
+  /// Visible detail payload; `null` when detail panel is hidden.
   String? get visibleDetail => _isDetailVisible ? _state.detailPayload : null;
+
+  /// Current realtime search items.
   List<rust_api.EntrySearchItem> get searchItems =>
       List.unmodifiable(_searchItems);
+
+  /// Effective search limit returned by backend for latest search response.
   int? get searchAppliedLimit => _searchAppliedLimit;
+
+  /// Whether current intent is search-mode.
   bool get isSearchIntentActive => _state.intent is SearchIntent;
+
+  /// Search-mode loading state flag.
   bool get isSearchLoading =>
       _state.intent is SearchIntent && _state.phase == EntryPhase.loading;
+
+  /// Search-mode error state flag.
   bool get hasSearchError =>
       _state.intent is SearchIntent && _state.phase == EntryPhase.error;
+
+  /// Search-mode error text, when present.
   String? get searchErrorMessage =>
       hasSearchError ? _state.statusMessage?.text : null;
 
@@ -198,6 +236,7 @@ class SingleEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Requests focus for entry input after panel is shown.
   void requestFocus() {
     inputFocusNode.requestFocus();
   }
@@ -472,6 +511,7 @@ Future<rust_api.EntrySearchResponse> _defaultEntrySearch({
   return rust_api.entrySearch(text: text, limit: limit);
 }
 
+/// Default note command bridge call.
 Future<rust_api.EntryActionResponse> _defaultEntryCreateNote({
   required String content,
 }) async {
@@ -479,6 +519,7 @@ Future<rust_api.EntryActionResponse> _defaultEntryCreateNote({
   return rust_api.entryCreateNote(content: content);
 }
 
+/// Default task command bridge call.
 Future<rust_api.EntryActionResponse> _defaultEntryCreateTask({
   required String content,
 }) async {
@@ -486,6 +527,7 @@ Future<rust_api.EntryActionResponse> _defaultEntryCreateTask({
   return rust_api.entryCreateTask(content: content);
 }
 
+/// Default schedule command bridge call.
 Future<rust_api.EntryActionResponse> _defaultEntrySchedule({
   required String title,
   required int startEpochMs,
@@ -499,14 +541,18 @@ Future<rust_api.EntryActionResponse> _defaultEntrySchedule({
   );
 }
 
+/// Default realtime-search prerequisite: ensure entry DB path configured.
 Future<void> _defaultPrepareSearch() async {
   await RustBridge.ensureEntryDbPathConfigured();
 }
 
+/// Default command prerequisite: ensure entry DB path configured.
 Future<void> _defaultPrepareCommand() async {
   await RustBridge.ensureEntryDbPathConfigured();
 }
 
+/// No-op hook for tests that inject custom search invokers.
 Future<void> _noopPrepareSearch() async {}
 
+/// No-op hook for tests that inject custom command invokers.
 Future<void> _noopPrepareCommand() async {}

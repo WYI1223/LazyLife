@@ -17,6 +17,7 @@ class EntryShellPage extends StatefulWidget {
     this.initialSection = WorkbenchSection.home,
   });
 
+  /// Initial left-pane section to render inside Workbench shell.
   final WorkbenchSection initialSection;
 
   @override
@@ -237,7 +238,10 @@ class FeaturePlaceholderPage extends StatelessWidget {
     required this.description,
   });
 
+  /// Placeholder title used to map route into a Workbench section.
   final String title;
+
+  /// Placeholder text shown by the mapped section.
   final String description;
 
   @override

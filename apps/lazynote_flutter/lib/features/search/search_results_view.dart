@@ -12,10 +12,19 @@ class SearchResultsView extends StatelessWidget {
     required this.appliedLimit,
   });
 
+  /// Whether search results area should be mounted.
   final bool visible;
+
+  /// Realtime loading flag for search-mode requests.
   final bool isLoading;
+
+  /// Inline search error text; `null` means no error.
   final String? errorMessage;
+
+  /// Search result rows from latest successful response.
   final List<rust_api.EntrySearchItem> items;
+
+  /// Backend-applied search limit for latest response.
   final int? appliedLimit;
 
   @override
