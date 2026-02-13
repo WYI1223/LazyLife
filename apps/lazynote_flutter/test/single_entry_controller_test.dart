@@ -354,7 +354,7 @@ void main() {
       expect(commandCalls, 1);
 
       controller.handleInputChanged('typing after submit');
-      await Future<void>.delayed(const Duration(milliseconds: 2));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(searchCalls, 1);
 
       commandResponse.complete(
