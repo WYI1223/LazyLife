@@ -24,9 +24,8 @@ class EntryShellPage extends StatefulWidget {
 }
 
 class _EntryShellPageState extends State<EntryShellPage> {
-  final TextEditingController _inputController = TextEditingController();
+  // Single Entry is the primary interactive path in Workbench after PR-0009C.
   final SingleEntryController _singleEntryController = SingleEntryController();
-  String _status = 'Idle. Use the field below to validate UI behavior first.';
   late WorkbenchSection _activeSection;
   bool _showSingleEntryPanel = false;
 
@@ -38,7 +37,6 @@ class _EntryShellPageState extends State<EntryShellPage> {
 
   @override
   void dispose() {
-    _inputController.dispose();
     _singleEntryController.dispose();
     super.dispose();
   }
@@ -49,19 +47,11 @@ class _EntryShellPageState extends State<EntryShellPage> {
     });
   }
 
-  void _runWorkbenchValidation() {
-    final content = _inputController.text.trim();
-    setState(() {
-      _status = content.isEmpty
-          ? 'No draft entered yet. Add text and validate again.'
-          : 'Validated draft input: "$content"';
-    });
-  }
-
   void _openOrFocusSingleEntryPanel() {
     setState(() {
       _showSingleEntryPanel = true;
     });
+    // Why: defer focus request until panel subtree is mounted.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _singleEntryController.requestFocus();
     });
@@ -88,36 +78,14 @@ class _EntryShellPageState extends State<EntryShellPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Feature Validation Window',
+          'Workbench Home',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
         Text(
-          'Use this workbench as the default homepage while features are '
-          'being built and verified.',
+          'Use Workbench to run Single Entry flow and diagnostics while '
+          'feature UIs are landing.',
           style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          key: const Key('workbench_input'),
-          controller: _inputController,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Draft Input',
-            hintText: 'Type an idea or flow to validate here...',
-          ),
-        ),
-        const SizedBox(height: 12),
-        FilledButton(
-          onPressed: _runWorkbenchValidation,
-          child: const Text('Validate in Workbench'),
-        ),
-        const SizedBox(height: 20),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(_status, key: const Key('workbench_status')),
-          ),
         ),
         const SizedBox(height: 24),
         Text('Single Entry', style: Theme.of(context).textTheme.titleMedium),
@@ -143,6 +111,8 @@ class _EntryShellPageState extends State<EntryShellPage> {
               ),
           ],
         ),
+        // Keep Single Entry embedded in Workbench instead of route replacement
+        // so the right-side debug logs panel remains stable while testing.
         if (_showSingleEntryPanel) ...[
           const SizedBox(height: 12),
           SingleEntryPanel(
