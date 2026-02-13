@@ -211,6 +211,7 @@ sealed class CommandParseResult {
 final class CommandParseSuccess extends CommandParseResult {
   const CommandParseSuccess({required this.command});
 
+  /// Parsed command payload consumed by command execution layer.
   final EntryCommand command;
 }
 
@@ -219,7 +220,10 @@ final class CommandParseSuccess extends CommandParseResult {
 final class CommandParseFailure extends CommandParseResult {
   const CommandParseFailure({required this.code, required this.message});
 
+  /// Stable parser error code for UI state machine and tests.
   final String code;
+
+  /// Human-readable parser error for inline status rendering.
   final String message;
 }
 
@@ -234,6 +238,7 @@ sealed class EntryCommand {
 final class NewNoteCommand extends EntryCommand {
   const NewNoteCommand({required this.content});
 
+  /// Note content that will be persisted by command execution.
   final String content;
 }
 
@@ -242,6 +247,7 @@ final class NewNoteCommand extends EntryCommand {
 final class CreateTaskCommand extends EntryCommand {
   const CreateTaskCommand({required this.content});
 
+  /// Task content that will be persisted with default `todo` status.
   final String content;
 }
 
@@ -254,7 +260,12 @@ final class ScheduleCommand extends EntryCommand {
     required this.end,
   });
 
+  /// Event title/content stored on the created event atom.
   final String title;
+
+  /// Start time parsed from `MM/DD/YYYY HH:mm` input (local time).
   final DateTime start;
+
+  /// Optional end time for range schedules; `null` means point event.
   final DateTime? end;
 }

@@ -11,7 +11,10 @@ class SingleEntryPanel extends StatelessWidget {
     required this.onClose,
   });
 
+  /// State/controller that drives parser/search/command interactions.
   final SingleEntryController controller;
+
+  /// Callback that hides this panel from Workbench host.
   final VoidCallback onClose;
 
   Color _statusColor(BuildContext context, EntryStatusMessageType? type) {

@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/features/entry/command_parser.dart';
 
+/// Default search limit applied by single-entry routing in v0.1.
 const int defaultSearchLimit = 10;
+
+/// Maximum search limit accepted by single-entry routing in v0.1.
 const int maxSearchLimit = 10;
 
 /// Routes raw single-entry text to search or command intents.
@@ -9,6 +12,7 @@ const int maxSearchLimit = 10;
 class CommandRouter {
   const CommandRouter({this.parser = const CommandParser()});
 
+  /// Parser used when input is detected as command mode (`>` prefix).
   final CommandParser parser;
 
   /// Returns intent by applying single-entry route rules.
@@ -70,7 +74,10 @@ final class NoopIntent extends EntryIntent {
 final class SearchIntent extends EntryIntent {
   const SearchIntent({required this.text, required this.limit});
 
+  /// Query text used for FTS search.
   final String text;
+
+  /// Applied search limit after normalization/clamping.
   final int limit;
 }
 
@@ -79,6 +86,7 @@ final class SearchIntent extends EntryIntent {
 final class CommandIntent extends EntryIntent {
   const CommandIntent({required this.command});
 
+  /// Parsed command payload for execution stage.
   final EntryCommand command;
 }
 
@@ -87,6 +95,9 @@ final class CommandIntent extends EntryIntent {
 final class ParseErrorIntent extends EntryIntent {
   const ParseErrorIntent({required this.code, required this.message});
 
+  /// Stable parser error code for machine-branching.
   final String code;
+
+  /// Human-readable parser error text for UI feedback.
   final String message;
 }
