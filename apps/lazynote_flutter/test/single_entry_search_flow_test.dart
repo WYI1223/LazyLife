@@ -104,4 +104,59 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'send executes command intent and renders command result detail',
+    (WidgetTester tester) async {
+      var taskCalls = 0;
+      String? createdTaskContent;
+
+      final controller = SingleEntryController(
+        prepareCommand: () async {},
+        createTaskInvoker: ({required content}) async {
+          taskCalls += 1;
+          createdTaskContent = content;
+          return const EntryActionResponse(
+            ok: true,
+            atomId: 'atom-task-widget',
+            message: 'Task created.',
+          );
+        },
+        searchDebounce: Duration.zero,
+      );
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SingleEntryPanel(controller: controller, onClose: () {}),
+            ),
+          ),
+        ),
+      );
+
+      const commandText = '> task run widget command test';
+      await tester.enterText(
+        find.byKey(const Key('single_entry_input')),
+        commandText,
+      );
+      await tester.pump();
+      expect(
+        find.text('Command preview ready. Press Enter or Send for details.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('single_entry_send_button')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(taskCalls, 1);
+      expect(createdTaskContent, 'run widget command test');
+      expect(find.text('Task created.'), findsOneWidget);
+      expect(find.byKey(const Key('single_entry_detail')), findsOneWidget);
+      expect(find.textContaining('action=create_task'), findsOneWidget);
+      expect(find.textContaining('atom_id=atom-task-widget'), findsOneWidget);
+    },
+  );
 }

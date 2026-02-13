@@ -65,7 +65,7 @@ void main() {
     expect(sendIcon().color, Colors.blue);
   });
 
-  testWidgets('onChanged command preview and Enter detail are split', (
+  testWidgets('onChanged command preview does not auto-open detail', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const LazyNoteApp());
@@ -84,12 +84,6 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('single_entry_detail')), findsNothing);
-
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pump();
-
-    expect(find.byKey(const Key('single_entry_detail')), findsOneWidget);
-    expect(find.text('Detail opened.'), findsOneWidget);
   });
 
   testWidgets('parse error keeps input text unchanged', (

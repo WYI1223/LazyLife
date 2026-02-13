@@ -154,7 +154,7 @@ void main() {
     },
   );
 
-  test('command path remains preview-only in C phase', () {
+  test('command path keeps preview-only behavior on input change', () {
     final controller = SingleEntryController(searchDebounce: Duration.zero);
     addTearDown(controller.dispose);
 
@@ -166,6 +166,156 @@ void main() {
     );
     expect(controller.state.intent, isA<CommandIntent>());
   });
+
+  test(
+    'detail action executes new note command and opens result detail',
+    () async {
+      var prepareCalls = 0;
+      var createNoteCalls = 0;
+      String? createdContent;
+
+      final controller = SingleEntryController(
+        prepareCommand: () async {
+          prepareCalls += 1;
+        },
+        createNoteInvoker: ({required content}) async {
+          createNoteCalls += 1;
+          createdContent = content;
+          return const EntryActionResponse(
+            ok: true,
+            atomId: 'atom-note-1',
+            message: 'Note created.',
+          );
+        },
+        searchDebounce: Duration.zero,
+      );
+      addTearDown(controller.dispose);
+
+      const commandText = '> new note ship D1';
+      controller.textController.text = commandText;
+      controller.handleInputChanged(commandText);
+      controller.handleDetailAction();
+
+      expect(controller.state.phase, EntryPhase.loading);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(prepareCalls, 1);
+      expect(createNoteCalls, 1);
+      expect(createdContent, 'ship D1');
+      expect(controller.state.phase, EntryPhase.success);
+      expect(controller.state.statusMessage?.text, 'Note created.');
+      expect(controller.visibleDetail, contains('action=new_note'));
+      expect(controller.visibleDetail, contains('atom_id=atom-note-1'));
+      expect(controller.state.rawInput, commandText);
+    },
+  );
+
+  test(
+    'detail action executes task command and uses task action mapping',
+    () async {
+      String? taskContent;
+
+      final controller = SingleEntryController(
+        prepareCommand: () async {},
+        createTaskInvoker: ({required content}) async {
+          taskContent = content;
+          return const EntryActionResponse(
+            ok: true,
+            atomId: 'atom-task-1',
+            message: 'Task created.',
+          );
+        },
+        searchDebounce: Duration.zero,
+      );
+      addTearDown(controller.dispose);
+
+      const commandText = '> task finish docs';
+      controller.textController.text = commandText;
+      controller.handleInputChanged(commandText);
+      controller.handleDetailAction();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(taskContent, 'finish docs');
+      expect(controller.state.phase, EntryPhase.success);
+      expect(controller.state.statusMessage?.text, 'Task created.');
+      expect(controller.visibleDetail, contains('action=create_task'));
+      expect(controller.visibleDetail, contains('atom_id=atom-task-1'));
+    },
+  );
+
+  test('detail action executes schedule range with epoch mapping', () async {
+    int? startEpoch;
+    int? endEpoch;
+    String? scheduleTitle;
+
+    final controller = SingleEntryController(
+      prepareCommand: () async {},
+      scheduleInvoker:
+          ({required title, required startEpochMs, endEpochMs}) async {
+            scheduleTitle = title;
+            startEpoch = startEpochMs;
+            endEpoch = endEpochMs;
+            return const EntryActionResponse(
+              ok: true,
+              atomId: 'atom-event-1',
+              message: 'Event scheduled.',
+            );
+          },
+      searchDebounce: Duration.zero,
+    );
+    addTearDown(controller.dispose);
+
+    const commandText = '> schedule 03/15/2026 09:30-10:45 weekly sync';
+    controller.textController.text = commandText;
+    controller.handleInputChanged(commandText);
+    controller.handleDetailAction();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(scheduleTitle, 'weekly sync');
+    expect(startEpoch, DateTime(2026, 3, 15, 9, 30).millisecondsSinceEpoch);
+    expect(endEpoch, DateTime(2026, 3, 15, 10, 45).millisecondsSinceEpoch);
+    expect(controller.state.phase, EntryPhase.success);
+    expect(controller.state.statusMessage?.text, 'Event scheduled.');
+    expect(controller.visibleDetail, contains('action=schedule'));
+    expect(controller.visibleDetail, contains('atom_id=atom-event-1'));
+  });
+
+  test(
+    'command execution failure keeps input and exposes error detail',
+    () async {
+      final controller = SingleEntryController(
+        prepareCommand: () async {},
+        createTaskInvoker: ({required content}) async {
+          return const EntryActionResponse(
+            ok: false,
+            atomId: null,
+            message: 'entry_create_task failed: db locked',
+          );
+        },
+        searchDebounce: Duration.zero,
+      );
+      addTearDown(controller.dispose);
+
+      const commandText = '> task recover failure';
+      controller.textController.text = commandText;
+      controller.handleInputChanged(commandText);
+      controller.handleDetailAction();
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.state.phase, EntryPhase.error);
+      expect(
+        controller.state.statusMessage?.text,
+        'entry_create_task failed: db locked',
+      );
+      expect(controller.visibleDetail, contains('action=create_task'));
+      expect(controller.visibleDetail, contains('ok=false'));
+      expect(controller.state.rawInput, commandText);
+    },
+  );
 
   test('search waits for prepare step before invoking search call', () async {
     final prepareGate = Completer<void>();
