@@ -66,7 +66,12 @@ This includes:
   "entry": {
     "result_limit": 10,
     "use_single_entry_as_home": false,
-    "expand_on_focus": true
+    "expand_on_focus": true,
+    "ui": {
+      "collapsed_height": 72,
+      "expanded_max_height": 420,
+      "animation_ms": 180
+    }
   },
   "logging": {
     "level_override": null
@@ -96,6 +101,21 @@ This includes:
 - boolean
 - default: `true`
 
+`entry.ui.collapsed_height`
+
+- number (pixels), recommended range `48..160`
+- default: `72`
+
+`entry.ui.expanded_max_height`
+
+- number (pixels), recommended range `220..720`
+- default: `420`
+
+`entry.ui.animation_ms`
+
+- integer (milliseconds), recommended range `80..500`
+- default: `180`
+
 `logging.level_override`
 
 - nullable string enum: `trace | debug | info | warn | error`
@@ -108,7 +128,8 @@ Read path:
 1. Try parse file.
 2. Validate each supported field.
 3. Merge valid values into defaults.
-4. Keep app running even if file is missing/corrupted.
+4. Backfill missing known keys to file (without overriding existing valid values).
+5. Keep app running even if file is missing/corrupted.
 
 Write path:
 

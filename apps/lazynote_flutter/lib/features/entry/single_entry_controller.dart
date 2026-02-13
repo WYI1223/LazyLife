@@ -78,7 +78,9 @@ class SingleEntryController extends ChangeNotifier {
                    scheduleInvoker != null
                ? _noopPrepareCommand
                : _defaultPrepareCommand),
-       _searchDebounce = searchDebounce;
+       _searchDebounce = searchDebounce {
+    inputFocusNode.addListener(_handleFocusChanged);
+  }
 
   final CommandRouter _router;
   final EntrySearchInvoker _searchInvoker;
@@ -111,6 +113,17 @@ class SingleEntryController extends ChangeNotifier {
 
   /// Whether trimmed input is non-empty (send icon highlight contract).
   bool get hasInput => textController.text.trim().isNotEmpty;
+
+  /// Whether entry input field is currently focused.
+  bool get isInputFocused => inputFocusNode.hasFocus;
+
+  /// Unified panel expansion policy for PR-0010A.
+  ///
+  /// Contract:
+  /// - Expand on focus.
+  /// - Expand while non-empty input is present.
+  /// - Collapse only when unfocused and input is empty.
+  bool get shouldExpandUnifiedPanel => isInputFocused || hasInput;
 
   /// Visible detail payload; `null` when detail panel is hidden.
   String? get visibleDetail => _isDetailVisible ? _state.detailPayload : null;
@@ -246,6 +259,51 @@ class SingleEntryController extends ChangeNotifier {
   /// Requests focus for entry input after panel is shown.
   void requestFocus() {
     inputFocusNode.requestFocus();
+  }
+
+  /// Opens detail panel for a selected realtime search item.
+  void openSearchResultDetail(rust_api.EntrySearchItem item) {
+    final intent = _state.intent;
+    if (intent is! SearchIntent) {
+      return;
+    }
+    _state = EntryState.idle().toSuccess(
+      rawInput: _state.rawInput,
+      intent: intent,
+      message: 'Detail opened from selected result.',
+      detailPayload: _searchItemDetailPayload(intent: intent, item: item),
+    );
+    _isDetailVisible = true;
+    notifyListeners();
+  }
+
+  /// Handles escape-key quick reset behavior for v0.1 entry shell.
+  ///
+  /// Contract:
+  /// - If input is non-empty, clear input and return to idle state.
+  /// - If detail is visible, close detail panel.
+  /// - Always release input focus so unified panel can collapse.
+  void handleEscapePressed() {
+    final hadInput = hasInput;
+    final hadDetail = _isDetailVisible;
+
+    if (hadInput) {
+      textController.clear();
+      handleInputChanged('');
+    } else if (hadDetail) {
+      _isDetailVisible = false;
+      notifyListeners();
+    }
+
+    if (inputFocusNode.hasFocus) {
+      inputFocusNode.unfocus();
+    }
+  }
+
+  void _handleFocusChanged() {
+    // Why: focus transitions should trigger panel expand/collapse animation
+    // even when no text-change event occurs.
+    notifyListeners();
   }
 
   void _startRealtimeSearch({
@@ -475,6 +533,20 @@ class SingleEntryController extends ChangeNotifier {
     return buffer.toString().trimRight();
   }
 
+  String _searchItemDetailPayload({
+    required SearchIntent intent,
+    required rust_api.EntrySearchItem item,
+  }) {
+    return [
+      'mode=search_item',
+      'query="${intent.text}"',
+      'limit=${intent.limit}',
+      'kind=${item.kind}',
+      'atom_id=${item.atomId}',
+      'snippet="${_normalizeSingleLine(item.snippet)}"',
+    ].join('\n');
+  }
+
   String _normalizeSingleLine(String value) {
     return value.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
   }
@@ -504,6 +576,7 @@ class SingleEntryController extends ChangeNotifier {
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
+    inputFocusNode.removeListener(_handleFocusChanged);
     textController.dispose();
     inputFocusNode.dispose();
     super.dispose();

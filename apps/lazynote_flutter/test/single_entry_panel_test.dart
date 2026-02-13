@@ -62,7 +62,7 @@ void main() {
       '> task search notes',
     );
     await tester.pump();
-    expect(sendIcon().color, Colors.blue);
+    expect(sendIcon().color, Colors.grey.shade800);
   });
 
   testWidgets('onChanged command preview does not auto-open detail', (

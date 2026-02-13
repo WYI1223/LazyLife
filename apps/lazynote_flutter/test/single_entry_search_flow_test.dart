@@ -1,12 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_controller.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_panel.dart';
 
 void main() {
+  Future<void> pumpEntryRealtime(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+  }
+
   testWidgets('search input updates realtime results section', (
     WidgetTester tester,
   ) async {
@@ -34,7 +40,10 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: SingleEntryPanel(controller: controller, onClose: () {}),
+            child: SizedBox(
+              height: 900,
+              child: SingleEntryPanel(controller: controller, onClose: () {}),
+            ),
           ),
         ),
       ),
@@ -44,8 +53,7 @@ void main() {
       find.byKey(const Key('single_entry_input')),
       'alpha',
     );
-    await tester.pump();
-    await tester.pump();
+    await pumpEntryRealtime(tester);
 
     expect(
       find.byKey(const Key('single_entry_search_results')),
@@ -81,15 +89,17 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: SingleEntryPanel(controller: controller, onClose: () {}),
+            child: SizedBox(
+              height: 900,
+              child: SingleEntryPanel(controller: controller, onClose: () {}),
+            ),
           ),
         ),
       ),
     );
 
     await tester.enterText(find.byKey(const Key('single_entry_input')), 'beta');
-    await tester.pump();
-    await tester.pump();
+    await pumpEntryRealtime(tester);
 
     expect(
       find.byKey(const Key('single_entry_search_results')),
@@ -105,6 +115,112 @@ void main() {
       find.byKey(const Key('single_entry_search_results')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('tapping a result item opens selected detail payload', (
+    WidgetTester tester,
+  ) async {
+    final controller = SingleEntryController(
+      searchInvoker: ({required text, required limit}) async {
+        return const EntrySearchResponse(
+          ok: true,
+          errorCode: null,
+          items: [
+            EntrySearchItem(
+              atomId: 'atom-picked',
+              kind: 'task',
+              snippet: 'picked result snippet',
+            ),
+          ],
+          message: 'Found 1 result(s).',
+          appliedLimit: 10,
+        );
+      },
+      searchDebounce: Duration.zero,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SizedBox(
+              height: 900,
+              child: SingleEntryPanel(controller: controller, onClose: () {}),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byKey(const Key('single_entry_input')), 'pick');
+    await pumpEntryRealtime(tester);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('single_entry_search_item_0')),
+    );
+    final row = tester.widget<ListTile>(
+      find.byKey(const Key('single_entry_search_item_0')),
+    );
+    row.onTap!.call();
+    await tester.pump();
+
+    expect(find.byKey(const Key('single_entry_detail')), findsOneWidget);
+    expect(find.textContaining('mode=search_item'), findsOneWidget);
+    expect(find.textContaining('atom_id=atom-picked'), findsOneWidget);
+  });
+
+  testWidgets('Escape clears input and closes detail panel', (
+    WidgetTester tester,
+  ) async {
+    final controller = SingleEntryController(
+      searchInvoker: ({required text, required limit}) async {
+        return const EntrySearchResponse(
+          ok: true,
+          errorCode: null,
+          items: [
+            EntrySearchItem(
+              atomId: 'atom-esc-1',
+              kind: 'note',
+              snippet: 'escape result',
+            ),
+          ],
+          message: 'Found 1 result(s).',
+          appliedLimit: 10,
+        );
+      },
+      searchDebounce: Duration.zero,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SizedBox(
+              height: 900,
+              child: SingleEntryPanel(controller: controller, onClose: () {}),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byKey(const Key('single_entry_input')), 'esc');
+    await pumpEntryRealtime(tester);
+    await tester.tap(find.byKey(const Key('single_entry_send_button')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('single_entry_detail')), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('single_entry_input')),
+    );
+    expect(field.controller?.text, isEmpty);
+    expect(find.byKey(const Key('single_entry_detail')), findsNothing);
   });
 
   testWidgets(
