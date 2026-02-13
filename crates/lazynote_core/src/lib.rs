@@ -25,7 +25,7 @@ pub use repo::atom_repo::{
 /// Re-export search query/result models and search entry point.
 pub use search::fts::{search_all, SearchError, SearchHit, SearchQuery, SearchResult};
 /// Re-export atom service facade.
-pub use service::atom_service::AtomService;
+pub use service::atom_service::{AtomService, ScheduleEventRequest};
 
 /// Minimal health-check API for early integration.
 pub fn ping() -> &'static str {

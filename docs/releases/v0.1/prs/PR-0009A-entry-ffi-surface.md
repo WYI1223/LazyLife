@@ -1,7 +1,7 @@
 # PR-0009A-entry-ffi-surface
 
 - Proposed title: `feat(ffi): add entry use-case surface for search and command actions`
-- Status: Draft
+- Status: In Progress
 
 ## Goal
 
@@ -63,3 +63,24 @@ All FFI exports must include `FFI contract` rustdoc sections.
 - [ ] API contract is documented and stable.
 - [ ] Core logic and tests pass.
 - [ ] No storage internals leaked via FFI.
+
+## Progress Notes
+
+Phase 1 (completed):
+
+- Added core service entry helpers:
+  - `create_note`
+  - `create_task` (default `todo`)
+  - `schedule_event` (point/range shape)
+- Added FFI DTO envelopes and `entry_*` API signatures.
+- Added phase-1 scaffold behavior for `entry_*` APIs with explicit not-ready messages.
+- Added tests for limit normalization and scaffold response behavior.
+- Passed first-round gates:
+  - `cargo fmt --all -- --check`
+  - `cargo clippy -p lazynote_core -p lazynote_ffi -- -D warnings`
+  - `cargo test -p lazynote_core -p lazynote_ffi`
+
+Phase 2 (next):
+
+- Replace scaffold behavior with real DB-backed execution wiring.
+- Map real core search/CRUD results into FFI DTOs.
