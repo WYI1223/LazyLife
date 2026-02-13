@@ -6,10 +6,13 @@ import 'package:lazynote_flutter/core/debug/log_reader.dart';
 
 /// Inline live logs panel used across Workbench shell pages.
 class DebugLogsPanel extends StatefulWidget {
-  const DebugLogsPanel({super.key});
+  const DebugLogsPanel({super.key, this.snapshotLoader});
 
   /// Test hook to disable periodic refresh and keep pump flows stable.
   static bool autoRefreshEnabled = true;
+
+  /// Optional loader override for widget tests.
+  final Future<DebugLogSnapshot> Function()? snapshotLoader;
 
   @override
   State<DebugLogsPanel> createState() => _DebugLogsPanelState();
@@ -24,6 +27,7 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
   bool _loading = false;
   DateTime? _lastRefreshAt;
   Timer? _refreshTimer;
+  int _latestRefreshRequestId = 0;
 
   static const Duration _refreshInterval = Duration(seconds: 3);
   static const double _fallbackLogHeight = 320;
@@ -57,6 +61,8 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
   }
 
   Future<void> _refreshLogs({required bool showLoading}) async {
+    final requestId = ++_latestRefreshRequestId;
+
     if (showLoading && mounted) {
       setState(() {
         _loading = true;
@@ -65,8 +71,13 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
     }
 
     try {
-      final snapshot = await LogReader.readLatestTail();
+      final loader = widget.snapshotLoader ?? LogReader.readLatestTail;
+      final snapshot = await loader();
       if (!mounted) {
+        return;
+      }
+      if (requestId != _latestRefreshRequestId) {
+        // Ignore stale refresh completion from an older in-flight request.
         return;
       }
       final changed = !_sameSnapshot(_snapshot, snapshot);
@@ -81,6 +92,10 @@ class _DebugLogsPanelState extends State<DebugLogsPanel> {
       });
     } catch (error) {
       if (!mounted) {
+        return;
+      }
+      if (requestId != _latestRefreshRequestId) {
+        // Ignore stale refresh failure from an older in-flight request.
         return;
       }
       setState(() {
