@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
@@ -605,12 +607,18 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('notes_tag_filter_chip_temp')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('notes_tag_filter_chip_temp')));
+    await tester.pump();
+    await tester.pump();
+    expect(controller.selectedTag, 'temp');
 
     final changed = await controller.setActiveNoteTags(const []);
     expect(changed, isTrue);
     await tester.pump();
     await tester.pump();
 
+    expect(controller.selectedTag, isNull);
+    expect(find.byKey(const Key('notes_list_item_note-1')), findsOneWidget);
     expect(find.byKey(const Key('notes_tag_filter_chip_temp')), findsNothing);
     await tester.pump(const Duration(seconds: 3));
   });
@@ -767,4 +775,191 @@ void main() {
     expect(find.byKey(const Key('notes_list_item_note-1')), findsOneWidget);
     expect(find.byKey(const Key('notes_list_item_note-2')), findsNothing);
   });
+
+  testWidgets('C4 contextual create tag failure is visible and returns false', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': note(
+        atomId: 'note-1',
+        content: '# Work Seed',
+        updatedAt: 2,
+        tags: const ['work'],
+      ),
+    };
+
+    final controller = NotesController(
+      prepare: () async {},
+      tagsListInvoker: () async {
+        return const rust_api.TagsListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          tags: ['work'],
+        );
+      },
+      notesListInvoker: ({tag, limit, offset}) async {
+        final items = store.values
+            .where((item) => tag == null || item.tags.contains(tag))
+            .toList();
+        return rust_api.NotesListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          appliedLimit: 50,
+          items: items,
+        );
+      },
+      noteCreateInvoker: ({required content}) async {
+        final created = note(
+          atomId: 'note-new',
+          content: content,
+          updatedAt: 3,
+          tags: const [],
+        );
+        store[created.atomId] = created;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: created,
+        );
+      },
+      noteSetTagsInvoker: ({required atomId, required tags}) async {
+        return const rust_api.NoteResponse(
+          ok: false,
+          errorCode: 'db_error',
+          message: 'write failed',
+          note: null,
+        );
+      },
+      noteGetInvoker: ({required atomId}) async {
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: store[atomId],
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      wrapWithMaterial(NotesPage(controller: controller)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('notes_tag_filter_chip_work')));
+    await tester.pump();
+    await tester.pump();
+
+    final created = await controller.createNote();
+    await tester.pump();
+    await tester.pump();
+
+    expect(created, isFalse);
+    expect(controller.activeNoteId, 'note-1');
+    expect(find.byKey(const Key('notes_create_error')), findsOneWidget);
+  });
+
+  test(
+    'C4 tag writes are serialized and preserve latest user intent',
+    () async {
+      final store = <String, rust_api.NoteItem>{
+        'note-1': note(
+          atomId: 'note-1',
+          content: '# Seed',
+          updatedAt: 2,
+          tags: const ['seed'],
+        ),
+      };
+      final setTagCalls = <List<String>>[];
+      final firstSaveGate = Completer<void>();
+      var saveCallCount = 0;
+
+      List<String> computedTags() {
+        final set = <String>{};
+        for (final item in store.values) {
+          set.addAll(item.tags);
+        }
+        final tags = set.toList()..sort();
+        return tags;
+      }
+
+      final controller = NotesController(
+        prepare: () async {},
+        tagsListInvoker: () async {
+          return rust_api.TagsListResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+            tags: computedTags(),
+          );
+        },
+        notesListInvoker: ({tag, limit, offset}) async {
+          final items = store.values
+              .where((item) => tag == null || item.tags.contains(tag))
+              .toList();
+          return rust_api.NotesListResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+            appliedLimit: 50,
+            items: items,
+          );
+        },
+        noteSetTagsInvoker: ({required atomId, required tags}) async {
+          saveCallCount += 1;
+          setTagCalls.add(List<String>.from(tags));
+          if (saveCallCount == 1) {
+            await firstSaveGate.future;
+          }
+          final updated = note(
+            atomId: atomId,
+            content: store[atomId]?.content ?? '',
+            updatedAt: 3 + saveCallCount,
+            tags: tags,
+          );
+          store[atomId] = updated;
+          return rust_api.NoteResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+            note: updated,
+          );
+        },
+        noteGetInvoker: ({required atomId}) async {
+          return rust_api.NoteResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+            note: store[atomId],
+          );
+        },
+      );
+      addTearDown(controller.dispose);
+
+      await controller.loadNotes();
+      expect(controller.activeNoteId, 'note-1');
+
+      final addFuture = controller.addTagToActiveNote('work');
+      final removeFuture = controller.removeTagFromActiveNote('seed');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(setTagCalls, [
+        ['seed', 'work'],
+      ]);
+
+      firstSaveGate.complete();
+
+      expect(await addFuture, isTrue);
+      expect(await removeFuture, isTrue);
+      expect(setTagCalls, [
+        ['seed', 'work'],
+        ['work'],
+      ]);
+      expect(controller.selectedNote?.tags, ['work']);
+    },
+  );
 }

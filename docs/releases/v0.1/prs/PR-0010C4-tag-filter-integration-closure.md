@@ -68,6 +68,17 @@ Out of scope:
    - collapsed mode shows first N tags and a `+N more` affordance
    - expanded mode renders full tag chip set with collapse action
 
+## Known Behavior and Deferred Items
+
+1. Contextual create under active filter is currently non-transactional:
+   - implementation uses `note_create` then `note_set_tags`
+   - if `note_set_tags` fails after create succeeds, new note already exists in backend
+   - UI returns create failure and shows explicit create error message
+2. Deferred regression case:
+   - add explicit test for "manual reload while tag mutation queue is active"
+3. Note delete is out of scope for C4/v0.1:
+   - no delete affordance is shipped in current Notes UI
+
 ## Step-by-Step
 
 1. Add reusable `tag_filter.dart` component. `Done`

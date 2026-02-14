@@ -164,6 +164,8 @@ class NotesController extends ChangeNotifier {
       <String, Future<bool>>{};
   final Map<String, bool> _saveQueuedByAtomId = <String, bool>{};
   final Set<String> _tagSaveInFlightAtomIds = <String>{};
+  final Map<String, Future<void>> _tagMutationQueueByAtomId =
+      <String, Future<void>>{};
   String? _switchBlockErrorMessage;
 
   int _listRequestId = 0;
@@ -377,6 +379,12 @@ class NotesController extends ChangeNotifier {
     _autosaveTimer?.cancel();
 
     while (true) {
+      if (_tagMutationQueueByAtomId[atomId] case final queuedTagMutation?) {
+        try {
+          await queuedTagMutation;
+        } catch (_) {}
+        continue;
+      }
       if (_tagSaveInFlightAtomIds.contains(atomId)) {
         await Future<void>.delayed(const Duration(milliseconds: 12));
         continue;
@@ -484,11 +492,14 @@ class NotesController extends ChangeNotifier {
         if (tagged.ok && tagged.note != null) {
           createdNote = tagged.note!;
         } else {
+          _creatingNote = false;
           _createErrorMessage = _envelopeError(
             errorCode: tagged.errorCode,
             message: tagged.message,
             fallback: 'Created note but failed to apply active filter tag.',
           );
+          notifyListeners();
+          return false;
         }
       }
 
@@ -534,13 +545,106 @@ class NotesController extends ChangeNotifier {
       return false;
     }
     final normalized = _normalizeTags(rawTags);
+    return _enqueueTagMutation(
+      atomId: atomId,
+      mutation: () => _setNoteTags(atomId: atomId, normalizedTags: normalized),
+    );
+  }
+
+  /// Adds one tag to active note with normalization and de-duplication.
+  Future<bool> addTagToActiveNote(String tag) async {
+    final normalized = _normalizeTag(tag);
+    if (normalized == null) {
+      return false;
+    }
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      return false;
+    }
+    return _enqueueTagMutation(
+      atomId: atomId,
+      mutation: () async {
+        final current = _noteCache[atomId] ?? _selectedNote;
+        if (current == null) {
+          return false;
+        }
+        if (current.tags.contains(normalized)) {
+          return true;
+        }
+        return _setNoteTags(
+          atomId: atomId,
+          normalizedTags: _normalizeTags(<String>[...current.tags, normalized]),
+        );
+      },
+    );
+  }
+
+  /// Removes one tag from active note with normalization.
+  Future<bool> removeTagFromActiveNote(String tag) async {
+    final normalized = _normalizeTag(tag);
+    if (normalized == null) {
+      return false;
+    }
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      return false;
+    }
+    return _enqueueTagMutation(
+      atomId: atomId,
+      mutation: () async {
+        final current = _noteCache[atomId] ?? _selectedNote;
+        if (current == null) {
+          return false;
+        }
+        if (!current.tags.contains(normalized)) {
+          return true;
+        }
+        final next = current.tags
+            .where((entry) => entry != normalized)
+            .toList();
+        return _setNoteTags(
+          atomId: atomId,
+          normalizedTags: _normalizeTags(next),
+        );
+      },
+    );
+  }
+
+  Future<bool> _enqueueTagMutation({
+    required String atomId,
+    required Future<bool> Function() mutation,
+  }) {
+    final previous = _tagMutationQueueByAtomId[atomId] ?? Future<void>.value();
+    final completer = Completer<bool>();
+    late final Future<void> queued;
+    queued = previous
+        .catchError((_) {})
+        .then((_) async {
+          try {
+            final result = await mutation();
+            completer.complete(result);
+          } catch (error, stackTrace) {
+            completer.completeError(error, stackTrace);
+          }
+        })
+        .whenComplete(() {
+          if (identical(_tagMutationQueueByAtomId[atomId], queued)) {
+            _tagMutationQueueByAtomId.remove(atomId);
+          }
+        });
+    _tagMutationQueueByAtomId[atomId] = queued;
+    return completer.future;
+  }
+
+  Future<bool> _setNoteTags({
+    required String atomId,
+    required List<String> normalizedTags,
+  }) async {
     final current = _noteCache[atomId] ?? _selectedNote;
     if (current == null) {
       return false;
     }
-
-    final sameTags = listEquals(current.tags, normalized);
-    if (sameTags) {
+    if (listEquals(current.tags, normalizedTags)) {
       return true;
     }
 
@@ -552,7 +656,7 @@ class NotesController extends ChangeNotifier {
       await _prepare();
       final response = await _noteSetTagsInvoker(
         atomId: atomId,
-        tags: normalized,
+        tags: normalizedTags,
       );
       if (!response.ok) {
         _saveErrorMessage = _envelopeError(
@@ -607,41 +711,6 @@ class NotesController extends ChangeNotifier {
     } finally {
       _tagSaveInFlightAtomIds.remove(atomId);
     }
-  }
-
-  /// Adds one tag to active note with normalization and de-duplication.
-  Future<bool> addTagToActiveNote(String tag) async {
-    final normalized = _normalizeTag(tag);
-    if (normalized == null) {
-      return false;
-    }
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return false;
-    }
-    final current = _noteCache[atomId] ?? _selectedNote;
-    if (current == null) {
-      return false;
-    }
-    return setActiveNoteTags(<String>[...current.tags, normalized]);
-  }
-
-  /// Removes one tag from active note with normalization.
-  Future<bool> removeTagFromActiveNote(String tag) async {
-    final normalized = _normalizeTag(tag);
-    if (normalized == null) {
-      return false;
-    }
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return false;
-    }
-    final current = _noteCache[atomId] ?? _selectedNote;
-    if (current == null) {
-      return false;
-    }
-    final next = current.tags.where((entry) => entry != normalized).toList();
-    return setActiveNoteTags(next);
   }
 
   /// Selects one note and refreshes detail snapshot.
@@ -1021,6 +1090,7 @@ class NotesController extends ChangeNotifier {
     _saveFutureByAtomId.clear();
     _saveQueuedByAtomId.clear();
     _tagSaveInFlightAtomIds.clear();
+    _tagMutationQueueByAtomId.clear();
     _activeNoteId = null;
     _activeDraftAtomId = null;
     _activeDraftContent = '';
@@ -1063,10 +1133,26 @@ class NotesController extends ChangeNotifier {
         return;
       }
 
-      _availableTags = List<String>.unmodifiable(_normalizeTags(response.tags));
+      final normalizedTags = List<String>.unmodifiable(
+        _normalizeTags(response.tags),
+      );
+      _availableTags = normalizedTags;
       _tagsLoading = false;
       _tagsErrorMessage = null;
       notifyListeners();
+
+      final staleSelectedTag = _selectedTag;
+      if (staleSelectedTag != null &&
+          !normalizedTags.contains(staleSelectedTag)) {
+        // Why: selected filter can outlive its chip after tag pruning.
+        // Auto-clear prevents hidden filter lock when no chip exists to toggle.
+        _selectedTag = null;
+        await _loadNotes(
+          resetSession: false,
+          preserveActiveWhenFilteredOut: false,
+          refreshTags: false,
+        );
+      }
     } catch (error) {
       if (requestId != _tagsRequestId) {
         return;
@@ -1227,7 +1313,8 @@ class NotesController extends ChangeNotifier {
   bool _hasPendingSaveFor(String atomId) {
     return _isDirty(atomId) ||
         _saveFutureByAtomId.containsKey(atomId) ||
-        _tagSaveInFlightAtomIds.contains(atomId);
+        _tagSaveInFlightAtomIds.contains(atomId) ||
+        _tagMutationQueueByAtomId.containsKey(atomId);
   }
 
   bool _shouldIncludeInVisibleList(rust_api.NoteItem note) {
