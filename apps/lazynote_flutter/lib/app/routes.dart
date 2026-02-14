@@ -6,7 +6,7 @@ abstract final class AppRoutes {
   /// Alias route for the same workbench page.
   static const entry = '/entry';
 
-  /// Placeholder notes section (left pane).
+  /// Notes section (left pane).
   static const notes = '/notes';
 
   /// Placeholder tasks section (left pane).
