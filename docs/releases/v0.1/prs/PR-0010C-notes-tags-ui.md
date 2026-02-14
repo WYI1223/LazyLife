@@ -118,6 +118,17 @@ Target visual structure follows a two-column document layout inside a desktop sh
 3. Visual blueprint above is applied to the Notes page composition and styling language where scope allows.
 4. Any shell-level redesign beyond current host is deferred to a future shell/navigation PR.
 
+## Code Comment Compliance (Synced)
+
+This PR line follows `docs/architecture/code-comment-standards.md`:
+
+1. Public Notes widgets/controllers include `///` contract comments (purpose, I/O semantics, side effects).
+2. Non-obvious UI behavior keeps concise why-comments, including:
+   - desktop wheel-to-horizontal mapping in top tab strip
+   - explicit scrollbar ownership (avoid duplicate auto scrollbar)
+   - hover-gated tab scroll rail visibility and overflow-only rendering
+3. Comment updates must land in the same PR as behavior changes to avoid drift.
+
 ## Execution Specs (Split Files)
 
 1. `PR-0010C1`: `docs/releases/v0.1/prs/PR-0010C1-notes-host-list-baseline.md`

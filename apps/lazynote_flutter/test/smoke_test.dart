@@ -35,18 +35,35 @@ void main() {
     expect(find.text('Open Single Entry'), findsOneWidget);
   });
 
-  testWidgets('notes placeholder route is reachable from workbench', (
+  testWidgets('notes route is reachable from workbench', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const LazyNoteApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tapWorkbenchButton(tester, 'Notes (Placeholder)');
+    await tapWorkbenchButton(tester, 'Notes');
 
+    expect(find.byKey(const Key('notes_page_root')), findsOneWidget);
     expect(find.text('Notes'), findsWidgets);
-    expect(find.text('Notes is under construction'), findsOneWidget);
-    expect(find.text('Back to Workbench'), findsOneWidget);
+  });
+
+  testWidgets('notes page back button returns to workbench home', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const LazyNoteApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tapWorkbenchButton(tester, 'Notes');
+    final backButton = find.byKey(const Key('notes_back_to_workbench_button'));
+    await tester.ensureVisible(backButton);
+    await tester.tap(backButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Workbench Home'), findsOneWidget);
+    expect(find.byKey(const Key('notes_page_root')), findsNothing);
   });
 
   testWidgets('tasks placeholder route is reachable from workbench', (

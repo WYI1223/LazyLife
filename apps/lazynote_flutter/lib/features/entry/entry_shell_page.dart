@@ -3,6 +3,7 @@ import 'package:lazynote_flutter/features/diagnostics/rust_diagnostics_page.dart
 import 'package:lazynote_flutter/features/entry/single_entry_controller.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_panel.dart';
 import 'package:lazynote_flutter/features/entry/workbench_shell_layout.dart';
+import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
 /// Left-pane sections inside Workbench shell.
 enum WorkbenchSection { home, notes, tasks, settings, rustDiagnostics }
@@ -140,7 +141,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
           children: [
             OutlinedButton(
               onPressed: () => _openSection(WorkbenchSection.notes),
-              child: const Text('Notes (Placeholder)'),
+              child: const Text('Notes'),
             ),
             OutlinedButton(
               onPressed: () => _openSection(WorkbenchSection.tasks),
@@ -205,9 +206,8 @@ class _EntryShellPageState extends State<EntryShellPage> {
   Widget _buildActiveLeftContent() {
     return switch (_activeSection) {
       WorkbenchSection.home => _buildWorkbenchHome(),
-      WorkbenchSection.notes => _buildPlaceholder(
-        title: 'Notes',
-        description: 'Notes UI will be implemented in a dedicated PR.',
+      WorkbenchSection.notes => NotesPage(
+        onBackToWorkbench: () => _openSection(WorkbenchSection.home),
       ),
       WorkbenchSection.tasks => _buildPlaceholder(
         title: 'Tasks',

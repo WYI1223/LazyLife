@@ -53,6 +53,12 @@ Out of scope:
    - `NoteContentArea` (center)
 5. Controller now tracks multi-tab state (`openNoteIds`, `activeNoteId`) and provides tab open/activate/close helpers.
 6. Explorer keeps recursive folder node model (`Folder -> children -> noteIds`) while v0.1 renders one folder level.
+7. Explorer header height and top tab strip height are unified by shared token `kNotesTopStripHeight`.
+8. Explorer and tab rows use state-only feedback (default/hover/selected) without transition animations.
+9. Scrollbar ownership is explicit:
+   - explorer uses one custom scrollbar bound to its list controller
+   - auto desktop scrollbar is disabled in that subtree to prevent double rails
+   - top tab scroll rail renders only when horizontal overflow exists
 
 ## Step-by-Step
 
