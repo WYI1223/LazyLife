@@ -1,7 +1,7 @@
 # PR-0010C-notes-tags-ui
 
 - Proposed title: `feat(notes-ui): notes list/editor and tag filter integration`
-- Status: In Progress (C1 done; C2/C3/C4 pending)
+- Status: In Progress (C1/C2/C3 done; C4 pending)
 
 ## Goal
 
@@ -128,6 +128,22 @@ This PR line follows `docs/architecture/code-comment-standards.md`:
    - explicit scrollbar ownership (avoid duplicate auto scrollbar)
    - hover-gated tab scroll rail visibility and overflow-only rendering
 3. Comment updates must land in the same PR as behavior changes to avoid drift.
+
+## Recent C3 Hardening Sync
+
+1. Desktop close performance fix:
+   - close interception is now enabled only while pending save work exists
+   - clean-state close no longer takes the intercept + flush path
+2. Close robustness fix:
+   - close path now prefers `windowManager.close()` and falls back to `destroy()` only when needed
+   - close flush timeout tightened for best-effort behavior
+3. Save-error UX fix:
+   - top-right save status now uses short stable copy (`Save failed`)
+   - full backend error payload moved to dedicated error banner above editor body
+4. Copy quality fix:
+   - switch-block banner text normalized to valid UTF-8 English copy
+5. Test stability fix:
+   - save queue follow-up logic adjusted to avoid retry storms on persistent write failures
 
 ## Execution Specs (Split Files)
 

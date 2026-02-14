@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/features/notes/note_content_area.dart';
@@ -5,6 +8,7 @@ import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// Notes feature page mounted in Workbench left pane (PR-0010C foundation).
 class NotesPage extends StatefulWidget {
@@ -28,15 +32,25 @@ class _PreviousTabIntent extends Intent {
   const _PreviousTabIntent();
 }
 
-class _NotesPageState extends State<NotesPage> {
+enum _CloseDialogAction { cancel, retry }
+
+class _NotesPageState extends State<NotesPage>
+    with WidgetsBindingObserver, WindowListener {
   late final NotesController _controller;
   late final bool _ownsController;
+  bool _windowCloseGuardEnabled = false;
+  bool _preventCloseActive = false;
+  bool _handlingWindowClose = false;
+  bool _forceClosing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = widget.controller ?? NotesController();
     _ownsController = widget.controller == null;
+    _controller.addListener(_onControllerChanged);
+    unawaited(_setupWindowCloseGuard());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.loadNotes();
     });
@@ -44,10 +58,176 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller.removeListener(_onControllerChanged);
+    if (_windowCloseGuardEnabled) {
+      unawaited(_teardownWindowCloseGuard());
+    }
     if (_ownsController) {
       _controller.dispose();
     }
     super.dispose();
+  }
+
+  bool get _supportsWindowCloseGuard {
+    final bindingName = WidgetsBinding.instance.runtimeType.toString();
+    if (bindingName.contains('TestWidgetsFlutterBinding')) {
+      return false;
+    }
+    if (kIsWeb) {
+      return false;
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows => true,
+      TargetPlatform.macOS => true,
+      TargetPlatform.linux => true,
+      TargetPlatform.android => false,
+      TargetPlatform.iOS => false,
+      TargetPlatform.fuchsia => false,
+    };
+  }
+
+  Future<void> _setupWindowCloseGuard() async {
+    if (!_supportsWindowCloseGuard) {
+      return;
+    }
+    try {
+      await windowManager.ensureInitialized();
+      windowManager.addListener(this);
+      _windowCloseGuardEnabled = true;
+      await _syncWindowCloseInterception(force: true);
+    } catch (_) {
+      _windowCloseGuardEnabled = false;
+    }
+  }
+
+  Future<void> _teardownWindowCloseGuard() async {
+    try {
+      windowManager.removeListener(this);
+      await windowManager.setPreventClose(false);
+    } catch (_) {}
+    _windowCloseGuardEnabled = false;
+    _preventCloseActive = false;
+  }
+
+  void _onControllerChanged() {
+    if (!_windowCloseGuardEnabled || _forceClosing) {
+      return;
+    }
+    unawaited(_syncWindowCloseInterception());
+  }
+
+  Future<void> _syncWindowCloseInterception({bool force = false}) async {
+    if (!_windowCloseGuardEnabled) {
+      return;
+    }
+    // Why: always-on close interception adds visible close latency even when
+    // nothing is dirty. We only intercept while save work is pending.
+    final shouldPrevent = _controller.hasPendingSaveWork;
+    if (!force && shouldPrevent == _preventCloseActive) {
+      return;
+    }
+    try {
+      await windowManager.setPreventClose(shouldPrevent);
+      _preventCloseActive = shouldPrevent;
+    } catch (_) {}
+  }
+
+  Future<void> _closeWindowNow() async {
+    _forceClosing = true;
+    try {
+      if (_windowCloseGuardEnabled && _preventCloseActive) {
+        try {
+          await windowManager.setPreventClose(false);
+          _preventCloseActive = false;
+        } catch (_) {}
+      }
+      try {
+        // Why: prefer normal close path first so desktop shell exits quickly.
+        await windowManager.close();
+      } catch (_) {
+        // Fallback: force destroy when close API is unavailable/fails.
+        await windowManager.destroy();
+      }
+    } finally {
+      _forceClosing = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_controller.flushPendingSave());
+    }
+  }
+
+  @override
+  void onWindowClose() {
+    if (!_windowCloseGuardEnabled || _handlingWindowClose) {
+      return;
+    }
+    _handlingWindowClose = true;
+    unawaited(_handleWindowCloseRequest());
+  }
+
+  Future<void> _handleWindowCloseRequest() async {
+    try {
+      if (!_controller.hasPendingSaveWork) {
+        await _closeWindowNow();
+        return;
+      }
+
+      final flushed = await _controller.flushPendingSave().timeout(
+        // Why: close flow should be best-effort and responsive. Do not block
+        // desktop shutdown on long I/O stalls.
+        const Duration(milliseconds: 450),
+        onTimeout: () => false,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (flushed) {
+        await _closeWindowNow();
+        return;
+      }
+
+      final action = await showDialog<_CloseDialogAction>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Unsaved content'),
+            content: const Text(
+              'Save failed. Retry or back up content before closing.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(_CloseDialogAction.cancel);
+                },
+                child: const Text('Keep editing'),
+              ),
+              FilledButton.tonal(
+                onPressed: () {
+                  Navigator.of(context).pop(_CloseDialogAction.retry);
+                },
+                child: const Text('Retry save'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (action == _CloseDialogAction.retry) {
+        final retried = await _controller.retrySaveCurrentDraft();
+        if (retried && mounted) {
+          await _closeWindowNow();
+        }
+      }
+    } finally {
+      _handlingWindowClose = false;
+    }
   }
 
   @override
@@ -161,6 +341,9 @@ class _NotesPageState extends State<NotesPage> {
                                 controller: _controller,
                                 onOpenNoteRequested:
                                     _controller.openNoteFromExplorer,
+                                onCreateNoteRequested: () async {
+                                  await _controller.createNote();
+                                },
                               ),
                             ),
                             const VerticalDivider(

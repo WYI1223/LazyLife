@@ -16,6 +16,21 @@ typedef NotesListInvoker =
 typedef NoteGetInvoker =
     Future<rust_api.NoteResponse> Function({required String atomId});
 
+/// Async creator for one new note atom.
+typedef NoteCreateInvoker =
+    Future<rust_api.NoteResponse> Function({required String content});
+
+/// Async updater for persisted note content.
+typedef NoteUpdateInvoker =
+    Future<rust_api.NoteResponse> Function({
+      required String atomId,
+      required String content,
+    });
+
+/// Timer factory for autosave debounce scheduling.
+typedef DebounceTimerFactory =
+    Timer Function(Duration duration, void Function() callback);
+
 /// Pre-load hook used to ensure bridge/db prerequisites.
 typedef NotesPrepare = Future<void> Function();
 
@@ -37,6 +52,21 @@ enum NotesListPhase {
   error,
 }
 
+/// Save lifecycle for active note draft persistence.
+enum NoteSaveState {
+  /// Draft content matches persisted content.
+  clean,
+
+  /// Draft content has unsaved edits.
+  dirty,
+
+  /// Save call is currently in flight.
+  saving,
+
+  /// Last save attempt failed.
+  error,
+}
+
 /// Stateful controller for Notes page list/detail baseline.
 ///
 /// Contract:
@@ -49,23 +79,40 @@ class NotesController extends ChangeNotifier {
   /// Input semantics:
   /// - [notesListInvoker]: loads list snapshot (`notes_list` contract).
   /// - [noteGetInvoker]: loads one note detail (`note_get` contract).
+  /// - [noteCreateInvoker]: creates one new note (`note_create` contract).
+  /// - [noteUpdateInvoker]: persists full content replacement (`note_update`).
+  /// - [debounceTimerFactory]: timer scheduler used by autosave debounce.
   /// - [prepare]: prerequisite hook before each bridge request.
   /// - [listLimit]: requested list page size for C1 baseline.
+  /// - [autosaveDebounce]: quiet window before autosave starts.
   NotesController({
     NotesListInvoker? notesListInvoker,
     NoteGetInvoker? noteGetInvoker,
+    NoteCreateInvoker? noteCreateInvoker,
+    NoteUpdateInvoker? noteUpdateInvoker,
+    DebounceTimerFactory? debounceTimerFactory,
     NotesPrepare? prepare,
     this.listLimit = 50,
+    this.autosaveDebounce = const Duration(milliseconds: 1500),
   }) : _notesListInvoker = notesListInvoker ?? _defaultNotesListInvoker,
        _noteGetInvoker = noteGetInvoker ?? _defaultNoteGetInvoker,
+       _noteCreateInvoker = noteCreateInvoker ?? _defaultNoteCreateInvoker,
+       _noteUpdateInvoker = noteUpdateInvoker ?? _defaultNoteUpdateInvoker,
+       _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
        _prepare = prepare ?? _defaultPrepare;
 
   final NotesListInvoker _notesListInvoker;
   final NoteGetInvoker _noteGetInvoker;
+  final NoteCreateInvoker _noteCreateInvoker;
+  final NoteUpdateInvoker _noteUpdateInvoker;
+  final DebounceTimerFactory _debounceTimerFactory;
   final NotesPrepare _prepare;
 
   /// Requested list limit for C1 list baseline.
   final int listLimit;
+
+  /// Debounce window used by autosave pipeline.
+  final Duration autosaveDebounce;
 
   NotesListPhase _listPhase = NotesListPhase.idle;
   List<rust_api.NoteItem> _items = const [];
@@ -74,11 +121,28 @@ class NotesController extends ChangeNotifier {
   rust_api.NoteItem? _selectedNote;
   bool _detailLoading = false;
   String? _detailErrorMessage;
+  bool _creatingNote = false;
+  String? _createErrorMessage;
 
   final List<String> _openNoteIds = <String>[];
   final Map<String, rust_api.NoteItem> _noteCache =
       <String, rust_api.NoteItem>{};
+  final Map<String, String> _draftContentByAtomId = <String, String>{};
+  final Map<String, String> _persistedContentByAtomId = <String, String>{};
+  final Map<String, int> _draftVersionByAtomId = <String, int>{};
   String? _activeNoteId;
+  String? _activeDraftAtomId;
+  String _activeDraftContent = '';
+  int _editorFocusRequestId = 0;
+  NoteSaveState _noteSaveState = NoteSaveState.clean;
+  String? _saveErrorMessage;
+  bool _showSavedBadge = false;
+  Timer? _autosaveTimer;
+  Timer? _savedBadgeTimer;
+  final Map<String, Future<bool>> _saveFutureByAtomId =
+      <String, Future<bool>>{};
+  final Map<String, bool> _saveQueuedByAtomId = <String, bool>{};
+  String? _switchBlockErrorMessage;
 
   int _listRequestId = 0;
   int _detailRequestId = 0;
@@ -110,9 +174,63 @@ class NotesController extends ChangeNotifier {
   /// Current selected-note detail load error.
   String? get detailErrorMessage => _detailErrorMessage;
 
+  /// Whether a create-note request is currently in flight.
+  bool get creatingNote => _creatingNote;
+
+  /// Current create-note failure message.
+  String? get createErrorMessage => _createErrorMessage;
+
+  /// Save lifecycle state for active note.
+  NoteSaveState get noteSaveState => _noteSaveState;
+
+  /// Last save error message for active note.
+  String? get saveErrorMessage => _saveErrorMessage;
+
+  /// Whether success badge should be visible for active note.
+  bool get showSavedBadge => _showSavedBadge;
+
+  /// Banner message shown when note switch is blocked by flush failure.
+  String? get switchBlockErrorMessage => _switchBlockErrorMessage;
+
+  /// Whether active note has pending save work before app close.
+  ///
+  /// Includes dirty drafts and in-flight save requests.
+  bool get hasPendingSaveWork {
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      return false;
+    }
+    return _isDirty(atomId) || _saveFutureByAtomId.containsKey(atomId);
+  }
+
+  /// Monotonic token used by UI to request editor focus.
+  int get editorFocusRequestId => _editorFocusRequestId;
+
+  /// In-memory draft content for active editor instance.
+  String get activeDraftContent {
+    if (_activeNoteId == null) {
+      return '';
+    }
+    final atomId = _activeNoteId!;
+    if (_draftContentByAtomId[atomId] case final draft?) {
+      return draft;
+    }
+    if (_activeDraftAtomId == atomId) {
+      return _activeDraftContent;
+    }
+    return _selectedNote?.content ?? '';
+  }
+
   /// Returns one cached/list note by id when available.
   rust_api.NoteItem? noteById(String atomId) {
     return _noteCache[atomId] ?? _findListItem(atomId);
+  }
+
+  @override
+  void dispose() {
+    _autosaveTimer?.cancel();
+    _savedBadgeTimer?.cancel();
+    super.dispose();
   }
 
   /// Tab title projection used by tab manager.
@@ -139,7 +257,22 @@ class NotesController extends ChangeNotifier {
     _detailErrorMessage = null;
     _openNoteIds.clear();
     _noteCache.clear();
+    _draftContentByAtomId.clear();
+    _persistedContentByAtomId.clear();
+    _draftVersionByAtomId.clear();
+    _saveFutureByAtomId.clear();
+    _saveQueuedByAtomId.clear();
     _activeNoteId = null;
+    _activeDraftAtomId = null;
+    _activeDraftContent = '';
+    _creatingNote = false;
+    _createErrorMessage = null;
+    _autosaveTimer?.cancel();
+    _savedBadgeTimer?.cancel();
+    _noteSaveState = NoteSaveState.clean;
+    _saveErrorMessage = null;
+    _showSavedBadge = false;
+    _switchBlockErrorMessage = null;
     notifyListeners();
 
     try {
@@ -179,13 +312,18 @@ class NotesController extends ChangeNotifier {
       _listPhase = NotesListPhase.success;
       _items = loadedItems;
       for (final item in loadedItems) {
-        _noteCache[item.atomId] = item;
+        _insertOrReplaceListItem(item, updatePersisted: true);
       }
       _activeNoteId = loadedItems.first.atomId;
       _selectedNote = loadedItems.first;
+      _activeDraftAtomId = loadedItems.first.atomId;
+      _activeDraftContent =
+          _draftContentByAtomId[loadedItems.first.atomId] ??
+          loadedItems.first.content;
       _openNoteIds
         ..clear()
         ..add(loadedItems.first.atomId);
+      _setSaveState(NoteSaveState.clean);
       notifyListeners();
 
       await _loadSelectedDetail(atomId: loadedItems.first.atomId);
@@ -203,19 +341,171 @@ class NotesController extends ChangeNotifier {
   Future<void> retryLoad() => loadNotes();
 
   /// Handles open-note request from explorer shell.
-  Future<void> openNoteFromExplorer(String atomId) => selectNote(atomId);
+  Future<bool> openNoteFromExplorer(String atomId) => selectNote(atomId);
+
+  /// Flushes pending save work for the currently active note.
+  ///
+  /// Contract:
+  /// - Returns `true` when no pending write exists or persistence succeeds.
+  /// - Returns `false` when latest draft cannot be persisted.
+  /// - Keeps in-memory draft unchanged on failure.
+  Future<bool> flushPendingSave() async {
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      return true;
+    }
+    _autosaveTimer?.cancel();
+
+    while (true) {
+      final inflight = _saveFutureByAtomId[atomId];
+      if (inflight != null) {
+        await inflight;
+        if (!_isDirty(atomId)) {
+          _switchBlockErrorMessage = null;
+          return true;
+        }
+        continue;
+      }
+
+      if (!_isDirty(atomId)) {
+        _switchBlockErrorMessage = null;
+        return true;
+      }
+
+      final version = _draftVersionByAtomId[atomId] ?? 0;
+      final saved = await _saveDraft(atomId: atomId, version: version);
+      if (saved && !_isDirty(atomId)) {
+        _switchBlockErrorMessage = null;
+        return true;
+      }
+
+      if ((_draftVersionByAtomId[atomId] ?? 0) != version) {
+        continue;
+      }
+
+      _switchBlockErrorMessage = 'Save failed. Retry or back up content.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Retries saving current active draft immediately.
+  ///
+  /// Contract:
+  /// - Saves the latest in-memory draft (not stale snapshot).
+  /// - Returns `true` when active draft becomes persisted.
+  /// - Returns `false` when save still fails.
+  Future<bool> retrySaveCurrentDraft() async {
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      return false;
+    }
+    _autosaveTimer?.cancel();
+    final version = _draftVersionByAtomId[atomId] ?? 0;
+    final saved = await _saveDraft(atomId: atomId, version: version);
+    if (saved && !_isDirty(atomId)) {
+      _switchBlockErrorMessage = null;
+      notifyListeners();
+      return true;
+    }
+    if ((_draftVersionByAtomId[atomId] ?? 0) != version) {
+      return false;
+    }
+    return false;
+  }
+
+  /// Creates one new empty note and activates editor on success.
+  ///
+  /// Side effects:
+  /// - Calls `note_create` with empty content in v0.1 C2.
+  /// - Inserts created note into list/cache without reloading full list.
+  /// - Sets created note as active tab and requests editor focus.
+  Future<bool> createNote() async {
+    if (_creatingNote) {
+      return false;
+    }
+    _creatingNote = true;
+    _createErrorMessage = null;
+    notifyListeners();
+
+    try {
+      await _prepare();
+      final response = await _noteCreateInvoker(content: '');
+      if (!response.ok) {
+        _creatingNote = false;
+        _createErrorMessage = _envelopeError(
+          errorCode: response.errorCode,
+          message: response.message,
+          fallback: 'Failed to create note.',
+        );
+        notifyListeners();
+        return false;
+      }
+
+      final created = response.note;
+      if (created == null) {
+        _creatingNote = false;
+        _createErrorMessage =
+            'Create note succeeded but returned empty payload.';
+        notifyListeners();
+        return false;
+      }
+
+      _listPhase = NotesListPhase.success;
+      _insertOrReplaceListItem(
+        created,
+        insertFront: true,
+        updatePersisted: true,
+      );
+      _activeNoteId = created.atomId;
+      _selectedNote = created;
+      _activeDraftAtomId = created.atomId;
+      _activeDraftContent = _draftContentByAtomId[created.atomId] ?? '';
+      _detailErrorMessage = null;
+      if (!_openNoteIds.contains(created.atomId)) {
+        _openNoteIds.add(created.atomId);
+      }
+      _creatingNote = false;
+      _autosaveTimer?.cancel();
+      _setSaveState(NoteSaveState.clean);
+      _requestEditorFocus();
+      notifyListeners();
+
+      await _loadSelectedDetail(atomId: created.atomId);
+      _requestEditorFocus();
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _creatingNote = false;
+      _createErrorMessage = 'Create note failed unexpectedly: $error';
+      notifyListeners();
+      return false;
+    }
+  }
 
   /// Selects one note and refreshes detail snapshot.
   ///
   /// Side effects:
+  /// - Flushes pending save for current active note before switching.
   /// - Opens a new tab when [atomId] is not already opened.
   /// - Keeps existing tabs unchanged when [atomId] is already opened.
-  Future<void> selectNote(String atomId) async {
+  ///
+  /// Returns:
+  /// - `true` when switch succeeds.
+  /// - `false` when switch is blocked by flush failure.
+  Future<bool> selectNote(String atomId) async {
     if (_activeNoteId == atomId &&
         _selectedNote != null &&
         !_detailLoading &&
         _detailErrorMessage == null) {
-      return;
+      return true;
+    }
+
+    if (_activeNoteId != null && _activeNoteId != atomId) {
+      final flushed = await flushPendingSave();
+      if (!flushed) {
+        return false;
+      }
     }
 
     _activeNoteId = atomId;
@@ -223,21 +513,26 @@ class NotesController extends ChangeNotifier {
       _openNoteIds.add(atomId);
     }
     _selectedNote = _findListItem(atomId);
+    _activeDraftAtomId = atomId;
+    _activeDraftContent =
+        _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
+    _refreshSaveStateForActive();
+    _requestEditorFocus();
+    _switchBlockErrorMessage = null;
     notifyListeners();
 
     await _loadSelectedDetail(atomId: atomId);
+    return true;
   }
 
   /// Activates an already opened note tab and refreshes its detail.
-  Future<void> activateOpenNote(String atomId) async {
+  ///
+  /// Returns `false` when switch guard blocks the activation.
+  Future<bool> activateOpenNote(String atomId) async {
     if (!_openNoteIds.contains(atomId)) {
-      await selectNote(atomId);
-      return;
+      return selectNote(atomId);
     }
-    _activeNoteId = atomId;
-    _selectedNote = noteById(atomId);
-    notifyListeners();
-    await _loadSelectedDetail(atomId: atomId);
+    return selectNote(atomId);
   }
 
   /// Moves active tab forward (Ctrl+Tab behavior).
@@ -288,6 +583,10 @@ class NotesController extends ChangeNotifier {
       _selectedNote = null;
       _detailLoading = false;
       _detailErrorMessage = null;
+      _activeDraftAtomId = null;
+      _activeDraftContent = '';
+      _autosaveTimer?.cancel();
+      _setSaveState(NoteSaveState.clean);
       notifyListeners();
       return;
     }
@@ -296,6 +595,11 @@ class NotesController extends ChangeNotifier {
     final fallbackId = _openNoteIds[fallbackIndex];
     _activeNoteId = fallbackId;
     _selectedNote = noteById(fallbackId);
+    _activeDraftAtomId = fallbackId;
+    _activeDraftContent =
+        _draftContentByAtomId[fallbackId] ?? _selectedNote?.content ?? '';
+    _refreshSaveStateForActive();
+    _requestEditorFocus();
     notifyListeners();
     await _loadSelectedDetail(atomId: fallbackId);
   }
@@ -310,6 +614,11 @@ class NotesController extends ChangeNotifier {
       ..add(atomId);
     _activeNoteId = atomId;
     _selectedNote = noteById(atomId);
+    _activeDraftAtomId = atomId;
+    _activeDraftContent =
+        _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
+    _refreshSaveStateForActive();
+    _requestEditorFocus();
     notifyListeners();
     await _loadSelectedDetail(atomId: atomId);
   }
@@ -330,9 +639,51 @@ class NotesController extends ChangeNotifier {
     if (!_openNoteIds.contains(_activeNoteId)) {
       _activeNoteId = atomId;
       _selectedNote = noteById(atomId);
+      _activeDraftAtomId = atomId;
+      _activeDraftContent =
+          _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
+      _refreshSaveStateForActive();
+      _requestEditorFocus();
       notifyListeners();
       await _loadSelectedDetail(atomId: atomId);
       return;
+    }
+    notifyListeners();
+  }
+
+  /// Updates active note draft content in-memory.
+  ///
+  /// Side effects:
+  /// - Updates selected note cache and list snapshot title projection.
+  /// - Schedules debounced persistence through `note_update`.
+  void updateActiveDraft(String content) {
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      return;
+    }
+    final previous = _draftContentByAtomId[atomId] ?? _activeDraftContent;
+    if (previous == content) {
+      return;
+    }
+
+    _activeDraftAtomId = atomId;
+    _activeDraftContent = content;
+    _draftContentByAtomId[atomId] = content;
+    final version = (_draftVersionByAtomId[atomId] ?? 0) + 1;
+    _draftVersionByAtomId[atomId] = version;
+    final current = _noteCache[atomId] ?? _selectedNote;
+    if (current != null) {
+      final updated = _withContent(current, content);
+      _selectedNote = updated;
+      _insertOrReplaceListItem(updated);
+    }
+
+    if (_isDirty(atomId)) {
+      _setSaveState(NoteSaveState.dirty);
+      _scheduleAutosave(atomId: atomId, version: version);
+    } else {
+      _autosaveTimer?.cancel();
+      _setSaveState(NoteSaveState.clean);
     }
     notifyListeners();
   }
@@ -377,9 +728,13 @@ class NotesController extends ChangeNotifier {
 
       if (response.note case final note?) {
         _selectedNote = note;
-        _noteCache[note.atomId] = note;
+        _insertOrReplaceListItem(note, updatePersisted: true);
+        _activeDraftAtomId = note.atomId;
+        _activeDraftContent =
+            _draftContentByAtomId[note.atomId] ?? note.content;
         _detailLoading = false;
         _detailErrorMessage = null;
+        _refreshSaveStateForActive();
         notifyListeners();
         return;
       }
@@ -404,6 +759,214 @@ class NotesController extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  void _insertOrReplaceListItem(
+    rust_api.NoteItem note, {
+    bool insertFront = false,
+    bool updatePersisted = false,
+  }) {
+    final wasDirty = _isDirty(note.atomId);
+    _noteCache[note.atomId] = note;
+    if (updatePersisted) {
+      _persistedContentByAtomId[note.atomId] = note.content;
+      _draftVersionByAtomId.putIfAbsent(note.atomId, () => 0);
+      if (!_draftContentByAtomId.containsKey(note.atomId) || !wasDirty) {
+        _draftContentByAtomId[note.atomId] = note.content;
+      }
+    }
+    final mutable = List<rust_api.NoteItem>.from(_items);
+    final existingIndex = mutable.indexWhere(
+      (item) => item.atomId == note.atomId,
+    );
+    if (existingIndex >= 0) {
+      mutable[existingIndex] = note;
+    } else if (insertFront) {
+      mutable.insert(0, note);
+    } else {
+      mutable.add(note);
+    }
+    _items = List<rust_api.NoteItem>.unmodifiable(mutable);
+  }
+
+  rust_api.NoteItem _withContent(rust_api.NoteItem current, String content) {
+    return rust_api.NoteItem(
+      atomId: current.atomId,
+      content: content,
+      previewText: current.previewText,
+      previewImage: current.previewImage,
+      updatedAt: current.updatedAt,
+      tags: current.tags,
+    );
+  }
+
+  void _requestEditorFocus() {
+    _editorFocusRequestId += 1;
+  }
+
+  bool _isDirty(String atomId) {
+    final draft = _draftContentByAtomId[atomId];
+    final persisted = _persistedContentByAtomId[atomId];
+    if (draft == null || persisted == null) {
+      return false;
+    }
+    return draft != persisted;
+  }
+
+  void _scheduleAutosave({required String atomId, required int version}) {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = _debounceTimerFactory(autosaveDebounce, () {
+      unawaited(_saveDraft(atomId: atomId, version: version));
+    });
+  }
+
+  Future<bool> _saveDraft({required String atomId, required int version}) {
+    if (_saveFutureByAtomId[atomId] case final inFlight?) {
+      _saveQueuedByAtomId[atomId] = true;
+      return inFlight;
+    }
+    final future = _performSaveDraft(atomId: atomId, version: version)
+        .whenComplete(() {
+          _saveFutureByAtomId.remove(atomId);
+          final shouldQueue = _saveQueuedByAtomId.remove(atomId) ?? false;
+          // Why: retry only when a newer write arrived during in-flight save.
+          // Retrying on plain dirty state can loop forever on persistent I/O errors.
+          if (shouldQueue) {
+            final nextVersion = _draftVersionByAtomId[atomId] ?? 0;
+            unawaited(_saveDraft(atomId: atomId, version: nextVersion));
+          }
+        });
+    _saveFutureByAtomId[atomId] = future;
+    return future;
+  }
+
+  Future<bool> _performSaveDraft({
+    required String atomId,
+    required int version,
+  }) async {
+    final draft = _draftContentByAtomId[atomId];
+    if (draft == null) {
+      return false;
+    }
+    final latestVersion = _draftVersionByAtomId[atomId] ?? 0;
+    if (version != latestVersion || !_isDirty(atomId)) {
+      if (_activeNoteId == atomId) {
+        _refreshSaveStateForActive();
+        notifyListeners();
+      }
+      return false;
+    }
+
+    if (_activeNoteId == atomId) {
+      _setSaveState(NoteSaveState.saving);
+      notifyListeners();
+    }
+
+    try {
+      await _prepare();
+      final response = await _noteUpdateInvoker(atomId: atomId, content: draft);
+      final currentVersion = _draftVersionByAtomId[atomId] ?? 0;
+      if (version != currentVersion) {
+        if (_activeNoteId == atomId) {
+          _refreshSaveStateForActive();
+          notifyListeners();
+        }
+        return false;
+      }
+
+      if (!response.ok) {
+        if (_activeNoteId == atomId) {
+          _saveErrorMessage = _envelopeError(
+            errorCode: response.errorCode,
+            message: response.message,
+            fallback: 'Failed to save note.',
+          );
+          _setSaveState(NoteSaveState.error, preserveError: true);
+          notifyListeners();
+        }
+        return false;
+      }
+
+      final current = _noteCache[atomId];
+      final saved =
+          response.note ??
+          (current == null ? null : _withContent(current, draft));
+      if (saved == null) {
+        if (_activeNoteId == atomId) {
+          _saveErrorMessage = 'Save succeeded without note payload.';
+          _setSaveState(NoteSaveState.error, preserveError: true);
+          notifyListeners();
+        }
+        return false;
+      }
+      _insertOrReplaceListItem(saved, updatePersisted: true);
+      if (_activeNoteId == atomId) {
+        _selectedNote = _noteCache[atomId];
+        _activeDraftContent = _draftContentByAtomId[atomId] ?? draft;
+        _switchBlockErrorMessage = null;
+        if (_isDirty(atomId)) {
+          _setSaveState(NoteSaveState.dirty);
+        } else {
+          _setSaveState(NoteSaveState.clean, showSavedBadge: true);
+        }
+        notifyListeners();
+      }
+      return true;
+    } catch (error) {
+      final currentVersion = _draftVersionByAtomId[atomId] ?? 0;
+      if (version != currentVersion) {
+        if (_activeNoteId == atomId) {
+          _refreshSaveStateForActive();
+          notifyListeners();
+        }
+        return false;
+      }
+      if (_activeNoteId == atomId) {
+        _saveErrorMessage = 'Save failed unexpectedly: $error';
+        _setSaveState(NoteSaveState.error, preserveError: true);
+        notifyListeners();
+      }
+      return false;
+    }
+  }
+
+  void _refreshSaveStateForActive() {
+    final atomId = _activeNoteId;
+    if (atomId == null) {
+      _autosaveTimer?.cancel();
+      _setSaveState(NoteSaveState.clean);
+      return;
+    }
+    if (_isDirty(atomId)) {
+      _setSaveState(NoteSaveState.dirty);
+      return;
+    }
+    _setSaveState(NoteSaveState.clean);
+  }
+
+  void _setSaveState(
+    NoteSaveState nextState, {
+    bool preserveError = false,
+    bool showSavedBadge = false,
+  }) {
+    _noteSaveState = nextState;
+    if (!preserveError) {
+      _saveErrorMessage = null;
+    }
+    if (showSavedBadge) {
+      _showSavedBadge = true;
+      _savedBadgeTimer?.cancel();
+      _savedBadgeTimer = _debounceTimerFactory(const Duration(seconds: 3), () {
+        if (_noteSaveState != NoteSaveState.clean) {
+          return;
+        }
+        _showSavedBadge = false;
+        notifyListeners();
+      });
+      return;
+    }
+    _savedBadgeTimer?.cancel();
+    _showSavedBadge = false;
   }
 
   String _envelopeError({
@@ -445,6 +1008,19 @@ Future<rust_api.NotesListResponse> _defaultNotesListInvoker({
 
 Future<rust_api.NoteResponse> _defaultNoteGetInvoker({required String atomId}) {
   return rust_api.noteGet(atomId: atomId);
+}
+
+Future<rust_api.NoteResponse> _defaultNoteCreateInvoker({
+  required String content,
+}) {
+  return rust_api.noteCreate(content: content);
+}
+
+Future<rust_api.NoteResponse> _defaultNoteUpdateInvoker({
+  required String atomId,
+  required String content,
+}) {
+  return rust_api.noteUpdate(atomId: atomId, content: content);
 }
 
 Future<void> _defaultPrepare() async {
