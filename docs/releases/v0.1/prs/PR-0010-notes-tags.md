@@ -28,6 +28,7 @@ Out of scope:
 - WYSIWYG markdown rendering
 - nested tag taxonomy
 - advanced multi-condition filters
+- note delete lifecycle (delete/restore/permanent-delete) UI and contract
 
 ## PR Split (Locked)
 

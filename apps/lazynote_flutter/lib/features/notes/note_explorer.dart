@@ -160,6 +160,20 @@ class _NoteExplorerState extends State<NoteExplorer> {
             endIndent: 12,
             color: kNotesDividerColor,
           ),
+          if (widget.controller.createErrorMessage case final createError?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+              child: Text(
+                createError,
+                key: const Key('notes_create_error'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           TagFilter(
             loading: widget.controller.tagsLoading,
             tags: widget.controller.availableTags,

@@ -28,6 +28,24 @@ Out of scope:
 3. Ensure UI can recover from backend errors without app restart.
 4. Validate contract/doc alignment for any API shape change.
 
+## Residual Risks (Non-blocking)
+
+1. Contextual create under active tag filter is still a two-step call:
+   - step 1: `note_create`
+   - step 2: `note_set_tags`
+   If step 1 succeeds but step 2 fails, backend already contains the new note.
+   Current v0.1 behavior is fail-fast on UI (`createNote()` returns `false` and
+   Explorer shows create error), but this is not an atomic transaction.
+2. Concurrency coverage still has one deferred gap:
+   - explicit regression case for "manual Reload while per-note tag mutation
+     queue is active" is not added yet.
+
+## Explicit v0.1 Non-goal Addendum
+
+- Note delete flow is not implemented in PR-0010 scope.
+  - no delete action in Explorer/Tab/UI
+  - no dedicated delete contract path in current Notes UI flow
+
 ## Step-by-Step
 
 1. Review known risk points from 0010B/0010C implementation.

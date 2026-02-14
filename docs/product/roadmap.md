@@ -29,3 +29,4 @@ Moved to post-v0.1 planning tracks:
 - `PR-0014` local task-calendar projection baseline
 - `PR-0015` Google Calendar provider plugin track
 - `PR-0016` export/import
+- notes delete lifecycle (soft-delete policy, restore path, and permanent delete UX)
