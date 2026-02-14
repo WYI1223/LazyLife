@@ -1,7 +1,7 @@
 # PR-0010C2-note-editor-create-select
 
 - Proposed title: `feat(notes-ui): note editor and create/select lifecycle`
-- Status: Planned
+- Status: Implemented
 
 ## Goal
 
@@ -36,6 +36,28 @@ Interaction constraints:
 
 - Explorer open-request flow remains command/event style; content area only reacts to `activeNoteId`.
 
+## Product Decisions (Locked)
+
+1. New note entry point is only in Explorer header (no create button in top tab strip).
+2. New note default content is empty string; fallback title rendering (`Untitled`) is UI-only.
+3. Editor is writable in-memory in C2 (`TextEditingController` draft), persistence deferred to C3.
+4. Frontend uses one shared first-line plain-text title projection for list/tab labels.
+5. Detail load failure is rendered in ContentArea center with retry action (no modal popup).
+
+## Landed Notes
+
+1. Added `note_editor.dart` as reusable editable markdown surface.
+2. `NotesController` now supports:
+   - `createNote()` (`note_create` with empty content)
+   - local draft updates (`updateActiveDraft`)
+   - editor focus request token (`editorFocusRequestId`)
+3. Explorer header now exposes `Create note` action and create-in-flight disabled state.
+4. Create success path now enforces:
+   - created note inserted to list/cache
+   - created note activated as current tab/selection
+   - editor focus requested via post-frame token
+5. Content area now binds to writable editor draft and renders centered detail error + retry state.
+
 ## Step-by-Step
 
 1. Add `note_editor.dart` and bind to controller selected-note state.
@@ -57,11 +79,13 @@ Interaction constraints:
 ## Verification
 
 - `cd apps/lazynote_flutter && flutter analyze`
+- `cd apps/lazynote_flutter && flutter test test/notes_page_c1_test.dart`
+- `cd apps/lazynote_flutter && flutter test test/notes_controller_tabs_test.dart`
 - `cd apps/lazynote_flutter && flutter test test/notes_page_c2_test.dart`
 
 ## Acceptance Criteria
 
-- [ ] User can create a note from Notes page.
-- [ ] Created note is auto-selected and editor is focused.
-- [ ] Selecting list item updates editor content correctly.
-- [ ] Detail error state is explicit and recoverable.
+- [x] User can create a note from Notes page.
+- [x] Created note is auto-selected and editor is focused.
+- [x] Selecting list item updates editor content correctly.
+- [x] Detail error state is explicit and recoverable.

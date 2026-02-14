@@ -31,6 +31,7 @@ class NoteExplorer extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onOpenNoteRequested,
+    required this.onCreateNoteRequested,
   });
 
   /// Source controller that provides list/tree state snapshots.
@@ -38,6 +39,9 @@ class NoteExplorer extends StatefulWidget {
 
   /// Callback emitted when user requests opening one note.
   final ValueChanged<String> onOpenNoteRequested;
+
+  /// Callback emitted when user requests creating one note.
+  final Future<void> Function() onCreateNoteRequested;
 
   @override
   State<NoteExplorer> createState() => _NoteExplorerState();
@@ -99,6 +103,33 @@ class _NoteExplorerState extends State<NoteExplorer> {
                               ?.copyWith(color: kNotesSecondaryText),
                         ),
                       ],
+                      IconButton(
+                        key: const Key('notes_create_button'),
+                        tooltip: 'Create note',
+                        onPressed: widget.controller.creatingNote
+                            ? null
+                            : widget.onCreateNoteRequested,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 22,
+                          height: 22,
+                        ),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        icon: widget.controller.creatingNote
+                            ? const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.6,
+                                  color: kNotesSecondaryText,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.add,
+                                size: 14,
+                                color: kNotesSecondaryText,
+                              ),
+                      ),
                       IconButton(
                         tooltip: 'Retry',
                         onPressed: widget.controller.retryLoad,
