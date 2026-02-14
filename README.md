@@ -159,11 +159,9 @@ LazyNote 把笔记、任务、事件统一为“原子（Atom）”，避免多�
 ## MVP 范围（v0.1）
 
 - 统一入口：聚合搜索 + 命令面板。
-- 笔记：Markdown 编辑、标签/层级、全文检索。
-- 任务：Inbox/Today/Upcoming、本地提醒、基础重复。
-- 日历：基础周/日视图，任务拖拽排程。
-- 同步：Google Calendar 事件级双向同步。
-- 导入导出：Markdown + JSON + ICS。
+- 笔记：Markdown 编辑、标签过滤、全文检索与列表/编辑闭环。
+- 稳定性：自动保存、切换强制 flush、错误恢复与回归测试。
+- 说明：任务/日历/提醒、Google Calendar 同步、导入导出已延期到 post-v0.1 版本。
 
 ## 路线图（报告汇总版）
 
@@ -190,7 +188,8 @@ LazyNote 把笔记、任务、事件统一为“原子（Atom）”，避免多�
 
 ## 仓库现状
 
-当前仓库处于“文档与架构初始化阶段”，核心实现尚在搭建。
+当前仓库已完成 v0.1 前半程基线（Core/FFI/Workbench/Single Entry/Notes C1）。
+v0.1 剩余收口聚焦在 notes 流程 + diagnostics 可读性基线：`PR-0010C2/C3/C4/D` + `PR-0017A`。
 
 已存在内容：
 

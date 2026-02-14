@@ -1,4 +1,4 @@
-﻿# MVP Scope (v0.1)
+# MVP Scope (v0.1)
 
 ## Purpose
 
@@ -8,12 +8,13 @@ Source of truth for execution order: `docs/releases/v0.1/README.md`.
 
 ## Scope Definition
 
-v0.1 closes one local productivity loop:
+v0.1 is notes-first and closes one stable local notes loop:
 
-- capture notes/tasks/events
-- search local content quickly
-- schedule and basic task/calendar flow
-- prepare provider sync baseline (Google Calendar path)
+- Single Entry capture/search baseline
+- notes list/editor/create/select baseline
+- debounced autosave + tag filter
+- notes flow hardening + API/doc consistency
+- Workbench debug viewer readability baseline
 
 ## In Scope by Capability
 
@@ -27,23 +28,22 @@ v0.1 closes one local productivity loop:
 - FTS5 search core
 - Windows shell workbench + diagnostics log panel
 
-### Feature loop (planned next)
+### Feature loop (remaining in v0.1)
 
-- single entry router (`PR-0009`)
-- notes and tags (`PR-0010`)
-- task views (`PR-0011`)
-- minimal calendar scheduling (`PR-0012`)
-- reminders on Windows (`PR-0013`)
-
-### Integration and portability (planned)
-
-- Google Calendar auth + one-way sync (`PR-0014`)
-- Google Calendar two-way incremental sync (`PR-0015`)
-- export/import Markdown + JSON + ICS (`PR-0016`)
+- notes UI closure + diagnostics readability baseline:
+  - `PR-0010C2` note editor + create/select
+  - `PR-0010C3` autosave + switch flush
+  - `PR-0010C4` tag filter integration closure
+  - `PR-0010D` hardening and docs closure
+  - `PR-0017A` debug viewer readability baseline
 
 ## Out of Scope for v0.1
 
 - global hotkey quick entry window (moved to v0.2)
+- tasks and calendar feature expansion (moved post-v0.1)
+- reminders (moved post-v0.1)
+- Google Calendar OAuth/sync (moved post-v0.1)
+- export/import portability flow (moved post-v0.1)
 - CRDT multi-master sync
 - cloud telemetry/analytics pipeline
 - advanced AI orchestration features
@@ -52,16 +52,33 @@ v0.1 closes one local productivity loop:
 
 v0.1 is considered complete when:
 
-1. Core CRUD/search works end-to-end through Flutter shell.
-2. Basic task/calendar interaction loop is available.
-3. Google Calendar integration baseline PRs are completed.
-4. Export/import baseline is available.
-5. CI and documentation are green and reproducible.
+1. Single Entry capture/search/command baseline is stable in Workbench.
+2. Notes create/select/edit/autosave/filter flow is complete.
+3. Notes async/error regression paths are covered (`PR-0010D` closure).
+4. Debug viewer readability baseline is available for QA loops (`PR-0017A`).
+5. CI and API/doc contracts are synchronized and reproducible.
 
 ## Current Progress Snapshot
 
-- Completed: PR-0000 to PR-0008, PR-0017
-- Active next target: PR-0009
+- Completed:
+  - PR-0000 to PR-0009D
+  - PR-0010A, PR-0010B, PR-0010C1
+  - PR-0017, PR-0018
+- Remaining:
+  - PR-0010C2
+  - PR-0010C3
+  - PR-0010C4
+  - PR-0010D
+  - PR-0017A
+
+## Deferred Backlog (Post-v0.1)
+
+- `PR-0011` tasks views
+- `PR-0012` calendar minimal
+- `PR-0013` reminders (Windows)
+- `PR-0014` local task-calendar projection baseline
+- `PR-0015` Google Calendar provider plugin track
+- `PR-0016` export/import
 
 ## Verification Baseline
 

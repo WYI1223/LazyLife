@@ -1,13 +1,18 @@
 # PR-0016-export-import
 
 - Proposed title: `feat(portability): export/import Markdown + JSON + ICS`
-- Status: Planned (optimized)
+- Status: Deferred (post-v0.1)
 
 ## Goal
 
-Provide baseline portability and local backup/restore for v0.1.
+Provide baseline portability and local backup/restore.
 
-## Scope (v0.1)
+## Deferral Reason
+
+v0.1 has been narrowed to notes-first + diagnostics-readability closure (`PR-0010C2/C3/C4/D`, `PR-0017A`).
+This PR remains a post-v0.1 backlog candidate.
+
+## Scope (post-v0.1 backlog)
 
 In scope:
 

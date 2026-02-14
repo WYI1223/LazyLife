@@ -2,41 +2,36 @@
 
 ## Scope
 
-v0.1 closes the minimum loop:
+v0.1 is now explicitly notes-first and closes a stable local notes loop, with one targeted diagnostics readability uplift for release QA:
 
-- capture notes
-- search notes/tasks/events
-- edit and schedule tasks
-- Google Calendar event sync (incremental, mapped)
+- Single Entry capture/search baseline
+- notes list/editor/create/select
+- autosave + tag filter
+- notes flow hardening + API/doc consistency
+- Workbench debug viewer readability baseline (timestamp + severity color)
 
 ## Source
 
 - original draft: `docs/research/init/temp-v0.1-plan.md`
 
-## Optimization Review
+## Out of Scope (Moved Post-v0.1)
 
-The original PR list is valid. We applied these optimizations:
+The following tracks are intentionally moved out of v0.1:
 
-- Keep baseline order: Repo/DevEx -> CI -> FRB -> Core -> UI -> Integrations.
-- Split PR0003 into two smaller steps:
-  - PR-A: FRB minimal API + codegen/binding artifacts
-  - PR-B: Flutter Windows runtime call to `ping/core_version`
-- Move global hotkey + floating quick-entry window out of v0.1 to v0.2.
-- Split Google Calendar work into two PRs:
-  - PR0014: OAuth + one-way bootstrap sync.
-  - PR0015: two-way sync with `syncToken` and `extendedProperties` mapping.
-- Keep CI early (PR0002) to prevent regressions while FRB/Core/UI are added.
+- tasks and calendar feature expansion
+- reminders
+- Google Calendar OAuth/sync
+- export/import portability flows
+- home-entry route switch placeholder (`PR-0012B`)
 
-## Execution Order
+## Execution Order (Finalized v0.1)
 
 - PR0000, PR0001, PR0002
 - PR0003-A, PR0003-B, PR0004, PR0005
 - PR0006, PR0007
 - PR0008, PR0009A, PR0009B, PR0009C, PR0009D
-- PR0010A, PR0010B, PR0010C, PR0010D
-- PR0011, PR0012, PR0012B, PR0013
-- PR0014, PR0015, PR0016
-- PR0017, PR0018
+- PR0010A, PR0010B, PR0010C1, PR0010C2, PR0010C3, PR0010C4, PR0010D
+- PR0017, PR0017A, PR0018
 
 ## PR Specs
 
@@ -60,23 +55,39 @@ See `docs/releases/v0.1/prs/`.
 - Completed: `PR-0009D` command execution flow (`new note/task/schedule`)
 - Completed: `PR-0010A` unified Single Entry panel UI shell
 - Completed: `PR-0010B` notes/tags core + FFI contracts (including markdown preview hook)
+- Completed: `PR-0010C1` notes shell baseline (`NoteExplorer` + `NoteTabManager` + `NoteContentArea`) with fixed left-right split, multi-tab state, and back-to-workbench action
 - Completed: `PR-0018` API contract docs guard (CI gate for contract/doc sync)
-- Next: `PR-0010C` notes/tags Flutter UI integration
+- Remaining:
+  - `PR-0010C2` note editor + create/select flow
+  - `PR-0010C3` note autosave + switch flush
+  - `PR-0010C4` tag-filter integration closure
+  - `PR-0010D` hardening and closure
+  - `PR-0017A` debug viewer readability baseline
 
 Execution note:
 
 - Workbench remains the default homepage and debug log viewer.
 - Single Entry is introduced as a Workbench-internal tool (button-triggered), not a homepage replacement.
-- Planned transition: `PR-0012B` will promote Single Entry to primary home entry and move Workbench to a secondary menu.
 
-## Optimization Notes (Post-PR0018)
+## Deferred Backlog (Post-v0.1)
 
-To reduce delivery risk, remaining PRs follow a "core/FFI first, UI second" split strategy:
+- `PR-0011` tasks views
+- `PR-0012` calendar minimal
+- `PR-0013` reminders (Windows)
+- `PR-0014` local task-calendar projection baseline
+- `PR-0015` Google Calendar provider plugin track
+- `PR-0016` export/import
 
-- PR-0010: notes/tag core contracts first, then notes UI/editor.
-- PR-0010A: lock unified single-entry floating panel appearance/behavior before note feature UI.
-- PR-0011: task section queries first, then tasks page and interactions.
-- PR-0012: calendar scheduling contracts first, then day/week views.
-- PR-0012B: switch app home entry from Workbench to Single Entry while preserving diagnostics access path.
-- PR-0014 and PR-0015: auth/state foundation before full sync behavior.
-- PR-0016: export path first, then import + reindex flow.
+## Plan Hygiene Notes
+
+- `PR-0012B` was referenced in this file but has no spec file in `docs/releases/v0.1/prs/`.
+- To avoid drift, it is removed from v0.1 execution plan.
+- If reintroduced, it should be added as a fully specified post-v0.1 PR.
+
+## Optimization Notes (Current)
+
+To reduce risk and lock v0.1 quality:
+
+- Keep remaining work inside `PR-0010C2/C3/C4/D` + `PR-0017A` only.
+- Preserve "core/FFI first, UI second" sequencing within notes flow.
+- Freeze new feature intake into v0.1 until `PR-0010D` and `PR-0017A` close.

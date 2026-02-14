@@ -1,5 +1,23 @@
 ## TODO: Link & Workspace Launcher (local paths + web links)
 
+## Release/PR Mapping (2026-02-14)
+
+* [x] `v0.2 / PR-0212-links-index-open-v1`:
+  * [x] P0 syntax baseline (Markdown links + supported target types)
+  * [x] P0 data model/index + query API
+  * [x] P0 safe open baseline (`http/https/file`, Windows first)
+  * [x] P1 partial UI baseline (link list/search/open entry)
+* [x] `v0.3 / PR-0307-workspace-launcher-experience`:
+  * [x] P1 Workspace Launcher + `Open All` + safety cap + ordering
+  * [x] P1 Single Entry bridge (`> open`, `> workspace`)
+* [ ] `v1.0 / PR-1006-links-launcher-cross-platform-and-whitelist`:
+  * [ ] P2 cross-platform parity (`open`/`xdg-open`)
+  * [ ] P2 optional scheme whitelist hardening
+
+Notes:
+
+* P2 link health checks and export/import linkage are backlog candidates by default, unless pulled into a later release scope.
+
 ### P0 — 需求与语法设计
 
 * [ ] 定义支持的链接类型（v1）

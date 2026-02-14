@@ -1,7 +1,7 @@
 # PR-0010-notes-tags
 
 - Proposed title: `feat(notes): markdown note flow + tag filter baseline`
-- Status: Planned (umbrella)
+- Status: In Progress (v0.1 primary closure umbrella)
 
 ## Goal
 
@@ -9,6 +9,11 @@ Deliver the first usable note workflow in v0.1:
 
 - create/edit/list notes
 - attach and filter by tags
+
+## Release Role
+
+`PR-0010` is the primary remaining feature closure track for v0.1.
+Other non-notes tracks are deferred post-v0.1.
 
 ## Scope (v0.1)
 
@@ -37,11 +42,25 @@ PR-0010 is executed as 4 smaller PRs:
 - `PR-0010D`: hardening, regression tests, docs closure
   - spec: `docs/releases/v0.1/prs/PR-0010D-notes-tags-hardening.md`
 
+PR-0010C is executed internally as 4 delivery slices:
+
+- `PR-0010C1`: Notes host + list baseline
+  - spec: `docs/releases/v0.1/prs/PR-0010C1-notes-host-list-baseline.md`
+- `PR-0010C2`: editor + create/select flow
+  - spec: `docs/releases/v0.1/prs/PR-0010C2-note-editor-create-select.md`
+- `PR-0010C3`: `1.5s` debounced auto-save + switch flush
+  - spec: `docs/releases/v0.1/prs/PR-0010C3-note-autosave-switch-flush.md`
+- `PR-0010C4`: single-tag filter + integration test closure
+  - spec: `docs/releases/v0.1/prs/PR-0010C4-tag-filter-integration-closure.md`
+
 ## Current State
 
 - `PR-0010A`: completed
 - `PR-0010B`: completed
-- `PR-0010C`: next
+- `PR-0010C1`: completed
+- `PR-0010C2`: next
+- `PR-0010C3`: pending
+- `PR-0010C4`: pending
 - `PR-0010D`: pending
 
 ## Phase Summary (B/C/D)
@@ -66,14 +85,20 @@ Pre-landing checks:
 Purpose:
 
 - replace Notes placeholder with usable list/editor/filter flow
+- establish extractable Notes shell baseline (`NoteExplorer`/`NoteTabManager`/`NoteContentArea`)
 
 Expected effect:
 
 - user can create/edit notes and filter list by one tag in Workbench Notes section
+- Notes feature can later be moved out of Workbench with minimal routing change
 
 Pre-landing checks:
 
 - PR-0010B APIs stable and generated bindings refreshed
+- product decisions locked:
+  - save strategy: `1.5s` debounced auto-save
+  - switch note: force flush pending save, no confirmation dialog
+  - create note: auto-select + autofocus editor
 
 ### PR-0010D (Hardening + Closure)
 
@@ -93,12 +118,19 @@ Pre-landing checks:
 
 1. Land `PR-0010A` (Single Entry UI shell behavior/appearance lock).
 2. Land `PR-0010B` (core + FFI APIs for notes/tags).
-3. Land `PR-0010C` (notes/tags Flutter pages + controller wiring).
-4. Land `PR-0010D` (error-path polish, tests, docs sync).
+3. Land `PR-0010C1` (Notes host + list baseline).
+4. Land `PR-0010C2` (editor + create/select flow).
+5. Land `PR-0010C3` (`1.5s` auto-save + switch flush).
+6. Land `PR-0010C4` (tag filter + integration closure).
+7. Land `PR-0010D` (error-path polish, tests, docs sync).
 
 ## Planned File Changes (B/C/D focus)
 
 - [add] `apps/lazynote_flutter/lib/features/notes/notes_page.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/note_tab_manager.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/note_content_area.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/notes_style.dart`
 - [add] `apps/lazynote_flutter/lib/features/notes/note_editor.dart`
 - [add] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`
 - [add] `apps/lazynote_flutter/lib/features/tags/tag_filter.dart`
@@ -106,6 +138,7 @@ Pre-landing checks:
 - [add] `crates/lazynote_core/src/service/note_service.rs`
 - [edit] `crates/lazynote_ffi/src/api.rs`
 - [add] `apps/lazynote_flutter/test/notes_flow_test.dart`
+- [add] `apps/lazynote_flutter/test/notes_controller_tabs_test.dart`
 
 ## Dependencies
 

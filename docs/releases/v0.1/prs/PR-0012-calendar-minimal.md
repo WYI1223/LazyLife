@@ -1,13 +1,18 @@
 # PR-0012-calendar-minimal
 
 - Proposed title: `feat(calendar): minimal day/week schedule views`
-- Status: Planned (optimized)
+- Status: Deferred (post-v0.1)
 
 ## Goal
 
 Deliver a minimal calendar experience that can visualize and create schedules.
 
-## Scope (v0.1)
+## Deferral Reason
+
+v0.1 has been narrowed to notes-first + diagnostics-readability closure (`PR-0010C2/C3/C4/D`, `PR-0017A`).
+This PR remains a post-v0.1 backlog candidate.
+
+## Scope (post-v0.1 backlog)
 
 In scope:
 
