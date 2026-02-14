@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/features/notes/note_editor.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 
@@ -13,10 +13,7 @@ class NoteContentArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: kNotesCanvasBackground,
-        borderRadius: BorderRadius.circular(0),
-      ),
+      decoration: const BoxDecoration(color: kNotesCanvasBackground),
       child: _buildContent(context),
     );
   }
@@ -60,153 +57,224 @@ class NoteContentArea extends StatelessWidget {
             text: 'Select a note to continue.',
           );
         }
+        if (controller.detailErrorMessage case final error?) {
+          return _detailErrorState(context, error: error);
+        }
         final note = controller.selectedNote;
-        return SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              // Why: keep readable document line length on wide desktop windows.
-              constraints: const BoxConstraints(maxWidth: 860),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(26, 20, 26, 28),
-                child: Column(
-                  key: const Key('notes_detail_placeholder'),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Vibe Coding for LazyLife > Private',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: kNotesSecondaryText),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    key: const Key(
-                                      'notes_detail_refresh_button',
-                                    ),
-                                    tooltip: 'Refresh detail',
-                                    onPressed: controller.refreshSelectedDetail,
-                                    icon: const Icon(
-                                      Icons.refresh,
-                                      color: kNotesSecondaryText,
-                                    ),
-                                    iconSize: 18,
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  _TopActionButton(
-                                    label: 'Share',
-                                    onPressed: () {},
-                                  ),
-                                  _TopActionButton(
-                                    icon: Icons.star_border,
-                                    onPressed: () {},
-                                  ),
-                                  _TopActionButton(
-                                    icon: Icons.more_horiz,
-                                    onPressed: () {},
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (controller.detailLoading)
-                          const SizedBox(
-                            key: Key('notes_detail_loading'),
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _MetaChip(label: 'Add icon', onPressed: () {}),
-                        _MetaChip(label: 'Add cover', onPressed: () {}),
-                        _MetaChip(label: 'Add comment', onPressed: () {}),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    if (controller.detailErrorMessage case final error?) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: kNotesErrorBackground,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+        if (note == null && controller.detailLoading) {
+          return const Center(
+            child: SizedBox(
+              key: Key('notes_detail_loading'),
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.2),
+            ),
+          );
+        }
+        if (note == null) {
+          return _statusPlaceholder(
+            context,
+            text: 'Detail data is not available yet.',
+          );
+        }
+
+        final saveError = controller.saveErrorMessage;
+        return Center(
+          child: ConstrainedBox(
+            // Why: keep readable document line length on wide desktop windows.
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(26, 20, 26, 28),
+              child: Column(
+                key: const Key('notes_detail_editor'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
                         child: Text(
-                          error,
-                          key: const Key('notes_detail_error'),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: kNotesPrimaryText),
+                          'Vibe Coding for LazyLife > Private',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: kNotesSecondaryText),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      FilledButton.tonal(
-                        key: const Key('notes_detail_retry_button'),
-                        onPressed: controller.refreshSelectedDetail,
-                        child: const Text('Retry detail'),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (note != null) ...[
-                      Text(
-                        _titleForNote(note),
-                        key: const Key('notes_detail_title'),
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              color: kNotesPrimaryText,
-                              fontWeight: FontWeight.w700,
-                              height: 1.15,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _SaveStatusWidget(controller: controller),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  key: const Key('notes_detail_refresh_button'),
+                                  tooltip: 'Refresh detail',
+                                  onPressed: controller.refreshSelectedDetail,
+                                  icon: const Icon(
+                                    Icons.refresh,
+                                    color: kNotesSecondaryText,
+                                  ),
+                                  iconSize: 18,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                _TopActionButton(
+                                  label: 'Share',
+                                  onPressed: () {},
+                                ),
+                                _TopActionButton(
+                                  icon: Icons.star_border,
+                                  onPressed: () {},
+                                ),
+                                _TopActionButton(
+                                  icon: Icons.more_horiz,
+                                  onPressed: () {},
+                                ),
+                              ],
                             ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Updated ${_formatAbsoluteTime(note.updatedAt)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: kNotesSecondaryText,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _documentBody(note),
-                        key: const Key('notes_detail_preview'),
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: kNotesPrimaryText,
-                          height: 1.55,
+                      if (controller.detailLoading)
+                        const SizedBox(
+                          key: Key('notes_detail_loading'),
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                      ),
-                    ] else ...[
-                      Text(
-                        'Detail data is not available yet.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: kNotesSecondaryText,
-                        ),
-                      ),
                     ],
+                  ),
+                  if (controller.switchBlockErrorMessage
+                      case final guardError?) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      key: const Key('notes_switch_block_error_banner'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      color: kNotesErrorBackground,
+                      child: Text(
+                        guardError,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
-                ),
+                  if (controller.noteSaveState == NoteSaveState.error &&
+                      saveError != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      key: const Key('notes_save_error_banner'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      color: kNotesErrorBackground,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 14,
+                            color: Colors.redAccent,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              saveError,
+                              softWrap: true,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _MetaChip(label: 'Add icon', onPressed: () {}),
+                      _MetaChip(label: 'Add cover', onPressed: () {}),
+                      _MetaChip(label: 'Add comment', onPressed: () {}),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    controller.titleForTab(note.atomId),
+                    key: const Key('notes_detail_title'),
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: kNotesPrimaryText,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Updated ${_formatAbsoluteTime(note.updatedAt)}',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: NoteEditor(
+                      key: ValueKey<String>('note_editor_$atomId'),
+                      content: controller.activeDraftContent,
+                      focusRequestId: controller.editorFocusRequestId,
+                      onChanged: controller.updateActiveDraft,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         );
     }
+  }
+
+  Widget _detailErrorState(BuildContext context, {required String error}) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            key: const Key('notes_detail_error_center'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                error,
+                key: const Key('notes_detail_error'),
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: kNotesPrimaryText),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                key: const Key('notes_detail_retry_button'),
+                onPressed: controller.refreshSelectedDetail,
+                child: const Text('Retry detail'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -239,6 +307,99 @@ class _TopActionButton extends StatelessWidget {
   }
 }
 
+class _SaveStatusWidget extends StatelessWidget {
+  const _SaveStatusWidget({required this.controller});
+
+  final NotesController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (controller.noteSaveState) {
+      case NoteSaveState.clean:
+        if (!controller.showSavedBadge) {
+          return const SizedBox(
+            key: Key('notes_save_status_idle'),
+            width: 1,
+            height: 1,
+          );
+        }
+        return Row(
+          key: const Key('notes_save_status_saved'),
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.check, size: 14, color: Color(0xFF2E7D32)),
+            SizedBox(width: 4),
+            Text('Saved'),
+          ],
+        );
+      case NoteSaveState.dirty:
+        return Row(
+          key: const Key('notes_save_status_dirty'),
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.circle, size: 7, color: kNotesSecondaryText),
+            SizedBox(width: 5),
+            Text('Unsaved'),
+          ],
+        );
+      case NoteSaveState.saving:
+        return Row(
+          key: const Key('notes_save_status_saving'),
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 1.8),
+            ),
+            SizedBox(width: 6),
+            Text('Saving...'),
+          ],
+        );
+      case NoteSaveState.error:
+        final fullError = controller.saveErrorMessage ?? 'Save failed';
+        return Row(
+          key: const Key('notes_save_status_error'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Tooltip(
+              message: fullError,
+              child: const Icon(
+                Icons.error_outline,
+                size: 14,
+                color: Colors.redAccent,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              // Why: keep top-right action row stable; long backend error text
+              // is rendered by the dedicated save-error banner below.
+              'Save failed',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.redAccent),
+            ),
+            const SizedBox(width: 6),
+            TextButton(
+              key: const Key('notes_save_retry_button'),
+              onPressed: () {
+                controller.retrySaveCurrentDraft();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        );
+    }
+  }
+}
+
 class _MetaChip extends StatelessWidget {
   const _MetaChip({required this.label, required this.onPressed});
 
@@ -258,46 +419,6 @@ class _MetaChip extends StatelessWidget {
       child: Text(label),
     );
   }
-}
-
-String _titleForNote(rust_api.NoteItem note) {
-  final lines = note.content.split(RegExp(r'\r?\n'));
-  for (final line in lines) {
-    final trimmed = line.trim();
-    if (trimmed.isEmpty) {
-      continue;
-    }
-    final withoutHeading = trimmed.replaceFirst(RegExp(r'^#+\s*'), '').trim();
-    final normalized = withoutHeading.isEmpty ? trimmed : withoutHeading;
-    if (normalized.length <= 80) {
-      return normalized;
-    }
-    return '${normalized.substring(0, 80)}...';
-  }
-  return 'Untitled';
-}
-
-String _documentBody(rust_api.NoteItem note) {
-  final content = note.content.trim();
-  if (content.isNotEmpty) {
-    return content;
-  }
-  return _previewForNote(note);
-}
-
-String _previewForNote(rust_api.NoteItem note) {
-  final preview = note.previewText?.trim();
-  if (preview != null && preview.isNotEmpty) {
-    return preview;
-  }
-  final normalized = note.content.replaceAll(RegExp(r'\s+'), ' ').trim();
-  if (normalized.isEmpty) {
-    return 'No preview available.';
-  }
-  if (normalized.length <= 120) {
-    return normalized;
-  }
-  return '${normalized.substring(0, 120)}...';
 }
 
 String _formatAbsoluteTime(int epochMs) {
