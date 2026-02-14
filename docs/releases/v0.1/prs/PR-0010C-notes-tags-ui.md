@@ -1,7 +1,7 @@
 # PR-0010C-notes-tags-ui
 
 - Proposed title: `feat(notes-ui): notes list/editor and tag filter integration`
-- Status: Planned
+- Status: In Progress (C1 done; C2/C3/C4 pending)
 
 ## Goal
 
@@ -11,21 +11,11 @@ Build the first usable Notes UI on top of PR-0010B contracts:
 - edit note content
 - filter by one tag
 
-## Scope (v0.1)
+## Product Decisions (Locked)
 
-In scope:
-
-- Notes page replaces current Notes placeholder route
-- list panel + editor panel baseline layout
-- create note, select note, edit/save note
-- single-tag filter selector and clear action
-- loading/error/empty states
-
-Out of scope:
-
-- markdown preview renderer
-- editor formatting toolbar
-- multi-tag boolean filter builder
+1. Save strategy: `1.5s` debounced auto-save.
+2. Switch behavior: when switching note, force flush pending save without confirmation dialog.
+3. Create behavior: creating a note auto-selects it and autofocuses editor input.
 
 ## UX Requirements (Locked)
 
@@ -37,24 +27,118 @@ Out of scope:
    - clear returns to full list
 5. Failure states must be explicit and recoverable (retry/manual refresh).
 
-## Step-by-Step
+## Architecture Contracts (Locked)
 
-1. Add notes controller for list/detail/filter state.
-2. Wire FFI invokers from PR-0010B APIs into controller.
-3. Implement notes list view (loading/empty/error/success states).
-4. Implement note editor view (content edit + save action).
-5. Implement tag filter UI (chip/dropdown style, single-select).
-6. Ensure save/refresh updates list and detail consistently.
-7. Add widget tests for:
-   - load + render
-   - select + edit + save
-   - single-tag filter apply/clear
-   - error and retry path
-8. Run quality gates.
+1. Notes feature is composed as shell slots:
+   - `NoteExplorer` (left)
+   - `NoteTabManager` (top)
+   - `NoteContentArea` (center)
+2. State model must support multi-instance note sessions:
+   - `openNoteIds[]`
+   - `activeNoteId`
+3. Explorer data model must reserve folder hierarchy recursion even when v0.1 currently renders one folder level.
+4. Explorer emits open-note requests; tab manager decides activate/open/close transitions; content area only renders by `activeNoteId`.
 
-## Planned File Changes
+## Visual Blueprint (Product Input)
+
+Target visual structure follows a two-column document layout inside a desktop shell:
+
+1. Top window bar:
+   - sidebar toggle icon
+   - tab strip (active and inactive tabs)
+   - desktop window controls (minimize, maximize, close)
+2. Left sidebar:
+   - workspace switcher
+   - primary navigation
+   - section headers and page tree
+   - utility and settings actions
+3. Main content area:
+   - breadcrumbs and page header actions
+   - document properties actions
+   - large page title
+   - markdown-oriented editor body with readable line spacing
+
+## Detailed Component Breakdown
+
+### A) Top Window Bar
+
+1. Leading actions:
+   - sidebar toggle icon
+2. Tab strip:
+   - inactive tab visual style
+   - active tab visual style
+   - close action (`X`) on active tab
+   - add tab action (`+`)
+3. Window controls:
+   - minimize
+   - maximize/restore
+   - close
+
+### B) Left Sidebar (Navigation and Workspace)
+
+1. Workspace switcher:
+   - current workspace/account label
+   - new page quick action
+2. Primary navigation:
+   - search
+   - home
+   - inbox (supports badge)
+   - library (supports feature label such as alpha)
+3. Section headers and page tree:
+   - recents
+   - shared
+   - private
+   - current page highlight
+4. Utility and settings:
+   - app shortcuts area
+   - settings and members entry
+   - trash entry
+   - help action near lower-left anchor
+
+### C) Main Content Area (Document Editor)
+
+1. Breadcrumbs and page header:
+   - path breadcrumbs
+   - right-side page actions (share, star, more)
+2. Document properties area:
+   - add icon
+   - add cover
+   - add comment
+3. Page title:
+   - large-weight title line
+4. Editor body:
+   - markdown-oriented paragraph editing
+   - clear line-height and paragraph spacing
+   - supports long-form requirement text editing
+
+## v0.1 Mapping Rules (Locked)
+
+1. Workbench shell remains host in v0.1. Shell-level chrome (top bar, global sidebar) is not rebuilt by PR-0010C.
+2. PR-0010C focuses on Notes feature content mounted in existing shell content region.
+3. Visual blueprint above is applied to the Notes page composition and styling language where scope allows.
+4. Any shell-level redesign beyond current host is deferred to a future shell/navigation PR.
+
+## Execution Specs (Split Files)
+
+1. `PR-0010C1`: `docs/releases/v0.1/prs/PR-0010C1-notes-host-list-baseline.md`
+2. `PR-0010C2`: `docs/releases/v0.1/prs/PR-0010C2-note-editor-create-select.md`
+3. `PR-0010C3`: `docs/releases/v0.1/prs/PR-0010C3-note-autosave-switch-flush.md`
+4. `PR-0010C4`: `docs/releases/v0.1/prs/PR-0010C4-tag-filter-integration-closure.md`
+
+## Pre-Landing Checklist
+
+1. PR-0010B FFI contracts and generated bindings are up to date.
+2. Error code handling in Flutter is aligned with `docs/api/error-codes.md`.
+3. Notes list sort contract is confirmed as backend `updated_at DESC`.
+4. Autosave timer policy (`1.5s`) and switch flush behavior are implemented exactly as locked decisions.
+
+## Planned File Changes (C-stage aggregate)
 
 - [add] `apps/lazynote_flutter/lib/features/notes/notes_page.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/note_tab_manager.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/note_content_area.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/notes_style.dart`
 - [add] `apps/lazynote_flutter/lib/features/notes/note_editor.dart`
 - [add] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`
 - [add] `apps/lazynote_flutter/lib/features/tags/tag_filter.dart`

@@ -50,6 +50,8 @@ Show local rolling logs directly in Workbench so developers can inspect runtime 
   - lifecycle-aware refresh pause/resume for background/foreground transitions
   - refresh coalescing to avoid queue buildup when overlap happens
   - large-file tail-window reads to avoid repeated full-file decoding
+- Follow-up in v0.1 planning:
+  - `PR-0017A` adds readability baseline (timestamp normalization + severity color) without changing refresh pipeline.
 - Added tests:
   - concurrent refresh ordering (`debug_logs_panel_test.dart`)
   - overlapping refresh coalescing (`debug_logs_panel_test.dart`)

@@ -6,7 +6,8 @@ This document defines compliance and safety requirements for Google Calendar int
 
 Current status:
 
-- integration implementation is planned (`PR-0014`, `PR-0015`)
+- provider SPI contract is planned as baseline (`PR-0215`)
+- Google integration is planned as provider plugin (`PR-0309`)
 - requirements below are the mandatory baseline before release
 
 ## Compliance Principles
@@ -78,8 +79,10 @@ If token leakage or suspected compromise occurs:
 
 ## References
 
-- `docs/releases/v0.1/prs/PR-0014-gcal-auth-one-way.md`
-- `docs/releases/v0.1/prs/PR-0015-gcal-two-way-incremental.md`
+- `docs/releases/v0.1/prs/PR-0014-local-task-calendar-projection.md`
+- `docs/releases/v0.1/prs/PR-0015-google-calendar-provider-plugin.md`
+- `docs/releases/v0.2/prs/PR-0215-provider-spi-and-sync-contract.md`
+- `docs/releases/v0.3/prs/PR-0309-google-calendar-provider-plugin.md`
 - `docs/architecture/sync-protocol.md`
 - `docs/architecture/logging.md`
 - `SECURITY.md`

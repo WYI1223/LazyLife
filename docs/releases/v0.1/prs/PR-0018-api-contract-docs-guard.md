@@ -1,5 +1,8 @@
 # PR-0018 API Contract Docs Guard
 
+- Proposed title: `chore(ci): add API contract docs guard`
+- Status: Completed
+
 ## Goal
 
 Add an automatic PR gate that prevents API contract changes from being merged without synchronized documentation updates.

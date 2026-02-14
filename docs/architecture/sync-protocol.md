@@ -8,6 +8,7 @@ Current status:
 
 - v0.1 sync protocol is partially prepared at schema level.
 - Full provider sync engine is not implemented yet.
+- Sync architecture is being shifted to provider SPI + provider plugin model.
 
 ## Design Goals
 
@@ -18,7 +19,7 @@ Current status:
 
 ## Scope by Version
 
-### v0.1 (current + planned PRs)
+### v0.1 (current + deferred PRs)
 
 Already implemented:
 
@@ -27,12 +28,19 @@ Already implemented:
 
 Planned in draft PRs:
 
-- PR-0014: OAuth + one-way bootstrap pull
-- PR-0015: two-way incremental sync with `syncToken` and provider mapping
+- PR-0014: local task-calendar projection baseline (provider-agnostic)
+- PR-0015: Google provider plugin track (deferred, depends on provider SPI)
 
-### v0.2+
+### v0.2
+
+- provider SPI contract baseline (`auth/pull/push/conflict`)
+- capability-aware provider invocation guardrails
+- API lifecycle/deprecation baseline for sync/provider surfaces
+
+### v0.3+
 
 - better conflict UX and replay tooling
+- Google provider plugin implementation on SPI
 - broader provider support and reliability hardening
 
 ## Core Concepts
@@ -105,11 +113,13 @@ See: `docs/compliance/google-calendar.md` and `docs/compliance/privacy.md`.
 
 - CRDT-level multi-master merge implementation
 - remote telemetry upload
-- provider-agnostic universal sync abstraction in v0.1
+- production sandboxed third-party provider runtime in v0.1/v0.2
 
 ## References
 
-- `docs/releases/v0.1/prs/PR-0014-gcal-auth-one-way.md`
-- `docs/releases/v0.1/prs/PR-0015-gcal-two-way-incremental.md`
+- `docs/releases/v0.1/prs/PR-0014-local-task-calendar-projection.md`
+- `docs/releases/v0.1/prs/PR-0015-google-calendar-provider-plugin.md`
+- `docs/releases/v0.2/prs/PR-0215-provider-spi-and-sync-contract.md`
+- `docs/releases/v0.3/prs/PR-0309-google-calendar-provider-plugin.md`
 - `docs/architecture/data-model.md`
 - `docs/architecture/logging.md`
