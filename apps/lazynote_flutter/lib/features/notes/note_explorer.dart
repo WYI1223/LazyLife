@@ -78,6 +78,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final compact = constraints.maxWidth < 235;
+                  final reloadDisabled =
+                      widget.controller.creatingNote ||
+                      widget.controller.createTagApplyInFlight;
                   return Row(
                     children: [
                       const Icon(
@@ -135,7 +138,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
                       ),
                       IconButton(
                         tooltip: 'Retry',
-                        onPressed: widget.controller.retryLoad,
+                        onPressed: reloadDisabled
+                            ? null
+                            : widget.controller.retryLoad,
                         constraints: const BoxConstraints.tightFor(
                           width: 22,
                           height: 22,

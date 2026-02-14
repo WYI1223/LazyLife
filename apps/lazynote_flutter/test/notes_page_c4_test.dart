@@ -1228,4 +1228,402 @@ void main() {
     expect(retryCompleted, isTrue);
     expect(controller.noteById('note-1')?.tags, contains('urgent'));
   });
+
+  test('C4 create tag apply in-flight marks pending save work', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': note(
+        atomId: 'note-1',
+        content: '# Work Seed',
+        updatedAt: 2,
+        tags: const ['work'],
+      ),
+    };
+    final createTagApplyGate = Completer<void>();
+
+    final controller = NotesController(
+      prepare: () async {},
+      tagsListInvoker: () async {
+        return const rust_api.TagsListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          tags: ['work'],
+        );
+      },
+      notesListInvoker: ({tag, limit, offset}) async {
+        final items = store.values
+            .where((item) => tag == null || item.tags.contains(tag))
+            .toList();
+        return rust_api.NotesListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          appliedLimit: 50,
+          items: items,
+        );
+      },
+      noteCreateInvoker: ({required content}) async {
+        final created = note(
+          atomId: 'note-new',
+          content: content,
+          updatedAt: 3,
+          tags: const [],
+        );
+        store[created.atomId] = created;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: created,
+        );
+      },
+      noteSetTagsInvoker: ({required atomId, required tags}) async {
+        await createTagApplyGate.future;
+        final updated = note(
+          atomId: atomId,
+          content: store[atomId]?.content ?? '',
+          updatedAt: 4,
+          tags: tags,
+        );
+        store[atomId] = updated;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: updated,
+        );
+      },
+      noteGetInvoker: ({required atomId}) async {
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: store[atomId],
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    final applied = await controller.applyTagFilter('work');
+    expect(applied, isTrue);
+
+    final createFuture = controller.createNote();
+    for (var attempt = 0; attempt < 20; attempt += 1) {
+      if (controller.createTagApplyInFlight) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+    }
+
+    expect(controller.createTagApplyInFlight, isTrue);
+    expect(controller.hasPendingSaveWork, isTrue);
+
+    createTagApplyGate.complete();
+    await createFuture;
+  });
+
+  test('C4 loadNotes waits for pending create tag apply', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': note(
+        atomId: 'note-1',
+        content: '# Work Seed',
+        updatedAt: 2,
+        tags: const ['work'],
+      ),
+    };
+    final createTagApplyGate = Completer<void>();
+
+    final controller = NotesController(
+      prepare: () async {},
+      tagsListInvoker: () async {
+        return const rust_api.TagsListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          tags: ['work'],
+        );
+      },
+      notesListInvoker: ({tag, limit, offset}) async {
+        final items = store.values
+            .where((item) => tag == null || item.tags.contains(tag))
+            .toList();
+        return rust_api.NotesListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          appliedLimit: 50,
+          items: items,
+        );
+      },
+      noteCreateInvoker: ({required content}) async {
+        final created = note(
+          atomId: 'note-new',
+          content: content,
+          updatedAt: 3,
+          tags: const [],
+        );
+        store[created.atomId] = created;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: created,
+        );
+      },
+      noteSetTagsInvoker: ({required atomId, required tags}) async {
+        await createTagApplyGate.future;
+        final updated = note(
+          atomId: atomId,
+          content: store[atomId]?.content ?? '',
+          updatedAt: 4,
+          tags: tags,
+        );
+        store[atomId] = updated;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: updated,
+        );
+      },
+      noteGetInvoker: ({required atomId}) async {
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: store[atomId],
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    final applied = await controller.applyTagFilter('work');
+    expect(applied, isTrue);
+
+    final createFuture = controller.createNote();
+    for (var attempt = 0; attempt < 20; attempt += 1) {
+      if (controller.createTagApplyInFlight) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+    }
+    expect(controller.createTagApplyInFlight, isTrue);
+
+    var loadCompleted = false;
+    final loadFuture = controller.loadNotes().then((_) {
+      loadCompleted = true;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(loadCompleted, isFalse);
+
+    createTagApplyGate.complete();
+    await createFuture;
+    await loadFuture;
+    expect(loadCompleted, isTrue);
+  });
+
+  test('C4 retryLoad waits for pending create tag apply', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': note(
+        atomId: 'note-1',
+        content: '# Work Seed',
+        updatedAt: 2,
+        tags: const ['work'],
+      ),
+    };
+    final createTagApplyGate = Completer<void>();
+
+    final controller = NotesController(
+      prepare: () async {},
+      tagsListInvoker: () async {
+        return const rust_api.TagsListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          tags: ['work'],
+        );
+      },
+      notesListInvoker: ({tag, limit, offset}) async {
+        final items = store.values
+            .where((item) => tag == null || item.tags.contains(tag))
+            .toList();
+        return rust_api.NotesListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          appliedLimit: 50,
+          items: items,
+        );
+      },
+      noteCreateInvoker: ({required content}) async {
+        final created = note(
+          atomId: 'note-new',
+          content: content,
+          updatedAt: 3,
+          tags: const [],
+        );
+        store[created.atomId] = created;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: created,
+        );
+      },
+      noteSetTagsInvoker: ({required atomId, required tags}) async {
+        await createTagApplyGate.future;
+        final updated = note(
+          atomId: atomId,
+          content: store[atomId]?.content ?? '',
+          updatedAt: 4,
+          tags: tags,
+        );
+        store[atomId] = updated;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: updated,
+        );
+      },
+      noteGetInvoker: ({required atomId}) async {
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: store[atomId],
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    final applied = await controller.applyTagFilter('work');
+    expect(applied, isTrue);
+
+    final createFuture = controller.createNote();
+    for (var attempt = 0; attempt < 20; attempt += 1) {
+      if (controller.createTagApplyInFlight) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+    }
+    expect(controller.createTagApplyInFlight, isTrue);
+
+    var retryCompleted = false;
+    final retryFuture = controller.retryLoad().then((_) {
+      retryCompleted = true;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(retryCompleted, isFalse);
+
+    createTagApplyGate.complete();
+    await createFuture;
+    await retryFuture;
+    expect(retryCompleted, isTrue);
+  });
+
+  test('C4 flushPendingSave waits for pending create tag apply', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': note(
+        atomId: 'note-1',
+        content: '# Work Seed',
+        updatedAt: 2,
+        tags: const ['work'],
+      ),
+    };
+    final createTagApplyGate = Completer<void>();
+
+    final controller = NotesController(
+      prepare: () async {},
+      tagsListInvoker: () async {
+        return const rust_api.TagsListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          tags: ['work'],
+        );
+      },
+      notesListInvoker: ({tag, limit, offset}) async {
+        final items = store.values
+            .where((item) => tag == null || item.tags.contains(tag))
+            .toList();
+        return rust_api.NotesListResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          appliedLimit: 50,
+          items: items,
+        );
+      },
+      noteCreateInvoker: ({required content}) async {
+        final created = note(
+          atomId: 'note-new',
+          content: content,
+          updatedAt: 3,
+          tags: const [],
+        );
+        store[created.atomId] = created;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: created,
+        );
+      },
+      noteSetTagsInvoker: ({required atomId, required tags}) async {
+        await createTagApplyGate.future;
+        final updated = note(
+          atomId: atomId,
+          content: store[atomId]?.content ?? '',
+          updatedAt: 4,
+          tags: tags,
+        );
+        store[atomId] = updated;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: updated,
+        );
+      },
+      noteGetInvoker: ({required atomId}) async {
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: store[atomId],
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    final applied = await controller.applyTagFilter('work');
+    expect(applied, isTrue);
+
+    final createFuture = controller.createNote();
+    for (var attempt = 0; attempt < 20; attempt += 1) {
+      if (controller.createTagApplyInFlight) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+    }
+    expect(controller.createTagApplyInFlight, isTrue);
+
+    var flushCompleted = false;
+    final flushFuture = controller.flushPendingSave().then((value) {
+      flushCompleted = true;
+      return value;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(flushCompleted, isFalse);
+
+    createTagApplyGate.complete();
+    await createFuture;
+    expect(await flushFuture, isTrue);
+    expect(flushCompleted, isTrue);
+  });
 }

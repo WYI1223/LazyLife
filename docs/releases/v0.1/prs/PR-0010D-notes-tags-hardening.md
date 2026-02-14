@@ -1,7 +1,7 @@
 # PR-0010D-notes-tags-hardening
 
 - Proposed title: `chore(notes): hardening, regression tests, docs closure`
-- Status: In Progress
+- Status: Completed
 
 ## Goal
 
@@ -61,11 +61,12 @@ Out of scope:
    - `docs/api/*` and `docs/governance/API_COMPATIBILITY.md` (if contract changed)
 5. Run full quality gates and mark PR-0010 complete.
 
-## Landed in D1-D2
+## Landed in D1-D3
 
 1. Tag mutation ordering hardening:
    - serialized per-note tag writes in controller queue
    - guarded manual reload paths (`loadNotes` / `retryLoad`) to await pending tag writes
+   - contextual create tag-apply pending is now integrated into pending-save tracking, reload wait, and flush wait
 2. Filter safety hardening:
    - auto-clear stale selected filter when selected tag disappears from available tags
 3. Contextual create failure UX hardening:
@@ -74,6 +75,10 @@ Out of scope:
    - orphan note recovery visibility after clearing filter
    - manual reload vs tag-write queue concurrency
    - retry reload vs tag-write queue concurrency
+   - create tag-apply pending coverage for `hasPendingSaveWork`, `loadNotes`, `retryLoad`, and `flushPendingSave`
+5. Release guard alignment:
+   - top and explorer reload entries are disabled while create or create-tag-apply is in flight
+   - full quality gates pass on both Rust and Flutter workspaces
 
 ## Planned File Changes
 
@@ -97,7 +102,7 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] No known high/medium note/tag flow regressions remain open.
-- [ ] Regression tests cover key async/order/error cases.
-- [ ] Docs and API compatibility records are synchronized.
-- [ ] PR-0010 umbrella is updated to completed state.
+- [x] No known high/medium note/tag flow regressions remain open.
+- [x] Regression tests cover key async/order/error cases.
+- [x] Docs and API compatibility records are synchronized.
+- [x] PR-0010 umbrella is updated to completed state.

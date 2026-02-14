@@ -145,6 +145,7 @@ class NotesController extends ChangeNotifier {
   bool _creatingNote = false;
   String? _createErrorMessage;
   String? _createWarningMessage;
+  Future<void>? _createTagApplyFuture;
 
   final List<String> _openNoteIds = <String>[];
   final Map<String, rust_api.NoteItem> _noteCache =
@@ -221,6 +222,9 @@ class NotesController extends ChangeNotifier {
   /// Non-fatal create warning (e.g. contextual tag apply failed).
   String? get createWarningMessage => _createWarningMessage;
 
+  /// Whether contextual create-tag apply is currently in flight.
+  bool get createTagApplyInFlight => _createTagApplyFuture != null;
+
   /// Returns and clears the latest non-fatal create warning.
   String? takeCreateWarningMessage() {
     final warning = _createWarningMessage;
@@ -244,6 +248,9 @@ class NotesController extends ChangeNotifier {
   ///
   /// Includes dirty drafts and in-flight save requests for all open tabs.
   bool get hasPendingSaveWork {
+    if (_createTagApplyFuture != null) {
+      return true;
+    }
     if (_activeNoteId case final active?) {
       if (_hasPendingSaveFor(active)) {
         return true;
@@ -302,6 +309,7 @@ class NotesController extends ChangeNotifier {
   /// - Resets existing tab/detail state before reloading.
   /// - Opens first loaded note as active tab when available.
   Future<void> loadNotes() async {
+    await _awaitCreateTagApply();
     await _awaitPendingTagMutations();
     await _loadNotes(
       resetSession: true,
@@ -312,6 +320,7 @@ class NotesController extends ChangeNotifier {
 
   /// Retries notes list for current filter without resetting opened tabs.
   Future<void> retryLoad() async {
+    await _awaitCreateTagApply();
     await _awaitPendingTagMutations();
     await _loadNotes(
       resetSession: false,
@@ -385,6 +394,7 @@ class NotesController extends ChangeNotifier {
   /// - Returns `false` when latest draft cannot be persisted.
   /// - Keeps in-memory draft unchanged on failure.
   Future<bool> flushPendingSave() async {
+    await _awaitCreateTagApply(timeout: const Duration(milliseconds: 800));
     final atomId = _activeNoteId;
     if (atomId == null) {
       return true;
@@ -499,15 +509,29 @@ class NotesController extends ChangeNotifier {
       }
       var createdNote = created;
       if (_selectedTag case final activeTag?) {
-        final tagged = await _noteSetTagsInvoker(
+        final taggedFuture = _noteSetTagsInvoker(
           atomId: created.atomId,
           tags: <String>[activeTag],
         );
-        if (tagged.ok && tagged.note != null) {
-          createdNote = tagged.note!;
-        } else {
-          _createWarningMessage =
-              'Note created, but applying active filter tag failed. Check All Notes.';
+        final pendingMarker = taggedFuture.then(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {},
+        );
+        _createTagApplyFuture = pendingMarker;
+        notifyListeners();
+        try {
+          final tagged = await taggedFuture;
+          if (tagged.ok && tagged.note != null) {
+            createdNote = tagged.note!;
+          } else {
+            _createWarningMessage =
+                'Note created, but applying active filter tag failed. Check All Notes.';
+          }
+        } finally {
+          if (identical(_createTagApplyFuture, pendingMarker)) {
+            _createTagApplyFuture = null;
+            notifyListeners();
+          }
         }
       }
 
@@ -656,6 +680,20 @@ class NotesController extends ChangeNotifier {
       }
       await Future.wait(snapshot.map((future) => future.catchError((_) {})));
     }
+  }
+
+  Future<void> _awaitCreateTagApply({Duration? timeout}) async {
+    final pending = _createTagApplyFuture;
+    if (pending == null) {
+      return;
+    }
+    try {
+      if (timeout == null) {
+        await pending;
+      } else {
+        await pending.timeout(timeout, onTimeout: () {});
+      }
+    } catch (_) {}
   }
 
   Future<bool> _setNoteTags({
@@ -1119,6 +1157,7 @@ class NotesController extends ChangeNotifier {
     _creatingNote = false;
     _createErrorMessage = null;
     _createWarningMessage = null;
+    _createTagApplyFuture = null;
     _autosaveTimer?.cancel();
     _savedBadgeTimer?.cancel();
     _noteSaveState = NoteSaveState.clean;

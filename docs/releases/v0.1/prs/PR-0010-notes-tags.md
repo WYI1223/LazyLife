@@ -1,7 +1,7 @@
 # PR-0010-notes-tags
 
 - Proposed title: `feat(notes): markdown note flow + tag filter baseline`
-- Status: In Progress (v0.1 primary closure umbrella)
+- Status: Completed (v0.1 primary closure umbrella)
 
 ## Goal
 
@@ -62,7 +62,7 @@ PR-0010C is executed internally as 4 delivery slices:
 - `PR-0010C2`: completed
 - `PR-0010C3`: completed
 - `PR-0010C4`: completed
-- `PR-0010D`: in progress (hardening + docs closure)
+- `PR-0010D`: completed
 
 ## Phase Summary (B/C/D)
 
@@ -156,7 +156,7 @@ Pre-landing checks:
 
 ## Acceptance Criteria
 
-- [ ] Note list/editor flow works end-to-end
-- [ ] Tag attach/detach/filter works on existing notes
-- [ ] API docs and compatibility docs are updated if contract changed
-- [ ] Tests added for core path and Flutter flow
+- [x] Note list/editor flow works end-to-end
+- [x] Tag attach/detach/filter works on existing notes
+- [x] API docs and compatibility docs are updated if contract changed
+- [x] Tests added for core path and Flutter flow
