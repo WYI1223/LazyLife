@@ -323,7 +323,11 @@ class _NotesPageState extends State<NotesPage>
                           IconButton(
                             key: const Key('notes_reload_button'),
                             tooltip: 'Reload notes',
-                            onPressed: _controller.loadNotes,
+                            onPressed:
+                                (_controller.creatingNote ||
+                                    _controller.createTagApplyInFlight)
+                                ? null
+                                : _controller.loadNotes,
                             icon: const Icon(
                               Icons.refresh,
                               color: kNotesPrimaryText,

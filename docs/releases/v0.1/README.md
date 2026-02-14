@@ -56,12 +56,12 @@ See `docs/releases/v0.1/prs/`.
 - Completed: `PR-0010A` unified Single Entry panel UI shell
 - Completed: `PR-0010B` notes/tags core + FFI contracts (including markdown preview hook)
 - Completed: `PR-0010C1` notes shell baseline (`NoteExplorer` + `NoteTabManager` + `NoteContentArea`) with fixed left-right split, multi-tab state, and back-to-workbench action
+- Completed: `PR-0010C2` note editor + create/select flow
+- Completed: `PR-0010C3` note autosave + switch flush
+- Completed: `PR-0010C4` tag-filter integration closure
+- Completed: `PR-0010D` notes/tags hardening + regression + docs closure
 - Completed: `PR-0018` API contract docs guard (CI gate for contract/doc sync)
 - Remaining:
-  - `PR-0010C2` note editor + create/select flow
-  - `PR-0010C3` note autosave + switch flush
-  - `PR-0010C4` tag-filter integration closure
-  - `PR-0010D` hardening and closure
   - `PR-0017A` debug viewer readability baseline
 
 Execution note:
@@ -88,6 +88,6 @@ Execution note:
 
 To reduce risk and lock v0.1 quality:
 
-- Keep remaining work inside `PR-0010C2/C3/C4/D` + `PR-0017A` only.
+- Keep remaining work inside `PR-0017A` only.
 - Preserve "core/FFI first, UI second" sequencing within notes flow.
-- Freeze new feature intake into v0.1 until `PR-0010D` and `PR-0017A` close.
+- Freeze new feature intake into v0.1 until `PR-0017A` closes.
