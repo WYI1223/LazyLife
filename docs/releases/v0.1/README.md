@@ -61,8 +61,8 @@ See `docs/releases/v0.1/prs/`.
 - Completed: `PR-0010C4` tag-filter integration closure
 - Completed: `PR-0010D` notes/tags hardening + regression + docs closure
 - Completed: `PR-0018` API contract docs guard (CI gate for contract/doc sync)
-- Remaining:
-  - `PR-0017A` debug viewer readability baseline
+- Completed: `PR-0017A` debug viewer readability baseline (timestamp column, severity colors, incomplete-line guard)
+- Remaining: none — v0.1 is closed
 
 Execution note:
 

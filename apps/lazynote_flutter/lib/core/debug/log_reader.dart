@@ -244,7 +244,16 @@ String _tailLines(String content, int maxLines) {
     return '';
   }
 
-  final lines = const LineSplitter().convert(content);
+  var lines = const LineSplitter().convert(content);
+  // Why: discard the last line when the raw content is not newline-terminated.
+  // flexi_logger uses BufferAndFlush write mode; a concurrent read may catch a
+  // partial line mid-flush, producing a truncated last entry in the viewer.
+  if (!content.endsWith('\n') && lines.isNotEmpty) {
+    lines = lines.sublist(0, lines.length - 1);
+  }
+  if (lines.isEmpty) {
+    return '';
+  }
   if (lines.length <= maxLines) {
     return lines.join('\n');
   }

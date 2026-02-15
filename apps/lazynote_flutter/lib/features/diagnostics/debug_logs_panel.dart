@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/core/debug/log_reader.dart';
+import 'package:lazynote_flutter/features/diagnostics/log_line_meta.dart';
 
 /// Inline live logs panel used across Workbench shell pages.
 class DebugLogsPanel extends StatefulWidget {
@@ -238,14 +240,17 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
       return const SelectableText('No log content available yet.');
     }
 
+    final lines = const LineSplitter().convert(snapshot.tailText);
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
       child: SingleChildScrollView(
         controller: _scrollController,
-        child: SelectableText(
-          snapshot.tailText,
-          key: const Key('workbench_debug_logs_text'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final line in lines) _LogLineRow(line: line),
+          ],
         ),
       ),
     );
@@ -349,5 +354,80 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
         ),
       ),
     );
+  }
+}
+
+/// Renders a single log line with a timestamp column and a severity-aware
+/// level badge.  Falls back to plain text for lines that do not match the
+/// expected [flexi_logger::detailed_format] format.
+class _LogLineRow extends StatelessWidget {
+  const _LogLineRow({required this.line});
+
+  final String line;
+
+  static const double _timestampWidth = 96;
+  static const double _levelWidth = 52;
+  static const double _fontSize = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = LogLineMeta.parse(line);
+    final rowBg = _rowBackground(meta.level);
+    final levelColor = _levelColor(context, meta.level);
+
+    return Container(
+      color: rowBg,
+      padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: _timestampWidth,
+            child: SelectableText(
+              meta.timestamp ?? '',
+              style: const TextStyle(fontSize: _fontSize),
+            ),
+          ),
+          const SizedBox(width: 4),
+          SizedBox(
+            width: _levelWidth,
+            child: SelectableText(
+              meta.level?.toUpperCase() ?? '',
+              style: TextStyle(
+                fontSize: _fontSize,
+                color: levelColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: SelectableText(
+              meta.message,
+              style: const TextStyle(fontSize: _fontSize),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color? _rowBackground(String? level) {
+    return switch (level) {
+      'error' => Colors.red.shade50,
+      'warn' => Colors.amber.shade50,
+      _ => null,
+    };
+  }
+
+  Color _levelColor(BuildContext context, String? level) {
+    return switch (level) {
+      'error' => Colors.red.shade700,
+      'warn' => Colors.orange.shade800,
+      'info' => Colors.green.shade700,
+      'debug' => Colors.blueGrey.shade600,
+      'trace' => Colors.grey.shade600,
+      _ => Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87,
+    };
   }
 }

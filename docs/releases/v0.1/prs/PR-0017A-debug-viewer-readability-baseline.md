@@ -1,7 +1,7 @@
 # PR-0017A-debug-viewer-readability-baseline
 
 - Proposed title: `feat(diagnostics): debug viewer readability baseline (timestamp + severity colors)`
-- Status: Planned
+- Status: Done
 
 ## Goal
 
@@ -33,11 +33,14 @@ Out of scope:
 
 ## Planned File Changes
 
+- [edit] `crates/lazynote_core/src/logging.rs` — add `.format_for_files(flexi_logger::detailed_format)`;
+  changes log format to `[YYYY-MM-DD HH:MM:SS.ffffff TZ] LEVEL [file:line] message`
 - [edit] `apps/lazynote_flutter/lib/features/diagnostics/debug_logs_panel.dart`
 - [edit] `apps/lazynote_flutter/lib/core/debug/log_reader.dart` — add incomplete-line guard:
   discard the last line of file content if it does not end with `\n` (review-02 §4.4)
-- [add] `apps/lazynote_flutter/lib/features/diagnostics/log_line_meta.dart` (optional)
+- [add] `apps/lazynote_flutter/lib/features/diagnostics/log_line_meta.dart`
 - [add/edit] `apps/lazynote_flutter/test/debug_logs_panel_test.dart`
+- [edit] `apps/lazynote_flutter/test/log_reader_test.dart`
 
 ## Dependencies
 
@@ -51,9 +54,9 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Debug log rows show a stable timestamp presentation.
-- [ ] Severity levels are visually distinct and readable in light theme.
-- [ ] Existing refresh stability behavior remains unchanged.
-- [ ] Log reader discards any incomplete trailing line (not ending with `\n`); tests verify
+- [x] Debug log rows show a stable timestamp presentation.
+- [x] Severity levels are visually distinct and readable in light theme.
+- [x] Existing refresh stability behavior remains unchanged.
+- [x] Log reader discards any incomplete trailing line (not ending with `\n`); tests verify
       no truncated rows appear under concurrent write simulation.
 

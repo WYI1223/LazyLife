@@ -158,6 +158,9 @@ Constraints:
 - Rust side:
   - structured logging is enabled
   - rolling appender is enabled (`10MB x 5`)
+  - log format: `flexi_logger::detailed_format` (added in PR-0017A)
+    - line format: `[YYYY-MM-DD HH:MM:SS.ffffff TZ] LEVEL [file:line] message`
+    - example: `[2026-02-15 10:23:45.123456 UTC] INFO [src/logging.rs:100] event=app_start`
   - startup + core operations emit metadata-only events
 - Flutter side:
   - computes `log_dir` via `path_provider`
@@ -173,8 +176,15 @@ Constraints:
     - periodic polling pauses while app is background/inactive and resumes on foreground
   - file-read safety:
     - for large rolling logs, diagnostics reads from file tail window instead of full-file reads
+    - incomplete trailing lines (not `\n`-terminated) are discarded before display
+  - log row rendering (added in PR-0017A):
+    - each row shows: `HH:MM:SS.mmm | LEVEL | message`
+    - severity colors: ERROR=red, WARN=amber, INFO=green, DEBUG=blue-grey, TRACE=grey
+    - row backgrounds: ERROR=red-50, WARN=amber-50, others=transparent
+    - best-effort parsing: unrecognised lines fall back to raw text in the message column
 
 See also: `docs/releases/v0.1/prs/PR-0017-workbench-debug-logs.md`.
+See also: `docs/releases/v0.1/prs/PR-0017A-debug-viewer-readability-baseline.md`.
 See also: `docs/development/bug-archive.md` (`BUG-2026-001`).
 
 ### Remaining gap (v0.1)
