@@ -92,6 +92,10 @@ pub fn init_logging(level: &str, log_dir: &str) -> Result<(), String> {
             )
             .write_mode(WriteMode::BufferAndFlush)
             .append()
+            // Why: detailed_format adds timestamp + file location, enabling the
+            // diagnostics viewer to parse and display a structured timestamp column.
+            // Format: [YYYY-MM-DD HH:MM:SS.ffffff TZ] LEVEL [file:line] message
+            .format_for_files(flexi_logger::detailed_format)
             .start()
             .map_err(|err| format!("failed to start logger: {err}"))?;
 

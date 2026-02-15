@@ -5,9 +5,8 @@ current implementation scope.
 
 ## Current Delivery Focus
 
-- Active scope: v0.1 closure (`PR-0017A` — debug viewer readability baseline)
-- Gate for v0.1.5: PR-0017A must merge first
-- Next: v0.1.5 (`PR-0011` — Atom Time-Matrix, Inbox/Today/Upcoming sections)
+- v0.1 closed (`PR-0017A` merged — debug viewer readability baseline)
+- Active scope: v0.1.5 (`PR-0011` — Atom Time-Matrix, Inbox/Today/Upcoming sections)
 
 ## Deferred from v0.1 / Landed in v0.1.5
 

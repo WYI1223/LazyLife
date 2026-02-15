@@ -63,9 +63,8 @@ v0.1 is considered complete when:
 - Completed:
   - PR-0000 to PR-0009D
   - PR-0010A, PR-0010B, PR-0010C1, PR-0010C2, PR-0010C3, PR-0010C4, PR-0010D
-  - PR-0017, PR-0018
-- Remaining:
-  - PR-0017A
+  - PR-0017, PR-0017A, PR-0018
+- Remaining: none — **v0.1 closed**
 
 ## Deferred Backlog (Post-v0.1)
 

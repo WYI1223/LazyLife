@@ -17,8 +17,8 @@
 
 ## M3 - v0.1 Closure (Notes + Diagnostics)
 
-- PR0010C2 ✓, PR0010C3 ✓, PR0010C4 ✓, PR0010D ✓, PR0017A
-- Status: Near complete — PR-0017A remaining
+- PR0010C2 ✓, PR0010C3 ✓, PR0010C4 ✓, PR0010D ✓, PR0017A ✓
+- Status: Completed
 
 ## M3.5 - v0.1.5 (Atom Time-Matrix)
 
