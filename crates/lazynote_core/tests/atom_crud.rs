@@ -129,18 +129,18 @@ fn validation_failure_blocks_create_and_update() {
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
     let mut invalid = Atom::new(AtomType::Event, "bad range");
-    invalid.event_start = Some(300);
-    invalid.event_end = Some(100);
+    invalid.start_at = Some(300);
+    invalid.end_at = Some(100);
 
     let create_err = repo.create_atom(&invalid).unwrap_err();
     assert!(matches!(create_err, RepoError::Validation(_)));
 
     let mut valid = Atom::new(AtomType::Event, "good range");
-    valid.event_start = Some(100);
-    valid.event_end = Some(200);
+    valid.start_at = Some(100);
+    valid.end_at = Some(200);
     repo.create_atom(&valid).unwrap();
 
-    valid.event_end = Some(50);
+    valid.end_at = Some(50);
     let update_err = repo.update_atom(&valid).unwrap_err();
     assert!(matches!(update_err, RepoError::Validation(_)));
 }

@@ -20,12 +20,12 @@ pub use logging::{default_log_level, init_logging, logging_status};
 pub use model::atom::{Atom, AtomId, AtomType, AtomValidationError, TaskStatus};
 /// Re-export repository contracts and SQLite implementation.
 pub use repo::atom_repo::{
-    AtomListQuery, AtomRepository, RepoError, RepoResult, SqliteAtomRepository,
+    AtomListQuery, AtomRepository, RepoError, RepoResult, SectionAtomRow, SqliteAtomRepository,
 };
 /// Re-export notes/tags repository models and implementation.
 pub use repo::note_repo::{
-    normalize_note_limit, normalize_tag, normalize_tags, NoteListQuery, NoteRecord, NoteRepository,
-    SqliteNoteRepository,
+    load_tags_for_atoms, normalize_note_limit, normalize_tag, normalize_tags, NoteListQuery,
+    NoteRecord, NoteRepository, SqliteNoteRepository,
 };
 /// Re-export search query/result models and search entry point.
 pub use search::fts::{search_all, SearchError, SearchHit, SearchQuery, SearchResult};
@@ -35,6 +35,8 @@ pub use service::atom_service::{AtomService, ScheduleEventRequest};
 pub use service::note_service::{
     derive_markdown_preview, MarkdownPreview, NoteService, NoteServiceError, NotesListResult,
 };
+/// Re-export task/section service facade and models.
+pub use service::task_service::{SectionAtom, TaskService, TaskServiceError};
 
 /// Minimal health-check API for early integration.
 pub fn ping() -> &'static str {

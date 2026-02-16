@@ -16,7 +16,7 @@ use crate::model::atom::{Atom, AtomId, AtomType};
 use crate::repo::atom_repo::{AtomRepository, RepoError, RepoResult, SqliteAtomRepository};
 use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, Transaction, TransactionBehavior};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 
 const NOTES_DEFAULT_LIMIT: u32 = 10;
@@ -328,6 +328,43 @@ fn load_tags_for_note(conn: &Connection, atom_uuid: &str) -> RepoResult<Vec<Stri
         tags.push(value.to_lowercase());
     }
     Ok(tags)
+}
+
+/// Loads tags for multiple atoms in a single query.
+///
+/// Returns a map from UUID string to sorted lowercase tag list.
+/// Atoms without tags will not appear in the map.
+/// Empty input returns an empty map without executing a query.
+pub fn load_tags_for_atoms(
+    conn: &Connection,
+    atom_uuids: &[String],
+) -> RepoResult<HashMap<String, Vec<String>>> {
+    if atom_uuids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let placeholders: Vec<&str> = atom_uuids.iter().map(|_| "?").collect();
+    let sql = format!(
+        "SELECT at.atom_uuid, t.name
+         FROM atom_tags at
+         INNER JOIN tags t ON t.id = at.tag_id
+         WHERE at.atom_uuid IN ({})
+         ORDER BY at.atom_uuid, t.name COLLATE NOCASE ASC;",
+        placeholders.join(", ")
+    );
+
+    let bind_values: Vec<Value> = atom_uuids.iter().map(|u| Value::Text(u.clone())).collect();
+
+    let mut stmt = conn.prepare(&sql)?;
+    let mut rows = stmt.query(params_from_iter(bind_values))?;
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+    while let Some(row) = rows.next()? {
+        let uuid: String = row.get(0)?;
+        let tag: String = row.get(1)?;
+        map.entry(uuid).or_default().push(tag.to_lowercase());
+    }
+
+    Ok(map)
 }
 
 fn note_exists_in_tx(tx: &Transaction<'_>, atom_uuid: &str) -> RepoResult<bool> {

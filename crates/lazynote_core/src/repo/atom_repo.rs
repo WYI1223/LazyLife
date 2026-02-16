@@ -29,8 +29,9 @@ const ATOM_SELECT_SQL: &str = "SELECT
     preview_text,
     preview_image,
     task_status,
-    event_start,
-    event_end,
+    start_at,
+    end_at,
+    recurrence_rule,
     hlc_timestamp,
     is_deleted
 FROM atoms";
@@ -120,6 +121,32 @@ impl From<rusqlite::Error> for RepoError {
     }
 }
 
+/// A row returned by section queries, wrapping the parsed `Atom` with `updated_at`
+/// which is not part of the domain model but is needed for FFI list items.
+#[derive(Debug, Clone)]
+pub struct SectionAtomRow {
+    /// The parsed atom entity.
+    pub atom: Atom,
+    /// Epoch ms timestamp from the `updated_at` column.
+    pub updated_at: i64,
+}
+
+/// SELECT columns for section queries (adds `updated_at` on top of ATOM_SELECT_SQL).
+const SECTION_SELECT_SQL: &str = "SELECT
+    uuid,
+    type,
+    content,
+    preview_text,
+    preview_image,
+    task_status,
+    start_at,
+    end_at,
+    recurrence_rule,
+    hlc_timestamp,
+    is_deleted,
+    updated_at
+FROM atoms";
+
 /// Query options for listing atoms.
 #[derive(Debug, Clone, Default)]
 pub struct AtomListQuery {
@@ -152,6 +179,49 @@ pub trait AtomRepository {
     ///
     /// This operation is idempotent for rows already marked deleted.
     fn soft_delete_atom(&self, id: AtomId) -> RepoResult<()>;
+
+    /// Returns atoms with both `start_at` and `end_at` NULL (timeless).
+    /// Excludes done/cancelled atoms.
+    fn fetch_inbox(&self, limit: u32, offset: u32) -> RepoResult<Vec<SectionAtomRow>>;
+
+    /// Returns atoms "active today" based on time-matrix rules.
+    /// `bod_ms` and `eod_ms` are device-local day boundaries in epoch ms.
+    /// Excludes done/cancelled atoms.
+    fn fetch_today(
+        &self,
+        bod_ms: i64,
+        eod_ms: i64,
+        limit: u32,
+        offset: u32,
+    ) -> RepoResult<Vec<SectionAtomRow>>;
+
+    /// Returns atoms anchored entirely in the future (after `eod_ms`).
+    /// Excludes done/cancelled atoms.
+    fn fetch_upcoming(
+        &self,
+        eod_ms: i64,
+        limit: u32,
+        offset: u32,
+    ) -> RepoResult<Vec<SectionAtomRow>>;
+
+    /// Updates `task_status` for any atom type (universal completion).
+    /// Pass `None` to clear status (demote to statusless).
+    /// Idempotent: setting the same status twice succeeds.
+    fn update_atom_status(&self, id: AtomId, status: Option<TaskStatus>) -> RepoResult<()>;
+
+    /// Returns atoms with both `start_at` and `end_at` set that overlap the given time range.
+    /// Includes all statuses (done/cancelled shown on calendar).
+    fn fetch_by_time_range(
+        &self,
+        range_start_ms: i64,
+        range_end_ms: i64,
+        limit: u32,
+        offset: u32,
+    ) -> RepoResult<Vec<SectionAtomRow>>;
+
+    /// Updates only `start_at` and `end_at` for a calendar event.
+    /// Validates `end_at >= start_at`; returns `RepoError::Validation(InvalidEventWindow)` on failure.
+    fn update_event_times(&self, id: AtomId, start_at: i64, end_at: i64) -> RepoResult<()>;
 }
 
 /// SQLite-backed atom repository.
@@ -195,11 +265,12 @@ impl AtomRepository for SqliteAtomRepository<'_> {
                 preview_text,
                 preview_image,
                 task_status,
-                event_start,
-                event_end,
+                start_at,
+                end_at,
+                recurrence_rule,
                 hlc_timestamp,
                 is_deleted
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
             params![
                 atom.uuid.to_string(),
                 atom_type_to_db(atom.kind),
@@ -207,8 +278,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
                 atom.preview_text.as_deref(),
                 atom.preview_image.as_deref(),
                 atom.task_status.map(task_status_to_db),
-                atom.event_start,
-                atom.event_end,
+                atom.start_at,
+                atom.end_at,
+                atom.recurrence_rule.as_deref(),
                 atom.hlc_timestamp.as_deref(),
                 bool_to_int(atom.is_deleted),
             ],
@@ -253,20 +325,22 @@ impl AtomRepository for SqliteAtomRepository<'_> {
                 preview_text = ?3,
                 preview_image = ?4,
                 task_status = ?5,
-                event_start = ?6,
-                event_end = ?7,
-                hlc_timestamp = ?8,
-                is_deleted = ?9,
+                start_at = ?6,
+                end_at = ?7,
+                recurrence_rule = ?8,
+                hlc_timestamp = ?9,
+                is_deleted = ?10,
                 updated_at = (strftime('%s', 'now') * 1000)
-             WHERE uuid = ?10;",
+             WHERE uuid = ?11;",
             params![
                 atom_type_to_db(atom.kind),
                 atom.content.as_str(),
                 atom.preview_text.as_deref(),
                 atom.preview_image.as_deref(),
                 atom.task_status.map(task_status_to_db),
-                atom.event_start,
-                atom.event_end,
+                atom.start_at,
+                atom.end_at,
+                atom.recurrence_rule.as_deref(),
                 atom.hlc_timestamp.as_deref(),
                 bool_to_int(atom.is_deleted),
                 atom.uuid.to_string(),
@@ -406,6 +480,214 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         );
         Err(RepoError::NotFound(id))
     }
+
+    fn fetch_inbox(&self, limit: u32, offset: u32) -> RepoResult<Vec<SectionAtomRow>> {
+        let sql = format!(
+            "{SECTION_SELECT_SQL}
+             WHERE start_at IS NULL
+               AND end_at IS NULL
+               AND (task_status IS NULL OR task_status NOT IN ('done', 'cancelled'))
+               AND is_deleted = 0
+             ORDER BY updated_at DESC, uuid ASC
+             LIMIT ?1 OFFSET ?2"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query(params![limit, offset])?;
+        let mut result = Vec::new();
+        while let Some(row) = rows.next()? {
+            result.push(parse_section_atom_row(row)?);
+        }
+        Ok(result)
+    }
+
+    fn fetch_today(
+        &self,
+        bod_ms: i64,
+        eod_ms: i64,
+        limit: u32,
+        offset: u32,
+    ) -> RepoResult<Vec<SectionAtomRow>> {
+        let sql = format!(
+            "{SECTION_SELECT_SQL}
+             WHERE is_deleted = 0
+               AND (task_status IS NULL OR task_status NOT IN ('done', 'cancelled'))
+               AND (
+                 (end_at IS NOT NULL AND end_at <= ?1 AND start_at IS NULL)
+                 OR (start_at IS NOT NULL AND end_at IS NULL AND start_at <= ?1)
+                 OR (start_at IS NOT NULL AND end_at IS NOT NULL
+                     AND start_at <= ?1 AND end_at >= ?2)
+               )
+             ORDER BY COALESCE(start_at, end_at) ASC, updated_at DESC
+             LIMIT ?3 OFFSET ?4"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query(params![eod_ms, bod_ms, limit, offset])?;
+        let mut result = Vec::new();
+        while let Some(row) = rows.next()? {
+            result.push(parse_section_atom_row(row)?);
+        }
+        Ok(result)
+    }
+
+    fn fetch_upcoming(
+        &self,
+        eod_ms: i64,
+        limit: u32,
+        offset: u32,
+    ) -> RepoResult<Vec<SectionAtomRow>> {
+        let sql = format!(
+            "{SECTION_SELECT_SQL}
+             WHERE is_deleted = 0
+               AND (task_status IS NULL OR task_status NOT IN ('done', 'cancelled'))
+               AND (
+                 (end_at IS NOT NULL AND end_at > ?1 AND start_at IS NULL)
+                 OR (start_at IS NOT NULL AND end_at IS NULL AND start_at > ?1)
+                 OR (start_at IS NOT NULL AND end_at IS NOT NULL AND start_at > ?1)
+               )
+             ORDER BY COALESCE(start_at, end_at) ASC, updated_at DESC
+             LIMIT ?2 OFFSET ?3"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query(params![eod_ms, limit, offset])?;
+        let mut result = Vec::new();
+        while let Some(row) = rows.next()? {
+            result.push(parse_section_atom_row(row)?);
+        }
+        Ok(result)
+    }
+
+    fn update_atom_status(&self, id: AtomId, status: Option<TaskStatus>) -> RepoResult<()> {
+        let started_at = Instant::now();
+        let status_db = status.map(task_status_to_db);
+
+        let changed = match self.conn.execute(
+            "UPDATE atoms
+             SET task_status = ?1,
+                 updated_at = (strftime('%s', 'now') * 1000)
+             WHERE uuid = ?2
+               AND is_deleted = 0;",
+            params![status_db, id.to_string()],
+        ) {
+            Ok(changed) => changed,
+            Err(err) => {
+                error!(
+                    "event=atom_update_status module=repo status=error atom_id={} duration_ms={} error_code=db_write_failed error={}",
+                    id,
+                    started_at.elapsed().as_millis(),
+                    err
+                );
+                return Err(err.into());
+            }
+        };
+
+        if changed == 0 {
+            warn!(
+                "event=atom_update_status module=repo status=error atom_id={} duration_ms={} error_code=not_found",
+                id,
+                started_at.elapsed().as_millis()
+            );
+            return Err(RepoError::NotFound(id));
+        }
+
+        info!(
+            "event=atom_update_status module=repo status=ok atom_id={} new_status={} duration_ms={}",
+            id,
+            status_db.unwrap_or("null"),
+            started_at.elapsed().as_millis()
+        );
+
+        Ok(())
+    }
+
+    fn fetch_by_time_range(
+        &self,
+        range_start_ms: i64,
+        range_end_ms: i64,
+        limit: u32,
+        offset: u32,
+    ) -> RepoResult<Vec<SectionAtomRow>> {
+        let sql = format!(
+            "{SECTION_SELECT_SQL}
+             WHERE start_at IS NOT NULL
+               AND end_at IS NOT NULL
+               AND start_at < ?1
+               AND end_at > ?2
+               AND is_deleted = 0
+             ORDER BY start_at ASC, end_at ASC
+             LIMIT ?3 OFFSET ?4"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query(params![range_end_ms, range_start_ms, limit, offset])?;
+        let mut result = Vec::new();
+        while let Some(row) = rows.next()? {
+            result.push(parse_section_atom_row(row)?);
+        }
+        Ok(result)
+    }
+
+    fn update_event_times(&self, id: AtomId, start_at: i64, end_at: i64) -> RepoResult<()> {
+        let started_at = Instant::now();
+
+        if end_at < start_at {
+            warn!(
+                "event=update_event_times module=repo status=error atom_id={} duration_ms={} error_code=validation_error",
+                id,
+                started_at.elapsed().as_millis()
+            );
+            return Err(RepoError::Validation(
+                AtomValidationError::InvalidEventWindow {
+                    start: start_at,
+                    end: end_at,
+                },
+            ));
+        }
+
+        let changed = match self.conn.execute(
+            "UPDATE atoms
+             SET start_at = ?1,
+                 end_at = ?2,
+                 updated_at = (strftime('%s', 'now') * 1000)
+             WHERE uuid = ?3
+               AND is_deleted = 0;",
+            params![start_at, end_at, id.to_string()],
+        ) {
+            Ok(changed) => changed,
+            Err(err) => {
+                error!(
+                    "event=update_event_times module=repo status=error atom_id={} duration_ms={} error_code=db_write_failed error={}",
+                    id,
+                    started_at.elapsed().as_millis(),
+                    err
+                );
+                return Err(err.into());
+            }
+        };
+
+        if changed == 0 {
+            warn!(
+                "event=update_event_times module=repo status=error atom_id={} duration_ms={} error_code=not_found",
+                id,
+                started_at.elapsed().as_millis()
+            );
+            return Err(RepoError::NotFound(id));
+        }
+
+        info!(
+            "event=update_event_times module=repo status=ok atom_id={} start_at={} end_at={} duration_ms={}",
+            id,
+            start_at,
+            end_at,
+            started_at.elapsed().as_millis()
+        );
+
+        Ok(())
+    }
+}
+
+fn parse_section_atom_row(row: &Row<'_>) -> RepoResult<SectionAtomRow> {
+    let atom = parse_atom_row(row)?;
+    let updated_at: i64 = row.get("updated_at")?;
+    Ok(SectionAtomRow { atom, updated_at })
 }
 
 fn parse_atom_row(row: &Row<'_>) -> RepoResult<Atom> {
@@ -445,8 +727,9 @@ fn parse_atom_row(row: &Row<'_>) -> RepoResult<Atom> {
         preview_text: row.get("preview_text")?,
         preview_image: row.get("preview_image")?,
         task_status,
-        event_start: row.get("event_start")?,
-        event_end: row.get("event_end")?,
+        start_at: row.get("start_at")?,
+        end_at: row.get("end_at")?,
+        recurrence_rule: row.get("recurrence_rule")?,
         hlc_timestamp: row.get("hlc_timestamp")?,
         is_deleted,
     };
@@ -454,7 +737,7 @@ fn parse_atom_row(row: &Row<'_>) -> RepoResult<Atom> {
     Ok(atom)
 }
 
-fn atom_type_to_db(kind: AtomType) -> &'static str {
+pub(crate) fn atom_type_to_db(kind: AtomType) -> &'static str {
     match kind {
         AtomType::Note => "note",
         AtomType::Task => "task",
@@ -471,7 +754,7 @@ fn parse_atom_type(value: &str) -> Option<AtomType> {
     }
 }
 
-fn task_status_to_db(status: TaskStatus) -> &'static str {
+pub(crate) fn task_status_to_db(status: TaskStatus) -> &'static str {
     match status {
         TaskStatus::Todo => "todo",
         TaskStatus::InProgress => "in_progress",
@@ -480,7 +763,7 @@ fn task_status_to_db(status: TaskStatus) -> &'static str {
     }
 }
 
-fn parse_task_status(value: &str) -> Option<TaskStatus> {
+pub(crate) fn parse_task_status(value: &str) -> Option<TaskStatus> {
     match value {
         "todo" => Some(TaskStatus::Todo),
         "in_progress" => Some(TaskStatus::InProgress),
@@ -529,6 +812,10 @@ fn ensure_connection_ready(conn: &Connection) -> RepoResult<()> {
         "content",
         "preview_text",
         "preview_image",
+        "task_status",
+        "start_at",
+        "end_at",
+        "recurrence_rule",
         "is_deleted",
         "updated_at",
     ] {
@@ -544,7 +831,7 @@ fn ensure_connection_ready(conn: &Connection) -> RepoResult<()> {
 }
 
 /// Returns whether an atom row exists regardless of soft-delete state.
-fn atom_exists(conn: &Connection, id: AtomId) -> RepoResult<bool> {
+pub(crate) fn atom_exists(conn: &Connection, id: AtomId) -> RepoResult<bool> {
     let exists: i64 = conn.query_row(
         "SELECT EXISTS(
             SELECT 1

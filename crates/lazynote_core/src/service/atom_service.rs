@@ -74,8 +74,8 @@ impl<R: AtomRepository> AtomService<R> {
     /// - Returns created stable atom ID.
     pub fn schedule_event(&self, request: &ScheduleEventRequest) -> RepoResult<AtomId> {
         let mut atom = Atom::new(AtomType::Event, request.title.clone());
-        atom.event_start = Some(request.start_epoch_ms);
-        atom.event_end = request.end_epoch_ms;
+        atom.start_at = Some(request.start_epoch_ms);
+        atom.end_at = request.end_epoch_ms;
         self.repo.create_atom(&atom)
     }
 

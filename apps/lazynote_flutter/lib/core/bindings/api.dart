@@ -6,9 +6,9 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_type_label`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `map_note_service_error`, `map_repo_error`, `message`, `normalize_entry_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_note_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `to_entry_search_item`, `to_note_item`, `with_atom_service`, `with_note_service`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `NotesFfiError`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_type_label`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `message`, `message`, `normalize_entry_limit`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_note_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item`, `to_entry_search_item`, `to_note_item`, `with_atom_service`, `with_note_service`, `with_task_service`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `NotesFfiError`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Minimal health-check API for FRB smoke integration.
 ///
@@ -151,6 +151,216 @@ Future<NoteResponse> noteSetTags({
 /// - Async call, DB-backed execution.
 /// - Returns typed envelope with stable error codes.
 Future<TagsListResponse> tagsList() => RustLib.instance.api.crateApiTagsList();
+
+/// Lists inbox atoms (both `start_at` and `end_at` NULL).
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Excludes done/cancelled atoms.
+Future<AtomListResponse> tasksListInbox({int? limit, int? offset}) =>
+    RustLib.instance.api.crateApiTasksListInbox(limit: limit, offset: offset);
+
+/// Lists atoms active today based on time-matrix rules.
+///
+/// # FFI contract
+/// - `bod_ms`/`eod_ms`: device-local day boundaries in epoch ms.
+/// - Async call, DB-backed execution.
+/// - Excludes done/cancelled atoms.
+Future<AtomListResponse> tasksListToday({
+  required PlatformInt64 bodMs,
+  required PlatformInt64 eodMs,
+  int? limit,
+  int? offset,
+}) => RustLib.instance.api.crateApiTasksListToday(
+  bodMs: bodMs,
+  eodMs: eodMs,
+  limit: limit,
+  offset: offset,
+);
+
+/// Lists atoms anchored entirely in the future.
+///
+/// # FFI contract
+/// - `eod_ms`: end of today in epoch ms.
+/// - Async call, DB-backed execution.
+/// - Excludes done/cancelled atoms.
+Future<AtomListResponse> tasksListUpcoming({
+  required PlatformInt64 eodMs,
+  int? limit,
+  int? offset,
+}) => RustLib.instance.api.crateApiTasksListUpcoming(
+  eodMs: eodMs,
+  limit: limit,
+  offset: offset,
+);
+
+/// Updates `task_status` for any atom type (universal completion).
+///
+/// # FFI contract
+/// - `status`: one of `todo|in_progress|done|cancelled`, or null to clear (demote).
+/// - Async call, DB-backed execution.
+/// - Idempotent: setting the same status twice succeeds.
+Future<EntryActionResponse> atomUpdateStatus({
+  required String atomId,
+  String? status,
+}) => RustLib.instance.api.crateApiAtomUpdateStatus(
+  atomId: atomId,
+  status: status,
+);
+
+/// Lists atoms with both `start_at` and `end_at` that overlap the given time range.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Includes all statuses (done/cancelled shown on calendar).
+/// - Range overlap: `start_at < range_end AND end_at > range_start`.
+Future<AtomListResponse> calendarListByRange({
+  required PlatformInt64 startMs,
+  required PlatformInt64 endMs,
+  int? limit,
+  int? offset,
+}) => RustLib.instance.api.crateApiCalendarListByRange(
+  startMs: startMs,
+  endMs: endMs,
+  limit: limit,
+  offset: offset,
+);
+
+/// Updates only `start_at` and `end_at` for a calendar event.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Validates `end_ms >= start_ms`; returns `invalid_time_range` on failure.
+/// - Returns `atom_not_found` when target atom does not exist.
+Future<EntryActionResponse> calendarUpdateEvent({
+  required String atomId,
+  required PlatformInt64 startMs,
+  required PlatformInt64 endMs,
+}) => RustLib.instance.api.crateApiCalendarUpdateEvent(
+  atomId: atomId,
+  startMs: startMs,
+  endMs: endMs,
+);
+
+/// Atom list item returned by section queries (Inbox/Today/Upcoming).
+class AtomListItem {
+  /// Stable atom ID in string form.
+  final String atomId;
+
+  /// Atom projection kind (`note|task|event`).
+  final String kind;
+
+  /// Raw markdown content.
+  final String content;
+
+  /// Derived plain-text preview.
+  final String? previewText;
+
+  /// Derived first markdown image path.
+  final String? previewImage;
+
+  /// Normalized lowercase tags for this atom.
+  final List<String> tags;
+
+  /// Epoch ms — start boundary (NULL = no start).
+  final PlatformInt64? startAt;
+
+  /// Epoch ms — end boundary (NULL = no end).
+  final PlatformInt64? endAt;
+
+  /// Current task status string, or null if statusless.
+  final String? taskStatus;
+
+  /// Update timestamp in epoch milliseconds.
+  final PlatformInt64 updatedAt;
+
+  const AtomListItem({
+    required this.atomId,
+    required this.kind,
+    required this.content,
+    this.previewText,
+    this.previewImage,
+    required this.tags,
+    this.startAt,
+    this.endAt,
+    this.taskStatus,
+    required this.updatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      atomId.hashCode ^
+      kind.hashCode ^
+      content.hashCode ^
+      previewText.hashCode ^
+      previewImage.hashCode ^
+      tags.hashCode ^
+      startAt.hashCode ^
+      endAt.hashCode ^
+      taskStatus.hashCode ^
+      updatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AtomListItem &&
+          runtimeType == other.runtimeType &&
+          atomId == other.atomId &&
+          kind == other.kind &&
+          content == other.content &&
+          previewText == other.previewText &&
+          previewImage == other.previewImage &&
+          tags == other.tags &&
+          startAt == other.startAt &&
+          endAt == other.endAt &&
+          taskStatus == other.taskStatus &&
+          updatedAt == other.updatedAt;
+}
+
+/// Section list response envelope.
+class AtomListResponse {
+  /// Whether operation succeeded.
+  final bool ok;
+
+  /// Stable machine-readable error code for failure paths.
+  final String? errorCode;
+
+  /// Human-readable message for diagnostics/UI.
+  final String message;
+
+  /// Section items.
+  final List<AtomListItem> items;
+
+  /// Effective limit after normalization.
+  final int appliedLimit;
+
+  const AtomListResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    required this.items,
+    required this.appliedLimit,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^
+      errorCode.hashCode ^
+      message.hashCode ^
+      items.hashCode ^
+      appliedLimit.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AtomListResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          items == other.items &&
+          appliedLimit == other.appliedLimit;
+}
 
 /// Generic action response envelope for single-entry command flow.
 class EntryActionResponse {

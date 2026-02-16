@@ -7,7 +7,7 @@
 //! # Invariants
 //! - `uuid` is stable and never reused for another atom.
 //! - `is_deleted` is the source of truth for tombstone state.
-//! - `event_end` should not be earlier than `event_start` when both are set.
+//! - `end_at` should not be earlier than `start_at` when both are set.
 //!
 //! # See also
 //! - docs/architecture/data-model.md
@@ -83,10 +83,12 @@ pub struct Atom {
     pub preview_image: Option<String>,
     /// Meaningful only when `kind == AtomType::Task`.
     pub task_status: Option<TaskStatus>,
-    /// Unix epoch milliseconds. Meaningful for event-like atoms.
-    pub event_start: Option<i64>,
-    /// Unix epoch milliseconds. Should be >= `event_start` when set.
-    pub event_end: Option<i64>,
+    /// Unix epoch milliseconds. Drives section classification (Inbox/Today/Upcoming).
+    pub start_at: Option<i64>,
+    /// Unix epoch milliseconds. Should be >= `start_at` when set.
+    pub end_at: Option<i64>,
+    /// Reserved: RFC 5545 RRULE string for recurring atoms (v0.2+).
+    pub recurrence_rule: Option<String>,
     /// Reserved for future CRDT/HLC merge strategy.
     pub hlc_timestamp: Option<String>,
     /// Soft delete tombstone to preserve sync/recovery history.
@@ -107,7 +109,7 @@ impl Display for AtomValidationError {
         match self {
             Self::NilUuid => write!(f, "uuid must not be nil"),
             Self::InvalidEventWindow { start, end } => {
-                write!(f, "event_end ({end}) must be >= event_start ({start})")
+                write!(f, "end_at ({end}) must be >= start_at ({start})")
             }
         }
     }
@@ -124,8 +126,9 @@ struct AtomDe {
     preview_text: Option<String>,
     preview_image: Option<String>,
     task_status: Option<TaskStatus>,
-    event_start: Option<i64>,
-    event_end: Option<i64>,
+    start_at: Option<i64>,
+    end_at: Option<i64>,
+    recurrence_rule: Option<String>,
     hlc_timestamp: Option<String>,
     is_deleted: bool,
 }
@@ -141,8 +144,9 @@ impl TryFrom<AtomDe> for Atom {
             preview_text: value.preview_text,
             preview_image: value.preview_image,
             task_status: value.task_status,
-            event_start: value.event_start,
-            event_end: value.event_end,
+            start_at: value.start_at,
+            end_at: value.end_at,
+            recurrence_rule: value.recurrence_rule,
             hlc_timestamp: value.hlc_timestamp,
             is_deleted: value.is_deleted,
         };
@@ -165,8 +169,9 @@ impl Atom {
             preview_text: None,
             preview_image: None,
             task_status: None,
-            event_start: None,
-            event_end: None,
+            start_at: None,
+            end_at: None,
+            recurrence_rule: None,
             hlc_timestamp: None,
             is_deleted: false,
         }
@@ -201,8 +206,9 @@ impl Atom {
             preview_text: None,
             preview_image: None,
             task_status: None,
-            event_start: None,
-            event_end: None,
+            start_at: None,
+            end_at: None,
+            recurrence_rule: None,
             hlc_timestamp: None,
             is_deleted: false,
         };
@@ -241,7 +247,7 @@ impl Atom {
             return Err(AtomValidationError::NilUuid);
         }
 
-        if let (Some(start), Some(end)) = (self.event_start, self.event_end) {
+        if let (Some(start), Some(end)) = (self.start_at, self.end_at) {
             if end < start {
                 return Err(AtomValidationError::InvalidEventWindow { start, end });
             }

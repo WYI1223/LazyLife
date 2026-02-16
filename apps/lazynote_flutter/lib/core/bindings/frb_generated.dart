@@ -65,7 +65,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1575414790;
+  int get rustContentHash => -1704875969;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -76,6 +76,24 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<EntryActionResponse> crateApiAtomUpdateStatus({
+    required String atomId,
+    String? status,
+  });
+
+  Future<AtomListResponse> crateApiCalendarListByRange({
+    required PlatformInt64 startMs,
+    required PlatformInt64 endMs,
+    int? limit,
+    int? offset,
+  });
+
+  Future<EntryActionResponse> crateApiCalendarUpdateEvent({
+    required String atomId,
+    required PlatformInt64 startMs,
+    required PlatformInt64 endMs,
+  });
+
   String crateApiConfigureEntryDbPath({required String dbPath});
 
   String crateApiCoreVersion();
@@ -124,6 +142,21 @@ abstract class RustLibApi extends BaseApi {
   String crateApiPing();
 
   Future<TagsListResponse> crateApiTagsList();
+
+  Future<AtomListResponse> crateApiTasksListInbox({int? limit, int? offset});
+
+  Future<AtomListResponse> crateApiTasksListToday({
+    required PlatformInt64 bodMs,
+    required PlatformInt64 eodMs,
+    int? limit,
+    int? offset,
+  });
+
+  Future<AtomListResponse> crateApiTasksListUpcoming({
+    required PlatformInt64 eodMs,
+    int? limit,
+    int? offset,
+  });
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -135,13 +168,123 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<EntryActionResponse> crateApiAtomUpdateStatus({
+    required String atomId,
+    String? status,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(atomId, serializer);
+          sse_encode_opt_String(status, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_entry_action_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAtomUpdateStatusConstMeta,
+        argValues: [atomId, status],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAtomUpdateStatusConstMeta => const TaskConstMeta(
+    debugName: 'atom_update_status',
+    argNames: ['atomId', 'status'],
+  );
+
+  @override
+  Future<AtomListResponse> crateApiCalendarListByRange({
+    required PlatformInt64 startMs,
+    required PlatformInt64 endMs,
+    int? limit,
+    int? offset,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(startMs, serializer);
+          sse_encode_i_64(endMs, serializer);
+          sse_encode_opt_box_autoadd_u_32(limit, serializer);
+          sse_encode_opt_box_autoadd_u_32(offset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_atom_list_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCalendarListByRangeConstMeta,
+        argValues: [startMs, endMs, limit, offset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCalendarListByRangeConstMeta =>
+      const TaskConstMeta(
+        debugName: 'calendar_list_by_range',
+        argNames: ['startMs', 'endMs', 'limit', 'offset'],
+      );
+
+  @override
+  Future<EntryActionResponse> crateApiCalendarUpdateEvent({
+    required String atomId,
+    required PlatformInt64 startMs,
+    required PlatformInt64 endMs,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(atomId, serializer);
+          sse_encode_i_64(startMs, serializer);
+          sse_encode_i_64(endMs, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_entry_action_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCalendarUpdateEventConstMeta,
+        argValues: [atomId, startMs, endMs],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCalendarUpdateEventConstMeta =>
+      const TaskConstMeta(
+        debugName: 'calendar_update_event',
+        argNames: ['atomId', 'startMs', 'endMs'],
+      );
+
+  @override
   String crateApiConfigureEntryDbPath({required String dbPath}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(dbPath, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -166,7 +309,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -194,7 +337,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 6,
             port: port_,
           );
         },
@@ -226,7 +369,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 7,
             port: port_,
           );
         },
@@ -262,7 +405,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 8,
             port: port_,
           );
         },
@@ -296,7 +439,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 9,
             port: port_,
           );
         },
@@ -324,7 +467,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(level, serializer);
           sse_encode_String(logDir, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -352,7 +495,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 11,
             port: port_,
           );
         },
@@ -380,7 +523,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 12,
             port: port_,
           );
         },
@@ -412,7 +555,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 13,
             port: port_,
           );
         },
@@ -446,7 +589,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 14,
             port: port_,
           );
         },
@@ -482,7 +625,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 15,
             port: port_,
           );
         },
@@ -508,7 +651,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -533,7 +676,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 17,
             port: port_,
           );
         },
@@ -551,10 +694,150 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiTagsListConstMeta =>
       const TaskConstMeta(debugName: 'tags_list', argNames: []);
 
+  @override
+  Future<AtomListResponse> crateApiTasksListInbox({int? limit, int? offset}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_opt_box_autoadd_u_32(limit, serializer);
+          sse_encode_opt_box_autoadd_u_32(offset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_atom_list_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiTasksListInboxConstMeta,
+        argValues: [limit, offset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksListInboxConstMeta => const TaskConstMeta(
+    debugName: 'tasks_list_inbox',
+    argNames: ['limit', 'offset'],
+  );
+
+  @override
+  Future<AtomListResponse> crateApiTasksListToday({
+    required PlatformInt64 bodMs,
+    required PlatformInt64 eodMs,
+    int? limit,
+    int? offset,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(bodMs, serializer);
+          sse_encode_i_64(eodMs, serializer);
+          sse_encode_opt_box_autoadd_u_32(limit, serializer);
+          sse_encode_opt_box_autoadd_u_32(offset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_atom_list_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiTasksListTodayConstMeta,
+        argValues: [bodMs, eodMs, limit, offset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksListTodayConstMeta => const TaskConstMeta(
+    debugName: 'tasks_list_today',
+    argNames: ['bodMs', 'eodMs', 'limit', 'offset'],
+  );
+
+  @override
+  Future<AtomListResponse> crateApiTasksListUpcoming({
+    required PlatformInt64 eodMs,
+    int? limit,
+    int? offset,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(eodMs, serializer);
+          sse_encode_opt_box_autoadd_u_32(limit, serializer);
+          sse_encode_opt_box_autoadd_u_32(offset, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_atom_list_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiTasksListUpcomingConstMeta,
+        argValues: [eodMs, limit, offset],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTasksListUpcomingConstMeta => const TaskConstMeta(
+    debugName: 'tasks_list_upcoming',
+    argNames: ['eodMs', 'limit', 'offset'],
+  );
+
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  AtomListItem dco_decode_atom_list_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    return AtomListItem(
+      atomId: dco_decode_String(arr[0]),
+      kind: dco_decode_String(arr[1]),
+      content: dco_decode_String(arr[2]),
+      previewText: dco_decode_opt_String(arr[3]),
+      previewImage: dco_decode_opt_String(arr[4]),
+      tags: dco_decode_list_String(arr[5]),
+      startAt: dco_decode_opt_box_autoadd_i_64(arr[6]),
+      endAt: dco_decode_opt_box_autoadd_i_64(arr[7]),
+      taskStatus: dco_decode_opt_String(arr[8]),
+      updatedAt: dco_decode_i_64(arr[9]),
+    );
+  }
+
+  @protected
+  AtomListResponse dco_decode_atom_list_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return AtomListResponse(
+      ok: dco_decode_bool(arr[0]),
+      errorCode: dco_decode_opt_String(arr[1]),
+      message: dco_decode_String(arr[2]),
+      items: dco_decode_list_atom_list_item(arr[3]),
+      appliedLimit: dco_decode_u_32(arr[4]),
+    );
   }
 
   @protected
@@ -632,6 +915,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<String> dco_decode_list_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<AtomListItem> dco_decode_list_atom_list_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_atom_list_item).toList();
   }
 
   @protected
@@ -761,6 +1050,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AtomListItem sse_decode_atom_list_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_atomId = sse_decode_String(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    var var_previewText = sse_decode_opt_String(deserializer);
+    var var_previewImage = sse_decode_opt_String(deserializer);
+    var var_tags = sse_decode_list_String(deserializer);
+    var var_startAt = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_endAt = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_taskStatus = sse_decode_opt_String(deserializer);
+    var var_updatedAt = sse_decode_i_64(deserializer);
+    return AtomListItem(
+      atomId: var_atomId,
+      kind: var_kind,
+      content: var_content,
+      previewText: var_previewText,
+      previewImage: var_previewImage,
+      tags: var_tags,
+      startAt: var_startAt,
+      endAt: var_endAt,
+      taskStatus: var_taskStatus,
+      updatedAt: var_updatedAt,
+    );
+  }
+
+  @protected
+  AtomListResponse sse_decode_atom_list_response(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorCode = sse_decode_opt_String(deserializer);
+    var var_message = sse_decode_String(deserializer);
+    var var_items = sse_decode_list_atom_list_item(deserializer);
+    var var_appliedLimit = sse_decode_u_32(deserializer);
+    return AtomListResponse(
+      ok: var_ok,
+      errorCode: var_errorCode,
+      message: var_message,
+      items: var_items,
+      appliedLimit: var_appliedLimit,
+    );
+  }
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
@@ -845,6 +1178,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <String>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<AtomListItem> sse_decode_list_atom_list_item(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <AtomListItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_atom_list_item(deserializer));
     }
     return ans_;
   }
@@ -1024,6 +1371,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_atom_list_item(AtomListItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.atomId, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.content, serializer);
+    sse_encode_opt_String(self.previewText, serializer);
+    sse_encode_opt_String(self.previewImage, serializer);
+    sse_encode_list_String(self.tags, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.startAt, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.endAt, serializer);
+    sse_encode_opt_String(self.taskStatus, serializer);
+    sse_encode_i_64(self.updatedAt, serializer);
+  }
+
+  @protected
+  void sse_encode_atom_list_response(
+    AtomListResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_opt_String(self.errorCode, serializer);
+    sse_encode_String(self.message, serializer);
+    sse_encode_list_atom_list_item(self.items, serializer);
+    sse_encode_u_32(self.appliedLimit, serializer);
+  }
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
@@ -1100,6 +1475,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_atom_list_item(
+    List<AtomListItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_atom_list_item(item, serializer);
     }
   }
 

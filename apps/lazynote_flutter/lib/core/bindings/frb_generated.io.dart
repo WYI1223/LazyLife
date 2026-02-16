@@ -23,6 +23,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  AtomListItem dco_decode_atom_list_item(dynamic raw);
+
+  @protected
+  AtomListResponse dco_decode_atom_list_response(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
@@ -48,6 +54,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<AtomListItem> dco_decode_list_atom_list_item(dynamic raw);
 
   @protected
   List<EntrySearchItem> dco_decode_list_entry_search_item(dynamic raw);
@@ -95,6 +104,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AtomListItem sse_decode_atom_list_item(SseDeserializer deserializer);
+
+  @protected
+  AtomListResponse sse_decode_atom_list_response(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
@@ -124,6 +139,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<AtomListItem> sse_decode_list_atom_list_item(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<EntrySearchItem> sse_decode_list_entry_search_item(
@@ -178,6 +198,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_atom_list_item(AtomListItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_atom_list_response(
+    AtomListResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
@@ -218,6 +247,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_atom_list_item(
+    List<AtomListItem> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_entry_search_item(

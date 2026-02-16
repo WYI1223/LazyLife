@@ -15,7 +15,8 @@ use lazynote_core::db::open_db;
 use lazynote_core::{
     core_version as core_version_inner, init_logging as init_logging_inner, ping as ping_inner,
     search_all, AtomId, AtomService, AtomType, NoteRecord, NoteService, NoteServiceError,
-    ScheduleEventRequest, SearchQuery, SqliteAtomRepository, SqliteNoteRepository,
+    ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository, SqliteNoteRepository,
+    TaskService, TaskServiceError,
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -705,13 +706,393 @@ fn atom_type_label(kind: AtomType) -> &'static str {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Tasks / Section APIs (v0.1.5)
+// ---------------------------------------------------------------------------
+
+/// Atom list item returned by section queries (Inbox/Today/Upcoming).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomListItem {
+    /// Stable atom ID in string form.
+    pub atom_id: String,
+    /// Atom projection kind (`note|task|event`).
+    pub kind: String,
+    /// Raw markdown content.
+    pub content: String,
+    /// Derived plain-text preview.
+    pub preview_text: Option<String>,
+    /// Derived first markdown image path.
+    pub preview_image: Option<String>,
+    /// Normalized lowercase tags for this atom.
+    pub tags: Vec<String>,
+    /// Epoch ms — start boundary (NULL = no start).
+    pub start_at: Option<i64>,
+    /// Epoch ms — end boundary (NULL = no end).
+    pub end_at: Option<i64>,
+    /// Current task status string, or null if statusless.
+    pub task_status: Option<String>,
+    /// Update timestamp in epoch milliseconds.
+    pub updated_at: i64,
+}
+
+/// Section list response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomListResponse {
+    /// Whether operation succeeded.
+    pub ok: bool,
+    /// Stable machine-readable error code for failure paths.
+    pub error_code: Option<String>,
+    /// Human-readable message for diagnostics/UI.
+    pub message: String,
+    /// Section items.
+    pub items: Vec<AtomListItem>,
+    /// Effective limit after normalization.
+    pub applied_limit: u32,
+}
+
+const SECTION_DEFAULT_LIMIT: u32 = 50;
+const SECTION_LIMIT_MAX: u32 = 50;
+
+#[derive(Debug)]
+#[allow(dead_code)] // Internal reserved for future use
+enum AtomFfiError {
+    InvalidAtomId(String),
+    AtomNotFound(String),
+    InvalidStatus(String),
+    InvalidTimeRange(String),
+    DbError(String),
+    Internal(String),
+}
+
+impl AtomFfiError {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidAtomId(_) => "invalid_atom_id",
+            Self::AtomNotFound(_) => "atom_not_found",
+            Self::InvalidStatus(_) => "invalid_status",
+            Self::InvalidTimeRange(_) => "invalid_time_range",
+            Self::DbError(_) => "db_error",
+            Self::Internal(_) => "internal_error",
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::InvalidAtomId(v) => format!("invalid atom id: {v}"),
+            Self::AtomNotFound(v) => format!("atom not found: {v}"),
+            Self::InvalidStatus(v) => format!("invalid status: {v}"),
+            Self::InvalidTimeRange(v) => format!("invalid time range: {v}"),
+            Self::DbError(v) => format!("database error: {v}"),
+            Self::Internal(v) => format!("internal error: {v}"),
+        }
+    }
+}
+
+fn map_task_service_error(err: TaskServiceError) -> AtomFfiError {
+    match err {
+        TaskServiceError::AtomNotFound(id) => AtomFfiError::AtomNotFound(id.to_string()),
+        TaskServiceError::Repo(lazynote_core::RepoError::Validation(
+            lazynote_core::AtomValidationError::InvalidEventWindow { start, end },
+        )) => {
+            AtomFfiError::InvalidTimeRange(format!("end_at ({end}) must be >= start_at ({start})"))
+        }
+        TaskServiceError::Repo(repo_err) => AtomFfiError::DbError(repo_err.to_string()),
+    }
+}
+
+fn with_task_service<T>(
+    f: impl FnOnce(&TaskService<'_, SqliteAtomRepository<'_>>) -> Result<T, TaskServiceError>,
+) -> Result<T, AtomFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(|e| AtomFfiError::DbError(e.to_string()))?;
+    let repo =
+        SqliteAtomRepository::try_new(&conn).map_err(|e| AtomFfiError::DbError(e.to_string()))?;
+    let service = TaskService::new(&repo, &conn);
+    f(&service).map_err(map_task_service_error)
+}
+
+fn normalize_section_limit(limit: Option<u32>) -> u32 {
+    match limit {
+        Some(0) => SECTION_DEFAULT_LIMIT,
+        Some(v) if v > SECTION_LIMIT_MAX => SECTION_LIMIT_MAX,
+        Some(v) => v,
+        None => SECTION_DEFAULT_LIMIT,
+    }
+}
+
+fn to_atom_list_item(sa: SectionAtom) -> AtomListItem {
+    AtomListItem {
+        atom_id: sa.atom.uuid.to_string(),
+        kind: atom_type_label(sa.atom.kind).to_string(),
+        content: sa.atom.content,
+        preview_text: sa.atom.preview_text,
+        preview_image: sa.atom.preview_image,
+        tags: sa.tags,
+        start_at: sa.atom.start_at,
+        end_at: sa.atom.end_at,
+        task_status: sa.atom.task_status.map(|s| {
+            match s {
+                lazynote_core::TaskStatus::Todo => "todo",
+                lazynote_core::TaskStatus::InProgress => "in_progress",
+                lazynote_core::TaskStatus::Done => "done",
+                lazynote_core::TaskStatus::Cancelled => "cancelled",
+            }
+            .to_string()
+        }),
+        updated_at: sa.updated_at,
+    }
+}
+
+fn atom_list_failure(err: AtomFfiError, limit: u32) -> AtomListResponse {
+    AtomListResponse {
+        ok: false,
+        error_code: Some(err.code().to_string()),
+        message: err.message(),
+        items: Vec::new(),
+        applied_limit: limit,
+    }
+}
+
+/// Lists inbox atoms (both `start_at` and `end_at` NULL).
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Excludes done/cancelled atoms.
+#[flutter_rust_bridge::frb]
+pub async fn tasks_list_inbox(limit: Option<u32>, offset: Option<u32>) -> AtomListResponse {
+    tasks_list_inbox_impl(limit, offset)
+}
+
+fn tasks_list_inbox_impl(limit: Option<u32>, offset: Option<u32>) -> AtomListResponse {
+    let norm_limit = normalize_section_limit(limit);
+    let norm_offset = offset.unwrap_or(0);
+    match with_task_service(|svc| svc.fetch_inbox(norm_limit, norm_offset)) {
+        Ok(items) => AtomListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} inbox item(s).", items.len()),
+            items: items.into_iter().map(to_atom_list_item).collect(),
+            applied_limit: norm_limit,
+        },
+        Err(err) => atom_list_failure(err, norm_limit),
+    }
+}
+
+/// Lists atoms active today based on time-matrix rules.
+///
+/// # FFI contract
+/// - `bod_ms`/`eod_ms`: device-local day boundaries in epoch ms.
+/// - Async call, DB-backed execution.
+/// - Excludes done/cancelled atoms.
+#[flutter_rust_bridge::frb]
+pub async fn tasks_list_today(
+    bod_ms: i64,
+    eod_ms: i64,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AtomListResponse {
+    tasks_list_today_impl(bod_ms, eod_ms, limit, offset)
+}
+
+fn tasks_list_today_impl(
+    bod_ms: i64,
+    eod_ms: i64,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AtomListResponse {
+    let norm_limit = normalize_section_limit(limit);
+    let norm_offset = offset.unwrap_or(0);
+    match with_task_service(|svc| svc.fetch_today(bod_ms, eod_ms, norm_limit, norm_offset)) {
+        Ok(items) => AtomListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} today item(s).", items.len()),
+            items: items.into_iter().map(to_atom_list_item).collect(),
+            applied_limit: norm_limit,
+        },
+        Err(err) => atom_list_failure(err, norm_limit),
+    }
+}
+
+/// Lists atoms anchored entirely in the future.
+///
+/// # FFI contract
+/// - `eod_ms`: end of today in epoch ms.
+/// - Async call, DB-backed execution.
+/// - Excludes done/cancelled atoms.
+#[flutter_rust_bridge::frb]
+pub async fn tasks_list_upcoming(
+    eod_ms: i64,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AtomListResponse {
+    tasks_list_upcoming_impl(eod_ms, limit, offset)
+}
+
+fn tasks_list_upcoming_impl(
+    eod_ms: i64,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AtomListResponse {
+    let norm_limit = normalize_section_limit(limit);
+    let norm_offset = offset.unwrap_or(0);
+    match with_task_service(|svc| svc.fetch_upcoming(eod_ms, norm_limit, norm_offset)) {
+        Ok(items) => AtomListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} upcoming item(s).", items.len()),
+            items: items.into_iter().map(to_atom_list_item).collect(),
+            applied_limit: norm_limit,
+        },
+        Err(err) => atom_list_failure(err, norm_limit),
+    }
+}
+
+/// Updates `task_status` for any atom type (universal completion).
+///
+/// # FFI contract
+/// - `status`: one of `todo|in_progress|done|cancelled`, or null to clear (demote).
+/// - Async call, DB-backed execution.
+/// - Idempotent: setting the same status twice succeeds.
+#[flutter_rust_bridge::frb]
+pub async fn atom_update_status(atom_id: String, status: Option<String>) -> EntryActionResponse {
+    atom_update_status_impl(atom_id, status)
+}
+
+fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActionResponse {
+    let parsed_id = match Uuid::parse_str(atom_id.trim()) {
+        Ok(id) => id,
+        Err(_) => {
+            let err = AtomFfiError::InvalidAtomId(atom_id);
+            return EntryActionResponse {
+                ok: false,
+                atom_id: None,
+                message: err.message(),
+            };
+        }
+    };
+
+    let parsed_status = match status.as_deref() {
+        None => None,
+        Some("todo") => Some(lazynote_core::TaskStatus::Todo),
+        Some("in_progress") => Some(lazynote_core::TaskStatus::InProgress),
+        Some("done") => Some(lazynote_core::TaskStatus::Done),
+        Some("cancelled") => Some(lazynote_core::TaskStatus::Cancelled),
+        Some(other) => {
+            let err = AtomFfiError::InvalidStatus(other.to_string());
+            return EntryActionResponse {
+                ok: false,
+                atom_id: None,
+                message: err.message(),
+            };
+        }
+    };
+
+    match with_task_service(|svc| svc.update_status(parsed_id, parsed_status)) {
+        Ok(()) => EntryActionResponse {
+            ok: true,
+            atom_id: Some(parsed_id.to_string()),
+            message: "Status updated.".to_string(),
+        },
+        Err(err) => EntryActionResponse {
+            ok: false,
+            atom_id: None,
+            message: err.message(),
+        },
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Calendar APIs (PR-0012A)
+// ---------------------------------------------------------------------------
+
+/// Lists atoms with both `start_at` and `end_at` that overlap the given time range.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Includes all statuses (done/cancelled shown on calendar).
+/// - Range overlap: `start_at < range_end AND end_at > range_start`.
+#[flutter_rust_bridge::frb]
+pub async fn calendar_list_by_range(
+    start_ms: i64,
+    end_ms: i64,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AtomListResponse {
+    calendar_list_by_range_impl(start_ms, end_ms, limit, offset)
+}
+
+fn calendar_list_by_range_impl(
+    start_ms: i64,
+    end_ms: i64,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AtomListResponse {
+    let norm_limit = normalize_section_limit(limit);
+    let norm_offset = offset.unwrap_or(0);
+    match with_task_service(|svc| {
+        svc.fetch_by_time_range(start_ms, end_ms, norm_limit, norm_offset)
+    }) {
+        Ok(items) => AtomListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} calendar event(s).", items.len()),
+            items: items.into_iter().map(to_atom_list_item).collect(),
+            applied_limit: norm_limit,
+        },
+        Err(err) => atom_list_failure(err, norm_limit),
+    }
+}
+
+/// Updates only `start_at` and `end_at` for a calendar event.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Validates `end_ms >= start_ms`; returns `invalid_time_range` on failure.
+/// - Returns `atom_not_found` when target atom does not exist.
+#[flutter_rust_bridge::frb]
+pub async fn calendar_update_event(
+    atom_id: String,
+    start_ms: i64,
+    end_ms: i64,
+) -> EntryActionResponse {
+    calendar_update_event_impl(atom_id, start_ms, end_ms)
+}
+
+fn calendar_update_event_impl(atom_id: String, start_ms: i64, end_ms: i64) -> EntryActionResponse {
+    let parsed_id = match Uuid::parse_str(atom_id.trim()) {
+        Ok(id) => id,
+        Err(_) => {
+            let err = AtomFfiError::InvalidAtomId(atom_id);
+            return EntryActionResponse {
+                ok: false,
+                atom_id: None,
+                message: err.message(),
+            };
+        }
+    };
+
+    match with_task_service(|svc| svc.update_event_times(parsed_id, start_ms, end_ms)) {
+        Ok(()) => EntryActionResponse {
+            ok: true,
+            atom_id: Some(parsed_id.to_string()),
+            message: "Event times updated.".to_string(),
+        },
+        Err(err) => EntryActionResponse {
+            ok: false,
+            atom_id: None,
+            message: err.message(),
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        configure_entry_db_path, core_version, entry_create_note_impl, entry_create_task_impl,
-        entry_schedule_impl, entry_search_impl, init_logging, map_repo_error, note_create_impl,
-        note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
-        NotesFfiError,
+        calendar_list_by_range_impl, calendar_update_event_impl, configure_entry_db_path,
+        core_version, entry_create_note_impl, entry_create_task_impl, entry_schedule_impl,
+        entry_search_impl, init_logging, map_repo_error, note_create_impl, note_get_impl,
+        note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl, NotesFfiError,
     };
     use lazynote_core::db::open_db;
     use std::sync::{Mutex, MutexGuard};
@@ -813,7 +1194,7 @@ mod tests {
         let conn = open_db(super::resolve_entry_db_path()).expect("open db");
         let (kind, start, end): (String, Option<i64>, Option<i64>) = conn
             .query_row(
-                "SELECT type, event_start, event_end FROM atoms WHERE uuid = ?1",
+                "SELECT type, start_at, end_at FROM atoms WHERE uuid = ?1",
                 [atom_id.as_str()],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
@@ -828,7 +1209,7 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let response = entry_schedule_impl("bad range".to_string(), 2_000, Some(1_000));
         assert!(!response.ok);
-        assert!(response.message.contains("event_end"));
+        assert!(response.message.contains("end_at"));
     }
 
     #[test]
@@ -984,6 +1365,121 @@ mod tests {
         assert!(tags.ok, "{}", tags.message);
         assert!(tags.tags.contains(&"work".to_string()));
         assert!(tags.tags.contains(&"home".to_string()));
+    }
+
+    // -----------------------------------------------------------------------
+    // Calendar API tests (PR-0012A)
+    // -----------------------------------------------------------------------
+
+    /// Helper: creates an event atom with given start/end times via entry_schedule.
+    fn create_test_event(title: &str, start_ms: i64, end_ms: i64) -> String {
+        let resp = entry_schedule_impl(title.to_string(), start_ms, Some(end_ms));
+        assert!(resp.ok, "create_test_event failed: {}", resp.message);
+        resp.atom_id.expect("event should return atom_id")
+    }
+
+    #[test]
+    fn calendar_list_by_range_returns_overlapping_events() {
+        let _guard = acquire_test_db_lock();
+        // Event: 10:00–12:00 (10_000–12_000)
+        let inside_id = create_test_event("overlap", 10_000, 12_000);
+        // Event: 20:00–22:00 (20_000–22_000) — outside range
+        let _outside_id = create_test_event("outside", 20_000, 22_000);
+
+        // Query range: 9:00–13:00 (9_000–13_000)
+        let resp = calendar_list_by_range_impl(9_000, 13_000, None, None);
+        assert!(resp.ok, "{}", resp.message);
+        assert!(
+            resp.items.iter().any(|i| i.atom_id == inside_id),
+            "overlapping event should be in results"
+        );
+        assert!(
+            !resp.items.iter().any(|i| i.atom_id == _outside_id),
+            "non-overlapping event should not be in results"
+        );
+    }
+
+    #[test]
+    fn calendar_list_by_range_includes_done_events() {
+        let _guard = acquire_test_db_lock();
+        let event_id = create_test_event("done-cal", 30_000, 32_000);
+
+        // Mark as done
+        let status_resp =
+            super::atom_update_status_impl(event_id.clone(), Some("done".to_string()));
+        assert!(status_resp.ok, "{}", status_resp.message);
+
+        // Query should still include it
+        let resp = calendar_list_by_range_impl(29_000, 33_000, None, None);
+        assert!(resp.ok, "{}", resp.message);
+        assert!(
+            resp.items.iter().any(|i| i.atom_id == event_id),
+            "done event should appear in calendar range query"
+        );
+    }
+
+    #[test]
+    fn calendar_update_event_validates_time_range() {
+        let _guard = acquire_test_db_lock();
+        let event_id = create_test_event("validate-range", 40_000, 42_000);
+
+        // end < start should fail
+        let resp = calendar_update_event_impl(event_id, 42_000, 40_000);
+        assert!(!resp.ok);
+        assert!(
+            resp.message.contains("invalid time range"),
+            "should contain error message, got: {}",
+            resp.message
+        );
+    }
+
+    #[test]
+    fn calendar_update_event_not_found() {
+        let _guard = acquire_test_db_lock();
+        let fake_id = uuid::Uuid::new_v4().to_string();
+        let resp = calendar_update_event_impl(fake_id, 50_000, 52_000);
+        assert!(!resp.ok);
+        assert!(
+            resp.message.contains("not found"),
+            "should contain not found, got: {}",
+            resp.message
+        );
+    }
+
+    #[test]
+    fn calendar_update_event_success() {
+        let _guard = acquire_test_db_lock();
+        let event_id = create_test_event("update-times", 60_000, 62_000);
+
+        // Read original updated_at
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        let original_updated_at: i64 = conn
+            .query_row(
+                "SELECT updated_at FROM atoms WHERE uuid = ?1",
+                [event_id.as_str()],
+                |row| row.get(0),
+            )
+            .expect("read updated_at");
+
+        // Update times
+        let resp = calendar_update_event_impl(event_id.clone(), 70_000, 75_000);
+        assert!(resp.ok, "{}", resp.message);
+        assert_eq!(resp.atom_id.as_deref(), Some(event_id.as_str()));
+
+        // Verify times changed
+        let (start, end, new_updated_at): (Option<i64>, Option<i64>, i64) = conn
+            .query_row(
+                "SELECT start_at, end_at, updated_at FROM atoms WHERE uuid = ?1",
+                [event_id.as_str()],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("read updated event");
+        assert_eq!(start, Some(70_000));
+        assert_eq!(end, Some(75_000));
+        assert!(
+            new_updated_at >= original_updated_at,
+            "updated_at should advance"
+        );
     }
 
     fn unique_token(prefix: &str) -> String {
