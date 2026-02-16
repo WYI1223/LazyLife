@@ -14,6 +14,9 @@ fn open_db_in_memory_applies_all_migrations() {
     assert_table_exists(&conn, "external_mappings");
     assert_column_exists(&conn, "atoms", "preview_text");
     assert_column_exists(&conn, "atoms", "preview_image");
+    assert_column_exists(&conn, "atoms", "start_at");
+    assert_column_exists(&conn, "atoms", "end_at");
+    assert_column_exists(&conn, "atoms", "recurrence_rule");
 }
 
 #[test]
@@ -102,7 +105,7 @@ fn atoms_reject_invalid_event_window() {
     let conn = open_db_in_memory().unwrap();
 
     let result = conn.execute(
-        "INSERT INTO atoms (uuid, type, content, event_start, event_end)
+        "INSERT INTO atoms (uuid, type, content, start_at, end_at)
          VALUES (?1, 'event', 'invalid', 200, 100);",
         [Uuid::new_v4().to_string()],
     );

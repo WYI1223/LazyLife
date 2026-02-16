@@ -258,6 +258,10 @@ fn create_minimal_atoms_table(conn: &Connection) {
             content TEXT NOT NULL,
             preview_text TEXT NULL,
             preview_image TEXT NULL,
+            task_status TEXT NULL,
+            start_at INTEGER NULL,
+            end_at INTEGER NULL,
+            recurrence_rule TEXT NULL,
             is_deleted INTEGER NOT NULL DEFAULT 0,
             updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
         );",
