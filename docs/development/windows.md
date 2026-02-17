@@ -79,6 +79,33 @@ Docker：仅用于 Rust 工具链/CI（可选）
   - settings: `%APPDATA%\\LazyLife\\settings.json`
   - entry db: `%APPDATA%\\LazyLife\\data\\lazynote_entry.sqlite3`
 
+## Reminders / Notifications (PR-0013)
+
+### Dependencies
+
+- `flutter_local_notifications: ^20.1.0` - Cross-platform local notifications
+- `flutter_local_notifications_windows: ^2.0.1` - Windows implementation
+
+### Windows Runtime Notes
+
+- Notifications use Windows Toast Notifications via `flutter_local_notifications`
+- No special permissions required for local notifications (unlike push notifications)
+- `zonedSchedule()` may silently fail on unpackaged debug apps (Windows platform limitation)
+- Current workaround: in-process `Timer` + `show()` for scheduled reminders
+- v0.1 reminder policy is single-fire per atom (event reminders are start-side only; no end-time reminder)
+- App must be running for timer-based reminders to fire (no delivery after app exit/reboot)
+- Notification ID: Derived from atom ID + timestamp hash (int32 range)
+
+### Testing
+
+```powershell
+cd apps\lazynote_flutter
+flutter run -d windows
+```
+
+Create a task with a deadline (e.g., "Submit report" with end_at = today + 1 hour) to test notification scheduling.
+Keep the app running until the reminder time to verify timer-based delivery.
+
 ## Troubleshooting (Known)
 
 - Foreground-return freeze after long background:
