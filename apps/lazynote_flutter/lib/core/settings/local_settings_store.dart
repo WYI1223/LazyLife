@@ -213,6 +213,14 @@ Future<void> _backfillMissingDefaults(File file) async {
     if (decoded is! Map<String, dynamic>) {
       return;
     }
+    final schemaVersion = decoded['schema_version'];
+    if (schemaVersion is int && schemaVersion > 1) {
+      LocalSettingsStore.logger(
+        message:
+            'Skipping settings backfill for future schema_version=$schemaVersion.',
+      );
+      return;
+    }
 
     var changed = false;
 

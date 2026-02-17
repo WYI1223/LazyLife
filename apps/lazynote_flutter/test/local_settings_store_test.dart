@@ -225,6 +225,34 @@ void main() {
     expect(LocalSettingsStore.loggingLevelOverride, isNull);
   });
 
+  test('schema_version > 1 does not rewrite settings file', () async {
+    final tempDir = await Directory.systemTemp.createTemp('lazynote-settings-');
+    addTearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final settingsPath =
+        '${tempDir.path}${Platform.pathSeparator}settings.json';
+    final existing = File(settingsPath);
+    await existing.parent.create(recursive: true);
+    final original = '''
+{
+  "schema_version": 999,
+  "custom_future_flag": true,
+  "entry": {}
+}
+''';
+    await existing.writeAsString(original);
+
+    LocalSettingsStore.settingsFilePathResolver = () async => settingsPath;
+    await LocalSettingsStore.ensureInitialized();
+
+    final after = await existing.readAsString();
+    expect(after, original);
+  });
+
   test(
     'recovers settings from leftover temp file when settings.json is missing',
     () async {
