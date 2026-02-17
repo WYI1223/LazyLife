@@ -46,6 +46,7 @@ Each `UiSlotContribution` declares:
 - rejects empty/duplicate `contribution_id`
 - rejects empty `slot_id`
 - resolves by `(slot_id, layer, enabled_when)`
+  - `enabled_when` should be pure and must not throw runtime exceptions
 - sorts deterministically by:
   1. `priority` descending
   2. `contribution_id` ascending
@@ -57,6 +58,7 @@ Each `UiSlotContribution` declares:
 - used for `content_block`, `side_panel`, `home_widget`
 - renders all resolved contributions in registry order
 - uses fallback when no contribution is resolved
+- if fallback is not provided, renders `SizedBox.shrink()`
 
 `UiSlotViewHost`:
 
@@ -76,4 +78,3 @@ v0.2 baseline registrations include:
 - Workbench Home diagnostics/content blocks
 - Workbench Home navigation widgets (`Notes/Tasks/Calendar/Settings`)
 - Notes side panel explorer contribution
-

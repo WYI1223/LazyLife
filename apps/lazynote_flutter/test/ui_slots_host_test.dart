@@ -201,4 +201,116 @@ void main() {
       ),
     );
   });
+
+  test('registry rejects blank contribution id', () {
+    final registry = UiSlotRegistry();
+    expect(
+      () => registry.register(
+        UiSlotContribution(
+          contributionId: '   ',
+          slotId: UiSlotIds.workbenchHomeWidgets,
+          layer: UiSlotLayer.homeWidget,
+          priority: 1,
+          builder: (context, slotContext) => const SizedBox.shrink(),
+        ),
+      ),
+      throwsA(
+        isA<UiSlotRegistryError>().having(
+          (error) => error.code,
+          'code',
+          'invalid_contribution_id',
+        ),
+      ),
+    );
+  });
+
+  test('registry rejects blank slot id', () {
+    final registry = UiSlotRegistry();
+    expect(
+      () => registry.register(
+        UiSlotContribution(
+          contributionId: 'test.invalid.slot',
+          slotId: '   ',
+          layer: UiSlotLayer.homeWidget,
+          priority: 1,
+          builder: (context, slotContext) => const SizedBox.shrink(),
+        ),
+      ),
+      throwsA(
+        isA<UiSlotRegistryError>().having(
+          (error) => error.code,
+          'code',
+          'invalid_slot_id',
+        ),
+      ),
+    );
+  });
+
+  test('registry resolve returns empty for unknown slot id', () {
+    final registry = UiSlotRegistry(
+      contributions: <UiSlotContribution>[
+        UiSlotContribution(
+          contributionId: 'test.known.slot',
+          slotId: UiSlotIds.workbenchHomeWidgets,
+          layer: UiSlotLayer.homeWidget,
+          priority: 1,
+          builder: (context, slotContext) => const SizedBox.shrink(),
+        ),
+      ],
+    );
+
+    final resolved = registry.resolve(
+      slotId: 'slot.not.registered',
+      layer: UiSlotLayer.homeWidget,
+      slotContext: const UiSlotContext(),
+    );
+    expect(resolved, isEmpty);
+  });
+
+  testWidgets('view host updates when slot id changes', (tester) async {
+    final registry = UiSlotRegistry(
+      contributions: <UiSlotContribution>[
+        UiSlotContribution(
+          contributionId: 'test.view.slot_a',
+          slotId: 'slot.a',
+          layer: UiSlotLayer.view,
+          priority: 10,
+          builder: (context, slotContext) => const Text('slot-a'),
+        ),
+        UiSlotContribution(
+          contributionId: 'test.view.slot_b',
+          slotId: 'slot.b',
+          layer: UiSlotLayer.view,
+          priority: 10,
+          builder: (context, slotContext) => const Text('slot-b'),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        UiSlotViewHost(
+          registry: registry,
+          slotId: 'slot.a',
+          slotContext: const UiSlotContext(),
+          fallbackBuilder: (context) => const Text('fallback'),
+        ),
+      ),
+    );
+    expect(find.text('slot-a'), findsOneWidget);
+    expect(find.text('slot-b'), findsNothing);
+
+    await tester.pumpWidget(
+      _wrap(
+        UiSlotViewHost(
+          registry: registry,
+          slotId: 'slot.b',
+          slotContext: const UiSlotContext(),
+          fallbackBuilder: (context) => const Text('fallback'),
+        ),
+      ),
+    );
+    expect(find.text('slot-a'), findsNothing);
+    expect(find.text('slot-b'), findsOneWidget);
+  });
 }
