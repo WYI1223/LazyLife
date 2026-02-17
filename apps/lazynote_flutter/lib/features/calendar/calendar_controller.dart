@@ -1,28 +1,33 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
+import 'package:lazynote_flutter/features/reminders/reminder_scheduler.dart'
+    as reminders;
 
 /// Async range query returning [rust_api.AtomListResponse].
-typedef CalendarListByRangeInvoker = Future<rust_api.AtomListResponse> Function({
-  required int startMs,
-  required int endMs,
-  int? limit,
-  int? offset,
-});
+typedef CalendarListByRangeInvoker =
+    Future<rust_api.AtomListResponse> Function({
+      required int startMs,
+      required int endMs,
+      int? limit,
+      int? offset,
+    });
 
 /// Async schedule invoker returning [rust_api.EntryActionResponse].
-typedef CalendarScheduleInvoker = Future<rust_api.EntryActionResponse> Function({
-  required String title,
-  required int startEpochMs,
-  int? endEpochMs,
-});
+typedef CalendarScheduleInvoker =
+    Future<rust_api.EntryActionResponse> Function({
+      required String title,
+      required int startEpochMs,
+      int? endEpochMs,
+    });
 
 /// Async update event times invoker returning [rust_api.EntryActionResponse].
-typedef CalendarUpdateEventInvoker = Future<rust_api.EntryActionResponse> Function({
-  required String atomId,
-  required int startMs,
-  required int endMs,
-});
+typedef CalendarUpdateEventInvoker =
+    Future<rust_api.EntryActionResponse> Function({
+      required String atomId,
+      required int startMs,
+      required int endMs,
+    });
 
 /// Pre-load hook used to ensure bridge/db prerequisites.
 typedef CalendarPrepare = Future<void> Function();
@@ -84,8 +89,9 @@ class CalendarController extends ChangeNotifier {
 
       final startMs = _weekStart.millisecondsSinceEpoch;
       // End of Sunday: Monday + 7 days
-      final endMs =
-          _weekStart.add(const Duration(days: 7)).millisecondsSinceEpoch;
+      final endMs = _weekStart
+          .add(const Duration(days: 7))
+          .millisecondsSinceEpoch;
 
       final response = await _rangeInvoker(
         startMs: startMs,
@@ -107,6 +113,8 @@ class CalendarController extends ChangeNotifier {
       _events = List.unmodifiable(response.items);
       _phase = CalendarPhase.success;
       notifyListeners();
+      // Schedule reminders for loaded events
+      await _scheduleReminders();
     } catch (e) {
       if (requestId != _requestId) return;
       _phase = CalendarPhase.error;
@@ -170,6 +178,15 @@ class CalendarController extends ChangeNotifier {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Schedule reminders for loaded events via the process-level singleton.
+  Future<void> _scheduleReminders() async {
+    try {
+      await reminders.ReminderScheduler.scheduleRemindersForAtoms(_events);
+    } catch (_) {
+      // Reminder delivery must not break calendar rendering.
     }
   }
 

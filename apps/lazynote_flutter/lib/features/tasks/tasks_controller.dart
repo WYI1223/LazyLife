@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
+import 'package:lazynote_flutter/features/reminders/reminder_scheduler.dart'
+    as reminders;
 
 /// Async section list loader returning [rust_api.AtomListResponse].
 typedef TasksListInboxInvoker =
@@ -123,6 +125,8 @@ class TasksController extends ChangeNotifier {
   /// Loads all three sections in parallel.
   Future<void> loadAll() async {
     await Future.wait([_loadInbox(), _loadToday(), _loadUpcoming()]);
+    // Schedule reminders for Today section after load completes
+    await _scheduleReminders();
   }
 
   /// Reloads all three sections.
@@ -183,6 +187,15 @@ class TasksController extends ChangeNotifier {
       _createError = 'Create failed: $error';
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Schedule reminders for Today section atoms via the process-level singleton.
+  Future<void> _scheduleReminders() async {
+    try {
+      await reminders.ReminderScheduler.scheduleRemindersForAtoms(_todayItems);
+    } catch (_) {
+      // Reminder delivery must not break section rendering.
     }
   }
 

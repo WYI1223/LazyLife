@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/app/app.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
+import 'package:lazynote_flutter/features/reminders/reminder_scheduler.dart';
 
 /// Application entrypoint.
 ///
@@ -25,6 +26,7 @@ Future<void> _bootstrapLocalRuntime() async {
   try {
     await LocalSettingsStore.ensureInitialized();
     await RustBridge.bootstrapLogging();
+    await ReminderScheduler.ensureInitialized();
   } catch (error, stackTrace) {
     // Why: startup bootstrap must remain non-fatal and never block first frame.
     dev.log(
