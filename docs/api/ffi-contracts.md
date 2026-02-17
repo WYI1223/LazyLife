@@ -78,6 +78,34 @@ See full registry: `docs/api/error-codes.md`.
 
 ---
 
+## Workspace Tree APIs (PR-0221 M2)
+
+All APIs are use-case level and async.
+
+- `workspace_delete_folder(node_id, mode) -> WorkspaceActionResponse`
+  - `node_id`: workspace folder node UUID
+  - `mode`: `dissolve` | `delete_all`
+  - deterministic response envelope:
+    - `ok: bool`
+    - `error_code: String?`
+    - `message: String`
+
+### Error Code Mapping (Workspace Tree)
+
+Producer: `crates/lazynote_ffi/src/api.rs`
+
+- `invalid_node_id`
+- `invalid_delete_mode`
+- `node_not_found`
+- `node_not_folder`
+- `db_busy`
+- `db_error`
+- `internal_error`
+
+See full registry: `docs/api/error-codes.md`.
+
+---
+
 ## Tasks/Status APIs (PR-0011A, v0.1.5)
 
 All APIs are use-case level and async.
