@@ -1,4 +1,4 @@
-# Note Schema (v0.1)
+# Note Schema (v0.2)
 
 ## Purpose
 
@@ -24,6 +24,12 @@ Tag relationship:
 - `tags` table (`name` unique, case-insensitive)
 - `atom_tags` bridge (`atom_uuid` -> `tags.id`)
 
+Workspace tree relationship (v0.2):
+
+- `workspace_nodes.kind = 'note_ref'` references notes via `workspace_nodes.atom_uuid`
+- `workspace_nodes.atom_uuid` must point to an active note atom (`type='note' AND is_deleted=0`)
+- folder nodes (`kind='folder'`) must keep `atom_uuid = NULL`
+
 ## Contract Rules
 
 1. `note_update` is full replace:
@@ -39,6 +45,8 @@ Tag relationship:
    - provided tag set inserted in one transaction
 5. `notes_list` returns note rows only:
    - no task/event rows in this API
+6. Tree note refs must target notes only:
+   - service/repository reject task/event atoms as `note_ref` targets
 
 ## Markdown Preview Hook
 

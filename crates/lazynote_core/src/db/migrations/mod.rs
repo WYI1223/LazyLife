@@ -47,6 +47,10 @@ const MIGRATIONS: &[Migration] = &[
         version: 6,
         sql: include_str!("0006_time_matrix.sql"),
     },
+    Migration {
+        version: 7,
+        sql: include_str!("0007_workspace_tree.sql"),
+    },
 ];
 
 /// Returns the latest migration version known by this binary.
