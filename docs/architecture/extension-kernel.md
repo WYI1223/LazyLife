@@ -10,6 +10,7 @@ slot integrations can evolve without rewriting core business services.
 In scope:
 
 - manifest declaration model (`id`, `version`, `capabilities`, `entrypoints`)
+- runtime capability declaration model (`runtime_capabilities`)
 - declaration-time manifest validation
 - in-process extension registry contract
 - first-party adapter registration path
@@ -32,6 +33,13 @@ v0.2 uses **string capability enums**:
 
 Bitflags/structured capability model is intentionally deferred to later PRs.
 
+Runtime security capabilities (invocation guard):
+
+- `network`
+- `file`
+- `notification`
+- `calendar`
+
 ## Manifest Contract
 
 `ExtensionManifest` fields:
@@ -39,12 +47,14 @@ Bitflags/structured capability model is intentionally deferred to later PRs.
 - `id`: stable extension id (lowercase alnum with `.`/`_`/`-` separators)
 - `version`: semantic triplet (`major.minor.patch`)
 - `capabilities`: non-empty set of supported capability strings
+- `runtime_capabilities`: optional runtime permission declarations
 - `entrypoints`: declaration-only string identifiers
 
 Validation rules:
 
 - id/version format must be valid
 - capabilities must be supported and deduplicated
+- runtime capabilities must be supported and deduplicated
 - capability-specific entrypoint declaration must exist
 - lifecycle declarations `init/dispose/health` are required
 
@@ -56,6 +66,7 @@ Validation rules:
 - rejects duplicate extension ids
 - maintains capability index for lookup
 - supports first-party adapter baseline registration
+- exposes deny-by-default runtime capability guard for invocation boundaries
 
 This registry is declaration-only in v0.2 and does not execute entrypoints.
 

@@ -45,6 +45,7 @@ Translation header template (for future localized pages):
 
 - `docs/governance/GOVERNANCE.md`
 - `docs/governance/API_COMPATIBILITY.md`
+- `docs/governance/plugin-capabilities.md`
 - `docs/compliance/privacy.md`
 - `docs/compliance/data-retention.md`
 

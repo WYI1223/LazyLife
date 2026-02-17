@@ -18,6 +18,12 @@ pub mod service;
 /// Provider SPI and sync contracts.
 pub mod sync;
 
+/// Re-export extension runtime capability guard contracts.
+pub use extension::capability::{
+    parse_runtime_capability, supported_runtime_capability_strings, RuntimeCapability,
+    RuntimeCapabilityError, RUNTIME_CAPABILITY_CALENDAR, RUNTIME_CAPABILITY_FILE,
+    RUNTIME_CAPABILITY_NETWORK, RUNTIME_CAPABILITY_NOTIFICATION,
+};
 /// Re-export extension kernel contracts.
 pub use extension::kernel::{
     ExtensionAdapter, ExtensionHealth, ExtensionKernelError, ExtensionRegistry, ExtensionSource,

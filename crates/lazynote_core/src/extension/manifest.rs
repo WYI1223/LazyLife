@@ -1,5 +1,6 @@
 //! Extension manifest declaration and validation.
 
+use crate::extension::capability::{parse_runtime_capability, RuntimeCapability};
 use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -37,6 +38,11 @@ pub struct ExtensionManifest {
     pub version: String,
     /// Declared capabilities (`command|parser|provider|ui_slot`).
     pub capabilities: Vec<String>,
+    /// Declared runtime capabilities (`network|file|notification|calendar`).
+    ///
+    /// Empty declaration is valid and treated as deny-by-default during
+    /// invocation-time capability checks.
+    pub runtime_capabilities: Vec<String>,
     /// Entry point declarations (string identifiers only).
     pub entrypoints: ManifestEntrypoints,
 }
@@ -98,10 +104,35 @@ impl ExtensionManifest {
             }
         }
 
+        self.declared_runtime_capabilities()?;
         require_entrypoint(&self.entrypoints.init, "init")?;
         require_entrypoint(&self.entrypoints.dispose, "dispose")?;
         require_entrypoint(&self.entrypoints.health, "health")?;
         Ok(())
+    }
+
+    /// Returns validated runtime capability declarations as a deduplicated set.
+    pub fn declared_runtime_capabilities(
+        &self,
+    ) -> Result<BTreeSet<RuntimeCapability>, ManifestValidationError> {
+        let mut dedup = BTreeSet::<RuntimeCapability>::new();
+        for raw in &self.runtime_capabilities {
+            let normalized = raw.trim();
+            let capability = parse_runtime_capability(normalized).map_err(|err| match err {
+                crate::extension::capability::RuntimeCapabilityError::EmptyCapability => {
+                    ManifestValidationError::EmptyRuntimeCapability
+                }
+                crate::extension::capability::RuntimeCapabilityError::UnsupportedCapability(
+                    value,
+                ) => ManifestValidationError::UnsupportedRuntimeCapability(value),
+            })?;
+            if !dedup.insert(capability) {
+                return Err(ManifestValidationError::DuplicateRuntimeCapability(
+                    capability.as_str().to_string(),
+                ));
+            }
+        }
+        Ok(dedup)
     }
 }
 
@@ -194,6 +225,9 @@ pub enum ManifestValidationError {
     EmptyCapability,
     UnsupportedCapability(String),
     DuplicateCapability(String),
+    EmptyRuntimeCapability,
+    UnsupportedRuntimeCapability(String),
+    DuplicateRuntimeCapability(String),
     MissingEntrypoint(&'static str),
 }
 
@@ -214,6 +248,15 @@ impl Display for ManifestValidationError {
             }
             Self::DuplicateCapability(value) => {
                 write!(f, "manifest capability is duplicated: {value}")
+            }
+            Self::EmptyRuntimeCapability => {
+                write!(f, "manifest contains empty runtime capability value")
+            }
+            Self::UnsupportedRuntimeCapability(value) => {
+                write!(f, "manifest runtime capability is unsupported: {value}")
+            }
+            Self::DuplicateRuntimeCapability(value) => {
+                write!(f, "manifest runtime capability is duplicated: {value}")
             }
             Self::MissingEntrypoint(name) => {
                 write!(f, "manifest missing required entrypoint: {name}")
@@ -239,6 +282,7 @@ mod tests {
                 CAPABILITY_COMMAND.to_string(),
                 CAPABILITY_UI_SLOT.to_string(),
             ],
+            runtime_capabilities: vec!["network".to_string()],
             entrypoints: ManifestEntrypoints {
                 init: Some("builtin.init".to_string()),
                 dispose: Some("builtin.dispose".to_string()),
@@ -320,5 +364,35 @@ mod tests {
         manifest.version = "v1".to_string();
         let err = manifest.validate().unwrap_err();
         assert!(matches!(err, ManifestValidationError::InvalidVersion(_)));
+    }
+
+    #[test]
+    fn rejects_duplicate_runtime_capability() {
+        let mut manifest = valid_manifest();
+        manifest.runtime_capabilities.push("network".to_string());
+        let err = manifest.validate().unwrap_err();
+        assert_eq!(
+            err,
+            ManifestValidationError::DuplicateRuntimeCapability("network".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_unsupported_runtime_capability() {
+        let mut manifest = valid_manifest();
+        manifest.runtime_capabilities.push("bluetooth".to_string());
+        let err = manifest.validate().unwrap_err();
+        assert_eq!(
+            err,
+            ManifestValidationError::UnsupportedRuntimeCapability("bluetooth".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_empty_runtime_capability() {
+        let mut manifest = valid_manifest();
+        manifest.runtime_capabilities = vec!["   ".to_string()];
+        let err = manifest.validate().unwrap_err();
+        assert_eq!(err, ManifestValidationError::EmptyRuntimeCapability);
     }
 }
