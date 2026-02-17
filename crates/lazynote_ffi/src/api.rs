@@ -14,9 +14,10 @@
 use lazynote_core::db::open_db;
 use lazynote_core::{
     core_version as core_version_inner, init_logging as init_logging_inner, ping as ping_inner,
-    search_all, AtomId, AtomService, AtomType, NoteRecord, NoteService, NoteServiceError,
-    ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository, SqliteNoteRepository,
-    TaskService, TaskServiceError,
+    search_all, AtomId, AtomService, AtomType, FolderDeleteMode, NoteRecord, NoteService,
+    NoteServiceError, ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository,
+    SqliteNoteRepository, SqliteTreeRepository, TaskService, TaskServiceError, TreeRepoError,
+    TreeService, TreeServiceError,
 };
 use log::error;
 use std::path::PathBuf;
@@ -194,6 +195,56 @@ pub struct TagsListResponse {
     pub message: String,
     /// Normalized tags known by storage.
     pub tags: Vec<String>,
+}
+
+/// Workspace action response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceActionResponse {
+    /// Whether operation succeeded.
+    pub ok: bool,
+    /// Stable machine-readable error code for failure paths.
+    pub error_code: Option<String>,
+    /// Human-readable message for diagnostics/UI.
+    pub message: String,
+}
+
+#[derive(Debug)]
+enum WorkspaceFfiError {
+    InvalidNodeId(String),
+    InvalidDeleteMode(String),
+    NodeNotFound(String),
+    NodeNotFolder(String),
+    DbBusy(String),
+    DbError(String),
+    Internal(String),
+}
+
+impl WorkspaceFfiError {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidNodeId(_) => "invalid_node_id",
+            Self::InvalidDeleteMode(_) => "invalid_delete_mode",
+            Self::NodeNotFound(_) => "node_not_found",
+            Self::NodeNotFolder(_) => "node_not_folder",
+            Self::DbBusy(_) => "db_busy",
+            Self::DbError(_) => "db_error",
+            Self::Internal(_) => "internal_error",
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::InvalidNodeId(value) => format!("invalid node id: {value}"),
+            Self::InvalidDeleteMode(value) => {
+                format!("invalid delete mode: {value}, expected dissolve|delete_all")
+            }
+            Self::NodeNotFound(value) => format!("workspace node not found: {value}"),
+            Self::NodeNotFolder(value) => format!("workspace node is not a folder: {value}"),
+            Self::DbBusy(value) => format!("workspace database busy: {value}"),
+            Self::DbError(value) => format!("workspace database error: {value}"),
+            Self::Internal(value) => format!("workspace internal error: {value}"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -548,6 +599,38 @@ fn tags_list_impl() -> TagsListResponse {
     }
 }
 
+/// Deletes one workspace folder by explicit mode (`dissolve|delete_all`).
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - `node_id` must be UUID string of a folder node.
+/// - `mode` must be one of `dissolve` or `delete_all`.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_delete_folder(node_id: String, mode: String) -> WorkspaceActionResponse {
+    workspace_delete_folder_impl(node_id, mode)
+}
+
+fn workspace_delete_folder_impl(node_id: String, mode: String) -> WorkspaceActionResponse {
+    let parsed_id = match Uuid::parse_str(node_id.trim()) {
+        Ok(value) => value,
+        Err(_) => return workspace_failure(WorkspaceFfiError::InvalidNodeId(node_id)),
+    };
+
+    let parsed_mode = match parse_folder_delete_mode(mode.as_str()) {
+        Ok(value) => value,
+        Err(err) => return workspace_failure(err),
+    };
+
+    match with_tree_service(|service| service.delete_folder(parsed_id, parsed_mode)) {
+        Ok(()) => WorkspaceActionResponse {
+            ok: true,
+            error_code: None,
+            message: "Workspace folder deleted.".to_string(),
+        },
+        Err(err) => workspace_failure(err),
+    }
+}
+
 fn normalize_entry_limit(limit: Option<u32>) -> u32 {
     match limit {
         Some(0) => ENTRY_DEFAULT_LIMIT,
@@ -627,6 +710,24 @@ fn with_note_service<T>(
     f(&mut service).map_err(map_note_service_error)
 }
 
+fn with_tree_service<T>(
+    f: impl FnOnce(&TreeService<SqliteTreeRepository<'_>>) -> Result<T, TreeServiceError>,
+) -> Result<T, WorkspaceFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_workspace_db_error)?;
+    let repo = SqliteTreeRepository::try_new(&conn).map_err(map_tree_repo_error)?;
+    let service = TreeService::new(repo);
+    f(&service).map_err(map_tree_service_error)
+}
+
+fn parse_folder_delete_mode(raw: &str) -> Result<FolderDeleteMode, WorkspaceFfiError> {
+    match raw.trim() {
+        "dissolve" => Ok(FolderDeleteMode::Dissolve),
+        "delete_all" => Ok(FolderDeleteMode::DeleteAll),
+        other => Err(WorkspaceFfiError::InvalidDeleteMode(other.to_string())),
+    }
+}
+
 fn parse_note_id(raw: &str) -> Result<AtomId, NotesFfiError> {
     Uuid::parse_str(raw.trim()).map_err(|_| NotesFfiError::InvalidNoteId(raw.to_string()))
 }
@@ -648,6 +749,14 @@ fn note_failure(error: NotesFfiError) -> NoteResponse {
         error_code: Some(error.code().to_string()),
         message: error.message(),
         note: None,
+    }
+}
+
+fn workspace_failure(error: WorkspaceFfiError) -> WorkspaceActionResponse {
+    WorkspaceActionResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
     }
 }
 
@@ -694,6 +803,72 @@ fn map_db_error(err: lazynote_core::db::DbError) -> NotesFfiError {
         NotesFfiError::DbBusy(err.to_string())
     } else {
         NotesFfiError::DbError(err.to_string())
+    }
+}
+
+fn map_workspace_db_error(err: lazynote_core::db::DbError) -> WorkspaceFfiError {
+    if is_db_busy(&err) {
+        WorkspaceFfiError::DbBusy(err.to_string())
+    } else {
+        WorkspaceFfiError::DbError(err.to_string())
+    }
+}
+
+fn map_tree_repo_error(err: TreeRepoError) -> WorkspaceFfiError {
+    match err {
+        TreeRepoError::Db(db_err) => map_workspace_db_error(db_err),
+        TreeRepoError::NodeNotFound(node_id) => {
+            WorkspaceFfiError::NodeNotFound(node_id.to_string())
+        }
+        TreeRepoError::NodeNotFolder(node_id) => {
+            WorkspaceFfiError::NodeNotFolder(node_id.to_string())
+        }
+        TreeRepoError::UninitializedConnection {
+            expected_version,
+            actual_version,
+        } => WorkspaceFfiError::DbError(format!(
+            "repository requires schema {expected_version}, got {actual_version}"
+        )),
+        TreeRepoError::MissingRequiredTable(table) => {
+            WorkspaceFfiError::DbError(format!("missing required table `{table}`"))
+        }
+        TreeRepoError::MissingRequiredColumn { table, column } => WorkspaceFfiError::DbError(
+            format!("missing required column `{column}` in table `{table}`"),
+        ),
+        TreeRepoError::InvalidData(details) => WorkspaceFfiError::Internal(details),
+    }
+}
+
+fn map_tree_service_error(err: TreeServiceError) -> WorkspaceFfiError {
+    match err {
+        TreeServiceError::InvalidDisplayName => WorkspaceFfiError::Internal(
+            "invalid display name for workspace folder delete operation".to_string(),
+        ),
+        TreeServiceError::NodeNotFound(node_id) => {
+            WorkspaceFfiError::NodeNotFound(node_id.to_string())
+        }
+        TreeServiceError::ParentNotFound(node_id) => {
+            WorkspaceFfiError::NodeNotFound(node_id.to_string())
+        }
+        TreeServiceError::ParentMustBeFolder(node_id) => {
+            WorkspaceFfiError::NodeNotFolder(node_id.to_string())
+        }
+        TreeServiceError::NodeMustBeFolder(node_id) => {
+            WorkspaceFfiError::NodeNotFolder(node_id.to_string())
+        }
+        TreeServiceError::AtomNotFound(atom_id) => {
+            WorkspaceFfiError::Internal(format!("atom not found while deleting folder: {atom_id}"))
+        }
+        TreeServiceError::AtomNotNote(atom_id) => WorkspaceFfiError::Internal(format!(
+            "atom is not note while deleting folder: {atom_id}"
+        )),
+        TreeServiceError::CycleDetected {
+            node_uuid,
+            parent_uuid,
+        } => WorkspaceFfiError::Internal(format!(
+            "cycle detected while deleting folder node={node_uuid} parent={parent_uuid}"
+        )),
+        TreeServiceError::Repo(repo_err) => map_tree_repo_error(repo_err),
     }
 }
 
@@ -1107,11 +1282,12 @@ mod tests {
     use super::{
         calendar_list_by_range_impl, calendar_update_event_impl, configure_entry_db_path,
         core_version, entry_create_note_impl, entry_create_task_impl, entry_schedule_impl,
-        entry_search_impl, init_logging, map_db_error, map_repo_error, note_create_impl,
-        note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
-        NotesFfiError,
+        entry_search_impl, init_logging, map_db_error, map_repo_error, map_workspace_db_error,
+        note_create_impl, note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl,
+        ping, tags_list_impl, workspace_delete_folder_impl, NotesFfiError, WorkspaceFfiError,
     };
     use lazynote_core::db::open_db;
+    use lazynote_core::{SqliteTreeRepository, TreeService};
     use std::sync::{Mutex, MutexGuard};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -1387,6 +1563,28 @@ mod tests {
     }
 
     #[test]
+    fn workspace_sqlite_busy_maps_to_db_busy_error_code() {
+        let mapped = map_workspace_db_error(lazynote_core::db::DbError::Sqlite(
+            rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+                Some("database is busy".to_string()),
+            ),
+        ));
+        assert!(matches!(mapped, WorkspaceFfiError::DbBusy(_)));
+    }
+
+    #[test]
+    fn workspace_sqlite_locked_maps_to_db_busy_error_code() {
+        let mapped = map_workspace_db_error(lazynote_core::db::DbError::Sqlite(
+            rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
+                Some("database is locked".to_string()),
+            ),
+        ));
+        assert!(matches!(mapped, WorkspaceFfiError::DbBusy(_)));
+    }
+
+    #[test]
     fn tags_list_returns_normalized_values() {
         let _guard = acquire_test_db_lock();
         let created = note_create_impl("tag source".to_string());
@@ -1404,6 +1602,91 @@ mod tests {
         assert!(tags.ok, "{}", tags.message);
         assert!(tags.tags.contains(&"work".to_string()));
         assert!(tags.tags.contains(&"home".to_string()));
+    }
+
+    fn create_workspace_folder(name: &str) -> String {
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        let repo = SqliteTreeRepository::try_new(&conn).expect("init tree repo");
+        let service = TreeService::new(repo);
+        service
+            .create_folder(None, name.to_string())
+            .expect("create workspace folder")
+            .node_uuid
+            .to_string()
+    }
+
+    fn create_workspace_note_ref_node() -> String {
+        let created_note = note_create_impl("workspace note".to_string());
+        assert!(created_note.ok, "{}", created_note.message);
+        let atom_id = created_note
+            .note
+            .as_ref()
+            .expect("note payload")
+            .atom_id
+            .clone();
+        let parsed_atom_id = uuid::Uuid::parse_str(atom_id.as_str()).expect("parse atom id");
+
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        let repo = SqliteTreeRepository::try_new(&conn).expect("init tree repo");
+        let service = TreeService::new(repo);
+        service
+            .create_note_ref(None, parsed_atom_id, Some("note-ref".to_string()))
+            .expect("create workspace note_ref")
+            .node_uuid
+            .to_string()
+    }
+
+    #[test]
+    fn workspace_delete_folder_rejects_invalid_node_id() {
+        let _guard = acquire_test_db_lock();
+        let response =
+            workspace_delete_folder_impl("not-a-uuid".to_string(), "dissolve".to_string());
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_node_id"));
+    }
+
+    #[test]
+    fn workspace_delete_folder_rejects_invalid_mode() {
+        let _guard = acquire_test_db_lock();
+        let folder_id = create_workspace_folder("invalid-mode");
+        let response = workspace_delete_folder_impl(folder_id, "archive".to_string());
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_delete_mode"));
+    }
+
+    #[test]
+    fn workspace_delete_folder_maps_node_not_found_error_code() {
+        let _guard = acquire_test_db_lock();
+        let random_id = uuid::Uuid::new_v4().to_string();
+        let response = workspace_delete_folder_impl(random_id, "dissolve".to_string());
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("node_not_found"));
+    }
+
+    #[test]
+    fn workspace_delete_folder_maps_node_not_folder_error_code() {
+        let _guard = acquire_test_db_lock();
+        let node_id = create_workspace_note_ref_node();
+        let response = workspace_delete_folder_impl(node_id, "dissolve".to_string());
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("node_not_folder"));
+    }
+
+    #[test]
+    fn workspace_delete_folder_supports_both_modes() {
+        let _guard = acquire_test_db_lock();
+        let dissolve_folder = create_workspace_folder("dissolve-ok");
+        let delete_all_folder = create_workspace_folder("delete-all-ok");
+
+        let dissolve_response =
+            workspace_delete_folder_impl(dissolve_folder, "dissolve".to_string());
+        assert!(dissolve_response.ok, "{}", dissolve_response.message);
+        assert!(dissolve_response.error_code.is_none());
+
+        let delete_all_response =
+            workspace_delete_folder_impl(delete_all_folder, "delete_all".to_string());
+        assert!(delete_all_response.ok, "{}", delete_all_response.message);
+        assert!(delete_all_response.error_code.is_none());
     }
 
     // -----------------------------------------------------------------------
