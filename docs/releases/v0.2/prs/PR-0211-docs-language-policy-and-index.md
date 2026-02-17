@@ -1,7 +1,7 @@
 # PR-0211-docs-language-policy-and-index
 
 - Proposed title: `docs(governance): canonical English policy and docs entry index`
-- Status: In Progress (M4 completed)
+- Status: Completed
 
 ## Goal
 
@@ -56,6 +56,6 @@ This PR operationalizes:
 
 ## Acceptance Criteria
 
-- [ ] Canonical docs language policy is explicit and discoverable.
-- [ ] `docs/index.md` exists and is linked from README.
-- [ ] Translation guidance format is documented.
+- [x] Canonical docs language policy is explicit and discoverable.
+- [x] `docs/index.md` exists and is linked from README.
+- [x] Translation guidance format is documented.

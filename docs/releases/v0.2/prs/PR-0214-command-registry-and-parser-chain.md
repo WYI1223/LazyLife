@@ -1,7 +1,7 @@
 # PR-0214-command-registry-and-parser-chain
 
 - Proposed title: `feat(entry): command registry and parser chain baseline`
-- Status: In Progress (Flutter baseline implemented; pending review)
+- Status: Completed
 
 ## Goal
 

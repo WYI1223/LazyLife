@@ -51,11 +51,12 @@ Code reference: `crates/lazynote_core/src/model/atom.rs`.
 ### Tree Invariants
 
 1. `kind='folder'` must not carry `atom_uuid`.
-2. `kind='note_ref'` must carry `atom_uuid` and reference an active note atom.
+2. `kind='note_ref'` must carry `atom_uuid`; create/update validates target as an active note atom.
 3. `parent_uuid` may be `NULL` (root) or reference another `workspace_nodes.node_uuid`.
 4. Service layer rejects cycle-producing moves (`A -> ... -> A`).
 5. Child listing order is deterministic: `sort_order ASC, node_uuid ASC`.
-6. If an active `note_ref` exists, the referenced atom cannot be changed to non-note, soft-deleted, or hard-deleted.
+6. Atom delete/type change is not blocked by existing `note_ref`; references may become dangling.
+7. Tree read paths hide invalid `note_ref` and only surface active-note references.
 
 Code reference: `crates/lazynote_core/src/repo/tree_repo.rs`, `crates/lazynote_core/src/service/tree_service.rs`.
 
@@ -165,6 +166,7 @@ List section membership (Inbox/Today/Upcoming) is derived from time fields, not 
 | 5 | `0005_note_preview.sql` | `preview_text`, `preview_image` columns |
 | 6 | `0006_time_matrix.sql` | Rename `event_start`→`start_at`, `event_end`→`end_at`; add `recurrence_rule TEXT` |
 | 7 | `0007_workspace_tree.sql` | Add `workspace_nodes`, ordering index, and note-ref integrity triggers |
+| 8 | `0008_workspace_tree_delete_policy.sql` | Remove atom-side blocking triggers and switch tree visibility to read-time filtering |
 
 ---
 

@@ -1,7 +1,7 @@
 # PR-0215-provider-spi-and-sync-contract
 
 - Proposed title: `feat(sync): provider SPI and sync contract baseline`
-- Status: In Progress (core contract baseline completed; FFI exposure deferred)
+- Status: Completed
 
 ## Goal
 

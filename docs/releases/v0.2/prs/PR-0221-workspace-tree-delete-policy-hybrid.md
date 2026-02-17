@@ -1,7 +1,7 @@
 # PR-0221-workspace-tree-delete-policy-hybrid
 
 - Proposed title: `feat(workspace-core): hybrid delete policy for note and folder`
-- Status: In Progress (M1-M3 completed, M4 pending)
+- Status: Completed
 
 ## Goal
 
@@ -212,7 +212,7 @@ Deliverables:
    - `docs/architecture/data-model.md`
    - `docs/architecture/note-schema.md`
    - `docs/api/error-codes.md`
-   - `docs/api/workspace-tree-contract.md`
+   - `docs/api/ffi-contracts.md`
    - `docs/releases/v0.2/README.md` (if delta remains)
 2. Add explicit migration numbering note (`0008` workspace policy / `0009` links).
 3. Document prune + optional vacuum positioning (maintenance path, not hot path).
@@ -221,6 +221,15 @@ Exit criteria:
 
 - docs reflect implemented behavior, not planned behavior
 - no numbering or contract conflicts with `PR-0212`
+
+Completion snapshot:
+
+- [x] Synced workspace delete contract index in `docs/api/ffi-contracts.md`.
+- [x] Synced workspace delete error mapping in `docs/api/error-codes.md`.
+- [x] Synced workspace/note model docs to hybrid delete policy:
+  - `docs/architecture/data-model.md`
+  - `docs/architecture/note-schema.md`
+- [x] Synced migration numbering note (`0008` workspace policy / `0009` links) in `docs/releases/v0.2/README.md`.
 
 ## Execution Order and Dependency
 
@@ -253,9 +262,9 @@ Exit criteria:
 
 ## Acceptance Criteria
 
-- [ ] Deleting a referenced note is not blocked.
-- [ ] Dangling `note_ref` is hidden in all tree read paths.
-- [ ] Restored notes re-appear via original references.
-- [ ] Folder delete supports `dissolve` and `delete_all` with deterministic behavior.
-- [ ] Multi-reference notes are not accidentally deleted by folder operations.
-- [ ] Docs and API contracts match shipped behavior.
+- [x] Deleting a referenced note is not blocked.
+- [x] Dangling `note_ref` is hidden in all tree read paths.
+- [x] Restored notes re-appear via original references.
+- [x] Folder delete supports `dissolve` and `delete_all` with deterministic behavior.
+- [x] Multi-reference notes are not accidentally deleted by folder operations.
+- [x] Docs and API contracts match shipped behavior.
