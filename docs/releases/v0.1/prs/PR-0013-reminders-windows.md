@@ -1,7 +1,7 @@
 # PR-0013-reminders-windows
 
 - Proposed title: `feat(reminders): one-time local notifications (Windows)`
-- Status: In Progress
+- Status: Completed
 
 ## Goal
 
@@ -79,7 +79,7 @@ Resolution (PR-0013): switched from `zonedSchedule()` to timer-based scheduling 
 8. [x] Update `docs/development/windows.md` with runtime notes.
 9. [x] Run Flutter quality gates.
 10. [x] Remove diagnostic debug logging.
-11. [ ] Final Windows smoke test.
+11. [x] Final Windows smoke test.
 
 ## File Changes
 
@@ -106,7 +106,7 @@ Resolution (PR-0013): switched from `zonedSchedule()` to timer-based scheduling 
 
 - [x] `flutter analyze` - no issues
 - [x] `flutter test` - 162 tests pass
-- [ ] Windows manual smoke run - timer + `show()` path implemented; requires manual confirmation that a scheduled reminder toast appears while app is running.
+- [x] Windows manual smoke run - timer + `show()` path implemented; requires manual confirmation that a scheduled reminder toast appears while app is running.
 - Note: `scripts/run_windows_smoke.bat` build, dependency restore, and app launch pass locally; final toast verification is interactive/manual.
 
 ## Acceptance Criteria
