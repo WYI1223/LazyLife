@@ -27,7 +27,7 @@ Tag relationship:
 Workspace tree relationship (v0.2):
 
 - `workspace_nodes.kind = 'note_ref'` references notes via `workspace_nodes.atom_uuid`
-- `workspace_nodes.atom_uuid` must point to an active note atom (`type='note' AND is_deleted=0`)
+- `workspace_nodes.atom_uuid` is validated as active note on `note_ref` create/update
 - folder nodes (`kind='folder'`) must keep `atom_uuid = NULL`
 
 ## Contract Rules
@@ -47,8 +47,10 @@ Workspace tree relationship (v0.2):
    - no task/event rows in this API
 6. Tree note refs must target notes only:
    - service/repository reject task/event atoms as `note_ref` targets
-7. Referred active notes are protected:
-   - if an active `workspace_nodes.note_ref` points to a note, core rejects note type demotion and delete/soft-delete
+7. Workspace refs follow hybrid visibility semantics:
+   - note delete/type change is not blocked by existing `note_ref`
+   - dangling refs are hidden in tree read paths
+   - restoring the note restores visibility of existing refs
 
 ## Markdown Preview Hook
 

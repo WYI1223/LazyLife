@@ -1,7 +1,7 @@
 # PR-0216-ui-extension-slots
 
 - Proposed title: `feat(ui-platform): block/view/panel/widget slot contracts`
-- Status: In Progress (core Flutter slot host baseline completed)
+- Status: Completed
 
 ## Goal
 
