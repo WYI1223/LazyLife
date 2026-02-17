@@ -123,3 +123,4 @@ See: `docs/compliance/google-calendar.md` and `docs/compliance/privacy.md`.
 - `docs/releases/v0.3/prs/PR-0309-google-calendar-provider-plugin.md`
 - `docs/architecture/data-model.md`
 - `docs/architecture/logging.md`
+- `docs/architecture/provider-spi.md`
