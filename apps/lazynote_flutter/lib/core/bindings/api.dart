@@ -6,9 +6,9 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_type_label`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `message`, `message`, `normalize_entry_limit`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_note_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item`, `to_entry_search_item`, `to_note_item`, `with_atom_service`, `with_note_service`, `with_task_service`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `NotesFfiError`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_type_label`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `map_db_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_folder_delete_mode`, `parse_note_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item`, `to_entry_search_item`, `to_note_item`, `with_atom_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_delete_folder_impl`, `workspace_failure`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `NotesFfiError`, `WorkspaceFfiError`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Minimal health-check API for FRB smoke integration.
 ///
@@ -151,6 +151,20 @@ Future<NoteResponse> noteSetTags({
 /// - Async call, DB-backed execution.
 /// - Returns typed envelope with stable error codes.
 Future<TagsListResponse> tagsList() => RustLib.instance.api.crateApiTagsList();
+
+/// Deletes one workspace folder by explicit mode (`dissolve|delete_all`).
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - `node_id` must be UUID string of a folder node.
+/// - `mode` must be one of `dissolve` or `delete_all`.
+Future<WorkspaceActionResponse> workspaceDeleteFolder({
+  required String nodeId,
+  required String mode,
+}) => RustLib.instance.api.crateApiWorkspaceDeleteFolder(
+  nodeId: nodeId,
+  mode: mode,
+);
 
 /// Lists inbox atoms (both `start_at` and `end_at` NULL).
 ///
@@ -633,4 +647,34 @@ class TagsListResponse {
           errorCode == other.errorCode &&
           message == other.message &&
           tags == other.tags;
+}
+
+/// Workspace action response envelope.
+class WorkspaceActionResponse {
+  /// Whether operation succeeded.
+  final bool ok;
+
+  /// Stable machine-readable error code for failure paths.
+  final String? errorCode;
+
+  /// Human-readable message for diagnostics/UI.
+  final String message;
+
+  const WorkspaceActionResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+  });
+
+  @override
+  int get hashCode => ok.hashCode ^ errorCode.hashCode ^ message.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceActionResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message;
 }
