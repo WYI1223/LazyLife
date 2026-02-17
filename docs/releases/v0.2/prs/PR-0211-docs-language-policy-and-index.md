@@ -1,7 +1,7 @@
 # PR-0211-docs-language-policy-and-index
 
 - Proposed title: `docs(governance): canonical English policy and docs entry index`
-- Status: Planned
+- Status: In Progress (M4 completed)
 
 ## Goal
 
@@ -34,6 +34,13 @@ This PR operationalizes:
 3. Add translation header template for future localized docs.
 4. Update README/docs links to canonical entrypoint.
 
+## M4 Completion Snapshot
+
+- [x] Added canonical docs entry page: `docs/index.md`.
+- [x] Linked repository README to `docs/index.md` as primary docs entrypoint.
+- [x] Updated contribution entry docs to point to canonical docs entry (`docs/index.md`).
+- [x] Synced research tracking note for language policy entrypoint tasks.
+
 ## Planned File Changes
 
 - [edit] `CONTRIBUTING.md`
@@ -52,4 +59,3 @@ This PR operationalizes:
 - [ ] Canonical docs language policy is explicit and discoverable.
 - [ ] `docs/index.md` exists and is linked from README.
 - [ ] Translation guidance format is documented.
-
