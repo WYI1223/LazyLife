@@ -5,6 +5,8 @@
 
 **[中文文档 →](README_ZH.md)**
 
+Documentation entrypoint: **[docs/index.md](docs/index.md)**
+
 ---
 
 ## What is LazyNote?
@@ -222,6 +224,7 @@ v0.1.5: tasks + time-matrix (PR-0011). Post-v0.1.5: calendar, Google Calendar sy
 
 | Document | Description |
 |----------|-------------|
+| [docs/index.md](docs/index.md) | Canonical docs entrypoint and navigation index |
 | [docs/architecture/engineering-standards.md](docs/architecture/engineering-standards.md) | 6 mandatory architecture rules |
 | [docs/architecture/data-model.md](docs/architecture/data-model.md) | Atom entity spec and schema |
 | [docs/api/ffi-contract-v0.1.md](docs/api/ffi-contract-v0.1.md) | Full FFI API contract |

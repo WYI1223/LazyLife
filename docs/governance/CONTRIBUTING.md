@@ -6,12 +6,18 @@
 
 ## Before You Start
 
-1. 先阅读 `README.md`、`VERSIONING.md`、`docs/releases/` 下的当前版本计划。
+1. 先阅读 `docs/index.md`（文档入口）、`README.md`、`VERSIONING.md`、`docs/releases/` 下的当前版本计划。
 2. 新功能或较大改动请先开 Issue（或在已有 Issue 下认领）。
 3. 涉及架构决策时，请同步更新 `docs/architecture/adr/`。
 4. 必须遵循 `docs/architecture/engineering-standards.md`。
 5. 注释与代码可读性必须遵循 `docs/architecture/code-comment-standards.md`。
 6. 涉及 API 合约改动时，必须同步更新 `docs/api/*` 与 `docs/governance/API_COMPATIBILITY.md`。
+
+## Docs Language Policy
+
+- 英文文档是规范源（canonical source）。
+- 翻译文档是可选补充，允许滞后于英文版本。
+- 内部链接必须优先指向 canonical 路径（`docs/...`），避免多语言路径分叉导致漂移。
 
 ## Branch Naming
 
