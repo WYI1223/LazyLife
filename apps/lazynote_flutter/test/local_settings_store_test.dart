@@ -187,4 +187,85 @@ void main() {
 
     expect(LocalSettingsStore.loggingLevelOverride, isNull);
   });
+
+  test('schema_version > 1 falls back to defaults', () async {
+    final tempDir = await Directory.systemTemp.createTemp('lazynote-settings-');
+    addTearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final settingsPath =
+        '${tempDir.path}${Platform.pathSeparator}settings.json';
+    final existing = File(settingsPath);
+    await existing.parent.create(recursive: true);
+    await existing.writeAsString('''
+{
+  "schema_version": 999,
+  "entry": {
+    "ui": {
+      "collapsed_height": 100,
+      "expanded_max_height": 600,
+      "animation_ms": 300
+    }
+  },
+  "logging": {
+    "level_override": "trace"
+  }
+}
+''');
+
+    LocalSettingsStore.settingsFilePathResolver = () async => settingsPath;
+    await LocalSettingsStore.ensureInitialized();
+
+    expect(LocalSettingsStore.entryUiTuning.collapsedHeight, 72);
+    expect(LocalSettingsStore.entryUiTuning.expandedMaxHeight, 420);
+    expect(LocalSettingsStore.entryUiTuning.animationMs, 180);
+    expect(LocalSettingsStore.loggingLevelOverride, isNull);
+  });
+
+  test(
+    'recovers settings from leftover temp file when settings.json is missing',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'lazynote-settings-',
+      );
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final settingsPath =
+          '${tempDir.path}${Platform.pathSeparator}settings.json';
+      final recovery = File('$settingsPath.tmp.123');
+      await recovery.parent.create(recursive: true);
+      await recovery.writeAsString('''
+{
+  "schema_version": 1,
+  "entry": {
+    "ui": {
+      "collapsed_height": 88,
+      "expanded_max_height": 500,
+      "animation_ms": 210
+    }
+  },
+  "logging": {
+    "level_override": "debug"
+  }
+}
+''');
+
+      LocalSettingsStore.settingsFilePathResolver = () async => settingsPath;
+      await LocalSettingsStore.ensureInitialized();
+
+      expect(await File(settingsPath).exists(), isTrue);
+      expect(await recovery.exists(), isFalse);
+      expect(LocalSettingsStore.entryUiTuning.collapsedHeight, 88);
+      expect(LocalSettingsStore.entryUiTuning.expandedMaxHeight, 500);
+      expect(LocalSettingsStore.entryUiTuning.animationMs, 210);
+      expect(LocalSettingsStore.loggingLevelOverride, 'debug');
+    },
+  );
 }

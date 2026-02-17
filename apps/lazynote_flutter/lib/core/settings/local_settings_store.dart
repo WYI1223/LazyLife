@@ -88,6 +88,7 @@ class LocalSettingsStore {
     try {
       final settingsPath = await settingsFilePathResolver();
       final file = File(settingsPath);
+      await _recoverFromTempFileIfNeeded(file);
       if (await file.exists()) {
         await _backfillMissingDefaults(file);
         await _loadRuntimeSettings(file);
@@ -134,6 +135,18 @@ Future<void> _loadRuntimeSettings(File file) async {
     final raw = await file.readAsString();
     final decoded = jsonDecode(raw);
     if (decoded is! Map<String, dynamic>) {
+      return;
+    }
+
+    final schemaVersion = decoded['schema_version'];
+    if (schemaVersion is int && schemaVersion > 1) {
+      LocalSettingsStore.logger(
+        message:
+            'settings schema_version=$schemaVersion is newer than supported=1; falling back to defaults.',
+      );
+      // TODO(v0.2): implement forward-migration when schema_version increases.
+      LocalSettingsStore._entryUiTuning = const EntryUiTuning.defaults();
+      LocalSettingsStore._loggingLevelOverride = null;
       return;
     }
 
@@ -204,6 +217,7 @@ Future<void> _backfillMissingDefaults(File file) async {
     var changed = false;
 
     if (!decoded.containsKey('schema_version')) {
+      // TODO(v0.2): add migration for schema_version >= 2.
       decoded['schema_version'] = 1;
       changed = true;
     }
@@ -215,14 +229,17 @@ Future<void> _backfillMissingDefaults(File file) async {
     final entry = decoded['entry'] as Map<String, dynamic>;
 
     if (!entry.containsKey('result_limit')) {
+      // TODO(v0.2): wire result_limit to SingleEntryController limit parameter.
       entry['result_limit'] = 10;
       changed = true;
     }
     if (!entry.containsKey('use_single_entry_as_home')) {
+      // TODO(v0.2): wire use_single_entry_as_home to app bootstrap route policy.
       entry['use_single_entry_as_home'] = false;
       changed = true;
     }
     if (!entry.containsKey('expand_on_focus')) {
+      // TODO(v0.2): wire expand_on_focus to Single Entry focus behavior.
       entry['expand_on_focus'] = true;
       changed = true;
     }
@@ -265,6 +282,55 @@ Future<void> _backfillMissingDefaults(File file) async {
     LocalSettingsStore.logger(
       message:
           'Failed to backfill missing settings keys; keeping existing file.',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+}
+
+Future<void> _recoverFromTempFileIfNeeded(File target) async {
+  if (await target.exists()) {
+    return;
+  }
+  if (!await target.parent.exists()) {
+    return;
+  }
+
+  final tempPrefix = '${target.path}.tmp';
+  final candidates = <File>[];
+  await for (final entity in target.parent.list(followLinks: false)) {
+    if (entity is File && entity.path.startsWith(tempPrefix)) {
+      candidates.add(entity);
+    }
+  }
+
+  if (candidates.isEmpty) {
+    return;
+  }
+
+  File? newest;
+  var newestModified = DateTime.fromMillisecondsSinceEpoch(0);
+  for (final candidate in candidates) {
+    final modified = await candidate.lastModified();
+    if (newest == null || modified.isAfter(newestModified)) {
+      newest = candidate;
+      newestModified = modified;
+    }
+  }
+
+  if (newest == null) {
+    return;
+  }
+
+  try {
+    await newest.rename(target.path);
+    LocalSettingsStore.logger(
+      message: 'Recovered settings.json from leftover temp file.',
+    );
+  } catch (error, stackTrace) {
+    LocalSettingsStore.logger(
+      message:
+          'Failed to recover settings.json from leftover temp file; continuing.',
       error: error,
       stackTrace: stackTrace,
     );

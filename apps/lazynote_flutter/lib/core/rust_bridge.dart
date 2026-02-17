@@ -6,6 +6,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 import 'package:lazynote_flutter/core/local_paths.dart';
+import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
 
 /// Health-check values returned from Rust smoke APIs.
 class RustHealthSnapshot {
@@ -228,9 +229,7 @@ class RustBridge {
       return Future.value();
     }
     if (_initFailed) {
-      return Future.error(
-        StateError('RustBridge init permanently failed'),
-      );
+      return Future.error(StateError('RustBridge init permanently failed'));
     }
 
     final inFlight = _initFuture;
@@ -330,7 +329,8 @@ class RustBridge {
   }
 
   static Future<RustLoggingInitSnapshot> _bootstrapLoggingInternal() async {
-    final level = defaultLogLevelResolver();
+    final level =
+        LocalSettingsStore.loggingLevelOverride ?? defaultLogLevelResolver();
     var resolvedLogDir = 'unresolved';
     var resolvedDbPath = 'unresolved';
 

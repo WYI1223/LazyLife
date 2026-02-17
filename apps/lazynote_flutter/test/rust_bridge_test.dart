@@ -3,10 +3,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
+import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
 
 void main() {
   tearDown(() {
     RustBridge.resetForTesting();
+    LocalSettingsStore.resetForTesting();
   });
 
   test('init de-duplicates concurrent calls', () async {
@@ -58,25 +60,28 @@ void main() {
     expect(initAttempts, 1);
   });
 
-  test('init-after-failure does not re-enter RustLib.init concurrently', () async {
-    RustBridge.resetForTesting();
-    RustBridge.candidateLibraryPathsOverride = const [];
+  test(
+    'init-after-failure does not re-enter RustLib.init concurrently',
+    () async {
+      RustBridge.resetForTesting();
+      RustBridge.candidateLibraryPathsOverride = const [];
 
-    var initAttempts = 0;
-    RustBridge.rustLibInit = (_) async {
-      initAttempts += 1;
-      throw StateError('init failed');
-    };
+      var initAttempts = 0;
+      RustBridge.rustLibInit = (_) async {
+        initAttempts += 1;
+        throw StateError('init failed');
+      };
 
-    await expectLater(RustBridge.init(), throwsA(isA<StateError>()));
-    final outcomes = await Future.wait([
-      RustBridge.init().then((_) => false).catchError((_) => true),
-      RustBridge.init().then((_) => false).catchError((_) => true),
-    ]);
+      await expectLater(RustBridge.init(), throwsA(isA<StateError>()));
+      final outcomes = await Future.wait([
+        RustBridge.init().then((_) => false).catchError((_) => true),
+        RustBridge.init().then((_) => false).catchError((_) => true),
+      ]);
 
-    expect(outcomes.every((v) => v), isTrue);
-    expect(initAttempts, 1);
-  });
+      expect(outcomes.every((v) => v), isTrue);
+      expect(initAttempts, 1);
+    },
+  );
 
   test('falls back to next candidate if opening library fails', () async {
     RustBridge.resetForTesting();
@@ -245,5 +250,59 @@ void main() {
     expect(snapshot.isSuccess, isFalse);
     expect(snapshot.errorMessage, contains('logging denied'));
     expect(logMessages.any((m) => m.contains('logging-init failed')), isTrue);
+  });
+
+  test('bootstrapLogging uses logging level override when configured', () async {
+    RustBridge.resetForTesting();
+    LocalSettingsStore.resetForTesting();
+
+    final tempDir = await Directory.systemTemp.createTemp(
+      'lazynote-rust-bridge-settings-',
+    );
+    addTearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final settingsPath =
+        '${tempDir.path}${Platform.pathSeparator}settings.json';
+    await File(settingsPath).writeAsString('''
+{
+  "schema_version": 1,
+  "entry": {
+    "ui": {
+      "collapsed_height": 72,
+      "expanded_max_height": 420,
+      "animation_ms": 180
+    }
+  },
+  "logging": {
+    "level_override": "trace"
+  }
+}
+''');
+
+    LocalSettingsStore.settingsFilePathResolver = () async => settingsPath;
+    await LocalSettingsStore.ensureInitialized();
+
+    RustBridge.entryDbPathResolver = () async =>
+        '${Directory.systemTemp.path}${Platform.pathSeparator}data${Platform.pathSeparator}entry.sqlite3';
+    RustBridge.logDirPathResolver = () async =>
+        '${Directory.systemTemp.path}${Platform.pathSeparator}logs';
+    RustBridge.rustLibInit = (_) async {};
+    RustBridge.configureEntryDbPathCall = ({required dbPath}) => '';
+
+    var capturedLevel = '';
+    RustBridge.initLoggingCall = ({required level, required logDir}) {
+      capturedLevel = level;
+      return '';
+    };
+    RustBridge.defaultLogLevelResolver = () => 'info';
+
+    final snapshot = await RustBridge.bootstrapLogging();
+    expect(snapshot.isSuccess, isTrue);
+    expect(snapshot.level, 'trace');
+    expect(capturedLevel, 'trace');
   });
 }

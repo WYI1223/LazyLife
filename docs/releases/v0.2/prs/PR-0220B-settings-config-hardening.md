@@ -1,7 +1,7 @@
 # PR-0220B-settings-config-hardening
 
 - Proposed title: `fix(settings): settings persistence correctness and config wiring`
-- Status: Planned
+- Status: Completed
 - Source: review-02 §2.1, §2.2, §2.3, §2.4
 
 ## Goal
@@ -140,12 +140,12 @@ Manual checks:
 
 ## Acceptance Criteria
 
-- [ ] (R02-2.1) `bootstrapLogging` uses `loggingLevelOverride` from `LocalSettingsStore`
+- [x] (R02-2.1) `bootstrapLogging` uses `loggingLevelOverride` from `LocalSettingsStore`
       when non-null; a test covers the override path.
-- [ ] (R02-2.2) `result_limit`, `use_single_entry_as_home`, `expand_on_focus` backfill
+- [x] (R02-2.2) `result_limit`, `use_single_entry_as_home`, `expand_on_focus` backfill
       writes have co-located `TODO(v0.2)` comments referencing their future consumer.
-- [ ] (R02-2.3) Startup path checks for a leftover `.tmp` recovery file and restores it
+- [x] (R02-2.3) Startup path checks for a leftover `.tmp` recovery file and restores it
       when `settings.json` is absent.
-- [ ] (R02-2.4) `schema_version > 1` in `settings.json` causes `_loadRuntimeSettings` to
+- [x] (R02-2.4) `schema_version > 1` in `settings.json` causes `_loadRuntimeSettings` to
       skip parsing and return defaults; test verifies.
-- [ ] Flutter quality gates pass.
+- [x] Flutter quality gates pass.
