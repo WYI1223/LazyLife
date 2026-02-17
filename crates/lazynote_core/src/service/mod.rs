@@ -10,3 +10,4 @@
 pub mod atom_service;
 pub mod note_service;
 pub mod task_service;
+pub mod tree_service;

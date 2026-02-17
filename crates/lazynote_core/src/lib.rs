@@ -27,6 +27,11 @@ pub use repo::note_repo::{
     load_tags_for_atoms, normalize_note_limit, normalize_tag, normalize_tags, NoteListQuery,
     NoteRecord, NoteRepository, SqliteNoteRepository,
 };
+/// Re-export workspace tree repository contracts and implementation.
+pub use repo::tree_repo::{
+    SqliteTreeRepository, TreeRepoError, TreeRepoResult, TreeRepository, WorkspaceNode,
+    WorkspaceNodeId, WorkspaceNodeKind,
+};
 /// Re-export search query/result models and search entry point.
 pub use search::fts::{search_all, SearchError, SearchHit, SearchQuery, SearchResult};
 /// Re-export atom service facade.
@@ -37,6 +42,8 @@ pub use service::note_service::{
 };
 /// Re-export task/section service facade and models.
 pub use service::task_service::{SectionAtom, TaskService, TaskServiceError};
+/// Re-export workspace tree service facade and errors.
+pub use service::tree_service::{TreeService, TreeServiceError};
 
 /// Minimal health-check API for early integration.
 pub fn ping() -> &'static str {

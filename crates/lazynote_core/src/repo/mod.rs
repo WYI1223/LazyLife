@@ -14,3 +14,4 @@
 
 pub mod atom_repo;
 pub mod note_repo;
+pub mod tree_repo;

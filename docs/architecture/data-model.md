@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the canonical data model used by LazyNote core, covering v0.1 through v0.1.5.
+This document defines the canonical data model used by LazyNote core, covering v0.1 through v0.2.
 
 ## Canonical Entity: Atom
 
@@ -27,6 +27,36 @@ This document defines the canonical data model used by LazyNote core, covering v
 | `updated_at` | INTEGER | NO | Epoch ms |
 
 Code reference: `crates/lazynote_core/src/model/atom.rs`.
+
+---
+
+## Workspace Tree Entity (v0.2)
+
+`workspace_nodes` stores hierarchy metadata for folders and note references.
+
+### Fields
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `node_uuid` | TEXT | NO | Stable workspace-node UUID |
+| `kind` | TEXT | NO | `folder \| note_ref` |
+| `parent_uuid` | TEXT | YES | Parent workspace node id (`NULL` = root) |
+| `atom_uuid` | TEXT | YES | Required for `note_ref`; must be `NULL` for `folder` |
+| `display_name` | TEXT | NO | User-facing node title |
+| `sort_order` | INTEGER | NO | Deterministic sibling order key |
+| `is_deleted` | INTEGER | NO | `0 \| 1` soft-delete marker |
+| `created_at` | INTEGER | NO | Epoch ms |
+| `updated_at` | INTEGER | NO | Epoch ms |
+
+### Tree Invariants
+
+1. `kind='folder'` must not carry `atom_uuid`.
+2. `kind='note_ref'` must carry `atom_uuid` and reference an active note atom.
+3. `parent_uuid` may be `NULL` (root) or reference another `workspace_nodes.node_uuid`.
+4. Service layer rejects cycle-producing moves (`A -> ... -> A`).
+5. Child listing order is deterministic: `sort_order ASC, node_uuid ASC`.
+
+Code reference: `crates/lazynote_core/src/repo/tree_repo.rs`, `crates/lazynote_core/src/service/tree_service.rs`.
 
 ---
 
@@ -133,6 +163,7 @@ List section membership (Inbox/Today/Upcoming) is derived from time fields, not 
 | 4 | `0004_fts.sql` | `atoms_fts` FTS5 virtual table + sync triggers |
 | 5 | `0005_note_preview.sql` | `preview_text`, `preview_image` columns |
 | 6 | `0006_time_matrix.sql` | Rename `event_start`→`start_at`, `event_end`→`end_at`; add `recurrence_rule TEXT` |
+| 7 | `0007_workspace_tree.sql` | Add `workspace_nodes`, ordering index, and note-ref integrity triggers |
 
 ---
 
