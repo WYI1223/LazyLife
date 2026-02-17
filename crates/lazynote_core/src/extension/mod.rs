@@ -4,5 +4,6 @@
 //! in-process registry wiring. Runtime loading/sandbox execution is out of
 //! scope for v0.2 baseline.
 
+pub mod capability;
 pub mod kernel;
 pub mod manifest;

@@ -1,5 +1,6 @@
 //! Extension kernel registry contracts.
 
+use crate::extension::capability::RuntimeCapability;
 use crate::extension::manifest::{ExtensionManifest, ManifestEntrypoints, ManifestValidationError};
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
@@ -23,6 +24,7 @@ pub enum ExtensionSource {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisteredExtension {
     pub manifest: ExtensionManifest,
+    pub runtime_capabilities: BTreeSet<RuntimeCapability>,
     pub source: ExtensionSource,
 }
 
@@ -56,6 +58,7 @@ impl FirstPartyExtensionAdapter {
                 "provider".to_string(),
                 "ui_slot".to_string(),
             ],
+            runtime_capabilities: vec![],
             entrypoints: ManifestEntrypoints {
                 init: Some("builtin.notes.init".to_string()),
                 dispose: Some("builtin.notes.dispose".to_string()),
@@ -100,6 +103,9 @@ impl ExtensionRegistry {
         manifest
             .validate()
             .map_err(ExtensionKernelError::InvalidManifest)?;
+        let runtime_capabilities = manifest
+            .declared_runtime_capabilities()
+            .map_err(ExtensionKernelError::InvalidManifest)?;
         let id = manifest.id.clone();
         if self.entries.contains_key(id.as_str()) {
             return Err(ExtensionKernelError::DuplicateExtensionId(id));
@@ -116,6 +122,7 @@ impl ExtensionRegistry {
             manifest.id.clone(),
             RegisteredExtension {
                 manifest,
+                runtime_capabilities,
                 source: adapter.source(),
             },
         );
@@ -146,6 +153,28 @@ impl ExtensionRegistry {
         };
         ids.iter().filter_map(|id| self.entries.get(id)).collect()
     }
+
+    /// Enforces runtime capability declaration at extension invocation boundary.
+    ///
+    /// Deny-by-default: undeclared capability access is rejected.
+    pub fn assert_runtime_capability(
+        &self,
+        extension_id: &str,
+        capability: RuntimeCapability,
+    ) -> Result<(), ExtensionKernelError> {
+        let Some(entry) = self.entries.get(extension_id) else {
+            return Err(ExtensionKernelError::ExtensionNotFound(
+                extension_id.to_string(),
+            ));
+        };
+        if entry.runtime_capabilities.contains(&capability) {
+            return Ok(());
+        }
+        Err(ExtensionKernelError::CapabilityDenied {
+            extension_id: extension_id.to_string(),
+            capability,
+        })
+    }
 }
 
 /// Internal kernel registration errors.
@@ -153,6 +182,11 @@ impl ExtensionRegistry {
 pub enum ExtensionKernelError {
     InvalidManifest(ManifestValidationError),
     DuplicateExtensionId(String),
+    ExtensionNotFound(String),
+    CapabilityDenied {
+        extension_id: String,
+        capability: RuntimeCapability,
+    },
 }
 
 impl Display for ExtensionKernelError {
@@ -162,6 +196,15 @@ impl Display for ExtensionKernelError {
             Self::DuplicateExtensionId(value) => {
                 write!(f, "extension id already registered: {value}")
             }
+            Self::ExtensionNotFound(value) => write!(f, "extension id not found: {value}"),
+            Self::CapabilityDenied {
+                extension_id,
+                capability,
+            } => write!(
+                f,
+                "extension capability denied: extension `{extension_id}` missing `{}`",
+                capability.as_str()
+            ),
         }
     }
 }
@@ -170,6 +213,8 @@ impl Error for ExtensionKernelError {}
 
 #[cfg(test)]
 mod tests {
+    use crate::extension::capability::RuntimeCapability;
+
     use super::{
         ExtensionKernelError, ExtensionRegistry, ExtensionSource, FirstPartyExtensionAdapter,
     };
@@ -211,5 +256,27 @@ mod tests {
         let command_extensions = registry.list_by_capability("command");
         assert_eq!(command_extensions.len(), 1);
         assert_eq!(command_extensions[0].manifest.id, "builtin.notes.shell");
+    }
+
+    #[test]
+    fn denies_undeclared_runtime_capability_by_default() {
+        let mut registry = ExtensionRegistry::new();
+        registry
+            .register_first_party_baseline()
+            .expect("first-party baseline registration");
+
+        let err = registry
+            .assert_runtime_capability("builtin.notes.shell", RuntimeCapability::Network)
+            .expect_err("undeclared runtime capability must be denied");
+        assert!(matches!(err, ExtensionKernelError::CapabilityDenied { .. }));
+    }
+
+    #[test]
+    fn reports_extension_not_found_for_runtime_capability_check() {
+        let registry = ExtensionRegistry::new();
+        let err = registry
+            .assert_runtime_capability("missing.extension", RuntimeCapability::File)
+            .expect_err("missing extension should fail");
+        assert!(matches!(err, ExtensionKernelError::ExtensionNotFound(_)));
     }
 }
