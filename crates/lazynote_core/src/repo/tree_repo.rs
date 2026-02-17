@@ -12,7 +12,7 @@
 use crate::db::migrations::latest_version;
 use crate::db::DbError;
 use crate::model::atom::{AtomId, AtomType};
-use rusqlite::{params, Connection, OptionalExtension, Row};
+use rusqlite::{params, Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
@@ -372,7 +372,8 @@ impl TreeRepository for SqliteTreeRepository<'_> {
             return Err(TreeRepoError::NodeNotFound(node_uuid));
         }
 
-        let mut sibling_ids = list_active_child_ids(self.conn, new_parent_uuid)?;
+        let tx = Transaction::new_unchecked(self.conn, TransactionBehavior::Immediate)?;
+        let mut sibling_ids = list_active_child_ids(&tx, new_parent_uuid)?;
         sibling_ids.retain(|id| *id != node_uuid);
 
         let target_index = target_order
@@ -380,7 +381,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
             .clamp(0, sibling_ids.len() as i64) as usize;
         sibling_ids.insert(target_index, node_uuid);
 
-        self.conn.execute(
+        tx.execute(
             "UPDATE workspace_nodes
              SET parent_uuid = ?2,
                  updated_at = (strftime('%s', 'now') * 1000)
@@ -393,7 +394,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
         )?;
 
         for (index, id) in sibling_ids.into_iter().enumerate() {
-            self.conn.execute(
+            tx.execute(
                 "UPDATE workspace_nodes
                  SET sort_order = ?2,
                      updated_at = (strftime('%s', 'now') * 1000)
@@ -403,6 +404,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
             )?;
         }
 
+        tx.commit()?;
         Ok(())
     }
 

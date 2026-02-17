@@ -55,6 +55,7 @@ Code reference: `crates/lazynote_core/src/model/atom.rs`.
 3. `parent_uuid` may be `NULL` (root) or reference another `workspace_nodes.node_uuid`.
 4. Service layer rejects cycle-producing moves (`A -> ... -> A`).
 5. Child listing order is deterministic: `sort_order ASC, node_uuid ASC`.
+6. If an active `note_ref` exists, the referenced atom cannot be changed to non-note, soft-deleted, or hard-deleted.
 
 Code reference: `crates/lazynote_core/src/repo/tree_repo.rs`, `crates/lazynote_core/src/service/tree_service.rs`.
 

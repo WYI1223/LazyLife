@@ -65,3 +65,36 @@ BEGIN
             THEN RAISE(ABORT, 'workspace note_ref atom_uuid must reference an active note atom')
         END;
 END;
+
+CREATE TRIGGER atoms_block_note_demote_when_referenced
+BEFORE UPDATE OF type, is_deleted ON atoms
+WHEN OLD.type = 'note'
+  AND OLD.is_deleted = 0
+  AND (NEW.type <> 'note' OR NEW.is_deleted <> 0)
+BEGIN
+    SELECT
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM workspace_nodes
+                WHERE kind = 'note_ref'
+                  AND atom_uuid = OLD.uuid
+                  AND is_deleted = 0
+            )
+            THEN RAISE(ABORT, 'cannot deactivate note referenced by active workspace note_ref')
+        END;
+END;
+
+CREATE TRIGGER atoms_block_note_delete_when_referenced
+BEFORE DELETE ON atoms
+WHEN OLD.type = 'note'
+  AND EXISTS (
+      SELECT 1
+      FROM workspace_nodes
+      WHERE kind = 'note_ref'
+        AND atom_uuid = OLD.uuid
+        AND is_deleted = 0
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'cannot delete note referenced by active workspace note_ref');
+END;

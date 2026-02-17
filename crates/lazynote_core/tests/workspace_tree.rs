@@ -193,3 +193,83 @@ fn create_folder_rejects_unknown_parent() {
         TreeServiceError::ParentNotFound(parent_uuid) if parent_uuid == unknown_parent
     ));
 }
+
+#[test]
+fn referenced_note_cannot_be_demoted_or_soft_deleted() {
+    let conn = setup();
+    let atom_repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let tree_service = TreeService::new(tree_repo);
+
+    let note_atom = Atom::new(AtomType::Note, "note");
+    insert_atom(&conn, &note_atom);
+    tree_service
+        .create_note_ref(None, note_atom.uuid, Some("ref".to_string()))
+        .unwrap();
+
+    let mut mutated = note_atom.clone();
+    mutated.kind = AtomType::Task;
+    let update_result = atom_repo.update_atom(&mutated);
+    assert!(update_result.is_err());
+
+    let delete_result = atom_repo.soft_delete_atom(note_atom.uuid);
+    assert!(delete_result.is_err());
+
+    let persisted: (String, i64) = conn
+        .query_row(
+            "SELECT type, is_deleted FROM atoms WHERE uuid = ?1;",
+            [note_atom.uuid.to_string()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(persisted.0, "note");
+    assert_eq!(persisted.1, 0);
+}
+
+#[test]
+fn move_node_rolls_back_when_reorder_fails() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let source_root = service.create_folder(None, "Source").unwrap();
+    let _source_a = service
+        .create_folder(Some(source_root.node_uuid), "A")
+        .unwrap();
+    let _source_b = service
+        .create_folder(Some(source_root.node_uuid), "B")
+        .unwrap();
+    let moving = service
+        .create_folder(Some(source_root.node_uuid), "Moving")
+        .unwrap();
+
+    let target_root = service.create_folder(None, "Target").unwrap();
+    let _target_x = service
+        .create_folder(Some(target_root.node_uuid), "X")
+        .unwrap();
+    let target_y = service
+        .create_folder(Some(target_root.node_uuid), "Y")
+        .unwrap();
+
+    conn.execute_batch(&format!(
+        "CREATE TRIGGER workspace_nodes_fail_sort_update_test
+         BEFORE UPDATE OF sort_order ON workspace_nodes
+         WHEN NEW.node_uuid = '{}'
+         BEGIN
+             SELECT RAISE(ABORT, 'forced sort failure');
+         END;",
+        target_y.node_uuid
+    ))
+    .unwrap();
+
+    let move_result = service.move_node(moving.node_uuid, Some(target_root.node_uuid), Some(0));
+    assert!(move_result.is_err());
+
+    let source_children = service.list_children(Some(source_root.node_uuid)).unwrap();
+    let source_ids: Vec<_> = source_children.iter().map(|item| item.node_uuid).collect();
+    assert!(source_ids.contains(&moving.node_uuid));
+
+    let target_children = service.list_children(Some(target_root.node_uuid)).unwrap();
+    let target_ids: Vec<_> = target_children.iter().map(|item| item.node_uuid).collect();
+    assert!(!target_ids.contains(&moving.node_uuid));
+}

@@ -47,6 +47,8 @@ Workspace tree relationship (v0.2):
    - no task/event rows in this API
 6. Tree note refs must target notes only:
    - service/repository reject task/event atoms as `note_ref` targets
+7. Referred active notes are protected:
+   - if an active `workspace_nodes.note_ref` points to a note, core rejects note type demotion and delete/soft-delete
 
 ## Markdown Preview Hook
 
