@@ -15,6 +15,8 @@ pub mod repo;
 pub mod search;
 /// Use-case orchestration services.
 pub mod service;
+/// Provider SPI and sync contracts.
+pub mod sync;
 
 /// Re-export extension kernel contracts.
 pub use extension::kernel::{
@@ -56,6 +58,17 @@ pub use service::note_service::{
 pub use service::task_service::{SectionAtom, TaskService, TaskServiceError};
 /// Re-export workspace tree service facade and errors.
 pub use service::tree_service::{FolderDeleteMode, TreeService, TreeServiceError};
+/// Re-export provider SPI and sync contract models.
+pub use sync::provider_registry::{ProviderRegistry, ProviderRegistryError};
+pub use sync::provider_spi::ProviderSpi;
+pub use sync::provider_types::{
+    now_epoch_ms, ConflictMapDecision, ConflictReason, ConflictResolution, ProviderAuthRequest,
+    ProviderAuthResult, ProviderAuthState, ProviderConflict, ProviderConflictMapRequest,
+    ProviderConflictMapResult, ProviderErrorEnvelope, ProviderHealth, ProviderPullRequest,
+    ProviderPullResult, ProviderPushChange, ProviderPushRequest, ProviderPushResult,
+    ProviderRecord, ProviderResult, ProviderStatus, PushOperation, SyncEntityKind, SyncStage,
+    SyncSummary,
+};
 
 /// Minimal health-check API for early integration.
 pub fn ping() -> &'static str {
