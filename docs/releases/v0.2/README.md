@@ -57,6 +57,7 @@ At the end of v0.2, engineering should have:
    - provider SPI (auth/pull/push/conflict)
    - UI extension slot model
 10. Capability model and API lifecycle/deprecation policy baseline.
+11. Workspace delete-policy contract baseline (hybrid note/folder semantics).
 
 This is the required substrate for v0.3 recursive split and drag-to-split.
 
@@ -64,20 +65,21 @@ This is the required substrate for v0.3 recursive split and drag-to-split.
 
 In scope:
 
-- **v0.1 → v0.2 infrastructure bridge** (execute first, before feature lanes):
+- **v0.1 鈫?v0.2 infrastructure bridge** (execute first, before feature lanes):
   - Rust safety + observability hardening (`PR-0219`)
   - Flutter RustBridge lifecycle hardening (`PR-0220A`)
   - settings & config correctness (`PR-0220B`)
 - global hotkey quick-entry window (`PR-0201`)
 - notes tree schema + repository/service (`PR-0202`)
+- workspace tree delete policy (hybrid C+B semantics) (`PR-0221`)
 - tree FFI contracts + docs update (`PR-0203`)
-- workspace provider foundation — incl. R02-1.1/1.2/1.3 design constraints (`PR-0204`)
+- workspace provider foundation 鈥?incl. R02-1.1/1.2/1.3 design constraints (`PR-0204`)
 - recursive explorer UI with lazy loading (`PR-0205`)
 - split layout v1 (limited split, min-size guard) (`PR-0206`)
 - explorer context actions + drag-reorder baseline (`PR-0207`)
-- hardening and release closure — incl. regression verification for bridge PRs (`PR-0208`)
+- hardening and release closure 鈥?incl. regression verification for bridge PRs (`PR-0208`)
 - CN/EN localization baseline (`PR-0209`)
-- debug viewer readability phase-2 upgrade — incl. optional `log_dart_event` FFI (`PR-0210`)
+- debug viewer readability phase-2 upgrade 鈥?incl. optional `log_dart_event` FFI (`PR-0210`)
 - docs language policy and docs index baseline (`PR-0211`)
 - links/index/open foundation (`PR-0212`)
 - extension kernel contracts (`PR-0213`)
@@ -94,6 +96,9 @@ Out of scope:
 - full cross-pane live buffer sync semantics
 - 60 FPS performance gate for very long markdown in multi-split
 - third-party general scripting runtime for plugins
+- database maintenance tooling (vacuum, purge) 鈥?reserved for v0.2.x patch or v0.3
+
+> **Note:** v0.1 uses soft-delete only. Without periodic vacuum, long-running databases will accumulate deleted records and bloat. This is a known issue to be addressed in a maintenance-focused PR after v0.2 stabilizes.
 
 ## Dependencies from v0.1
 
@@ -119,7 +124,9 @@ Recommended order:
    - `PR-0220B-settings-config-hardening` (local_settings_store.dart; can run parallel with PR-0220A)
 1. Core contract lane:
    - `PR-0202-notes-tree-schema-core`
+   - `PR-0221-workspace-tree-delete-policy-hybrid`
    - `PR-0203-tree-ffi-contracts`
+   - migration numbering note: reserve `0008` for workspace policy; links uses `0009`
 2. Extension kernel lane:
    - `PR-0213-extension-kernel-contracts`
    - `PR-0214-command-registry-and-parser-chain`
@@ -178,6 +185,7 @@ Feature lanes:
 
 - `docs/releases/v0.2/prs/PR-0201-global-hotkey-quick-entry.md`
 - `docs/releases/v0.2/prs/PR-0202-notes-tree-schema-core.md`
+- `docs/releases/v0.2/prs/PR-0221-workspace-tree-delete-policy-hybrid.md`
 - `docs/releases/v0.2/prs/PR-0203-tree-ffi-contracts.md`
 - `docs/releases/v0.2/prs/PR-0204-workspace-provider-foundation.md`
 - `docs/releases/v0.2/prs/PR-0205-explorer-recursive-lazy-ui.md`
