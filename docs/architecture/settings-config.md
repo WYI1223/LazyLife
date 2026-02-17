@@ -84,7 +84,9 @@ This includes:
 `schema_version`
 
 - must be a positive integer
-- unsupported version falls back to defaults and records a warning
+- current supported version: `1`
+- when `schema_version > 1`, runtime falls back to defaults and records a warning
+- TODO(v0.2): implement forward migration for `schema_version >= 2`
 
 `entry.result_limit`
 
@@ -120,7 +122,20 @@ This includes:
 
 - nullable string enum: `trace | debug | info | warn | error`
 - `null` means use build defaults/runtime policy
-- v0.1 behavior: value is validated and persisted, but not applied at runtime yet
+- v0.2 behavior: when non-null, `RustBridge.bootstrapLogging()` uses this value
+  before `defaultLogLevelResolver()`
+
+### Field Wiring Status (v0.2)
+
+- active at runtime:
+  - `entry.ui.collapsed_height`
+  - `entry.ui.expanded_max_height`
+  - `entry.ui.animation_ms`
+  - `logging.level_override`
+- persisted/backfilled but not wired yet:
+  - `entry.result_limit` (TODO(v0.2): wire to SingleEntryController limit)
+  - `entry.use_single_entry_as_home` (TODO(v0.2): wire to bootstrap route policy)
+  - `entry.expand_on_focus` (TODO(v0.2): wire to focus expansion behavior)
 
 ## Read/Write Behavior
 
@@ -131,6 +146,8 @@ Read path:
 3. Merge valid values into defaults.
 4. Backfill missing known keys to file (without overriding existing valid values).
 5. Keep app running even if file is missing/corrupted.
+6. If `settings.json` is missing but a leftover sibling temp file (`settings.json.tmp*`)
+   exists, recover from the newest temp file before creating defaults.
 
 Write path:
 
@@ -144,7 +161,7 @@ Write path:
 1. Load settings early in app bootstrap.
 2. Apply UI behavior settings before rendering major shells when possible.
 3. Runtime bridge settings are applied before first command/search execution when required.
-4. `logging.level_override` is reserved in v0.1 (persist-only, no runtime apply yet).
+4. `logging.level_override` is applied by `RustBridge.bootstrapLogging()` when non-null.
 
 ### Startup policy (v0.1)
 
