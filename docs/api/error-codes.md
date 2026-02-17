@@ -70,6 +70,20 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 | `atom_not_found` | target atom missing | stale/deleted id | show not-found state and refresh |
 | `db_error` | repository/database failure | sqlite/schema/io issue | show error and allow retry |
 
+## Workspace Tree (FFI) - PR-0221 M2
+
+Producer: `crates/lazynote_ffi/src/api.rs`
+
+| Code | Meaning | Typical Cause | UI Handling |
+| --- | --- | --- | --- |
+| `invalid_node_id` | folder node id format invalid | non-UUID `node_id` | show validation error, keep dialog open |
+| `invalid_delete_mode` | delete mode value is unsupported | value not in `dissolve/delete_all` | show validation error, keep current selection |
+| `node_not_found` | target workspace node missing | stale/deleted folder id | refresh tree and show not-found message |
+| `node_not_folder` | target node is not folder kind | caller passed `note_ref` id | show operation invalid error and refresh tree |
+| `db_busy` | repository/database temporarily locked | concurrent sqlite lock contention | show retry affordance and keep pending action |
+| `db_error` | repository/database failure | sqlite/schema/io issue | show error and allow retry |
+| `internal_error` | unexpected invariant failure | unexpected data or service invariant break | show error and capture diagnostics |
+
 ## Reserved Pattern
 
 - Use lowercase snake case.

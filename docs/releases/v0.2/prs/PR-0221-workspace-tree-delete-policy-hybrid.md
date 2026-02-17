@@ -1,7 +1,7 @@
 # PR-0221-workspace-tree-delete-policy-hybrid
 
 - Proposed title: `feat(workspace-core): hybrid delete policy for note and folder`
-- Status: In Progress (M1 completed)
+- Status: In Progress (M1-M2 completed)
 
 ## Goal
 
@@ -153,6 +153,20 @@ Exit criteria:
 
 - `cargo test -p lazynote_ffi` passes
 - FFI tests cover mode validation and error mapping
+
+Completion snapshot:
+
+- [x] Added folder delete mode contract in FFI (`workspace_delete_folder(node_id, mode)`).
+- [x] Added mode parser with strict validation (`dissolve | delete_all`).
+- [x] Added stable machine-branchable error codes for folder delete failures:
+  - `invalid_node_id`
+  - `invalid_delete_mode`
+  - `node_not_found`
+  - `node_not_folder`
+  - `db_busy`
+  - `db_error`
+  - `internal_error`
+- [x] Added FFI tests for mode validation and error-code mapping.
 
 ### M3. Flutter Behavior Wiring
 
