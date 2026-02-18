@@ -12,7 +12,7 @@
    - plan: `docs/releases/v0.1.5/README.md`
    - gate: v0.1 (PR-0017A) must close before v0.1.5 begins
 2. v0.2 (workspace foundation)
-   - scope: tree model, workspace provider, explorer recursion, split v1, extension kernel contracts (command/parser/provider/ui slot/capability), CN/EN i18n, debug viewer phase-2 readability hardening, docs language policy, links v1
+   - scope: tree model, workspace provider, explorer recursion, split v1, extension kernel contracts (command/parser/provider/ui slot/capability), API lifecycle/deprecation policy baseline, CN/EN i18n, debug viewer phase-2 readability hardening, docs language policy, links v1
    - focus PRs: `PR-0201` to `PR-0218`
    - plan: `docs/releases/v0.2/README.md`
 3. v0.3 (IDE-grade recursive workspace)

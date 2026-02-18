@@ -2,6 +2,10 @@
 
 This policy defines compatibility rules for public API surfaces.
 
+Canonical lifecycle/deprecation policy lives at:
+
+- `docs/governance/api-lifecycle-policy.md`
+
 ## Public API Surfaces
 
 The following are treated as compatibility-sensitive:
@@ -52,6 +56,9 @@ PRs must include:
 
 In v0.x (pre-v1.0), FFI contracts and error codes may change with documented rationale in the same PR.
 Fast iteration is allowed; silent API drift is not.
+
+Default lifecycle class for newly introduced extension/provider contracts in v0.x is
+`experimental` unless explicitly promoted by docs and tests.
 
 Stability guarantee starts at **v1.0**: from v1.0 onward, all changes to public API surfaces are subject
 to the full breaking-change process above, including migration guidance and release note updates.

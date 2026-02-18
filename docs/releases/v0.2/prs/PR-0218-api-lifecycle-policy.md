@@ -1,7 +1,7 @@
 # PR-0218-api-lifecycle-policy
 
 - Proposed title: `docs/governance: API lifecycle and deprecation-first policy`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -42,9 +42,21 @@ Out of scope:
 
 - Docs link and policy consistency review
 
+## Completion Snapshot
+
+- [x] Added canonical lifecycle policy doc:
+  - `docs/governance/api-lifecycle-policy.md`
+- [x] Synced compatibility policy to canonical lifecycle policy entry:
+  - `docs/governance/API_COMPATIBILITY.md`
+- [x] Updated governance contribution guidance with lifecycle requirements:
+  - `docs/governance/CONTRIBUTING.md`
+- [x] Updated docs entry index to include lifecycle policy:
+  - `docs/index.md`
+- [x] Updated roadmap scope text to reflect lifecycle baseline in v0.2:
+  - `docs/product/roadmap.md`
+
 ## Acceptance Criteria
 
-- [ ] Lifecycle/deprecation policy is explicit and discoverable.
-- [ ] Extension/provider API changes require policy-compliant notes.
-- [ ] Governance docs reference one canonical lifecycle policy.
-
+- [x] Lifecycle/deprecation policy is explicit and discoverable.
+- [x] Extension/provider API changes require policy-compliant notes.
+- [x] Governance docs reference one canonical lifecycle policy.
