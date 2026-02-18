@@ -22,6 +22,7 @@ This file is the consolidated index for FFI contracts.
   - max limit: `50` (`ENTRY_SEARCH_MAX_LIMIT`)
   - `kind`: optional, case-insensitive `all|note|task|event`
     - `null`/`all` means no type filter
+    - blank string is invalid (`invalid_kind`)
   - stable error codes on failure:
     - `invalid_kind` for unsupported `kind` value
     - `db_error` for DB open/bootstrap failures

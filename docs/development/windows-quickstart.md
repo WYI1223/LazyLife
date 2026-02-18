@@ -29,6 +29,7 @@ If you see `Failed to load dynamic library`, build Rust FFI first:
 ```powershell
 cd crates
 cargo build -p lazynote_ffi --release
+cd ..
 ```
 
 Then run again:
