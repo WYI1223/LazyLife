@@ -67,6 +67,8 @@ Validation rules:
 - maintains capability index for lookup
 - supports first-party adapter baseline registration
 - exposes deny-by-default runtime capability guard for invocation boundaries
+  - `assert_runtime_capability(extension_id, capability)`
+  - `assert_invocation_allowed(extension_id, invocation)`
 
 This registry is declaration-only in v0.2 and does not execute entrypoints.
 

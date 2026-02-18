@@ -26,8 +26,8 @@ pub use extension::capability::{
 };
 /// Re-export extension kernel contracts.
 pub use extension::kernel::{
-    ExtensionAdapter, ExtensionHealth, ExtensionKernelError, ExtensionRegistry, ExtensionSource,
-    FirstPartyExtensionAdapter, RegisteredExtension,
+    ExtensionAdapter, ExtensionHealth, ExtensionInvocation, ExtensionKernelError,
+    ExtensionRegistry, ExtensionSource, FirstPartyExtensionAdapter, RegisteredExtension,
 };
 /// Re-export extension manifest contracts.
 pub use extension::manifest::{

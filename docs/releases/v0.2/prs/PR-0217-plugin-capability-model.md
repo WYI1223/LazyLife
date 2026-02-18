@@ -1,7 +1,7 @@
 # PR-0217-plugin-capability-model
 
 - Proposed title: `feat(security): plugin capability model baseline`
-- Status: In Progress (M1 completed: core capability declarations + guard tests)
+- Status: In Progress (M1-M2 completed in core; Flutter settings surface deferred)
 
 ## Goal
 
@@ -63,10 +63,14 @@ Out of scope:
   - `crates/lazynote_core/tests/capability_guard_test.rs`
 - [x] Added governance policy doc for capability descriptions and guard semantics:
   - `docs/governance/plugin-capabilities.md`
-- [ ] Flutter settings capability surface remains deferred to follow-up UI PR.
+- [x] Added invocation-level capability enforcement in extension kernel:
+  - `ExtensionInvocation` to runtime-capability mapping
+  - `ExtensionRegistry::assert_invocation_allowed(...)`
+  - unit tests for allow/deny behavior and provider-sync multi-capability guard
+- [ ] Flutter settings capability surface remains deferred to a dedicated UI/settings PR.
 
 ## Acceptance Criteria
 
-- [ ] Extension invocations enforce declared capabilities with deny-by-default.
-- [ ] Capability declarations are visible and auditable.
-- [ ] Guard tests cover network/file/notification/calendar access paths.
+- [x] Extension invocations enforce declared capabilities with deny-by-default.
+- [x] Capability declarations are visible and auditable.
+- [x] Guard tests cover network/file/notification/calendar access paths.
