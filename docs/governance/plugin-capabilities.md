@@ -36,6 +36,14 @@ Invocation-time authorization uses deny-by-default:
   - returns `ExtensionNotFound` for unknown extension ids
 - when `runtime_capabilities` is empty, all runtime capability checks are denied
 
+Invocation contract mapping:
+
+- `ExtensionInvocation::NetworkRequest` -> `network`
+- `ExtensionInvocation::FileAccess` -> `file`
+- `ExtensionInvocation::NotificationDispatch` -> `notification`
+- `ExtensionInvocation::CalendarAccess` -> `calendar`
+- `ExtensionInvocation::ProviderSync` -> `network + calendar`
+
 This is a declaration-time and registry-time policy baseline. It does not
 replace process-level sandboxing.
 

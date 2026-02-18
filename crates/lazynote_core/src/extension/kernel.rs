@@ -14,6 +14,28 @@ pub enum ExtensionHealth {
     Unavailable,
 }
 
+/// Extension invocation kinds that require runtime capability checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExtensionInvocation {
+    NetworkRequest,
+    FileAccess,
+    NotificationDispatch,
+    CalendarAccess,
+    ProviderSync,
+}
+
+impl ExtensionInvocation {
+    fn required_capabilities(self) -> &'static [RuntimeCapability] {
+        match self {
+            Self::NetworkRequest => &[RuntimeCapability::Network],
+            Self::FileAccess => &[RuntimeCapability::File],
+            Self::NotificationDispatch => &[RuntimeCapability::Notification],
+            Self::CalendarAccess => &[RuntimeCapability::Calendar],
+            Self::ProviderSync => &[RuntimeCapability::Network, RuntimeCapability::Calendar],
+        }
+    }
+}
+
 /// Internal source classification for one extension registration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtensionSource {
@@ -175,6 +197,18 @@ impl ExtensionRegistry {
             capability,
         })
     }
+
+    /// Enforces runtime capability declarations for one invocation kind.
+    pub fn assert_invocation_allowed(
+        &self,
+        extension_id: &str,
+        invocation: ExtensionInvocation,
+    ) -> Result<(), ExtensionKernelError> {
+        for capability in invocation.required_capabilities() {
+            self.assert_runtime_capability(extension_id, *capability)?;
+        }
+        Ok(())
+    }
 }
 
 /// Internal kernel registration errors.
@@ -214,10 +248,33 @@ impl Error for ExtensionKernelError {}
 #[cfg(test)]
 mod tests {
     use crate::extension::capability::RuntimeCapability;
+    use crate::extension::manifest::{ExtensionManifest, ManifestEntrypoints};
 
     use super::{
-        ExtensionKernelError, ExtensionRegistry, ExtensionSource, FirstPartyExtensionAdapter,
+        ExtensionInvocation, ExtensionKernelError, ExtensionRegistry, ExtensionSource,
+        FirstPartyExtensionAdapter,
     };
+
+    fn runtime_manifest(runtime_capabilities: &[&str]) -> ExtensionManifest {
+        ExtensionManifest {
+            id: "builtin.test.invocation".to_string(),
+            version: "0.1.0".to_string(),
+            capabilities: vec!["provider".to_string()],
+            runtime_capabilities: runtime_capabilities
+                .iter()
+                .map(|value| value.to_string())
+                .collect(),
+            entrypoints: ManifestEntrypoints {
+                init: Some("builtin.test.init".to_string()),
+                dispose: Some("builtin.test.dispose".to_string()),
+                health: Some("builtin.test.health".to_string()),
+                command_action: None,
+                input_parser: None,
+                provider_spi: Some("builtin.test.provider".to_string()),
+                ui_slot: None,
+            },
+        }
+    }
 
     #[test]
     fn registers_first_party_adapter() {
@@ -278,5 +335,78 @@ mod tests {
             .assert_runtime_capability("missing.extension", RuntimeCapability::File)
             .expect_err("missing extension should fail");
         assert!(matches!(err, ExtensionKernelError::ExtensionNotFound(_)));
+    }
+
+    #[test]
+    fn invocation_guard_enforces_single_capability_actions() {
+        let mut registry = ExtensionRegistry::new();
+        let adapter =
+            FirstPartyExtensionAdapter::new(runtime_manifest(&["network", "notification"]));
+        registry
+            .register_adapter(&adapter)
+            .expect("runtime extension registration");
+
+        registry
+            .assert_invocation_allowed(
+                "builtin.test.invocation",
+                ExtensionInvocation::NetworkRequest,
+            )
+            .expect("network invocation should be allowed");
+        registry
+            .assert_invocation_allowed(
+                "builtin.test.invocation",
+                ExtensionInvocation::NotificationDispatch,
+            )
+            .expect("notification invocation should be allowed");
+
+        let file_err = registry
+            .assert_invocation_allowed("builtin.test.invocation", ExtensionInvocation::FileAccess)
+            .expect_err("file invocation should be denied");
+        assert!(matches!(
+            file_err,
+            ExtensionKernelError::CapabilityDenied {
+                capability: RuntimeCapability::File,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn invocation_guard_enforces_multi_capability_provider_sync() {
+        let mut registry = ExtensionRegistry::new();
+        let adapter = FirstPartyExtensionAdapter::new(runtime_manifest(&["network"]));
+        registry
+            .register_adapter(&adapter)
+            .expect("runtime extension registration");
+
+        let err = registry
+            .assert_invocation_allowed("builtin.test.invocation", ExtensionInvocation::ProviderSync)
+            .expect_err("provider sync should be denied without calendar capability");
+        assert!(matches!(
+            err,
+            ExtensionKernelError::CapabilityDenied {
+                capability: RuntimeCapability::Calendar,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn invocation_guard_allows_provider_sync_when_requirements_are_declared() {
+        let mut registry = ExtensionRegistry::new();
+        let adapter = FirstPartyExtensionAdapter::new(runtime_manifest(&["network", "calendar"]));
+        registry
+            .register_adapter(&adapter)
+            .expect("runtime extension registration");
+
+        registry
+            .assert_invocation_allowed("builtin.test.invocation", ExtensionInvocation::ProviderSync)
+            .expect("provider sync should be allowed");
+        registry
+            .assert_invocation_allowed(
+                "builtin.test.invocation",
+                ExtensionInvocation::CalendarAccess,
+            )
+            .expect("calendar access should be allowed");
     }
 }
