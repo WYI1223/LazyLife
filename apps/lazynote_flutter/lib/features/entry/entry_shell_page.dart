@@ -9,6 +9,7 @@ import 'package:lazynote_flutter/features/entry/single_entry_controller.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_panel.dart';
 import 'package:lazynote_flutter/features/entry/workbench_shell_layout.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
+import 'package:lazynote_flutter/features/settings/settings_capability_page.dart';
 import 'package:lazynote_flutter/features/tasks/tasks_page.dart';
 
 /// Left-pane sections inside Workbench shell.
@@ -238,38 +239,11 @@ class _EntryShellPageState extends State<EntryShellPage> {
                 ),
                 OutlinedButton(
                   onPressed: () => _openSection(WorkbenchSection.settings),
-                  child: const Text('Settings (Placeholder)'),
+                  child: const Text('Settings'),
                 ),
               ],
             );
           },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlaceholder({
-    required String title,
-    required String description,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 12),
-        const Icon(Icons.construction_outlined, size: 42),
-        const SizedBox(height: 12),
-        Text(
-          '$title is under construction',
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.left,
-        ),
-        const SizedBox(height: 8),
-        Text(description),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => _openSection(WorkbenchSection.home),
-          child: const Text('Back to Workbench'),
         ),
       ],
     );
@@ -317,9 +291,8 @@ class _EntryShellPageState extends State<EntryShellPage> {
           WorkbenchSection.calendar => CalendarPage(
             onBackToWorkbench: () => _openSection(WorkbenchSection.home),
           ),
-          WorkbenchSection.settings => _buildPlaceholder(
-            title: 'Settings',
-            description: 'Settings UI will be implemented in a dedicated PR.',
+          WorkbenchSection.settings => SettingsCapabilityPage(
+            onBackToWorkbench: () => _openSection(WorkbenchSection.home),
           ),
           WorkbenchSection.rustDiagnostics => _buildRustDiagnosticsSection(),
         };

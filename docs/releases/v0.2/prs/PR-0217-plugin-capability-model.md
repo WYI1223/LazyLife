@@ -1,7 +1,7 @@
 # PR-0217-plugin-capability-model
 
 - Proposed title: `feat(security): plugin capability model baseline`
-- Status: In Progress (M1-M2 completed in core; Flutter settings surface deferred)
+- Status: Completed
 
 ## Goal
 
@@ -67,7 +67,10 @@ Out of scope:
   - `ExtensionInvocation` to runtime-capability mapping
   - `ExtensionRegistry::assert_invocation_allowed(...)`
   - unit tests for allow/deny behavior and provider-sync multi-capability guard
-- [ ] Flutter settings capability surface remains deferred to a dedicated UI/settings PR.
+- [x] Added Flutter settings capability visibility surface:
+  - `SettingsCapabilityPage` with extension snapshot + capability catalog
+  - Workbench `Settings` section wired from placeholder to audit page
+  - widget/smoke tests for capability visibility and route reachability
 
 ## Acceptance Criteria
 

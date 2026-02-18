@@ -92,17 +92,24 @@ void main() {
     expect(find.text('Calendar'), findsWidgets);
   });
 
-  testWidgets('settings placeholder route is reachable from workbench', (
+  testWidgets('settings capability route is reachable from workbench', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const LazyNoteApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tapWorkbenchButton(tester, 'Settings (Placeholder)');
+    await tapWorkbenchButton(tester, 'Settings');
 
     expect(find.text('Settings'), findsWidgets);
-    expect(find.text('Settings is under construction'), findsOneWidget);
+    expect(
+      find.text('Extension capability audit (v0.2 baseline)'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('No runtime permissions declared (deny-by-default).'),
+      findsOneWidget,
+    );
     expect(find.text('Back to Workbench'), findsOneWidget);
   });
 
