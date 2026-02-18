@@ -4,6 +4,7 @@ Project contribution guide lives at:
 
 - `docs/index.md` (canonical docs entrypoint)
 - `docs/governance/CONTRIBUTING.md`
+- `docs/governance/api-lifecycle-policy.md`
 - `docs/architecture/engineering-standards.md`
 - `docs/architecture/code-comment-standards.md`
 - `SECURITY.md` (for private vulnerability reporting)

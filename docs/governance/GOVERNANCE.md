@@ -57,6 +57,7 @@
 - 版本计划由 `docs/releases/` 维护。
 - 版本策略由 `VERSIONING.md` 定义。
 - 版本变更由 `CHANGELOG.md` 记录。
+- API 生命周期与弃用策略由 `docs/governance/api-lifecycle-policy.md` 统一定义。
 - 发布动作由 Maintainer 执行，Owner 保留最终发布控制权。
 
 ## Conflict Resolution
