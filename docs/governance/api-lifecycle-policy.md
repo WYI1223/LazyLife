@@ -20,6 +20,8 @@ so changes are explicit, reviewable, and reversible.
 - default class for new extension/provider contracts in v0.x
 - may change quickly, but changes must be documented in the same PR
 - no silent drift is allowed
+- recommended window: do not keep high-traffic contracts in `experimental`
+  for more than 2 minor versions without explicit review
 
 ### `stable`
 
@@ -37,11 +39,15 @@ so changes are explicit, reviewable, and reversible.
 1. `experimental -> stable`
    - contract behavior is test-covered
    - docs are complete and linked from canonical index
-2. `stable -> deprecated`
+2. `experimental -> removed` (allowed with constraints in v0.x)
+   - must include explicit rationale in PR and release notes
+   - must provide replacement guidance when callers are known
+   - should prefer `experimental -> deprecated -> removed` for non-urgent cases
+3. `stable -> deprecated`
    - announce replacement API
    - document deprecation start version
    - include migration guidance and release note
-3. `deprecated -> removed`
+4. `deprecated -> removed`
    - only after minimum deprecation window
    - release note must mention final removal
 
@@ -51,6 +57,16 @@ For v0.x baseline:
 
 - minimum one minor release cycle between deprecation and removal
 - minimum 30 days notice when release cadence allows
+
+Definition:
+
+- one minor release cycle means version progression `vX.Y -> vX.(Y+1)`
+- example: deprecated in `v0.2.x`, earliest normal removal target is `v0.3.x`
+
+Security exception:
+
+- critical security fixes may accelerate deprecation/removal
+- such changes must include explicit security rationale and migration impact
 
 For v1.0+:
 
@@ -79,3 +95,7 @@ Every API-affecting PR must include:
 2. contract delta in docs (`docs/api/*` and/or architecture contracts)
 3. compatibility notes in release docs
 4. deprecation plan (if breaking or replacement is introduced)
+
+Enforcement note (v0.x):
+
+- checklist is reviewer-enforced (manual gate); CI automation is planned for v1.0+

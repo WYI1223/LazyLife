@@ -28,6 +28,7 @@ A change is considered breaking when any of the following happens:
 - change return field semantics (including `ok/error_code` behavior)
 - remove or repurpose stable error codes
 - change Single Entry behavior boundary (`onChanged` vs `Enter/send`)
+- add new required (non-optional) request parameters without compatibility fallback
 
 ## Allowed Non-Breaking Changes
 
