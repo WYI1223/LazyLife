@@ -120,7 +120,7 @@ void _registerWorkbenchHomeSlots(UiSlotRegistry registry) {
         );
         return OutlinedButton(
           onPressed: () => openSection(WorkbenchSectionIds.settings),
-          child: const Text('Settings (Placeholder)'),
+          child: const Text('Settings'),
         );
       },
     ),
