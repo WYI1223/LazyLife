@@ -87,6 +87,7 @@ For notes/tags contracts added in PR-0010B, see:
   - max limit: 50
   - `kind` accepted values: `all` | `note` | `task` | `event`
   - `kind = null` or `all` means no type filter
+  - blank `kind` is rejected as `invalid_kind`
   - response `applied_limit` must be used by UI as authoritative value
 
 ### `entry_create_note(content) -> EntryActionResponse`

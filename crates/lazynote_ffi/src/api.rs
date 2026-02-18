@@ -442,7 +442,10 @@ fn parse_entry_search_kind(raw: Option<String>) -> Result<Option<AtomType>, Stri
         return Ok(None);
     };
     let normalized = value.trim().to_ascii_lowercase();
-    if normalized.is_empty() || normalized == "all" {
+    if normalized.is_empty() {
+        return Err("invalid kind: blank value is not allowed".to_string());
+    }
+    if normalized == "all" {
         return Ok(None);
     }
     match normalized.as_str() {
@@ -1696,6 +1699,11 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("invalid_kind"));
         assert_eq!(response.applied_limit, 7);
+
+        let blank_response =
+            entry_search_impl("hello".to_string(), Some("   ".to_string()), Some(7));
+        assert!(!blank_response.ok);
+        assert_eq!(blank_response.error_code.as_deref(), Some("invalid_kind"));
     }
 
     #[test]
@@ -1715,6 +1723,28 @@ mod tests {
         assert!(note_response.items.iter().all(|item| item.kind == "note"));
 
         let task_response = entry_search_impl(token, Some("task".to_string()), Some(50));
+        assert!(task_response.ok, "{}", task_response.message);
+        assert!(!task_response.items.is_empty());
+        assert!(task_response.items.iter().all(|item| item.kind == "task"));
+    }
+
+    #[test]
+    fn entry_search_kind_filter_is_case_insensitive() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("entry-search-kind-case");
+
+        let note = entry_create_note_impl(format!("note {token}"));
+        assert!(note.ok, "{}", note.message);
+
+        let task = entry_create_task_impl(format!("task {token}"));
+        assert!(task.ok, "{}", task.message);
+
+        let note_response = entry_search_impl(token.clone(), Some("NOTE".to_string()), Some(50));
+        assert!(note_response.ok, "{}", note_response.message);
+        assert!(!note_response.items.is_empty());
+        assert!(note_response.items.iter().all(|item| item.kind == "note"));
+
+        let task_response = entry_search_impl(token, Some("Task".to_string()), Some(50));
         assert!(task_response.ok, "{}", task_response.message);
         assert!(!task_response.items.is_empty());
         assert!(task_response.items.iter().all(|item| item.kind == "task"));
