@@ -213,6 +213,7 @@ class NoteContentArea extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 14),
+              // Why: keep legacy "quick metadata actions" visible in v0.2.
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -232,6 +233,7 @@ class NoteContentArea extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              // Why: icon is placeholder-only for future user-selectable icon.
               Row(
                 children: [
                   const Icon(
@@ -582,6 +584,7 @@ class _MetaChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton(
       key: chipKey,
+      // TODO(PR-0205A): wire to real metadata actions in follow-up PR.
       onPressed: () {},
       style: TextButton.styleFrom(
         foregroundColor: kNotesSecondaryText,

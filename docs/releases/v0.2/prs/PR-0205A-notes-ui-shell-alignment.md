@@ -1,7 +1,7 @@
 # PR-0205A-notes-ui-shell-alignment
 
 - Proposed title: `feat(notes-ui): align notes shell with shared v0.2 visual language`
-- Status: Planned
+- Status: In Progress
 
 ## Goal
 
@@ -21,7 +21,7 @@ In scope:
 
 - notes page two-pane shell alignment (`Header + Explorer + Divider + Editor`)
 - shared style token alignment (container/divider/spacing/hover-selected emphasis)
-- right pane composition alignment (`Tab strip + content area + optional capsule overlay slot`)
+- right pane composition alignment (`Tab strip + content area`)
 - UI-only state rendering alignment (loading/error/empty/success, save states)
 - responsive baseline alignment (compact header and stable explorer width)
 
@@ -31,13 +31,26 @@ Out of scope:
 - split-layout interactions (handled by `PR-0206`)
 - drag-reorder/context actions (handled by `PR-0207`)
 - any Rust/FFI/domain contract changes
+- floating capsule input integration (deferred; if enabled later, must reuse Single Entry implementation)
+
+## Contract Impact
+
+- FFI/API contract delta: **none** (UI-only change).
+- Error-code contract delta: **none**.
+- Reference: `docs/api/ffi-contracts.md` ("Notes UI Shell Alignment (Flutter-only)").
+
+## Implemented in current patch
+
+- aligned explorer header (`My Workspace`) height with top tab strip.
+- switched note title prefix from hardcoded emoji to placeholder icon.
+- restored top metadata actions: `Add icon` / `Add image` / `Add comment`.
+- active tab hides outer frame/border to match target visual spec.
 
 ## Step-by-Step
 
 1. Align Notes shell layout grammar to `note-ui-dev-spec`.
 2. Normalize explorer/editor visual tokens to shared v0.2 style language.
-3. Add optional capsule overlay slot structure (UI-only; behavior can remain stubbed).
-4. Add widget tests for shell composition and core visual states.
+3. Add widget tests for shell composition and core visual states.
 
 ## Planned File Changes
 
@@ -58,4 +71,3 @@ Out of scope:
 - [ ] Notes shell layout matches `note-ui-dev-spec` structure.
 - [ ] Notes visual language is consistent with Task/Calendar shell style.
 - [ ] Core UI states are distinguishable without business logic changes.
-- [ ] Optional capsule overlay slot can be toggled without covering end-of-content lines.

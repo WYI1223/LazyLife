@@ -141,6 +141,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
     final title = widget.controller.titleForTab(noteId);
     final background = active ? Colors.transparent : kNotesSidebarBackground;
     final foreground = active ? kNotesPrimaryText : kNotesSecondaryText;
+    // Why: active tab should read as the current document title, not a chip.
     final side = active
         ? BorderSide.none
         : const BorderSide(color: kNotesDividerColor);

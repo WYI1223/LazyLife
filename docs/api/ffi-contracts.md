@@ -80,6 +80,15 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 
 See full registry: `docs/api/error-codes.md`.
 
+## Notes UI Shell Alignment (Flutter-only, PR-0205A)
+
+This PR only adjusts Flutter presentation behavior in Notes UI.
+
+- no Rust FFI API added/removed/renamed
+- no generated Dart binding shape change
+- no response payload or workspace-tree contract change
+- no error-code contract change
+
 ---
 
 ## Workspace Tree APIs (PR-0203 + PR-0221)
