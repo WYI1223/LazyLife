@@ -300,6 +300,9 @@ class _NotesPageState extends State<NotesPage>
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final compactHeader = constraints.maxWidth < 860;
+                  final headerTextColor = notesHeaderTextColor(context);
+                  final secondaryTextColor = notesSecondaryTextColor(context);
+                  final dividerColor = notesDividerColor(context);
                   // Why: keep the two-pane shell visually stable in Workbench
                   // regardless of host window resize jitter.
                   final paneHeight = constraints.maxHeight.isFinite
@@ -323,7 +326,7 @@ class _NotesPageState extends State<NotesPage>
                               compactHeader ? 'Back' : 'Back to Workbench',
                             ),
                             style: TextButton.styleFrom(
-                              foregroundColor: kNotesPrimaryText,
+                              foregroundColor: headerTextColor,
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
@@ -335,7 +338,7 @@ class _NotesPageState extends State<NotesPage>
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
-                                    color: kNotesPrimaryText,
+                                    color: headerTextColor,
                                     fontWeight: FontWeight.w700,
                                   ),
                             ),
@@ -354,7 +357,7 @@ class _NotesPageState extends State<NotesPage>
                               child: Text(
                                 'Ctrl+Tab switch',
                                 style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: kNotesSecondaryText),
+                                    ?.copyWith(color: secondaryTextColor),
                               ),
                             ),
                           ],
@@ -366,141 +369,55 @@ class _NotesPageState extends State<NotesPage>
                                     _controller.createTagApplyInFlight)
                                 ? null
                                 : _controller.loadNotes,
-                            icon: const Icon(
-                              Icons.refresh,
-                              color: kNotesPrimaryText,
-                            ),
+                            icon: Icon(Icons.refresh, color: headerTextColor),
                           ),
                         ],
                       ),
+                      const SizedBox(height: kNotesShellTopGap),
                       SizedBox(
                         height: paneHeight,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: explorerWidth,
-                              child: UiSlotListHost(
-                                registry: _uiSlotRegistry,
-                                slotId: UiSlotIds.notesSidePanel,
-                                layer: UiSlotLayer.sidePanel,
-                                slotContext: UiSlotContext({
-                                  UiSlotContextKeys.runtimeCapabilities:
-                                      widget.runtimeCapabilities,
-                                  UiSlotContextKeys.notesController:
-                                      _controller,
-                                  UiSlotContextKeys.notesOnOpenNoteRequested:
-                                      _controller.openNoteFromExplorer,
-                                  UiSlotContextKeys
-                                      .notesOnCreateNoteRequested: () async {
-                                    await _controller.createNote();
-                                    if (!context.mounted) {
-                                      return;
-                                    }
-                                    final warning = _controller
-                                        .takeCreateWarningMessage();
-                                    if (warning == null) {
-                                      return;
-                                    }
-                                    ScaffoldMessenger.maybeOf(context)
-                                      ?..hideCurrentSnackBar()
-                                      ..showSnackBar(
-                                        SnackBar(
-                                          content: Text(warning),
-                                          behavior: SnackBarBehavior.floating,
-                                          duration: const Duration(seconds: 4),
-                                        ),
-                                      );
-                                  },
-                                  UiSlotContextKeys
-                                          .notesOnDeleteFolderRequested:
-                                      (String folderId, String mode) {
-                                        return _controller
-                                            .deleteWorkspaceFolder(
-                                              folderId: folderId,
-                                              mode: mode,
-                                            );
-                                      },
-                                }),
-                                listBuilder: (context, children) {
-                                  return children.isEmpty
-                                      ? const SizedBox.shrink()
-                                      : Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: children
-                                              .map(
-                                                (child) =>
-                                                    Expanded(child: child),
-                                              )
-                                              .toList(growable: false),
-                                        );
-                                },
-                                fallbackBuilder: (context) {
-                                  return NoteExplorer(
-                                    controller: _controller,
-                                    onOpenNoteRequested:
-                                        _controller.openNoteFromExplorer,
-                                    onCreateNoteRequested: () async {
-                                      await _controller.createNote();
-                                      if (!context.mounted) {
-                                        return;
-                                      }
-                                      final warning = _controller
-                                          .takeCreateWarningMessage();
-                                      if (warning == null) {
-                                        return;
-                                      }
-                                      ScaffoldMessenger.maybeOf(context)
-                                        ?..hideCurrentSnackBar()
-                                        ..showSnackBar(
-                                          SnackBar(
-                                            content: Text(warning),
-                                            behavior: SnackBarBehavior.floating,
-                                            duration: const Duration(
-                                              seconds: 4,
-                                            ),
-                                          ),
-                                        );
-                                    },
-                                    onDeleteFolderRequested: (folderId, mode) {
-                                      return _controller.deleteWorkspaceFolder(
-                                        folderId: folderId,
-                                        mode: mode,
-                                      );
-                                    },
-                                  );
-                                },
+                        child: Container(
+                          key: const Key('notes_shell_card'),
+                          decoration: BoxDecoration(
+                            color: notesShellBackground(context),
+                            borderRadius: BorderRadius.circular(
+                              kNotesShellRadius,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: kNotesShellShadowOpacity,
+                                ),
+                                blurRadius: kNotesShellShadowBlur,
+                                offset: kNotesShellShadowOffset,
                               ),
-                            ),
-                            const VerticalDivider(
-                              width: 1,
-                              thickness: 1,
-                              indent: 12,
-                              endIndent: 12,
-                              color: kNotesDividerColor,
-                            ),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  NoteTabManager(
-                                    controller: _controller,
-                                    openNoteIdsOverride: openTabOverride,
-                                    activeNoteIdOverride: activeNoteIdOverride,
-                                  ),
-                                  Expanded(
-                                    child: NoteContentArea(
-                                      controller: _controller,
-                                      activeNoteIdOverride:
-                                          activeNoteIdOverride,
-                                      activeDraftContentOverride: draftOverride,
-                                      noteSaveStateOverride:
-                                          noteSaveStateOverride,
-                                    ),
-                                  ),
-                                ],
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: explorerWidth,
+                                child: _buildExplorerPane(context),
                               ),
-                            ),
-                          ],
+                              VerticalDivider(
+                                key: const Key('notes_shell_divider'),
+                                width: 1,
+                                thickness: 1,
+                                indent: kNotesShellDividerIndent,
+                                endIndent: kNotesShellDividerIndent,
+                                color: dividerColor,
+                              ),
+                              Expanded(
+                                child: _buildEditorPane(
+                                  activeNoteIdOverride: activeNoteIdOverride,
+                                  draftOverride: draftOverride,
+                                  noteSaveStateOverride: noteSaveStateOverride,
+                                  openTabOverride: openTabOverride,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -511,6 +428,112 @@ class _NotesPageState extends State<NotesPage>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildExplorerPane(BuildContext context) {
+    return UiSlotListHost(
+      registry: _uiSlotRegistry,
+      slotId: UiSlotIds.notesSidePanel,
+      layer: UiSlotLayer.sidePanel,
+      slotContext: UiSlotContext({
+        UiSlotContextKeys.runtimeCapabilities: widget.runtimeCapabilities,
+        UiSlotContextKeys.notesController: _controller,
+        UiSlotContextKeys.notesOnOpenNoteRequested:
+            _controller.openNoteFromExplorer,
+        UiSlotContextKeys.notesOnCreateNoteRequested: () async {
+          await _controller.createNote();
+          if (!context.mounted) {
+            return;
+          }
+          final warning = _controller.takeCreateWarningMessage();
+          if (warning == null) {
+            return;
+          }
+          ScaffoldMessenger.maybeOf(context)
+            ?..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(warning),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+        },
+        UiSlotContextKeys.notesOnDeleteFolderRequested:
+            (String folderId, String mode) {
+              return _controller.deleteWorkspaceFolder(
+                folderId: folderId,
+                mode: mode,
+              );
+            },
+      }),
+      listBuilder: (context, children) {
+        return children.isEmpty
+            ? const SizedBox.shrink()
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children
+                    .map((child) => Expanded(child: child))
+                    .toList(growable: false),
+              );
+      },
+      fallbackBuilder: (context) {
+        return NoteExplorer(
+          controller: _controller,
+          onOpenNoteRequested: _controller.openNoteFromExplorer,
+          onCreateNoteRequested: () async {
+            await _controller.createNote();
+            if (!context.mounted) {
+              return;
+            }
+            final warning = _controller.takeCreateWarningMessage();
+            if (warning == null) {
+              return;
+            }
+            ScaffoldMessenger.maybeOf(context)
+              ?..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(warning),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+          },
+          onDeleteFolderRequested: (folderId, mode) {
+            return _controller.deleteWorkspaceFolder(
+              folderId: folderId,
+              mode: mode,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEditorPane({
+    required String? activeNoteIdOverride,
+    required String? draftOverride,
+    required NoteSaveState? noteSaveStateOverride,
+    required List<String>? openTabOverride,
+  }) {
+    return Column(
+      children: [
+        NoteTabManager(
+          controller: _controller,
+          openNoteIdsOverride: openTabOverride,
+          activeNoteIdOverride: activeNoteIdOverride,
+        ),
+        Expanded(
+          child: NoteContentArea(
+            controller: _controller,
+            activeNoteIdOverride: activeNoteIdOverride,
+            activeDraftContentOverride: draftOverride,
+            noteSaveStateOverride: noteSaveStateOverride,
+          ),
+        ),
+      ],
     );
   }
 
