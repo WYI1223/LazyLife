@@ -7,6 +7,12 @@
 
 Implement deterministic preview/pinned tab behavior similar to modern IDE editors.
 
+## Semantic Ownership
+
+- Preview/pinned semantics are owned by the top tab model/state machine.
+- Explorer/tree and other entry points only emit open intents (`preview` or `pin`).
+- No source widget should hardcode replace/persist behavior outside tab model.
+
 ## Scope (v0.3)
 
 In scope:
@@ -25,6 +31,8 @@ Out of scope:
 1. Preview tab is ephemeral and can be replaced by next preview open in same pane.
 2. Pinned tabs are not auto-replaced by preview opens.
 3. Double-click always pins current preview/open tab.
+4. All open sources (explorer, tab interactions, future launcher flows) must go
+   through one shared tab model decision path.
 
 ## Planned File Changes
 
@@ -43,4 +51,3 @@ Out of scope:
 - [ ] Preview tabs behave as replaceable ephemeral tabs.
 - [ ] Pinned tabs remain persistent.
 - [ ] Single vs double click semantics are deterministic and tested.
-

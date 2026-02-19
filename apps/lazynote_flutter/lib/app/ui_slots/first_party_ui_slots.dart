@@ -149,10 +149,15 @@ void _registerNotesSlots(UiSlotRegistry registry) {
             .read<
               Future<rust_api.WorkspaceActionResponse> Function(String, String)
             >(UiSlotContextKeys.notesOnDeleteFolderRequested);
+        final onCreateFolderRequested = slotContext
+            .read<
+              Future<rust_api.WorkspaceNodeResponse> Function(String, String?)
+            >(UiSlotContextKeys.notesOnCreateFolderRequested);
         return NoteExplorer(
           controller: controller,
           onOpenNoteRequested: onOpenNoteRequested,
           onCreateNoteRequested: onCreateNoteRequested,
+          onCreateFolderRequested: onCreateFolderRequested,
           onDeleteFolderRequested: onDeleteFolderRequested,
         );
       },
