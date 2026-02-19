@@ -155,6 +155,16 @@ Recommended order:
 5. Closure:
    - `PR-0208-workspace-hardening-doc-closure` (verifies regression targets from bridge lane)
 
+## Current Week Execution Tasks
+
+1. `PR-0204` M1 skeleton (workspace provider interface freeze)
+   - [x] add provider/models baseline and guardrail tests for R02-1.1/1.2/1.3
+   - [ ] bridge `NotesController` ownership to provider (M2)
+2. `PR-0202/0203/0221` migration + contract consistency audit
+   - [ ] run migration-chain replay and FFI contract regression
+3. Extension x Workspace integration smoke (minimal CI sample)
+   - [ ] add one cross-lane smoke path (`slot + capability gate + workspace op`)
+
 ## Quality Gates
 
 - `cargo fmt --all -- --check`
