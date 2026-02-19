@@ -1844,29 +1844,34 @@ class NotesController extends ChangeNotifier {
   }
 
   void _syncWorkspaceFromControllerState() {
-    _workspaceProvider.resetAll();
-    if (_openNoteIds.isEmpty) {
-      return;
-    }
-    for (final atomId in _openNoteIds) {
-      _workspaceProvider.syncExternalNote(
-        noteId: atomId,
-        persistedContent: _workspacePersistedContentFor(atomId),
-        draftContent: _workspaceDraftContentFor(atomId),
-        saveState: _workspaceSaveStateForNote(atomId),
-        activate: _activeNoteId == atomId,
-      );
-    }
-    if (_activeNoteId case final activeId?) {
-      if (!_openNoteIds.contains(activeId)) {
+    _workspaceProvider.beginBatchSync();
+    try {
+      _workspaceProvider.resetAll();
+      if (_openNoteIds.isEmpty) {
+        return;
+      }
+      for (final atomId in _openNoteIds) {
         _workspaceProvider.syncExternalNote(
-          noteId: activeId,
-          persistedContent: _workspacePersistedContentFor(activeId),
-          draftContent: _workspaceDraftContentFor(activeId),
-          saveState: _workspaceSaveStateForNote(activeId),
-          activate: true,
+          noteId: atomId,
+          persistedContent: _workspacePersistedContentFor(atomId),
+          draftContent: _workspaceDraftContentFor(atomId),
+          saveState: _workspaceSaveStateForNote(atomId),
+          activate: _activeNoteId == atomId,
         );
       }
+      if (_activeNoteId case final activeId?) {
+        if (!_openNoteIds.contains(activeId)) {
+          _workspaceProvider.syncExternalNote(
+            noteId: activeId,
+            persistedContent: _workspacePersistedContentFor(activeId),
+            draftContent: _workspaceDraftContentFor(activeId),
+            saveState: _workspaceSaveStateForNote(activeId),
+            activate: true,
+          );
+        }
+      }
+    } finally {
+      _workspaceProvider.endBatchSync();
     }
   }
 

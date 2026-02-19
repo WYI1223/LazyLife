@@ -61,6 +61,8 @@ class WorkspaceProvider extends ChangeNotifier {
       <String, Future<bool>>{};
   final Map<String, Future<void>> _tagMutationQueueByNoteId =
       <String, Future<void>>{};
+  int _syncBatchDepth = 0;
+  bool _pendingNotify = false;
 
   WorkspaceLayoutState get layoutState => _layoutState;
 
@@ -102,6 +104,31 @@ class WorkspaceProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Batches multiple state mutations into one final notification.
+  void beginBatchSync() {
+    _syncBatchDepth += 1;
+  }
+
+  /// Ends one batch scope and emits one notification when needed.
+  void endBatchSync() {
+    if (_syncBatchDepth == 0) {
+      return;
+    }
+    _syncBatchDepth -= 1;
+    if (_syncBatchDepth == 0 && _pendingNotify) {
+      _pendingNotify = false;
+      notifyListeners();
+    }
+  }
+
+  void _markChanged() {
+    if (_syncBatchDepth > 0) {
+      _pendingNotify = true;
+      return;
+    }
+    notifyListeners();
+  }
+
   void switchActivePane(String paneId) {
     if (_activePaneId == paneId) {
       return;
@@ -109,7 +136,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _openTabsByPane.putIfAbsent(paneId, () => <String>[]);
     _activeTabByPane.putIfAbsent(paneId, () => null);
     _activePaneId = paneId;
-    notifyListeners();
+    _markChanged();
   }
 
   void openNote({
@@ -135,7 +162,7 @@ class WorkspaceProvider extends ChangeNotifier {
       ),
     );
     _saveStateByNoteId.putIfAbsent(noteId, () => WorkspaceSaveState.clean);
-    notifyListeners();
+    _markChanged();
   }
 
   void activateNote({required String noteId, String? paneId}) {
@@ -146,7 +173,7 @@ class WorkspaceProvider extends ChangeNotifier {
     }
     _activeTabByPane[targetPaneId] = noteId;
     _activePaneId = targetPaneId;
-    notifyListeners();
+    _markChanged();
   }
 
   void closeNote({required String noteId, String? paneId}) {
@@ -166,7 +193,7 @@ class WorkspaceProvider extends ChangeNotifier {
       _saveStateByNoteId.remove(noteId);
       _buffersByNoteId.remove(noteId);
     }
-    notifyListeners();
+    _markChanged();
   }
 
   void updateDraft({required String noteId, required String content}) {
@@ -185,7 +212,7 @@ class WorkspaceProvider extends ChangeNotifier {
     if (autosaveEnabled) {
       _scheduleAutosave(noteId);
     }
-    notifyListeners();
+    _markChanged();
   }
 
   /// Sync one note snapshot from external owner (e.g. NotesController).
@@ -221,7 +248,7 @@ class WorkspaceProvider extends ChangeNotifier {
         (draftContent == persistedContent
             ? WorkspaceSaveState.clean
             : WorkspaceSaveState.dirty);
-    notifyListeners();
+    _markChanged();
   }
 
   /// Sync save-state only for existing note buffer.
@@ -233,7 +260,7 @@ class WorkspaceProvider extends ChangeNotifier {
       return;
     }
     _saveStateByNoteId[noteId] = saveState;
-    notifyListeners();
+    _markChanged();
   }
 
   /// Clears pane/tab/buffer/save state.
@@ -253,7 +280,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _buffersByNoteId.clear();
     _saveStateByNoteId.clear();
     _activePaneId = _layoutState.primaryPaneId;
-    notifyListeners();
+    _markChanged();
   }
 
   Future<bool> flushActiveNote() async {
@@ -268,9 +295,15 @@ class WorkspaceProvider extends ChangeNotifier {
     _saveDebounceByNoteId.remove(noteId)?.cancel();
     for (var attempt = 0; attempt < flushMaxRetries; attempt += 1) {
       final buffer = _buffersByNoteId[noteId];
-      if (buffer == null || !buffer.isDirty) {
+      if (buffer == null) {
+        if (_saveStateByNoteId.remove(noteId) != null) {
+          _markChanged();
+        }
+        return true;
+      }
+      if (!buffer.isDirty) {
         _saveStateByNoteId[noteId] = WorkspaceSaveState.clean;
-        notifyListeners();
+        _markChanged();
         return true;
       }
       final expectedVersion = buffer.version;
@@ -288,7 +321,7 @@ class WorkspaceProvider extends ChangeNotifier {
     }
     if (_buffersByNoteId.containsKey(noteId)) {
       _saveStateByNoteId[noteId] = WorkspaceSaveState.saveError;
-      notifyListeners();
+      _markChanged();
     }
     return false;
   }
@@ -335,7 +368,7 @@ class WorkspaceProvider extends ChangeNotifier {
   void _scheduleAutosave(String noteId) {
     _saveDebounceByNoteId.remove(noteId)?.cancel();
     _saveDebounceByNoteId[noteId] = _debounceTimerFactory(autosaveDebounce, () {
-      unawaited(flushNote(noteId));
+      unawaited(flushNote(noteId).catchError((_) => false));
     });
   }
 
@@ -349,17 +382,29 @@ class WorkspaceProvider extends ChangeNotifier {
     }
 
     if (_saveInFlightByNoteId[noteId] case final inflight?) {
-      await inflight;
+      try {
+        await inflight;
+      } catch (_) {}
       return false;
     }
 
     _saveStateByNoteId[noteId] = WorkspaceSaveState.saving;
-    notifyListeners();
+    _markChanged();
 
     final future = _saveInvoker(noteId: noteId, content: current.draftContent);
     _saveInFlightByNoteId[noteId] = future;
-    final ok = await future;
-    _saveInFlightByNoteId.remove(noteId);
+    bool ok;
+    try {
+      ok = await future;
+    } catch (_) {
+      if (_buffersByNoteId.containsKey(noteId)) {
+        _saveStateByNoteId[noteId] = WorkspaceSaveState.saveError;
+        _markChanged();
+      }
+      return false;
+    } finally {
+      _saveInFlightByNoteId.remove(noteId);
+    }
 
     final latest = _buffersByNoteId[noteId];
     if (latest == null) {
@@ -367,12 +412,12 @@ class WorkspaceProvider extends ChangeNotifier {
     }
     if (!ok) {
       _saveStateByNoteId[noteId] = WorkspaceSaveState.saveError;
-      notifyListeners();
+      _markChanged();
       return false;
     }
     if (latest.version != expectedVersion) {
       _saveStateByNoteId[noteId] = WorkspaceSaveState.dirty;
-      notifyListeners();
+      _markChanged();
       return false;
     }
 
@@ -380,7 +425,7 @@ class WorkspaceProvider extends ChangeNotifier {
       persistedContent: latest.draftContent,
     );
     _saveStateByNoteId[noteId] = WorkspaceSaveState.clean;
-    notifyListeners();
+    _markChanged();
     return true;
   }
 
