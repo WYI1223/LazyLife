@@ -1,7 +1,7 @@
 # PR-0204-workspace-provider-foundation
 
 - Proposed title: `feat(notes-ui): workspace provider and state hoisting foundation`
-- Status: Planned
+- Status: In Progress (M1 skeleton landed; integration pending)
 
 ## Goal
 
@@ -70,6 +70,36 @@ still present in `openTabsByPane` before issuing the FFI call.
 3. Keep current Notes UI behavior intact while swapping state ownership.
 4. Add tests for buffer/saving state coherence across tab activation.
 
+## Execution Plan (M1-M3)
+
+### M1. Provider Skeleton + Guardrail Tests
+
+1. Add `workspace_models.dart` and `workspace_provider.dart` with:
+- `layoutState`
+- `activePaneId`
+- `openTabsByPane`
+- `buffersByNoteId`
+- `saveStateByNoteId`
+2. Land save coordinator hook with bounded flush retries (`<= 5`).
+3. Land tag mutation queue guard: note must still be open before dispatch.
+4. Add `workspace_provider_test.dart` for R02-1.1/1.2/1.3.
+
+Status:
+- M1 model/provider skeleton: completed
+- M1 guardrail tests: completed
+
+### M2. NotesController Bridge
+
+1. Introduce adapter layer from `NotesController` to `WorkspaceProvider`.
+2. Preserve existing Notes behavior while moving ownership to provider.
+3. Add bridge-focused tests for tab/draft/save consistency.
+
+### M3. UI Wiring Baseline
+
+1. Wire `notes_page`/`entry_shell_page` to provider selectors.
+2. Keep split/explorer visual behavior unchanged (no recursive split in v0.2).
+3. Run full regression suite before PR-0205 handoff.
+
 ## Planned File Changes
 
 - [add] `apps/lazynote_flutter/lib/features/workspace/workspace_provider.dart`
@@ -82,6 +112,7 @@ still present in `openTabsByPane` before issuing the FFI call.
 ## Verification
 
 - `cd apps/lazynote_flutter && flutter analyze`
+- `cd apps/lazynote_flutter && flutter test test/workspace_provider_test.dart`
 - `cd apps/lazynote_flutter && flutter test`
 
 ## Acceptance Criteria
@@ -95,4 +126,3 @@ still present in `openTabsByPane` before issuing the FFI call.
       `save_error` on exhaustion; test covers the save-failure + in-progress-typing case.
 - [ ] (R02-1.3) Tag mutation dispatch checks note presence in open tabs before FFI call;
       test covers close-then-tag-queue scenario.
-
