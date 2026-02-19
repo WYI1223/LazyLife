@@ -163,8 +163,15 @@ Recommended order:
    - [x] wire `notes_page`/`entry_shell_page` to provider selectors (M3)
 2. `PR-0202/0203/0221` migration + contract consistency audit
    - [x] run migration-chain replay and FFI contract regression
+   - evidence commands:
+     - `cd crates && cargo test -p lazynote_core --test db_migrations`
+     - `cd crates && cargo test -p lazynote_core --test workspace_tree`
+     - `cd crates && cargo test -p lazynote_core --test search_fts`
+     - `cd crates && cargo test -p lazynote_ffi`
+     - `cd apps/lazynote_flutter && flutter test test/workspace_contract_smoke_test.dart test/entry_search_contract_smoke_test.dart`
 3. Extension x Workspace integration smoke (minimal CI sample)
    - [x] add one cross-lane smoke path (`slot + capability gate + workspace op`)
+   - evidence test: `apps/lazynote_flutter/test/cross_lane_workspace_extension_smoke_test.dart`
 
 ## Quality Gates
 
