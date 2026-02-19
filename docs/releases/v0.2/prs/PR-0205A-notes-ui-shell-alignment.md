@@ -1,7 +1,7 @@
 # PR-0205A-notes-ui-shell-alignment
 
 - Proposed title: `feat(notes-ui): align notes shell with shared v0.2 visual language`
-- Status: In Progress
+- Status: Completed
 
 ## Goal
 
@@ -52,11 +52,13 @@ Out of scope:
 2. Normalize explorer/editor visual tokens to shared v0.2 style language.
 3. Add widget tests for shell composition and core visual states.
 
-## Planned File Changes
+## Landed File Changes
 
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_page.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
-- [edit] `apps/lazynote_flutter/lib/features/entry/workbench_shell_layout.dart`
+- [edit] `apps/lazynote_flutter/lib/features/notes/note_tab_manager.dart`
+- [edit] `apps/lazynote_flutter/lib/features/notes/note_content_area.dart`
+- [edit] `apps/lazynote_flutter/lib/features/notes/notes_style.dart`
 - [add] `apps/lazynote_flutter/test/notes_ui_shell_alignment_test.dart`
 - [edit] `docs/releases/v0.2/prs/PR-0205-explorer-recursive-lazy-ui.md` (dependency note)
 
@@ -68,6 +70,6 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Notes shell layout matches `note-ui-dev-spec` structure.
-- [ ] Notes visual language is consistent with Task/Calendar shell style.
-- [ ] Core UI states are distinguishable without business logic changes.
+- [x] Notes shell layout matches `note-ui-dev-spec` structure.
+- [x] Notes visual language is consistent with Task/Calendar shell style.
+- [x] Core UI states are distinguishable without business logic changes.
