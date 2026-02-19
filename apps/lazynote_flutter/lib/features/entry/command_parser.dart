@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 /// - default first-party command parsers are registered via parser chain
 @immutable
 class CommandParser {
+  /// Creates a command parser with configurable parser chain and timeout.
   const CommandParser({
     this.chain = EntryParserChain.firstParty,
     this.timeoutBudget = const Duration(milliseconds: 8),
@@ -46,6 +47,7 @@ class CommandParser {
 /// One parser registration in chain.
 @immutable
 class EntryParserDefinition {
+  /// Creates one parser definition entry for parser-chain registration.
   const EntryParserDefinition({
     required this.parserId,
     required this.priority,
@@ -185,9 +187,13 @@ class EntryParserChain {
 
 /// Parser-chain registration/validation error.
 class ParserChainConflictError implements Exception {
+  /// Creates parser-chain validation error payload.
   const ParserChainConflictError({required this.code, required this.message});
 
+  /// Stable machine-readable validation code.
   final String code;
+
+  /// Human-readable validation message.
   final String message;
 }
 
@@ -355,12 +361,14 @@ DateTime? _parseDateTime(String date, String time) {
 /// Parser output envelope.
 @immutable
 sealed class CommandParseResult {
+  /// Base constructor for parser result envelopes.
   const CommandParseResult();
 }
 
 /// Successful parse.
 @immutable
 final class CommandParseSuccess extends CommandParseResult {
+  /// Creates successful parser result.
   const CommandParseSuccess({required this.command});
 
   /// Parsed command payload consumed by command execution layer.
@@ -370,6 +378,7 @@ final class CommandParseSuccess extends CommandParseResult {
 /// Failed parse with stable code and human-readable message.
 @immutable
 final class CommandParseFailure extends CommandParseResult {
+  /// Creates failed parser result.
   const CommandParseFailure({required this.code, required this.message});
 
   /// Stable parser error code for UI state machine and tests.
@@ -382,6 +391,7 @@ final class CommandParseFailure extends CommandParseResult {
 /// Base type for parsed command payloads.
 @immutable
 sealed class EntryCommand {
+  /// Base constructor for parsed command payload.
   const EntryCommand();
 
   /// Stable command id used by registry execution.
@@ -391,6 +401,7 @@ sealed class EntryCommand {
 /// Command payload for note creation.
 @immutable
 final class NewNoteCommand extends EntryCommand {
+  /// Creates note creation command payload.
   const NewNoteCommand({required this.content});
 
   static const String id = 'builtin.entry.new_note';
@@ -405,6 +416,7 @@ final class NewNoteCommand extends EntryCommand {
 /// Command payload for task creation.
 @immutable
 final class CreateTaskCommand extends EntryCommand {
+  /// Creates task creation command payload.
   const CreateTaskCommand({required this.content});
 
   static const String id = 'builtin.entry.create_task';
@@ -419,6 +431,7 @@ final class CreateTaskCommand extends EntryCommand {
 /// Command payload for schedule creation.
 @immutable
 final class ScheduleCommand extends EntryCommand {
+  /// Creates schedule creation command payload.
   const ScheduleCommand({
     required this.title,
     required this.start,

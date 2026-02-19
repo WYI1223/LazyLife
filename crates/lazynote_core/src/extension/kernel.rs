@@ -65,6 +65,7 @@ pub struct FirstPartyExtensionAdapter {
 }
 
 impl FirstPartyExtensionAdapter {
+    /// Creates one first-party adapter from a validated manifest declaration.
     pub fn new(manifest: ExtensionManifest) -> Self {
         Self { manifest }
     }
@@ -112,6 +113,7 @@ pub struct ExtensionRegistry {
 }
 
 impl ExtensionRegistry {
+    /// Creates an empty extension registry.
     pub fn new() -> Self {
         Self::default()
     }
@@ -157,18 +159,22 @@ impl ExtensionRegistry {
         self.register_adapter(&adapter)
     }
 
+    /// Returns number of registered extensions.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
+    /// Returns whether no extension is registered.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
+    /// Returns one registered extension by stable extension id.
     pub fn get(&self, extension_id: &str) -> Option<&RegisteredExtension> {
         self.entries.get(extension_id)
     }
 
+    /// Returns registered extensions that declare the requested capability.
     pub fn list_by_capability(&self, capability: &str) -> Vec<&RegisteredExtension> {
         let Some(ids) = self.capability_index.get(capability) else {
             return vec![];

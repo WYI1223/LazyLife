@@ -41,6 +41,7 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    /// Creates an empty provider registry.
     pub fn new() -> Self {
         Self::default()
     }
@@ -62,10 +63,12 @@ impl ProviderRegistry {
         Ok(())
     }
 
+    /// Returns number of registered providers.
     pub fn len(&self) -> usize {
         self.providers.len()
     }
 
+    /// Returns whether no provider has been registered.
     pub fn is_empty(&self) -> bool {
         self.providers.is_empty()
     }

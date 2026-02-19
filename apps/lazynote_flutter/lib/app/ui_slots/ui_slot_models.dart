@@ -97,8 +97,12 @@ class UiSlotContribution {
 
 /// Slot registration validation error.
 class UiSlotRegistryError implements Exception {
+  /// Creates one stable slot-registry error payload.
   const UiSlotRegistryError({required this.code, required this.message});
 
+  /// Stable machine-readable error code.
   final String code;
+
+  /// Human-readable validation error message.
   final String message;
 }

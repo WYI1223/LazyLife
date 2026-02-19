@@ -18,6 +18,10 @@ typedef WorkspaceDebounceTimerFactory =
 
 /// Workspace runtime owner for pane/tab/buffer/save state.
 class WorkspaceProvider extends ChangeNotifier {
+  /// Creates a workspace state owner with injectable persistence hooks.
+  ///
+  /// The injected callbacks are used by tests and diagnostics to simulate
+  /// save/tag behavior without touching the real bridge implementation.
   WorkspaceProvider({
     WorkspaceSaveInvoker? saveInvoker,
     WorkspaceTagMutationInvoker? tagMutationInvoker,
@@ -64,10 +68,13 @@ class WorkspaceProvider extends ChangeNotifier {
   int _syncBatchDepth = 0;
   bool _pendingNotify = false;
 
+  /// Current workspace layout snapshot.
   WorkspaceLayoutState get layoutState => _layoutState;
 
+  /// Active pane identifier.
   String get activePaneId => _activePaneId;
 
+  /// Active note id in current pane, if any.
   String? get activeNoteId => _activeTabByPane[_activePaneId];
 
   /// Active editor draft is always derived from note buffer map.
@@ -79,6 +86,7 @@ class WorkspaceProvider extends ChangeNotifier {
     return _buffersByNoteId[active]?.draftContent ?? '';
   }
 
+  /// Read-only open tab ids grouped by pane id.
   Map<String, List<String>> get openTabsByPane => UnmodifiableMapView(
     _openTabsByPane.map(
       (key, value) =>
@@ -86,12 +94,15 @@ class WorkspaceProvider extends ChangeNotifier {
     ),
   );
 
+  /// Read-only active tab id by pane id.
   Map<String, String?> get activeTabByPane =>
       UnmodifiableMapView(_activeTabByPane);
 
+  /// Read-only note buffers by note id.
   Map<String, WorkspaceNoteBuffer> get buffersByNoteId =>
       UnmodifiableMapView(_buffersByNoteId);
 
+  /// Read-only save states by note id.
   Map<String, WorkspaceSaveState> get saveStateByNoteId =>
       UnmodifiableMapView(_saveStateByNoteId);
 
@@ -129,6 +140,7 @@ class WorkspaceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Switches the active pane pointer and lazily initializes pane maps.
   void switchActivePane(String paneId) {
     if (_activePaneId == paneId) {
       return;
@@ -139,6 +151,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _markChanged();
   }
 
+  /// Opens one note tab in the target pane and initializes its buffer.
   void openNote({
     required String noteId,
     required String initialContent,
@@ -165,6 +178,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _markChanged();
   }
 
+  /// Activates an already-open note tab in the target pane.
   void activateNote({required String noteId, String? paneId}) {
     final targetPaneId = paneId ?? _activePaneId;
     final tabs = _openTabsByPane.putIfAbsent(targetPaneId, () => <String>[]);
@@ -176,6 +190,10 @@ class WorkspaceProvider extends ChangeNotifier {
     _markChanged();
   }
 
+  /// Closes one note tab from the target pane.
+  ///
+  /// When the note is no longer opened in any pane, related runtime state
+  /// (buffer/save state/debounce/in-flight marker) is cleaned up.
   void closeNote({required String noteId, String? paneId}) {
     final targetPaneId = paneId ?? _activePaneId;
     final tabs = _openTabsByPane[targetPaneId];
@@ -196,6 +214,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _markChanged();
   }
 
+  /// Updates one note draft and schedules autosave when enabled.
   void updateDraft({required String noteId, required String content}) {
     final current = _buffersByNoteId[noteId];
     if (current == null) {
@@ -283,6 +302,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _markChanged();
   }
 
+  /// Flushes the currently active note if one exists.
   Future<bool> flushActiveNote() async {
     final noteId = activeNoteId;
     if (noteId == null) {
@@ -291,6 +311,10 @@ class WorkspaceProvider extends ChangeNotifier {
     return flushNote(noteId);
   }
 
+  /// Flushes one note draft to persistence with bounded retry.
+  ///
+  /// Returns `true` when the latest visible draft is persisted or already clean.
+  /// Returns `false` when retries are exhausted or save keeps failing.
   Future<bool> flushNote(String noteId) async {
     _saveDebounceByNoteId.remove(noteId)?.cancel();
     for (var attempt = 0; attempt < flushMaxRetries; attempt += 1) {
@@ -326,6 +350,9 @@ class WorkspaceProvider extends ChangeNotifier {
     return false;
   }
 
+  /// Enqueues one tag mutation request per note with in-order execution.
+  ///
+  /// Calls for the same note are serialized to avoid out-of-order tag writes.
   Future<bool> enqueueTagMutation({
     required String noteId,
     required List<String> tags,
