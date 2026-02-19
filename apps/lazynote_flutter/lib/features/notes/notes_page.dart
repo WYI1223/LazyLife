@@ -22,6 +22,7 @@ class NotesPage extends StatefulWidget {
     this.controller,
     this.onBackToWorkbench,
     this.uiSlotRegistry,
+    this.runtimeCapabilities = const <String>[],
   });
 
   /// Optional external controller for tests.
@@ -30,6 +31,7 @@ class NotesPage extends StatefulWidget {
   /// Optional callback that returns to Workbench home section.
   final VoidCallback? onBackToWorkbench;
   final UiSlotRegistry? uiSlotRegistry;
+  final List<String> runtimeCapabilities;
 
   @override
   State<NotesPage> createState() => _NotesPageState();
@@ -382,6 +384,8 @@ class _NotesPageState extends State<NotesPage>
                                 slotId: UiSlotIds.notesSidePanel,
                                 layer: UiSlotLayer.sidePanel,
                                 slotContext: UiSlotContext({
+                                  UiSlotContextKeys.runtimeCapabilities:
+                                      widget.runtimeCapabilities,
                                   UiSlotContextKeys.notesController:
                                       _controller,
                                   UiSlotContextKeys.notesOnOpenNoteRequested:
