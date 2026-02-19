@@ -162,9 +162,9 @@ Recommended order:
    - [x] bridge `NotesController` ownership to provider (M2)
    - [x] wire `notes_page`/`entry_shell_page` to provider selectors (M3)
 2. `PR-0202/0203/0221` migration + contract consistency audit
-   - [ ] run migration-chain replay and FFI contract regression
+   - [x] run migration-chain replay and FFI contract regression
 3. Extension x Workspace integration smoke (minimal CI sample)
-   - [ ] add one cross-lane smoke path (`slot + capability gate + workspace op`)
+   - [x] add one cross-lane smoke path (`slot + capability gate + workspace op`)
 
 ## Quality Gates
 

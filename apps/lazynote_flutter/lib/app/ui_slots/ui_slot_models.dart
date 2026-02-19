@@ -13,6 +13,7 @@ abstract final class UiSlotIds {
 
 /// Shared render-context keys.
 abstract final class UiSlotContextKeys {
+  static const String runtimeCapabilities = 'runtime_capabilities';
   static const String activeSection = 'active_section';
   static const String onOpenSection = 'on_open_section';
   static const String onOpenDiagnostics = 'on_open_diagnostics';
