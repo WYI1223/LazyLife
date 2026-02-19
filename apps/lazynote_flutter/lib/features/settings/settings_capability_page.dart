@@ -1,26 +1,38 @@
 import 'package:flutter/material.dart';
 
+/// Capability snapshot shown in settings audit page.
 @immutable
 class ExtensionCapabilitySnapshot {
+  /// Creates one extension capability snapshot.
   const ExtensionCapabilitySnapshot({
     required this.extensionId,
     required this.runtimeCapabilities,
   });
 
+  /// Stable extension identifier.
   final String extensionId;
+
+  /// Declared runtime capabilities for this extension.
   final List<RuntimeCapabilityDescriptor> runtimeCapabilities;
 }
 
+/// Runtime capability metadata descriptor used by capability catalog rendering.
 @immutable
 class RuntimeCapabilityDescriptor {
+  /// Creates one capability descriptor.
   const RuntimeCapabilityDescriptor({
     required this.id,
     required this.label,
     required this.description,
   });
 
+  /// Stable runtime capability id.
   final String id;
+
+  /// User-facing short label.
   final String label;
+
+  /// User-facing detailed explanation.
   final String description;
 }
 
@@ -69,14 +81,19 @@ const List<ExtensionCapabilitySnapshot> firstPartyExtensionSnapshots =
       ),
     ];
 
+/// Settings page section that displays extension capability audit information.
 class SettingsCapabilityPage extends StatelessWidget {
+  /// Creates settings capability audit page.
   const SettingsCapabilityPage({
     super.key,
     required this.onBackToWorkbench,
     this.extensions = firstPartyExtensionSnapshots,
   });
 
+  /// Callback used to return to workbench shell.
   final VoidCallback onBackToWorkbench;
+
+  /// Extension capability snapshots rendered by this page.
   final List<ExtensionCapabilitySnapshot> extensions;
 
   @override

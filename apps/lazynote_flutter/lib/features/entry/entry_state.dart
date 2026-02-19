@@ -10,6 +10,7 @@ enum EntryStatusMessageType { info, success, error }
 /// User-visible status payload emitted by the state model.
 @immutable
 class EntryStatusMessage {
+  /// Creates one status message payload.
   const EntryStatusMessage({required this.type, required this.text});
 
   /// Message severity used by UI color mapping.
@@ -25,6 +26,7 @@ class EntryStatusMessage {
 /// for parser/router outcomes and command/search execution lifecycle.
 @immutable
 class EntryState {
+  /// Creates one immutable entry state snapshot.
   const EntryState({
     required this.phase,
     required this.rawInput,
@@ -33,6 +35,7 @@ class EntryState {
     this.detailPayload,
   });
 
+  /// Creates the pristine idle entry state.
   const EntryState.idle()
     : phase = EntryPhase.idle,
       rawInput = '',

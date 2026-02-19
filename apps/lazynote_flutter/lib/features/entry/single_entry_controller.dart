@@ -19,7 +19,9 @@ typedef EntrySearchInvoker =
 /// User-facing search kind filter for single-entry realtime search.
 enum EntrySearchKindFilter { all, note, task, event }
 
+/// Helpers that map UI filter values to labels and FFI payloads.
 extension EntrySearchKindFilterX on EntrySearchKindFilter {
+  /// Stable label used by filter chips.
   String get label => switch (this) {
     EntrySearchKindFilter.all => 'all',
     EntrySearchKindFilter.note => 'note',
@@ -27,6 +29,7 @@ extension EntrySearchKindFilterX on EntrySearchKindFilter {
     EntrySearchKindFilter.event => 'event',
   };
 
+  /// Optional FFI kind passed to `entry_search` (`null` means all kinds).
   String? get ffiKind => switch (this) {
     EntrySearchKindFilter.all => null,
     EntrySearchKindFilter.note => 'note',
