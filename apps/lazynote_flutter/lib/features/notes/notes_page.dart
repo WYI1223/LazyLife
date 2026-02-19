@@ -467,6 +467,13 @@ class _NotesPageState extends State<NotesPage>
                 mode: mode,
               );
             },
+        UiSlotContextKeys.notesOnCreateFolderRequested:
+            (String name, String? parentNodeId) {
+              return _controller.createWorkspaceFolder(
+                name: name,
+                parentNodeId: parentNodeId,
+              );
+            },
       }),
       listBuilder: (context, children) {
         return children.isEmpty
@@ -505,6 +512,12 @@ class _NotesPageState extends State<NotesPage>
             return _controller.deleteWorkspaceFolder(
               folderId: folderId,
               mode: mode,
+            );
+          },
+          onCreateFolderRequested: (name, parentNodeId) {
+            return _controller.createWorkspaceFolder(
+              name: name,
+              parentNodeId: parentNodeId,
             );
           },
         );

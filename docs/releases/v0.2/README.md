@@ -145,7 +145,7 @@ Recommended order:
 3. Workspace lane (depends on bridge lane complete):
    - `PR-0204-workspace-provider-foundation` (addresses R02-1.1/1.2/1.3 by design)
    - `PR-0205A-notes-ui-shell-alignment`
-   - `PR-0205-explorer-recursive-lazy-ui`
+   - `PR-0205-explorer-recursive-lazy-ui` (M1 landed: recursive lazy tree + smoke tests)
    - `PR-0206-split-layout-v1`
    - `PR-0207-explorer-context-actions-dnd-baseline`
 4. Support lane (parallel after shell baseline is stable):
@@ -179,6 +179,14 @@ Recommended order:
    - [x] restore top metadata actions (`Add icon` / `Add image` / `Add comment`)
    - [x] switch note title icon to placeholder and hide active tab border
    - contract note: no FFI/error-code delta (see `docs/api/ffi-contracts.md`)
+5. `PR-0205` recursive explorer lazy behavior (M1)
+   - [x] add recursive tree row/state components (`explorer_tree_item.dart`, `explorer_tree_state.dart`)
+   - [x] wire lazy root/children loading and retry rendering in `note_explorer.dart`
+   - [x] add root/child folder create entry and tree refresh hook (UUID parent guarded)
+   - [x] keep user expand/collapse state stable across create/delete refresh (no forced `Uncategorized` re-expand)
+   - [x] inject default root `Uncategorized` folder (backward-compatible root note visibility kept)
+   - [x] keep single/double click callback intents stable; preview/pinned semantic ownership is deferred to `PR-0304` tab model
+   - [x] add explorer tree regression tests (`test/note_explorer_tree_test.dart`)
 
 ## Quality Gates
 

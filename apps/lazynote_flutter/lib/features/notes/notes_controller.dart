@@ -47,6 +47,19 @@ typedef WorkspaceDeleteFolderInvoker =
       required String mode,
     });
 
+/// Async workspace folder create mutator.
+typedef WorkspaceCreateFolderInvoker =
+    Future<rust_api.WorkspaceNodeResponse> Function({
+      String? parentNodeId,
+      required String name,
+    });
+
+/// Async workspace children loader for explorer lazy tree.
+typedef WorkspaceListChildrenInvoker =
+    Future<rust_api.WorkspaceListChildrenResponse> Function({
+      String? parentNodeId,
+    });
+
 /// Timer factory for autosave debounce scheduling.
 typedef DebounceTimerFactory =
     Timer Function(Duration duration, void Function() callback);
@@ -94,6 +107,12 @@ enum NoteSaveState {
 /// - Handles tab-open/activate/close operations in-memory.
 /// - Calls [notifyListeners] after every externally visible state transition.
 class NotesController extends ChangeNotifier {
+  static const String _uncategorizedFolderNodeId = '__uncategorized__';
+  static const String _uncategorizedFolderDisplayName = 'Uncategorized';
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
   /// Creates controller with injectable bridge hooks for testability.
   ///
   /// Input semantics:
@@ -113,6 +132,8 @@ class NotesController extends ChangeNotifier {
     TagsListInvoker? tagsListInvoker,
     NoteSetTagsInvoker? noteSetTagsInvoker,
     WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
+    WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
+    WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
     WorkspaceProvider? workspaceProvider,
     DebounceTimerFactory? debounceTimerFactory,
     NotesPrepare? prepare,
@@ -126,6 +147,10 @@ class NotesController extends ChangeNotifier {
        _noteSetTagsInvoker = noteSetTagsInvoker ?? _defaultNoteSetTagsInvoker,
        _workspaceDeleteFolderInvoker =
            workspaceDeleteFolderInvoker ?? _defaultWorkspaceDeleteFolderInvoker,
+       _workspaceCreateFolderInvoker =
+           workspaceCreateFolderInvoker ?? _defaultWorkspaceCreateFolderInvoker,
+       _workspaceListChildrenInvoker =
+           workspaceListChildrenInvoker ?? _defaultWorkspaceListChildrenInvoker,
        _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
        _prepare = prepare ?? _defaultPrepare {
     _workspaceProvider =
@@ -144,6 +169,8 @@ class NotesController extends ChangeNotifier {
   final TagsListInvoker _tagsListInvoker;
   final NoteSetTagsInvoker _noteSetTagsInvoker;
   final WorkspaceDeleteFolderInvoker _workspaceDeleteFolderInvoker;
+  final WorkspaceCreateFolderInvoker _workspaceCreateFolderInvoker;
+  final WorkspaceListChildrenInvoker _workspaceListChildrenInvoker;
   final DebounceTimerFactory _debounceTimerFactory;
   final NotesPrepare _prepare;
   late final WorkspaceProvider _workspaceProvider;
@@ -195,6 +222,9 @@ class NotesController extends ChangeNotifier {
   String? _switchBlockErrorMessage;
   bool _workspaceDeleteInFlight = false;
   String? _workspaceDeleteErrorMessage;
+  bool _workspaceCreateFolderInFlight = false;
+  String? _workspaceCreateFolderErrorMessage;
+  int _workspaceTreeRevision = 0;
 
   int _listRequestId = 0;
   int _detailRequestId = 0;
@@ -264,6 +294,16 @@ class NotesController extends ChangeNotifier {
 
   /// Last workspace folder delete failure message.
   String? get workspaceDeleteErrorMessage => _workspaceDeleteErrorMessage;
+
+  /// Whether workspace folder create request is currently in flight.
+  bool get workspaceCreateFolderInFlight => _workspaceCreateFolderInFlight;
+
+  /// Last workspace folder create failure message.
+  String? get workspaceCreateFolderErrorMessage =>
+      _workspaceCreateFolderErrorMessage;
+
+  /// Monotonic revision bump for explorer tree refresh triggers.
+  int get workspaceTreeRevision => _workspaceTreeRevision;
 
   /// Workspace state owner used by Notes bridge (M2).
   WorkspaceProvider get workspaceProvider => _workspaceProvider;
@@ -439,6 +479,115 @@ class NotesController extends ChangeNotifier {
   /// Handles open-note request from explorer shell.
   Future<bool> openNoteFromExplorer(String atomId) => selectNote(atomId);
 
+  /// Handles explicit pinned-open request from explorer double-click.
+  ///
+  /// Current v0.2 tab model does not distinguish preview vs pinned. This
+  /// method still uses [selectNote] and reserves semantic split for v0.3.
+  Future<bool> openNoteFromExplorerPinned(String atomId) => selectNote(atomId);
+
+  /// Creates one workspace folder under root or one parent folder.
+  Future<rust_api.WorkspaceNodeResponse> createWorkspaceFolder({
+    required String name,
+    String? parentNodeId,
+  }) async {
+    if (_workspaceCreateFolderInFlight) {
+      return const rust_api.WorkspaceNodeResponse(
+        ok: false,
+        errorCode: 'busy',
+        message: 'Workspace folder create is already in progress.',
+        node: null,
+      );
+    }
+
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) {
+      return const rust_api.WorkspaceNodeResponse(
+        ok: false,
+        errorCode: 'invalid_display_name',
+        message: 'Folder name is required.',
+        node: null,
+      );
+    }
+    final normalizedParent = parentNodeId?.trim();
+    if (normalizedParent != null && normalizedParent.isEmpty) {
+      return const rust_api.WorkspaceNodeResponse(
+        ok: false,
+        errorCode: 'invalid_parent_node_id',
+        message: 'Parent node id is invalid.',
+        node: null,
+      );
+    }
+    if (normalizedParent != null && !_uuidPattern.hasMatch(normalizedParent)) {
+      return const rust_api.WorkspaceNodeResponse(
+        ok: false,
+        errorCode: 'invalid_parent_node_id',
+        message: 'Parent node id must be a UUID.',
+        node: null,
+      );
+    }
+
+    _workspaceCreateFolderInFlight = true;
+    _workspaceCreateFolderErrorMessage = null;
+    notifyListeners();
+
+    try {
+      await _prepare();
+      final response = await _workspaceCreateFolderInvoker(
+        parentNodeId: normalizedParent,
+        name: normalizedName,
+      );
+      if (!response.ok) {
+        _workspaceCreateFolderErrorMessage = _envelopeError(
+          errorCode: response.errorCode,
+          message: response.message,
+          fallback: 'Failed to create workspace folder.',
+        );
+        return response;
+      }
+      _workspaceCreateFolderErrorMessage = null;
+      _bumpWorkspaceTreeRevision();
+      return response;
+    } catch (error) {
+      final message = 'Workspace folder create failed unexpectedly: $error';
+      _workspaceCreateFolderErrorMessage = message;
+      return rust_api.WorkspaceNodeResponse(
+        ok: false,
+        errorCode: 'internal_error',
+        message: message,
+        node: null,
+      );
+    } finally {
+      _workspaceCreateFolderInFlight = false;
+      notifyListeners();
+    }
+  }
+
+  /// Lists workspace tree children for explorer lazy rendering.
+  ///
+  /// Contract:
+  /// - Returns core FFI response when call succeeds.
+  /// - Falls back to deterministic local synthetic tree when bridge call throws
+  ///   (typically in widget tests without Rust runtime).
+  Future<rust_api.WorkspaceListChildrenResponse> listWorkspaceChildren({
+    String? parentNodeId,
+  }) async {
+    if (parentNodeId == _uncategorizedFolderNodeId) {
+      return _syntheticUncategorizedChildren();
+    }
+    try {
+      await _prepare();
+      final response = await _workspaceListChildrenInvoker(
+        parentNodeId: parentNodeId,
+      );
+      return _decorateWorkspaceChildren(
+        parentNodeId: parentNodeId,
+        response: response,
+      );
+    } catch (error) {
+      return _fallbackWorkspaceChildren(parentNodeId: parentNodeId);
+    }
+  }
+
   /// Deletes one workspace folder by explicit mode, then refreshes UI state.
   ///
   /// Contract:
@@ -509,6 +658,7 @@ class NotesController extends ChangeNotifier {
       );
       await _reconcileOpenTabsAfterWorkspaceMutation();
       _workspaceDeleteErrorMessage = null;
+      _bumpWorkspaceTreeRevision();
       return response;
     } catch (error) {
       final message = 'Workspace folder delete failed unexpectedly: $error';
@@ -1909,6 +2059,145 @@ class NotesController extends ChangeNotifier {
     return List<String>.unmodifiable(set);
   }
 
+  void _bumpWorkspaceTreeRevision() {
+    _workspaceTreeRevision += 1;
+  }
+
+  rust_api.WorkspaceListChildrenResponse _decorateWorkspaceChildren({
+    required String? parentNodeId,
+    required rust_api.WorkspaceListChildrenResponse response,
+  }) {
+    if (!response.ok || parentNodeId != null) {
+      return response;
+    }
+    final items = List<rust_api.WorkspaceNodeItem>.from(response.items);
+    final hasUncategorized = items.any(
+      (item) =>
+          item.kind == 'folder' && item.nodeId == _uncategorizedFolderNodeId,
+    );
+    if (!hasUncategorized) {
+      items.insert(
+        0,
+        const rust_api.WorkspaceNodeItem(
+          nodeId: _uncategorizedFolderNodeId,
+          kind: 'folder',
+          parentNodeId: null,
+          atomId: null,
+          displayName: _uncategorizedFolderDisplayName,
+          sortOrder: -1,
+        ),
+      );
+    }
+    return rust_api.WorkspaceListChildrenResponse(
+      ok: response.ok,
+      errorCode: response.errorCode,
+      message: response.message,
+      items: items,
+    );
+  }
+
+  rust_api.WorkspaceListChildrenResponse _syntheticUncategorizedChildren() {
+    final items = <rust_api.WorkspaceNodeItem>[];
+    var sortOrder = 0;
+    for (final note in _items) {
+      items.add(
+        rust_api.WorkspaceNodeItem(
+          nodeId: 'note_ref_uncategorized_${note.atomId}',
+          kind: 'note_ref',
+          parentNodeId: _uncategorizedFolderNodeId,
+          atomId: note.atomId,
+          displayName: _titleFromContent(note.content),
+          sortOrder: sortOrder,
+        ),
+      );
+      sortOrder += 1;
+    }
+    return rust_api.WorkspaceListChildrenResponse(
+      ok: true,
+      errorCode: null,
+      message: 'synthetic_uncategorized',
+      items: items,
+    );
+  }
+
+  rust_api.WorkspaceListChildrenResponse _fallbackWorkspaceChildren({
+    String? parentNodeId,
+  }) {
+    if (parentNodeId == null) {
+      final rootItems = <rust_api.WorkspaceNodeItem>[
+        const rust_api.WorkspaceNodeItem(
+          nodeId: _uncategorizedFolderNodeId,
+          kind: 'folder',
+          parentNodeId: null,
+          atomId: null,
+          displayName: _uncategorizedFolderDisplayName,
+          sortOrder: -1,
+        ),
+        const rust_api.WorkspaceNodeItem(
+          nodeId: 'projects',
+          kind: 'folder',
+          parentNodeId: null,
+          atomId: null,
+          displayName: 'Projects',
+          sortOrder: 0,
+        ),
+        const rust_api.WorkspaceNodeItem(
+          nodeId: 'notes',
+          kind: 'folder',
+          parentNodeId: null,
+          atomId: null,
+          displayName: 'Notes',
+          sortOrder: 1,
+        ),
+        const rust_api.WorkspaceNodeItem(
+          nodeId: 'personal',
+          kind: 'folder',
+          parentNodeId: null,
+          atomId: null,
+          displayName: 'Personal',
+          sortOrder: 2,
+        ),
+      ];
+      return rust_api.WorkspaceListChildrenResponse(
+        ok: true,
+        errorCode: null,
+        message: 'fallback',
+        items: rootItems,
+      );
+    }
+
+    if (parentNodeId == 'notes') {
+      final noteItems = <rust_api.WorkspaceNodeItem>[];
+      var order = 0;
+      for (final item in _items) {
+        noteItems.add(
+          rust_api.WorkspaceNodeItem(
+            nodeId: 'note_ref_notes_${item.atomId}',
+            kind: 'note_ref',
+            parentNodeId: 'notes',
+            atomId: item.atomId,
+            displayName: _titleFromContent(item.content),
+            sortOrder: order,
+          ),
+        );
+        order += 1;
+      }
+      return rust_api.WorkspaceListChildrenResponse(
+        ok: true,
+        errorCode: null,
+        message: 'fallback',
+        items: noteItems,
+      );
+    }
+
+    return const rust_api.WorkspaceListChildrenResponse(
+      ok: true,
+      errorCode: null,
+      message: 'fallback',
+      items: <rust_api.WorkspaceNodeItem>[],
+    );
+  }
+
   String _titleFromContent(String content) {
     final lines = content.split(RegExp(r'\r?\n'));
     for (final line in lines) {
@@ -1964,6 +2253,18 @@ Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceDeleteFolderInvoker({
   required String mode,
 }) {
   return rust_api.workspaceDeleteFolder(nodeId: nodeId, mode: mode);
+}
+
+Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateFolderInvoker({
+  String? parentNodeId,
+  required String name,
+}) {
+  return rust_api.workspaceCreateFolder(parentNodeId: parentNodeId, name: name);
+}
+
+Future<rust_api.WorkspaceListChildrenResponse>
+_defaultWorkspaceListChildrenInvoker({String? parentNodeId}) {
+  return rust_api.workspaceListChildren(parentNodeId: parentNodeId);
 }
 
 Future<void> _defaultPrepare() async {

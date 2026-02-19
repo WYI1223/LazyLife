@@ -98,13 +98,13 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 | `db_error` | repository/database failure | sqlite/schema/io issue | show error and allow retry |
 | `internal_error` | unexpected invariant failure | unexpected data or service invariant break | show error and capture diagnostics |
 
-## Workspace Tree (Flutter Controller Local) - PR-0221 M3
+## Workspace Tree (Flutter Controller Local) - PR-0221 / PR-0205
 
 Producer: `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`
 
 | Code | Meaning | Typical Cause | UI Handling |
 | --- | --- | --- | --- |
-| `busy` | local action guard rejected operation | user triggered folder delete while previous delete is still running | disable repeated action and retry after current operation ends |
+| `busy` | local action guard rejected operation | user triggered folder create/delete while previous same action is still running | disable repeated action and retry after current operation ends |
 | `save_blocked` | pre-delete local draft flush failed | active note has unsaved draft and `flushPendingSave()` returned false | prompt user to retry save or keep editing before delete |
 
 ## Reserved Pattern
