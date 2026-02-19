@@ -174,6 +174,11 @@ Recommended order:
 3. Extension x Workspace integration smoke (minimal CI sample)
    - [x] add one cross-lane smoke path (`slot + capability gate + workspace op`)
    - evidence test: `apps/lazynote_flutter/test/cross_lane_workspace_extension_smoke_test.dart`
+4. `PR-0205A` notes shell alignment follow-up (UI-only)
+   - [x] align `My Workspace` header height with top tab strip
+   - [x] restore top metadata actions (`Add icon` / `Add image` / `Add comment`)
+   - [x] switch note title icon to placeholder and hide active tab border
+   - contract note: no FFI/error-code delta (see `docs/api/ffi-contracts.md`)
 
 ## Quality Gates
 

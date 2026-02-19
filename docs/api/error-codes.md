@@ -32,6 +32,11 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 | `invalid_argument` | input violates contract | unsupported argument/value | show validation error, keep input |
 | `internal_error` | unexpected invariant failure | read-back mismatch or unexpected state | show error and allow retry |
 
+Notes:
+
+- `PR-0205A` (Notes UI shell alignment) is Flutter-only and does not add/change
+  any FFI error code.
+
 ## Command Parser (Flutter)
 
 Producer: `apps/lazynote_flutter/lib/features/entry/command_parser.dart`

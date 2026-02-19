@@ -97,6 +97,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Why: keep left header vertically aligned with top tab strip.
           SizedBox(
             height: kNotesTopStripHeight,
             child: Padding(
