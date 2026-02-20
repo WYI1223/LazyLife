@@ -47,6 +47,8 @@ This document defines Flutter-callable workspace tree contracts exposed by
 6. `workspace_move_node` normalizes `target_order` by clamping to visible sibling range:
 - `< 0` -> `0`
 - `> sibling_count` -> append at tail (`sibling_count`)
+7. API-layer rename is generic (`workspace_rename_node`), but v0.2 Notes UI policy only exposes rename on `folder` rows.
+8. Root-level note refs may be rendered by Flutter under synthetic `Uncategorized`; this is a UI projection, not a core schema node.
 
 ## Error Codes
 

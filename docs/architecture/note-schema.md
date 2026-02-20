@@ -51,6 +51,10 @@ Workspace tree relationship (v0.2):
    - note delete/type change is not blocked by existing `note_ref`
    - dangling refs are hidden in tree read paths
    - restoring the note restores visibility of existing refs
+8. Title source-of-truth policy (v0.2 freeze):
+   - note title shown in explorer is a projection from Atom data/draft state
+   - `workspace_nodes.display_name` is not treated as an independent note title in v0.2
+   - note-ref alias rename is deferred; folder rename remains available
 
 ## Markdown Preview Hook
 
