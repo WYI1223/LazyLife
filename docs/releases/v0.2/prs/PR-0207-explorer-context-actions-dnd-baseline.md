@@ -25,6 +25,11 @@ Add practical file-manager interactions to explorer tree for daily notes operati
 6. `note_ref` rename is frozen in v0.2; rename entry is folder-only.
 7. Explorer note row title uses Atom title projection (including draft-aware projection), not independent `note_ref` alias editing.
 8. `dissolve` display mapping follows hybrid policy: note refs return to synthetic `Uncategorized`, while child folders are promoted to root.
+9. `Uncategorized` projection must not duplicate notes that already appear via
+   workspace folder references.
+10. Folder row right-click must be row-wide and deterministic:
+   - right-click on icon/text/row whitespace opens folder row menu
+   - row menu has priority; blank-area menu must not pop on the same gesture
 
 ## Scope (v0.2)
 
@@ -101,6 +106,7 @@ M1 explicitly does **not** include drag reorder implementation.
   - right-click blank-area create menu
   - folder/note row context actions (new note/new folder/move/delete; rename kept for folder rows)
   - right-click dispatch dedup (row menu has priority over blank-area menu)
+  - row-wide folder context-menu hit target (icon/text/whitespace all map to row menu)
   - synthetic root guardrails (`__uncategorized__` cannot rename/move/delete)
   - root-parent normalization for synthetic root create/move
   - deterministic branch refresh after mutations:

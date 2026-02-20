@@ -190,7 +190,9 @@ Recommended order:
    - [x] wire lazy root/children loading and retry rendering in `note_explorer.dart`
    - [x] add root/child folder create entry and tree refresh hook (UUID parent guarded)
    - [x] keep user expand/collapse state stable across create/delete refresh (no forced `Uncategorized` re-expand)
-   - [x] inject default root `Uncategorized` folder (backward-compatible root note visibility kept)
+   - [x] inject default root `Uncategorized` folder (shows root note_ref + legacy unreferenced notes without duplication)
+   - [x] freeze `Uncategorized` projection requirement: folder-like UI grouping only; no duplicate note rows across folder branches
+   - [x] freeze explorer ordering projection: `folder` rows before `note_ref` rows within same parent branch
    - [x] keep explorer open callback as single intent only; preview/pinned semantic ownership is deferred to `PR-0205B` -> `PR-0304` tab model
    - [x] add explorer tree regression tests (`test/note_explorer_tree_test.dart`)
 6. `PR-0205B` explorer/tab semantic transition
@@ -235,6 +237,7 @@ Recommended order:
    - [x] implement M1 context actions (new note/folder, folder rename, move)
    - [x] add M1 regressions for action matrix and expand-state persistence
    - [x] fix row-vs-blank-area right-click menu dedup (single menu per gesture target)
+   - [x] fix folder row right-click hit area (icon/text/whitespace all route to row menu; no blank-area fallback on same gesture)
    - [x] fix child-folder delete immediate explorer refresh (no stale/ghost child rows)
    - [x] fix child-folder rename immediate explorer refresh (no stale child labels)
    - [x] fix synthetic `Uncategorized` note title live projection from draft content

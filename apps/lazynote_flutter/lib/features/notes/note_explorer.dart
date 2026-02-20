@@ -151,6 +151,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
   DateTime? _lastNoteTapAt;
   Offset? _lastRowContextMenuPosition;
   DateTime? _lastRowContextMenuAt;
+  bool _rowContextMenuPending = false;
   static final RegExp _uuidPattern = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
@@ -572,23 +573,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onSecondaryTapDown: (details) {
-            if (_shouldSuppressBlankAreaContextMenu(details.globalPosition)) {
-              return;
-            }
             unawaited(
-              _showBlankAreaContextMenu(
-                context: context,
+              _showBlankAreaContextMenuDeferred(
                 globalPosition: details.globalPosition,
               ),
             );
           },
           onLongPressStart: (details) {
-            if (_shouldSuppressBlankAreaContextMenu(details.globalPosition)) {
-              return;
-            }
             unawaited(
-              _showBlankAreaContextMenu(
-                context: context,
+              _showBlankAreaContextMenuDeferred(
                 globalPosition: details.globalPosition,
               ),
             );
@@ -658,9 +651,11 @@ class _NoteExplorerState extends State<NoteExplorer> {
   }
 
   Future<void> _showBlankAreaContextMenu({
-    required BuildContext context,
     required Offset globalPosition,
   }) async {
+    if (_rowContextMenuPending) {
+      return;
+    }
     final entries = buildExplorerContextMenuEntries(
       ExplorerContextMenuConfig(
         targetKind: ExplorerContextTargetKind.blankArea,
@@ -680,10 +675,24 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     await _runContextAction(
-      context: this.context,
+      context: context,
       action: action,
       target: _ExplorerContextTarget.blankArea(),
     );
+  }
+
+  Future<void> _showBlankAreaContextMenuDeferred({
+    required Offset globalPosition,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 24));
+    if (!mounted) {
+      return;
+    }
+    if (_rowContextMenuPending ||
+        _shouldSuppressBlankAreaContextMenu(globalPosition)) {
+      return;
+    }
+    await _showBlankAreaContextMenu(globalPosition: globalPosition);
   }
 
   Future<void> _showFolderContextMenu({
@@ -716,11 +725,17 @@ class _NoteExplorerState extends State<NoteExplorer> {
     if (entries.isEmpty) {
       return;
     }
-    final action = await _showContextMenuAtPosition(
-      context: context,
-      globalPosition: globalPosition,
-      entries: entries,
-    );
+    _rowContextMenuPending = true;
+    ExplorerContextAction? action;
+    try {
+      action = await _showContextMenuAtPosition(
+        context: context,
+        globalPosition: globalPosition,
+        entries: entries,
+      );
+    } finally {
+      _rowContextMenuPending = false;
+    }
     if (action == null || !mounted) {
       return;
     }
@@ -752,11 +767,17 @@ class _NoteExplorerState extends State<NoteExplorer> {
     if (entries.isEmpty) {
       return;
     }
-    final action = await _showContextMenuAtPosition(
-      context: context,
-      globalPosition: globalPosition,
-      entries: entries,
-    );
+    _rowContextMenuPending = true;
+    ExplorerContextAction? action;
+    try {
+      action = await _showContextMenuAtPosition(
+        context: context,
+        globalPosition: globalPosition,
+        entries: entries,
+      );
+    } finally {
+      _rowContextMenuPending = false;
+    }
     if (action == null || !mounted) {
       return;
     }

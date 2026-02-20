@@ -132,6 +132,10 @@ class ExplorerTreeState extends ChangeNotifier {
 
       final sorted = List<rust_api.WorkspaceNodeItem>.from(response.items)
         ..sort((a, b) {
+          final kindOrder = _kindRank(a.kind).compareTo(_kindRank(b.kind));
+          if (kindOrder != 0) {
+            return kindOrder;
+          }
           final order = a.sortOrder.compareTo(b.sortOrder);
           if (order != 0) {
             return order;
@@ -165,5 +169,16 @@ class ExplorerTreeState extends ChangeNotifier {
       return '[$errorCode] Failed to load workspace tree.';
     }
     return '[$errorCode] $normalized';
+  }
+
+  int _kindRank(String kind) {
+    switch (kind) {
+      case 'folder':
+        return 0;
+      case 'note_ref':
+        return 1;
+      default:
+        return 2;
+    }
   }
 }

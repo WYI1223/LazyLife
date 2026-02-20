@@ -1016,7 +1016,9 @@ class NotesController extends ChangeNotifier {
   ///
   /// Contract:
   /// - Returns core FFI response when call succeeds.
-  /// - Uses local synthetic list only for the synthetic Uncategorized folder id.
+  /// - Synthetic `Uncategorized` children are projected as:
+  ///   - root-level `note_ref` rows from workspace tree
+  ///   - legacy notes with no workspace `note_ref` anywhere in tree
   /// - Uses synthetic fallback only when bridge is unavailable (e.g. Rust bridge
   ///   not initialized in test host).
   /// - Returns explicit error envelope when bridge call throws so UI can render
@@ -1025,7 +1027,7 @@ class NotesController extends ChangeNotifier {
     String? parentNodeId,
   }) async {
     if (parentNodeId == _uncategorizedFolderNodeId) {
-      return _syntheticUncategorizedChildren();
+      return _listProjectedUncategorizedChildren();
     }
     try {
       await _prepare();
@@ -2675,7 +2677,11 @@ class NotesController extends ChangeNotifier {
     if (!response.ok || parentNodeId != null) {
       return response;
     }
-    final items = List<rust_api.WorkspaceNodeItem>.from(response.items);
+    // Root note refs are projected under synthetic `Uncategorized` to avoid
+    // duplicate rendering at both root and Uncategorized levels.
+    final items = response.items
+        .where((item) => item.kind != 'note_ref')
+        .toList(growable: true);
     final hasUncategorized = items.any(
       (item) =>
           item.kind == 'folder' && item.nodeId == _uncategorizedFolderNodeId,
@@ -2701,7 +2707,128 @@ class NotesController extends ChangeNotifier {
     );
   }
 
-  rust_api.WorkspaceListChildrenResponse _syntheticUncategorizedChildren() {
+  Future<rust_api.WorkspaceListChildrenResponse>
+  _listProjectedUncategorizedChildren() async {
+    try {
+      await _prepare();
+      final referencedAtomIds = <String>{};
+      final visitedFolderIds = <String>{};
+      final pendingParentIds = Queue<String?>()..add(null);
+      List<rust_api.WorkspaceNodeItem>? rootItems;
+
+      while (pendingParentIds.isNotEmpty) {
+        final parentNodeId = pendingParentIds.removeFirst();
+        final response = await _workspaceListChildrenInvoker(
+          parentNodeId: parentNodeId,
+        );
+        if (!response.ok) {
+          return rust_api.WorkspaceListChildrenResponse(
+            ok: false,
+            errorCode: response.errorCode,
+            message: response.message,
+            items: const <rust_api.WorkspaceNodeItem>[],
+          );
+        }
+        if (parentNodeId == null) {
+          rootItems = response.items;
+        }
+        for (final item in response.items) {
+          if (item.kind == 'note_ref') {
+            final atomId = item.atomId?.trim();
+            if (atomId != null && atomId.isNotEmpty) {
+              referencedAtomIds.add(atomId);
+            }
+            continue;
+          }
+          if (item.kind != 'folder') {
+            continue;
+          }
+          final folderId = item.nodeId.trim();
+          if (folderId.isEmpty || folderId == _uncategorizedFolderNodeId) {
+            continue;
+          }
+          if (visitedFolderIds.add(folderId)) {
+            pendingParentIds.add(folderId);
+          }
+        }
+      }
+
+      final projectedItems = <rust_api.WorkspaceNodeItem>[];
+      var maxSortOrder = -1;
+      for (final item in rootItems ?? const <rust_api.WorkspaceNodeItem>[]) {
+        if (item.kind != 'note_ref') {
+          continue;
+        }
+        final atomId = item.atomId?.trim();
+        if (atomId == null || atomId.isEmpty) {
+          continue;
+        }
+        final note = noteById(atomId);
+        final projectedDisplayName = note == null
+            ? (item.displayName.trim().isEmpty ? 'Untitled' : item.displayName)
+            : _titleFromContent(note.content);
+        projectedItems.add(
+          rust_api.WorkspaceNodeItem(
+            nodeId: item.nodeId,
+            kind: 'note_ref',
+            parentNodeId: _uncategorizedFolderNodeId,
+            atomId: item.atomId,
+            displayName: projectedDisplayName,
+            sortOrder: item.sortOrder,
+          ),
+        );
+        if (item.sortOrder > maxSortOrder) {
+          maxSortOrder = item.sortOrder;
+        }
+      }
+
+      var nextSortOrder = maxSortOrder + 1;
+      for (final note in _items) {
+        final atomId = note.atomId.trim();
+        if (atomId.isEmpty || referencedAtomIds.contains(atomId)) {
+          continue;
+        }
+        projectedItems.add(
+          rust_api.WorkspaceNodeItem(
+            nodeId: 'note_ref_uncategorized_${note.atomId}',
+            kind: 'note_ref',
+            parentNodeId: _uncategorizedFolderNodeId,
+            atomId: note.atomId,
+            displayName: _titleFromContent(note.content),
+            sortOrder: nextSortOrder,
+          ),
+        );
+        nextSortOrder += 1;
+      }
+
+      projectedItems.sort((left, right) {
+        final byOrder = left.sortOrder.compareTo(right.sortOrder);
+        if (byOrder != 0) {
+          return byOrder;
+        }
+        return left.nodeId.compareTo(right.nodeId);
+      });
+      return rust_api.WorkspaceListChildrenResponse(
+        ok: true,
+        errorCode: null,
+        message: 'synthetic_uncategorized',
+        items: projectedItems,
+      );
+    } catch (error) {
+      if (_shouldUseWorkspaceTreeSyntheticFallback(error)) {
+        return _legacySyntheticUncategorizedChildren();
+      }
+      return rust_api.WorkspaceListChildrenResponse(
+        ok: false,
+        errorCode: 'internal_error',
+        message: 'Workspace tree load failed unexpectedly: $error',
+        items: const <rust_api.WorkspaceNodeItem>[],
+      );
+    }
+  }
+
+  rust_api.WorkspaceListChildrenResponse
+  _legacySyntheticUncategorizedChildren() {
     final items = <rust_api.WorkspaceNodeItem>[];
     var sortOrder = 0;
     for (final note in _items) {
@@ -2720,7 +2847,7 @@ class NotesController extends ChangeNotifier {
     return rust_api.WorkspaceListChildrenResponse(
       ok: true,
       errorCode: null,
-      message: 'synthetic_uncategorized',
+      message: 'synthetic_uncategorized_legacy',
       items: items,
     );
   }

@@ -186,6 +186,82 @@ void main() {
     expect(find.byKey(const Key('notes_list_item_note-2')), findsOneWidget);
   });
 
+  testWidgets(
+    'folder children keep folder-before-note grouping even with lower note sortOrder',
+    (WidgetTester tester) async {
+      const parentId = '11111111-1111-4111-8111-111111111111';
+      const childFolderId = '22222222-2222-4222-8222-222222222222';
+      const childNoteRefId = '33333333-3333-4333-8333-333333333333';
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(
+          atomId: 'note-1',
+          content: '# Child Note',
+          updatedAt: 1,
+        ),
+      };
+      final controller = _controllerWithStore(store);
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      Future<rust_api.WorkspaceListChildrenResponse> loader({
+        String? parentNodeId,
+      }) async {
+        if (parentNodeId == null) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: parentId,
+              kind: 'folder',
+              displayName: 'Parent',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == parentId) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: childNoteRefId,
+              kind: 'note_ref',
+              parentNodeId: parentId,
+              atomId: 'note-1',
+              displayName: 'Child Note',
+              sortOrder: 0,
+            ),
+            _node(
+              nodeId: childFolderId,
+              kind: 'folder',
+              parentNodeId: parentId,
+              displayName: 'Child Folder',
+              sortOrder: 99,
+            ),
+          ]);
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      }
+
+      await tester.pumpWidget(
+        _buildHarness(
+          controller: controller,
+          onOpen: (_) {},
+          treeLoader: loader,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('notes_tree_toggle_$parentId')));
+      await tester.pumpAndSettle();
+
+      final folderY = tester
+          .getTopLeft(find.byKey(const Key('notes_tree_folder_$childFolderId')))
+          .dy;
+      final noteY = tester
+          .getTopLeft(
+            find.byKey(const Key('notes_tree_note_row_$childNoteRefId')),
+          )
+          .dy;
+      expect(folderY, lessThan(noteY));
+    },
+  );
+
   testWidgets('injects default uncategorized folder and shows existing notes', (
     WidgetTester tester,
   ) async {
@@ -1168,6 +1244,70 @@ void main() {
 
     expect(find.text('New Folder Title'), findsWidgets);
   });
+
+  testWidgets(
+    'note created in child folder is not duplicated under uncategorized',
+    (WidgetTester tester) async {
+      const folderId = '11111111-1111-4111-8111-111111111111';
+      const folderNoteRefId = 'ref_folder_note_1';
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(
+          atomId: 'note-1',
+          content: '# Child Note',
+          updatedAt: 1,
+        ),
+      };
+      final controller = _controllerWithStore(
+        store,
+        workspaceListChildrenInvoker: ({parentNodeId}) async {
+          if (parentNodeId == null) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: folderId,
+                kind: 'folder',
+                displayName: 'Projects',
+                sortOrder: 0,
+              ),
+            ]);
+          }
+          if (parentNodeId == folderId) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: folderNoteRefId,
+                kind: 'note_ref',
+                parentNodeId: folderId,
+                atomId: 'note-1',
+                displayName: 'Child Note',
+                sortOrder: 0,
+              ),
+            ]);
+          }
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      await tester.pumpWidget(
+        _buildHarness(controller: controller, onOpen: (_) {}),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('notes_tree_toggle_$folderId')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('notes_tree_note_row_$folderNoteRefId')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key('notes_tree_note_row_note_ref_uncategorized_note-1'),
+        ),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets(
     'literal Untitled title does not fallback to note_ref display name',
