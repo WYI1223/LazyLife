@@ -1,7 +1,7 @@
 # PR-0205B-explorer-tab-open-intent-migration
 
 - Proposed title: `refactor(notes-tab): move preview/pinned semantics ownership from explorer to tab model`
-- Status: In Progress (M1-M2 completed, M3-M4 pending)
+- Status: Completed
 
 ## Goal
 
@@ -118,6 +118,13 @@ Exit criteria:
 - analyze/test pass with no new warnings
 - internal API surface remains minimal
 
+M3 implementation note:
+
+- explorer second-click now dispatches pinned intent only (no duplicate open).
+- controller pinned-open path avoids duplicate activate/load when target is
+  already active/opened.
+- regression includes `note_get` call-count lock for pinned-open on active tab.
+
 ### M4. Docs and closure
 
 Deliverables:
@@ -128,6 +135,12 @@ Deliverables:
 Exit criteria:
 
 - no doc/contract drift in review
+
+M4 implementation note:
+
+- synced `PR-0205`, `PR-0205B`, `docs/api/ffi-contracts.md`,
+  and `docs/releases/v0.2/README.md` with final second-click semantics.
+- recorded `PR-0206` start gate as satisfied after interaction freeze.
 
 ## Contract Impact
 
