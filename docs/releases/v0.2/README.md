@@ -130,6 +130,7 @@ Recommended order:
    - `PR-0203-tree-ffi-contracts`
    - migration numbering note: reserve `0008` for workspace policy; links uses `0009`
    - current priority (execution refinement):
+     - `PR-0202` tree schema/repo/service baseline is completed (status calibrated; delete-policy extension tracked in `PR-0221`)
      - `PR-0203` Workspace CRUD FFI parity is completed (create/list/rename/move + delete contract alignment)
      - `entry_search(kind)` follow-up patch is completed (note/task/event/all filter + contract/test sync)
 2. Extension kernel lane:
