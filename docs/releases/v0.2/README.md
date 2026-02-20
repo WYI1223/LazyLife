@@ -78,6 +78,7 @@ In scope:
 - recursive explorer UI with lazy loading (`PR-0205`)
 - explorer open-intent vs tab semantic ownership transition (`PR-0205B`)
 - split layout v1 (limited split, min-size guard) (`PR-0206`)
+- split pane unsplit/merge follow-up (`PR-0206B`)
 - explorer context actions + drag-reorder baseline (`PR-0207`)
 - hardening and release closure 鈥?incl. regression verification for bridge PRs (`PR-0208`)
 - CN/EN localization baseline (`PR-0209`)
@@ -150,6 +151,7 @@ Recommended order:
    - `PR-0205-explorer-recursive-lazy-ui` (completed: recursive lazy tree + stability regressions)
    - `PR-0205B-explorer-tab-open-intent-migration` (completed: preview/pinned semantic ownership freeze)
    - `PR-0206-split-layout-v1` (in review: post-review remediation landed; QA summary logged with accepted v0.2 limitations)
+   - `PR-0206B-split-pane-unsplit-merge` (planned follow-up: explicit pane close/merge command)
    - `PR-0207-explorer-context-actions-dnd-baseline`
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en`
@@ -219,6 +221,11 @@ Recommended order:
    - [x] R3 regression: input list mutation does not affect stored layout state
    - [x] re-run split verification bundle and update `PR-0206` status back to completed/in-review
    - [x] QA summary logged: narrow-width split attempts blocked by `200px` guard and no unsplit action (accepted as v0.2 baseline limits)
+8. `PR-0206B` split pane unsplit/merge follow-up
+   - [ ] add explicit `close active pane` command and merge result mapping
+   - [ ] merge closed-pane tabs to deterministic target pane
+   - [ ] keep active note/editor focus coherent after merge
+   - [ ] add provider/controller/widget regressions for merge/blocked behavior
 
 ## Quality Gates
 
@@ -264,6 +271,7 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0205-explorer-recursive-lazy-ui.md`
 - `docs/releases/v0.2/prs/PR-0205B-explorer-tab-open-intent-migration.md`
 - `docs/releases/v0.2/prs/PR-0206-split-layout-v1.md`
+- `docs/releases/v0.2/prs/PR-0206B-split-pane-unsplit-merge.md`
 - `docs/releases/v0.2/prs/PR-0207-explorer-context-actions-dnd-baseline.md`
 - `docs/releases/v0.2/prs/PR-0208-workspace-hardening-doc-closure.md`
 - `docs/releases/v0.2/prs/PR-0209-ui-localization-cn-en.md`
