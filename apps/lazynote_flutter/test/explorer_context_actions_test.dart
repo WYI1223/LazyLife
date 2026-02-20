@@ -231,10 +231,9 @@ void main() {
     expect(createdParents, const <String?>[null]);
   });
 
-  testWidgets('note row context rename forwards node id and new name', (
+  testWidgets('note row context hides rename under v0.2 policy freeze', (
     tester,
   ) async {
-    final renameCalls = <String>[];
     final controller = _controller(
       store: <String, rust_api.NoteItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
@@ -260,7 +259,6 @@ void main() {
       _harness(
         controller: controller,
         onRenameNodeRequested: (nodeId, newName) async {
-          renameCalls.add('$nodeId::$newName');
           return const rust_api.WorkspaceActionResponse(
             ok: true,
             errorCode: null,
@@ -278,19 +276,7 @@ void main() {
       buttons: kSecondaryMouseButton,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('notes_context_action_rename')));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('notes_rename_node_input')),
-      'Renamed',
-    );
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('notes_rename_node_confirm_button')));
-    await tester.pumpAndSettle();
-
-    expect(renameCalls, const <String>[
-      '11111111-1111-4111-8111-111111111111::Renamed',
-    ]);
+    expect(find.byKey(const Key('notes_context_action_rename')), findsNothing);
   });
 
   testWidgets('folder context move forwards selected target parent', (

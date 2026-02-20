@@ -741,9 +741,8 @@ class _NoteExplorerState extends State<NoteExplorer> {
         targetKind: ExplorerContextTargetKind.noteRef,
         canCreateNote: false,
         canCreateFolder: false,
-        canRename:
-            widget.onRenameNodeRequested != null &&
-            _looksLikeUuid(noteNode.nodeId),
+        // v0.2 policy freeze: note_ref alias rename is not exposed.
+        canRename: false,
         canMove:
             widget.onMoveNodeRequested != null &&
             _looksLikeUuid(noteNode.nodeId),
@@ -982,14 +981,13 @@ class _NoteExplorerState extends State<NoteExplorer> {
         continue;
       }
       final note = widget.controller.noteById(noteId);
-      final isSyntheticUncategorizedNoteRef =
-          item.parentNodeId == _defaultUncategorizedFolderId ||
-          item.nodeId.startsWith('note_ref_uncategorized_');
-      final displayName = isSyntheticUncategorizedNoteRef
-          ? widget.controller.titleForTab(noteId)
-          : item.displayName.trim().isEmpty
-          ? widget.controller.titleForTab(noteId)
-          : item.displayName;
+      // Keep note-row title projection unified across folders/uncategorized:
+      // prefer atom/draft-derived title and only fallback when not loaded.
+      final projectedTitle = widget.controller.titleForTab(noteId);
+      final displayName =
+          projectedTitle == 'Untitled' && item.displayName.trim().isNotEmpty
+          ? item.displayName
+          : projectedTitle;
       rows.add(
         ExplorerTreeItem.note(
           key: Key('notes_tree_note_row_${item.nodeId}'),
@@ -1477,6 +1475,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
     if (invoker == null) {
       return;
     }
+    if (node.kind != 'folder') {
+      return;
+    }
     if (_isSyntheticRootNodeId(node.nodeId)) {
       return;
     }
@@ -1534,11 +1535,18 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     if (response.ok) {
-      if (widget.controller.workspaceTreeRevision == revisionBefore) {
-        await _reloadRootTree(
-          force: true,
-          refreshParentNodeId: _normalizeParentForMutation(node.parentNodeId),
-        );
+      final parentNodeId = _normalizeParentForMutation(node.parentNodeId);
+      final shouldRefreshParentBranch =
+          parentNodeId != null &&
+          (_treeState.hasLoaded(parentNodeId) ||
+              _treeState.isExpanded(parentNodeId));
+      if (shouldRefreshParentBranch) {
+        // Why: rename on child folders only affects one parent branch. Relying
+        // on root refresh alone can leave stale child labels in cached rows.
+        await _treeState.retryParent(parentNodeId);
+      } else if (parentNodeId == null ||
+          widget.controller.workspaceTreeRevision == revisionBefore) {
+        await _reloadRootTree(force: true, refreshParentNodeId: parentNodeId);
       }
       messenger
         ?..hideCurrentSnackBar()
