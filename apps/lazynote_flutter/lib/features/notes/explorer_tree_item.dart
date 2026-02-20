@@ -15,6 +15,7 @@ class ExplorerTreeItem extends StatelessWidget {
     required this.canDelete,
     this.onCreateChildFolder,
     this.onDeleteFolder,
+    this.onSecondaryTapDown,
   }) : previewText = null;
 
   const ExplorerTreeItem.note({
@@ -24,6 +25,7 @@ class ExplorerTreeItem extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.previewText,
+    this.onSecondaryTapDown,
   }) : expanded = false,
        canCreateChild = false,
        canDelete = false,
@@ -40,6 +42,7 @@ class ExplorerTreeItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onCreateChildFolder;
   final VoidCallback? onDeleteFolder;
+  final GestureTapDownCallback? onSecondaryTapDown;
 
   bool get isFolder => node.kind == 'folder';
 
@@ -49,78 +52,89 @@ class ExplorerTreeItem extends StatelessWidget {
     if (isFolder) {
       return Padding(
         padding: EdgeInsets.fromLTRB(leftPadding, 8, 10, 2),
-        child: Row(
-          children: [
-            InkWell(
-              key: Key('notes_tree_toggle_${node.nodeId}'),
-              borderRadius: BorderRadius.circular(4),
-              splashFactory: NoSplash.splashFactory,
-              highlightColor: Colors.transparent,
-              hoverColor: kNotesItemHoverColor,
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Icon(
-                  expanded ? Icons.expand_more : Icons.chevron_right,
-                  size: 14,
-                  color: kNotesSecondaryText,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onSecondaryTapDown: onSecondaryTapDown,
+          onLongPressStart: onSecondaryTapDown == null
+              ? null
+              : (details) {
+                  onSecondaryTapDown!(
+                    TapDownDetails(globalPosition: details.globalPosition),
+                  );
+                },
+          child: Row(
+            children: [
+              InkWell(
+                key: Key('notes_tree_toggle_${node.nodeId}'),
+                borderRadius: BorderRadius.circular(4),
+                splashFactory: NoSplash.splashFactory,
+                highlightColor: Colors.transparent,
+                hoverColor: kNotesItemHoverColor,
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    expanded ? Icons.expand_more : Icons.chevron_right,
+                    size: 14,
+                    color: kNotesSecondaryText,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 2),
-            const Icon(
-              Icons.folder_outlined,
-              size: 16,
-              color: kNotesSecondaryText,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                node.displayName,
-                key: Key('notes_tree_folder_${node.nodeId}'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: kNotesSecondaryText,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 2),
+              const Icon(
+                Icons.folder_outlined,
+                size: 16,
+                color: kNotesSecondaryText,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  node.displayName,
+                  key: Key('notes_tree_folder_${node.nodeId}'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: kNotesSecondaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            if (canCreateChild)
-              IconButton(
-                key: Key('notes_folder_create_button_${node.nodeId}'),
-                tooltip: 'New child folder',
-                onPressed: onCreateChildFolder,
-                constraints: const BoxConstraints.tightFor(
-                  width: 22,
-                  height: 22,
+              if (canCreateChild)
+                IconButton(
+                  key: Key('notes_folder_create_button_${node.nodeId}'),
+                  tooltip: 'New child folder',
+                  onPressed: onCreateChildFolder,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 22,
+                    height: 22,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(
+                    Icons.create_new_folder_outlined,
+                    size: 14,
+                    color: kNotesSecondaryText,
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(
-                  Icons.create_new_folder_outlined,
-                  size: 14,
-                  color: kNotesSecondaryText,
+              if (canDelete)
+                IconButton(
+                  key: Key('notes_folder_delete_button_${node.nodeId}'),
+                  tooltip: 'Delete folder',
+                  onPressed: onDeleteFolder,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 22,
+                    height: 22,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 14,
+                    color: kNotesSecondaryText,
+                  ),
                 ),
-              ),
-            if (canDelete)
-              IconButton(
-                key: Key('notes_folder_delete_button_${node.nodeId}'),
-                tooltip: 'Delete folder',
-                onPressed: onDeleteFolder,
-                constraints: const BoxConstraints.tightFor(
-                  width: 22,
-                  height: 22,
-                ),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(
-                  Icons.delete_outline,
-                  size: 14,
-                  color: kNotesSecondaryText,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -138,6 +152,21 @@ class ExplorerTreeItem extends StatelessWidget {
           highlightColor: Colors.transparent,
           hoverColor: kNotesItemHoverColor,
           onTap: onTap,
+          onSecondaryTapDown: onSecondaryTapDown,
+          onLongPress: onSecondaryTapDown == null
+              ? null
+              : () {
+                  final renderBox = context.findRenderObject() as RenderBox?;
+                  if (renderBox == null) {
+                    return;
+                  }
+                  final center = renderBox.size.center(Offset.zero);
+                  onSecondaryTapDown!(
+                    TapDownDetails(
+                      globalPosition: renderBox.localToGlobal(center),
+                    ),
+                  );
+                },
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
             child: Row(

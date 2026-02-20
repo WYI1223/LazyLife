@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
@@ -50,8 +51,12 @@ rust_api.WorkspaceListChildrenResponse _ok(
 
 NotesController _controllerWithStore(
   Map<String, rust_api.NoteItem> store, {
+  NoteCreateInvoker? noteCreateInvoker,
+  NoteUpdateInvoker? noteUpdateInvoker,
+  WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
+  WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
 }) {
   return NotesController(
     prepare: () async {},
@@ -72,8 +77,12 @@ NotesController _controllerWithStore(
         note: store[atomId],
       );
     },
+    noteCreateInvoker: noteCreateInvoker,
+    noteUpdateInvoker: noteUpdateInvoker,
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
+    workspaceDeleteFolderInvoker: workspaceDeleteFolderInvoker,
+    workspaceCreateNoteRefInvoker: workspaceCreateNoteRefInvoker,
   );
 }
 
@@ -81,6 +90,8 @@ Widget _buildHarness({
   required NotesController controller,
   required ValueChanged<String> onOpen,
   ValueChanged<String>? onOpenPinned,
+  ExplorerNoteCreateInFolderInvoker? onCreateNoteInFolderRequested,
+  ExplorerFolderDeleteInvoker? onDeleteFolderRequested,
   ExplorerFolderCreateInvoker? onCreateFolderRequested,
   WorkspaceListChildrenInvoker? treeLoader,
 }) {
@@ -94,6 +105,8 @@ Widget _buildHarness({
             onOpenNoteRequested: onOpen,
             onOpenNotePinnedRequested: onOpenPinned,
             onCreateNoteRequested: () async {},
+            onCreateNoteInFolderRequested: onCreateNoteInFolderRequested,
+            onDeleteFolderRequested: onDeleteFolderRequested,
             onCreateFolderRequested: onCreateFolderRequested,
             workspaceListChildrenInvoker: treeLoader,
           );
@@ -177,6 +190,24 @@ void main() {
     };
     final controller = _controllerWithStore(
       store,
+      noteUpdateInvoker: ({required atomId, required content}) async {
+        final existing = store[atomId]!;
+        final updated = rust_api.NoteItem(
+          atomId: existing.atomId,
+          content: content,
+          previewText: null,
+          previewImage: null,
+          updatedAt: existing.updatedAt + 1,
+          tags: existing.tags,
+        );
+        store[atomId] = updated;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: updated,
+        );
+      },
       workspaceListChildrenInvoker: ({parentNodeId}) async {
         return _ok(const <rust_api.WorkspaceNodeItem>[]);
       },
@@ -726,5 +757,261 @@ void main() {
 
     expect(rootAttempts, 2);
     expect(find.byKey(const Key('notes_list_item_note-1')), findsOneWidget);
+  });
+
+  testWidgets(
+    'create note from uncategorized refreshes cached branch while collapsed',
+    (WidgetTester tester) async {
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(
+          atomId: 'note-1',
+          content: '# Legacy Note',
+          updatedAt: 1,
+        ),
+      };
+      final controller = _controllerWithStore(
+        store,
+        noteCreateInvoker: ({required content}) async {
+          final created = _note(
+            atomId: 'note-2',
+            content: '# Created',
+            updatedAt: 2,
+          );
+          store[created.atomId] = created;
+          return rust_api.NoteResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+            note: created,
+          );
+        },
+        workspaceListChildrenInvoker: ({parentNodeId}) async {
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        },
+        workspaceCreateNoteRefInvoker:
+            ({parentNodeId, required atomId, displayName}) async {
+              return rust_api.WorkspaceNodeResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+                node: rust_api.WorkspaceNodeItem(
+                  nodeId: 'ref_$atomId',
+                  kind: 'note_ref',
+                  parentNodeId: parentNodeId,
+                  atomId: atomId,
+                  displayName: displayName ?? atomId,
+                  sortOrder: 0,
+                ),
+              );
+            },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      await tester.pumpWidget(
+        _buildHarness(
+          controller: controller,
+          onOpen: (_) {},
+          onCreateNoteInFolderRequested: (parentNodeId) {
+            return controller.createWorkspaceNoteInFolder(
+              parentNodeId: parentNodeId,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Collapse Uncategorized so its branch cache can become stale.
+      await tester.tap(
+        find.byKey(const Key('notes_tree_toggle___uncategorized__')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('notes_list_item_note-1')), findsNothing);
+
+      await tester.tap(
+        find.byKey(const Key('notes_tree_folder___uncategorized__')),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('notes_context_action_newNote')));
+      await tester.pumpAndSettle();
+
+      // Re-expand and ensure newly created note is visible without app reload.
+      await tester.tap(
+        find.byKey(const Key('notes_tree_toggle___uncategorized__')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('notes_list_item_note-2')), findsOneWidget);
+    },
+  );
+
+  testWidgets('delete folder preserves uncategorized collapse state', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
+    };
+    const folderId = '11111111-1111-4111-8111-111111111111';
+    final controller = _controllerWithStore(
+      store,
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        if (parentNodeId != null) {
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        }
+        return _ok(<rust_api.WorkspaceNodeItem>[
+          _node(
+            nodeId: folderId,
+            kind: 'folder',
+            displayName: 'Team',
+            sortOrder: 0,
+          ),
+        ]);
+      },
+      workspaceDeleteFolderInvoker: ({required nodeId, required mode}) async {
+        return const rust_api.WorkspaceActionResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _buildHarness(
+        controller: controller,
+        onOpen: (_) {},
+        onDeleteFolderRequested: (id, mode) {
+          return controller.deleteWorkspaceFolder(folderId: id, mode: mode);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('notes_tree_toggle___uncategorized__')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('notes_list_item_note-1')), findsNothing);
+
+    await tester.tap(find.byKey(Key('notes_folder_delete_button_$folderId')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('notes_folder_delete_confirm_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('notes_list_item_note-1')), findsNothing);
+  });
+
+  testWidgets('delete child folder refreshes parent branch immediately', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
+    };
+    const parentId = '11111111-1111-4111-8111-111111111111';
+    const childId = '22222222-2222-4222-8222-222222222222';
+    var hasChild = true;
+    final controller = _controllerWithStore(
+      store,
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        if (parentNodeId == null) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: parentId,
+              kind: 'folder',
+              displayName: 'Team',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == parentId) {
+          return _ok(
+            hasChild
+                ? <rust_api.WorkspaceNodeItem>[
+                    _node(
+                      nodeId: childId,
+                      kind: 'folder',
+                      parentNodeId: parentId,
+                      displayName: 'Child',
+                      sortOrder: 0,
+                    ),
+                  ]
+                : const <rust_api.WorkspaceNodeItem>[],
+          );
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      },
+      workspaceDeleteFolderInvoker: ({required nodeId, required mode}) async {
+        if (nodeId == childId) {
+          hasChild = false;
+        }
+        return const rust_api.WorkspaceActionResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _buildHarness(
+        controller: controller,
+        onOpen: (_) {},
+        onDeleteFolderRequested: (id, mode) {
+          return controller.deleteWorkspaceFolder(folderId: id, mode: mode);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('notes_tree_folder_$childId')), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('notes_folder_delete_button_$childId')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('notes_folder_delete_confirm_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('notes_tree_folder_$childId')), findsNothing);
+    expect(find.byKey(Key('notes_folder_delete_button_$childId')), findsNothing);
+  });
+
+  testWidgets('uncategorized note title updates after draft edit', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# Old Title', updatedAt: 1),
+    };
+    final controller = _controllerWithStore(
+      store,
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _buildHarness(controller: controller, onOpen: (_) {}),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Old Title'), findsWidgets);
+
+    controller.updateActiveDraft('# New Title');
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 1700));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New Title'), findsWidgets);
   });
 }

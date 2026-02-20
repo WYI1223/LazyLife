@@ -21,7 +21,11 @@ rust_api.NoteItem _note({
 
 NotesController _buildController({
   required Map<String, rust_api.NoteItem> store,
+  NoteCreateInvoker? noteCreateInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
+  WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
+  WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
+  WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
 }) {
   return NotesController(
@@ -43,7 +47,19 @@ NotesController _buildController({
         note: store[atomId],
       );
     },
+    noteCreateInvoker: noteCreateInvoker,
+    tagsListInvoker: () async {
+      return const rust_api.TagsListResponse(
+        ok: true,
+        errorCode: null,
+        message: 'ok',
+        tags: <String>[],
+      );
+    },
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
+    workspaceCreateNoteRefInvoker: workspaceCreateNoteRefInvoker,
+    workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
+    workspaceMoveNodeInvoker: workspaceMoveNodeInvoker,
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
   );
 }
@@ -164,4 +180,77 @@ void main() {
       expect(response.items, isEmpty);
     },
   );
+
+  test(
+    'createWorkspaceNoteInFolder maps __uncategorized__ parent to root',
+    () async {
+      String? linkedParentNodeId;
+      final created = _note(
+        atomId: '11111111-1111-4111-8111-111111111111',
+        content: '# created',
+        updatedAt: 2,
+      );
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+      };
+      final controller = _buildController(
+        store: store,
+        noteCreateInvoker: ({required content}) async {
+          store[created.atomId] = created;
+          return rust_api.NoteResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+            note: created,
+          );
+        },
+        workspaceCreateNoteRefInvoker:
+            ({parentNodeId, required atomId, displayName}) async {
+              linkedParentNodeId = parentNodeId;
+              return const rust_api.WorkspaceNodeResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+                node: null,
+              );
+            },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      final response = await controller.createWorkspaceNoteInFolder(
+        parentNodeId: '__uncategorized__',
+      );
+
+      expect(response.ok, isTrue);
+      expect(linkedParentNodeId, isNull);
+    },
+  );
+
+  test('moveWorkspaceNode maps __uncategorized__ target to root', () async {
+    String? movedParentNodeId;
+    final controller = _buildController(
+      store: <String, rust_api.NoteItem>{
+        'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+      },
+      workspaceMoveNodeInvoker:
+          ({required nodeId, newParentId, targetOrder}) async {
+            movedParentNodeId = newParentId;
+            return const rust_api.WorkspaceActionResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+            );
+          },
+    );
+    addTearDown(controller.dispose);
+
+    final response = await controller.moveWorkspaceNode(
+      nodeId: '11111111-1111-4111-8111-111111111111',
+      newParentNodeId: '__uncategorized__',
+    );
+
+    expect(response.ok, isTrue);
+    expect(movedParentNodeId, isNull);
+  });
 }

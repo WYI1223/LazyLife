@@ -226,6 +226,15 @@ Recommended order:
    - [x] merge closed-pane tabs to deterministic target pane
    - [x] keep active note/editor focus coherent after merge
    - [x] add provider/controller/widget regressions for merge/blocked behavior
+9. `PR-0207` explorer context actions + drag baseline
+   - [x] freeze M1 boundary and guardrails in PR doc (synthetic-root policy, blank-area menu, move dialog scope, expand-state preservation)
+   - [x] sync contract index note (`docs/api/ffi-contracts.md`) for PR-0207 M1 (no FFI shape delta)
+   - [x] implement M1 context actions (new note/folder, rename, move)
+   - [x] add M1 regressions for action matrix and expand-state persistence
+   - [x] fix row-vs-blank-area right-click menu dedup (single menu per gesture target)
+   - [x] fix child-folder delete immediate explorer refresh (no stale/ghost child rows)
+   - [x] fix synthetic `Uncategorized` note title live projection from draft content
+   - [ ] start M2 drag reorder baseline after M1 acceptance
 
 ## Quality Gates
 

@@ -667,6 +667,23 @@ class _NotesPageState extends State<NotesPage>
               parentNodeId: parentNodeId,
             );
           },
+          onCreateNoteInFolderRequested: (parentNodeId) {
+            return _controller.createWorkspaceNoteInFolder(
+              parentNodeId: parentNodeId,
+            );
+          },
+          onRenameNodeRequested: (nodeId, newName) {
+            return _controller.renameWorkspaceNode(
+              nodeId: nodeId,
+              newName: newName,
+            );
+          },
+          onMoveNodeRequested: (nodeId, newParentNodeId) {
+            return _controller.moveWorkspaceNode(
+              nodeId: nodeId,
+              newParentNodeId: newParentNodeId,
+            );
+          },
         );
       },
     );
