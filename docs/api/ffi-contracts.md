@@ -157,6 +157,27 @@ This PR extends Flutter-side split workflow with explicit pane close/merge.
 - close-pane command entry (`notes_close_pane_button`) is UI-only interaction
   and does not call new FFI endpoints directly
 
+## Notes Explorer Context Actions Baseline (Flutter-only, PR-0207 M1)
+
+This milestone extends explorer interactions while reusing existing contracts.
+
+- no Rust FFI API added/removed/renamed
+- no generated Dart binding shape change
+- no new FFI stable error-code namespace
+- uses existing workspace/note APIs for action execution:
+  - folder create: `workspace_create_folder(parent_node_id?, name)`
+  - note create in folder: `note_create(content)` + `workspace_create_note_ref(parent_node_id?, atom_id, display_name?)`
+  - rename: `workspace_rename_node(node_id, new_name)`
+  - move: `workspace_move_node(node_id, new_parent_id?, target_order?)`
+- UI-local guard rules (M1 frozen):
+  - synthetic root `__uncategorized__` is not renameable/movable/deletable
+  - right-click blank area provides create actions
+  - row context menu takes precedence over blank-area context menu on the same gesture target
+  - move uses minimal target-parent dialog (drag reorder is M2)
+  - explorer refresh must preserve expand/collapse state after actions
+  - successful child-folder delete must refresh affected parent branch to avoid stale child rows
+  - synthetic `Uncategorized` note row labels follow controller title projection (draft-aware)
+
 ---
 
 ## Workspace Tree APIs (PR-0203 + PR-0221)

@@ -55,6 +55,29 @@ typedef WorkspaceCreateFolderInvoker =
       required String name,
     });
 
+/// Async workspace note_ref create mutator.
+typedef WorkspaceCreateNoteRefInvoker =
+    Future<rust_api.WorkspaceNodeResponse> Function({
+      String? parentNodeId,
+      required String atomId,
+      String? displayName,
+    });
+
+/// Async workspace node rename mutator.
+typedef WorkspaceRenameNodeInvoker =
+    Future<rust_api.WorkspaceActionResponse> Function({
+      required String nodeId,
+      required String newName,
+    });
+
+/// Async workspace node move mutator.
+typedef WorkspaceMoveNodeInvoker =
+    Future<rust_api.WorkspaceActionResponse> Function({
+      required String nodeId,
+      String? newParentId,
+      int? targetOrder,
+    });
+
 /// Async workspace children loader for explorer lazy tree.
 typedef WorkspaceListChildrenInvoker =
     Future<rust_api.WorkspaceListChildrenResponse> Function({
@@ -134,6 +157,9 @@ class NotesController extends ChangeNotifier {
     NoteSetTagsInvoker? noteSetTagsInvoker,
     WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
     WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
+    WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
+    WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
+    WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
     WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
     WorkspaceProvider? workspaceProvider,
     DebounceTimerFactory? debounceTimerFactory,
@@ -150,6 +176,13 @@ class NotesController extends ChangeNotifier {
            workspaceDeleteFolderInvoker ?? _defaultWorkspaceDeleteFolderInvoker,
        _workspaceCreateFolderInvoker =
            workspaceCreateFolderInvoker ?? _defaultWorkspaceCreateFolderInvoker,
+       _workspaceCreateNoteRefInvoker =
+           workspaceCreateNoteRefInvoker ??
+           _defaultWorkspaceCreateNoteRefInvoker,
+       _workspaceRenameNodeInvoker =
+           workspaceRenameNodeInvoker ?? _defaultWorkspaceRenameNodeInvoker,
+       _workspaceMoveNodeInvoker =
+           workspaceMoveNodeInvoker ?? _defaultWorkspaceMoveNodeInvoker,
        _workspaceListChildrenInvoker =
            workspaceListChildrenInvoker ?? _defaultWorkspaceListChildrenInvoker,
        _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
@@ -171,6 +204,9 @@ class NotesController extends ChangeNotifier {
   final NoteSetTagsInvoker _noteSetTagsInvoker;
   final WorkspaceDeleteFolderInvoker _workspaceDeleteFolderInvoker;
   final WorkspaceCreateFolderInvoker _workspaceCreateFolderInvoker;
+  final WorkspaceCreateNoteRefInvoker _workspaceCreateNoteRefInvoker;
+  final WorkspaceRenameNodeInvoker _workspaceRenameNodeInvoker;
+  final WorkspaceMoveNodeInvoker _workspaceMoveNodeInvoker;
   final WorkspaceListChildrenInvoker _workspaceListChildrenInvoker;
   final DebounceTimerFactory _debounceTimerFactory;
   final NotesPrepare _prepare;
@@ -226,6 +262,8 @@ class NotesController extends ChangeNotifier {
   String? _workspaceDeleteErrorMessage;
   bool _workspaceCreateFolderInFlight = false;
   String? _workspaceCreateFolderErrorMessage;
+  bool _workspaceNodeMutationInFlight = false;
+  String? _workspaceNodeMutationErrorMessage;
   int _workspaceTreeRevision = 0;
 
   int _listRequestId = 0;
@@ -318,6 +356,13 @@ class NotesController extends ChangeNotifier {
   /// Last workspace folder create failure message.
   String? get workspaceCreateFolderErrorMessage =>
       _workspaceCreateFolderErrorMessage;
+
+  /// Whether workspace node mutation request is currently in flight.
+  bool get workspaceNodeMutationInFlight => _workspaceNodeMutationInFlight;
+
+  /// Last workspace node mutation failure message.
+  String? get workspaceNodeMutationErrorMessage =>
+      _workspaceNodeMutationErrorMessage;
 
   /// Monotonic revision bump for explorer tree refresh triggers.
   int get workspaceTreeRevision => _workspaceTreeRevision;
@@ -731,6 +776,238 @@ class NotesController extends ChangeNotifier {
       );
     } finally {
       _workspaceCreateFolderInFlight = false;
+      notifyListeners();
+    }
+  }
+
+  /// Creates one note and links it into workspace tree under optional parent.
+  ///
+  /// Contract:
+  /// - Parent id must be `null` or UUID (`__uncategorized__` is mapped to root).
+  /// - Uses existing note create flow, then links note via `workspace_create_note_ref`.
+  /// - On success, created note is active and tree revision is bumped.
+  Future<rust_api.WorkspaceActionResponse> createWorkspaceNoteInFolder({
+    String? parentNodeId,
+  }) async {
+    if (_workspaceNodeMutationInFlight) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'busy',
+        message: 'Workspace node mutation is already in progress.',
+      );
+    }
+
+    final normalizedParent = _normalizeWorkspaceParentId(parentNodeId);
+    if (normalizedParent == _WorkspaceParentValidation.invalid) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'invalid_parent_node_id',
+        message: 'Parent node id must be a UUID or null.',
+      );
+    }
+    final parentForCreateRef = switch (normalizedParent) {
+      _WorkspaceParentValidation.root => null,
+      _WorkspaceParentValidation.value => parentNodeId?.trim(),
+      _WorkspaceParentValidation.invalid => null,
+    };
+
+    _workspaceNodeMutationInFlight = true;
+    _workspaceNodeMutationErrorMessage = null;
+    notifyListeners();
+    try {
+      final created = await createNote();
+      if (!created) {
+        final message = _createErrorMessage?.trim().isNotEmpty == true
+            ? _createErrorMessage!
+            : 'Failed to create note before linking to workspace.';
+        _workspaceNodeMutationErrorMessage = message;
+        return rust_api.WorkspaceActionResponse(
+          ok: false,
+          errorCode: 'internal_error',
+          message: message,
+        );
+      }
+      final atomId = _activeNoteId;
+      if (atomId == null || atomId.trim().isEmpty) {
+        _workspaceNodeMutationErrorMessage =
+            'Created note is missing atom id for workspace linking.';
+        return const rust_api.WorkspaceActionResponse(
+          ok: false,
+          errorCode: 'internal_error',
+          message: 'Created note is missing atom id for workspace linking.',
+        );
+      }
+
+      await _prepare();
+      final linkResponse = await _workspaceCreateNoteRefInvoker(
+        parentNodeId: parentForCreateRef,
+        atomId: atomId,
+        displayName: null,
+      );
+      if (!linkResponse.ok) {
+        final message = _envelopeError(
+          errorCode: linkResponse.errorCode,
+          message: linkResponse.message,
+          fallback: 'Note created, but linking into workspace failed.',
+        );
+        _workspaceNodeMutationErrorMessage = message;
+        return rust_api.WorkspaceActionResponse(
+          ok: false,
+          errorCode: linkResponse.errorCode,
+          message: message,
+        );
+      }
+
+      _workspaceNodeMutationErrorMessage = null;
+      _bumpWorkspaceTreeRevision();
+      return const rust_api.WorkspaceActionResponse(
+        ok: true,
+        errorCode: null,
+        message: 'ok',
+      );
+    } catch (error) {
+      final message = 'Workspace note create failed unexpectedly: $error';
+      _workspaceNodeMutationErrorMessage = message;
+      return rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'internal_error',
+        message: message,
+      );
+    } finally {
+      _workspaceNodeMutationInFlight = false;
+      notifyListeners();
+    }
+  }
+
+  /// Renames one workspace node.
+  Future<rust_api.WorkspaceActionResponse> renameWorkspaceNode({
+    required String nodeId,
+    required String newName,
+  }) async {
+    if (_workspaceNodeMutationInFlight) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'busy',
+        message: 'Workspace node mutation is already in progress.',
+      );
+    }
+    final normalizedNodeId = nodeId.trim();
+    if (normalizedNodeId.isEmpty || !_uuidPattern.hasMatch(normalizedNodeId)) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'invalid_node_id',
+        message: 'Node id must be a UUID.',
+      );
+    }
+    final normalizedName = newName.trim();
+    if (normalizedName.isEmpty) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'invalid_display_name',
+        message: 'Node name is required.',
+      );
+    }
+
+    _workspaceNodeMutationInFlight = true;
+    _workspaceNodeMutationErrorMessage = null;
+    notifyListeners();
+    try {
+      await _prepare();
+      final response = await _workspaceRenameNodeInvoker(
+        nodeId: normalizedNodeId,
+        newName: normalizedName,
+      );
+      if (!response.ok) {
+        _workspaceNodeMutationErrorMessage = _envelopeError(
+          errorCode: response.errorCode,
+          message: response.message,
+          fallback: 'Failed to rename workspace node.',
+        );
+        return response;
+      }
+      _workspaceNodeMutationErrorMessage = null;
+      _bumpWorkspaceTreeRevision();
+      return response;
+    } catch (error) {
+      final message = 'Workspace node rename failed unexpectedly: $error';
+      _workspaceNodeMutationErrorMessage = message;
+      return rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'internal_error',
+        message: message,
+      );
+    } finally {
+      _workspaceNodeMutationInFlight = false;
+      notifyListeners();
+    }
+  }
+
+  /// Moves one workspace node under optional target parent.
+  Future<rust_api.WorkspaceActionResponse> moveWorkspaceNode({
+    required String nodeId,
+    String? newParentNodeId,
+    int? targetOrder,
+  }) async {
+    if (_workspaceNodeMutationInFlight) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'busy',
+        message: 'Workspace node mutation is already in progress.',
+      );
+    }
+    final normalizedNodeId = nodeId.trim();
+    if (normalizedNodeId.isEmpty || !_uuidPattern.hasMatch(normalizedNodeId)) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'invalid_node_id',
+        message: 'Node id must be a UUID.',
+      );
+    }
+    final normalizedParent = _normalizeWorkspaceParentId(newParentNodeId);
+    if (normalizedParent == _WorkspaceParentValidation.invalid) {
+      return const rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'invalid_parent_node_id',
+        message: 'Parent node id must be a UUID or null.',
+      );
+    }
+    final parentForMove = switch (normalizedParent) {
+      _WorkspaceParentValidation.root => null,
+      _WorkspaceParentValidation.value => newParentNodeId?.trim(),
+      _WorkspaceParentValidation.invalid => null,
+    };
+
+    _workspaceNodeMutationInFlight = true;
+    _workspaceNodeMutationErrorMessage = null;
+    notifyListeners();
+    try {
+      await _prepare();
+      final response = await _workspaceMoveNodeInvoker(
+        nodeId: normalizedNodeId,
+        newParentId: parentForMove,
+        targetOrder: targetOrder,
+      );
+      if (!response.ok) {
+        _workspaceNodeMutationErrorMessage = _envelopeError(
+          errorCode: response.errorCode,
+          message: response.message,
+          fallback: 'Failed to move workspace node.',
+        );
+        return response;
+      }
+      _workspaceNodeMutationErrorMessage = null;
+      _bumpWorkspaceTreeRevision();
+      return response;
+    } catch (error) {
+      final message = 'Workspace node move failed unexpectedly: $error';
+      _workspaceNodeMutationErrorMessage = message;
+      return rust_api.WorkspaceActionResponse(
+        ok: false,
+        errorCode: 'internal_error',
+        message: message,
+      );
+    } finally {
+      _workspaceNodeMutationInFlight = false;
       notifyListeners();
     }
   }
@@ -2351,6 +2628,23 @@ class NotesController extends ChangeNotifier {
     return '[$errorCode] $normalized';
   }
 
+  _WorkspaceParentValidation _normalizeWorkspaceParentId(String? raw) {
+    if (raw == null) {
+      return _WorkspaceParentValidation.root;
+    }
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return _WorkspaceParentValidation.invalid;
+    }
+    if (normalized == _uncategorizedFolderNodeId) {
+      return _WorkspaceParentValidation.root;
+    }
+    if (!_uuidPattern.hasMatch(normalized)) {
+      return _WorkspaceParentValidation.invalid;
+    }
+    return _WorkspaceParentValidation.value;
+  }
+
   String? _normalizeTag(String raw) {
     final normalized = raw.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -2539,6 +2833,8 @@ class NotesController extends ChangeNotifier {
   }
 }
 
+enum _WorkspaceParentValidation { root, value, invalid }
+
 Future<rust_api.NotesListResponse> _defaultNotesListInvoker({
   String? tag,
   int? limit,
@@ -2587,6 +2883,37 @@ Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateFolderInvoker({
   required String name,
 }) {
   return rust_api.workspaceCreateFolder(parentNodeId: parentNodeId, name: name);
+}
+
+Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateNoteRefInvoker({
+  String? parentNodeId,
+  required String atomId,
+  String? displayName,
+}) {
+  return rust_api.workspaceCreateNoteRef(
+    parentNodeId: parentNodeId,
+    atomId: atomId,
+    displayName: displayName,
+  );
+}
+
+Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceRenameNodeInvoker({
+  required String nodeId,
+  required String newName,
+}) {
+  return rust_api.workspaceRenameNode(nodeId: nodeId, newName: newName);
+}
+
+Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceMoveNodeInvoker({
+  required String nodeId,
+  String? newParentId,
+  int? targetOrder,
+}) {
+  return rust_api.workspaceMoveNode(
+    nodeId: nodeId,
+    newParentId: newParentId,
+    targetOrder: targetOrder,
+  );
 }
 
 Future<rust_api.WorkspaceListChildrenResponse>
