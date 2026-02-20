@@ -153,6 +153,7 @@ Recommended order:
    - `PR-0206-split-layout-v1` (in review: post-review remediation landed; QA summary logged with accepted v0.2 limitations)
    - `PR-0206B-split-pane-unsplit-merge` (in review: explicit pane close/merge command landed with regressions)
    - `PR-0207-explorer-context-actions-dnd-baseline`
+   - `PR-0207A-explorer-note-ref-title-rename-freeze` (completed: v0.2 title/rename boundary closure)
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en`
    - `PR-0210-debug-viewer-readability-upgrade` (optional: add log_dart_event FFI)
@@ -228,12 +229,17 @@ Recommended order:
    - [x] add provider/controller/widget regressions for merge/blocked behavior
 9. `PR-0207` explorer context actions + drag baseline
    - [x] freeze M1 boundary and guardrails in PR doc (synthetic-root policy, blank-area menu, move dialog scope, expand-state preservation)
+   - [x] freeze v0.2 title/rename boundary: `note_ref` rename deferred, folder rename stays enabled
+   - [x] freeze dissolve display mapping: note refs return to synthetic `Uncategorized`, child folders promote to root
    - [x] sync contract index note (`docs/api/ffi-contracts.md`) for PR-0207 M1 (no FFI shape delta)
-   - [x] implement M1 context actions (new note/folder, rename, move)
+   - [x] implement M1 context actions (new note/folder, folder rename, move)
    - [x] add M1 regressions for action matrix and expand-state persistence
    - [x] fix row-vs-blank-area right-click menu dedup (single menu per gesture target)
    - [x] fix child-folder delete immediate explorer refresh (no stale/ghost child rows)
+   - [x] fix child-folder rename immediate explorer refresh (no stale child labels)
    - [x] fix synthetic `Uncategorized` note title live projection from draft content
+   - [x] fix default NotesPage slot wiring for create-note-in-folder / rename / move callbacks
+   - [x] add NotesPage + first-party slot integration regression (`notes_page_explorer_slot_wiring_test.dart`)
    - [ ] start M2 drag reorder baseline after M1 acceptance
 
 ## Quality Gates
@@ -282,6 +288,7 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0206-split-layout-v1.md`
 - `docs/releases/v0.2/prs/PR-0206B-split-pane-unsplit-merge.md`
 - `docs/releases/v0.2/prs/PR-0207-explorer-context-actions-dnd-baseline.md`
+- `docs/releases/v0.2/prs/PR-0207A-explorer-note-ref-title-rename-freeze.md`
 - `docs/releases/v0.2/prs/PR-0208-workspace-hardening-doc-closure.md`
 - `docs/releases/v0.2/prs/PR-0209-ui-localization-cn-en.md`
 - `docs/releases/v0.2/prs/PR-0210-debug-viewer-readability-upgrade.md`

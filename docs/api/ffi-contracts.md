@@ -167,16 +167,24 @@ This milestone extends explorer interactions while reusing existing contracts.
 - uses existing workspace/note APIs for action execution:
   - folder create: `workspace_create_folder(parent_node_id?, name)`
   - note create in folder: `note_create(content)` + `workspace_create_note_ref(parent_node_id?, atom_id, display_name?)`
-  - rename: `workspace_rename_node(node_id, new_name)`
+  - rename (folder-only in v0.2 policy): `workspace_rename_node(node_id, new_name)`
   - move: `workspace_move_node(node_id, new_parent_id?, target_order?)`
 - UI-local guard rules (M1 frozen):
   - synthetic root `__uncategorized__` is not renameable/movable/deletable
+  - `note_ref` rows are not renameable in v0.2 (title comes from atom projection)
   - right-click blank area provides create actions
   - row context menu takes precedence over blank-area context menu on the same gesture target
+  - default Notes side-panel slot must forward context callbacks via slot keys:
+    - `notes_on_create_note_in_folder_requested`
+    - `notes_on_rename_node_requested`
+    - `notes_on_move_node_requested`
   - move uses minimal target-parent dialog (drag reorder is M2)
   - explorer refresh must preserve expand/collapse state after actions
   - successful child-folder delete must refresh affected parent branch to avoid stale child rows
+  - successful child-folder rename must refresh affected parent branch to avoid stale labels
   - synthetic `Uncategorized` note row labels follow controller title projection (draft-aware)
+  - dissolve mapping: root-level note refs are rendered under synthetic `Uncategorized`;
+    promoted child folders stay as root folders
 
 ---
 
@@ -197,6 +205,11 @@ All APIs are use-case level and async.
     - `> sibling_count` -> append at tail
 - `workspace_delete_folder(node_id, mode) -> WorkspaceActionResponse`
   - `mode`: `dissolve` | `delete_all`
+
+UI policy freeze (v0.2):
+
+- `workspace_rename_node` remains generic at API level, but Notes Explorer only exposes rename for `folder` rows.
+- `note_ref` rename/editable alias is deferred to v3+ to avoid title-source ambiguity.
 
 ### Workspace Node Payload
 

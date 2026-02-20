@@ -55,6 +55,10 @@ Two user-facing options:
 
 - root level (`parent_uuid = NULL`) is the unclassified area
 - no dedicated physical folder entity is required
+- Flutter may project root-level note refs into synthetic `__uncategorized__` for UX
+  consistency, while root folders remain first-class root nodes
+- result after `dissolve`: direct note refs appear in `Uncategorized` projection, direct
+  child folders are promoted to root
 
 ### 4. Multi-reference notes
 

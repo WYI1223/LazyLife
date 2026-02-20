@@ -42,7 +42,7 @@ Code reference: `crates/lazynote_core/src/model/atom.rs`.
 | `kind` | TEXT | NO | `folder \| note_ref` |
 | `parent_uuid` | TEXT | YES | Parent workspace node id (`NULL` = root) |
 | `atom_uuid` | TEXT | YES | Required for `note_ref`; must be `NULL` for `folder` |
-| `display_name` | TEXT | NO | User-facing node title |
+| `display_name` | TEXT | NO | Node label field (`folder` authoritative; `note_ref` reserved for compatibility/placeholder in v0.2) |
 | `sort_order` | INTEGER | NO | Deterministic sibling order key |
 | `is_deleted` | INTEGER | NO | `0 \| 1` soft-delete marker |
 | `created_at` | INTEGER | NO | Epoch ms |
@@ -59,6 +59,16 @@ Code reference: `crates/lazynote_core/src/model/atom.rs`.
 7. Tree read paths hide invalid `note_ref` and only surface active-note references.
 
 Code reference: `crates/lazynote_core/src/repo/tree_repo.rs`, `crates/lazynote_core/src/service/tree_service.rs`.
+
+### Title/Label Semantics Freeze (v0.2)
+
+This is a product-boundary policy layered on top of the schema:
+
+1. Canonical content owner is still `atoms.content`.
+2. `note/task/event` visible titles in Explorer are projection values derived from Atom data (and draft state in Flutter), not a separately user-managed `note_ref` alias.
+3. `workspace_nodes.display_name` remains in schema for forward compatibility, but `note_ref` rename is frozen in v0.2.
+4. `folder` rename remains fully supported and uses `workspace_nodes.display_name` as the authoritative folder label.
+5. Independent `note_ref` alias/title editing is deferred to a later milestone (v3+).
 
 ---
 
