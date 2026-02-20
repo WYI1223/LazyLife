@@ -1,7 +1,7 @@
 # PR-0205-explorer-recursive-lazy-ui
 
 - Proposed title: `feat(notes-explorer): recursive explorer with lazy folder loading`
-- Status: In Progress (implementation landed, pending final review)
+- Status: Completed
 
 ## Goal
 
@@ -109,7 +109,7 @@ Out of scope:
 - [x] Explorer renders nested folders recursively.
 - [x] Child nodes load lazily on expansion.
 - [x] Explorer single-click open intent callback is deterministic and test-covered.
-- [ ] Preview/pinned single/double semantic split is migrated to tab model (`PR-0205B`).
+- [x] Preview/pinned single/double semantic split is migrated to tab model (`PR-0205B`).
 - [x] Error/empty/loading states are visible and recoverable.
 - [x] Explorer states (default/hover/selected/loading/error) remain visually consistent with the shared UI style system.
 - [x] Create-folder refresh preserves user expand/collapse state and only refreshes affected parent branch.
