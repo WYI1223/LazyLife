@@ -12,6 +12,7 @@ Implement deterministic preview/pinned tab behavior similar to modern IDE editor
 - Preview/pinned semantics are owned by the top tab model/state machine.
 - Explorer/tree and other entry points only emit open intents (`preview` or `pin`).
 - No source widget should hardcode replace/persist behavior outside tab model.
+- v0.2 transition dependency: `PR-0205B-explorer-tab-open-intent-migration`.
 
 ## Scope (v0.3)
 
