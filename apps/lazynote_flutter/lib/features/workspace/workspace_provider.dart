@@ -18,6 +18,12 @@ typedef WorkspaceDebounceTimerFactory =
 
 /// Workspace runtime owner for pane/tab/buffer/save state.
 class WorkspaceProvider extends ChangeNotifier {
+  /// Hard cap for v0.2 non-recursive split baseline.
+  static const int maxPaneCount = 4;
+
+  /// Minimum pixel size for each pane after split.
+  static const double minPaneExtent = 200;
+
   /// Creates a workspace state owner with injectable persistence hooks.
   ///
   /// The injected callbacks are used by tests and diagnostics to simulate
@@ -51,8 +57,9 @@ class WorkspaceProvider extends ChangeNotifier {
   /// Whether draft updates should schedule internal autosave.
   final bool autosaveEnabled;
 
-  final WorkspaceLayoutState _layoutState = WorkspaceLayoutState.singlePane();
+  WorkspaceLayoutState _layoutState = WorkspaceLayoutState.singlePane();
   String _activePaneId = '';
+  int _nextPaneSequence = 1;
 
   final Map<String, List<String>> _openTabsByPane = <String, List<String>>{};
   final Map<String, String?> _activeTabByPane = <String, String?>{};
@@ -145,10 +152,69 @@ class WorkspaceProvider extends ChangeNotifier {
     if (_activePaneId == paneId) {
       return;
     }
+    if (!_layoutState.paneOrder.contains(paneId)) {
+      return;
+    }
     _openTabsByPane.putIfAbsent(paneId, () => <String>[]);
     _activeTabByPane.putIfAbsent(paneId, () => null);
     _activePaneId = paneId;
     _markChanged();
+  }
+
+  /// Splits the active pane in root layout (v0.2 non-recursive baseline).
+  ///
+  /// The caller should pass the available size in the split axis:
+  /// - horizontal: content width
+  /// - vertical: content height
+  WorkspaceSplitResult splitActivePane({
+    required WorkspaceSplitDirection direction,
+    required double containerExtent,
+  }) {
+    final paneOrder = _layoutState.paneOrder;
+    final paneCount = paneOrder.length;
+    if (paneCount >= maxPaneCount) {
+      return WorkspaceSplitResult.maxPanesReached;
+    }
+    final activeIndex = paneOrder.indexOf(_activePaneId);
+    if (activeIndex < 0) {
+      return WorkspaceSplitResult.paneNotFound;
+    }
+    if (paneCount > 1 && _layoutState.splitDirection != direction) {
+      return WorkspaceSplitResult.directionLocked;
+    }
+    if (!_hasMinExtentForPaneCount(
+      paneCount: paneCount + 1,
+      containerExtent: containerExtent,
+    )) {
+      return WorkspaceSplitResult.minSizeBlocked;
+    }
+
+    final nextOrder = List<String>.from(_layoutState.paneOrder);
+    final nextFractions = List<double>.from(_layoutState.paneFractions);
+    final activeFraction = nextFractions[activeIndex];
+    final splitFraction = activeFraction / 2;
+    final newPaneId = _newPaneId();
+    nextOrder.insert(activeIndex + 1, newPaneId);
+    nextFractions[activeIndex] = splitFraction;
+    nextFractions.insert(activeIndex + 1, splitFraction);
+
+    if (!_hasMinExtentForFractions(
+      paneFractions: nextFractions,
+      containerExtent: containerExtent,
+    )) {
+      return WorkspaceSplitResult.minSizeBlocked;
+    }
+
+    _layoutState = _layoutState.copyWith(
+      paneOrder: nextOrder,
+      paneFractions: _normalizeFractions(nextFractions),
+      splitDirection: direction,
+    );
+    _openTabsByPane[newPaneId] = <String>[];
+    _activeTabByPane[newPaneId] = null;
+    _activePaneId = newPaneId;
+    _markChanged();
+    return WorkspaceSplitResult.ok;
   }
 
   /// Opens one note tab in the target pane and initializes its buffer.
@@ -157,7 +223,7 @@ class WorkspaceProvider extends ChangeNotifier {
     required String initialContent,
     String? paneId,
   }) {
-    final targetPaneId = paneId ?? _activePaneId;
+    final targetPaneId = _resolveTargetPaneId(paneId);
     final tabs = _openTabsByPane.putIfAbsent(targetPaneId, () => <String>[]);
     if (!tabs.contains(noteId)) {
       tabs.add(noteId);
@@ -180,7 +246,7 @@ class WorkspaceProvider extends ChangeNotifier {
 
   /// Activates an already-open note tab in the target pane.
   void activateNote({required String noteId, String? paneId}) {
-    final targetPaneId = paneId ?? _activePaneId;
+    final targetPaneId = _resolveTargetPaneId(paneId);
     final tabs = _openTabsByPane.putIfAbsent(targetPaneId, () => <String>[]);
     if (!tabs.contains(noteId)) {
       return;
@@ -195,7 +261,7 @@ class WorkspaceProvider extends ChangeNotifier {
   /// When the note is no longer opened in any pane, related runtime state
   /// (buffer/save state/debounce/in-flight marker) is cleaned up.
   void closeNote({required String noteId, String? paneId}) {
-    final targetPaneId = paneId ?? _activePaneId;
+    final targetPaneId = _resolveTargetPaneId(paneId);
     final tabs = _openTabsByPane[targetPaneId];
     if (tabs == null || !tabs.remove(noteId)) {
       return;
@@ -243,7 +309,7 @@ class WorkspaceProvider extends ChangeNotifier {
     bool activate = false,
     String? paneId,
   }) {
-    final targetPaneId = paneId ?? _activePaneId;
+    final targetPaneId = _resolveTargetPaneId(paneId);
     final tabs = _openTabsByPane.putIfAbsent(targetPaneId, () => <String>[]);
     if (!tabs.contains(noteId)) {
       tabs.add(noteId);
@@ -252,7 +318,10 @@ class WorkspaceProvider extends ChangeNotifier {
       _activePaneId = targetPaneId;
       _activeTabByPane[targetPaneId] = noteId;
     } else {
-      _activeTabByPane.putIfAbsent(targetPaneId, () => null);
+      final currentActive = _activeTabByPane[targetPaneId];
+      if (currentActive == null || !tabs.contains(currentActive)) {
+        _activeTabByPane[targetPaneId] = noteId;
+      }
     }
 
     final previous = _buffersByNoteId[noteId];
@@ -290,15 +359,17 @@ class WorkspaceProvider extends ChangeNotifier {
     _saveDebounceByNoteId.clear();
     _saveInFlightByNoteId.clear();
     _tagMutationQueueByNoteId.clear();
-    _openTabsByPane
-      ..clear()
-      ..[_layoutState.primaryPaneId] = <String>[];
-    _activeTabByPane
-      ..clear()
-      ..[_layoutState.primaryPaneId] = null;
+    _openTabsByPane.clear();
+    _activeTabByPane.clear();
+    for (final paneId in _layoutState.paneOrder) {
+      _openTabsByPane[paneId] = <String>[];
+      _activeTabByPane[paneId] = null;
+    }
     _buffersByNoteId.clear();
     _saveStateByNoteId.clear();
-    _activePaneId = _layoutState.primaryPaneId;
+    if (!_layoutState.paneOrder.contains(_activePaneId)) {
+      _activePaneId = _layoutState.primaryPaneId;
+    }
     _markChanged();
   }
 
@@ -463,6 +534,53 @@ class WorkspaceProvider extends ChangeNotifier {
       }
     }
     return false;
+  }
+
+  String _resolveTargetPaneId(String? paneId) {
+    if (paneId != null && _layoutState.paneOrder.contains(paneId)) {
+      return paneId;
+    }
+    return _activePaneId;
+  }
+
+  String _newPaneId() {
+    while (true) {
+      final paneId = 'pane.split.$_nextPaneSequence';
+      _nextPaneSequence += 1;
+      if (!_layoutState.paneOrder.contains(paneId)) {
+        return paneId;
+      }
+    }
+  }
+
+  static bool _hasMinExtentForPaneCount({
+    required int paneCount,
+    required double containerExtent,
+  }) {
+    if (!containerExtent.isFinite || containerExtent <= 0) {
+      return false;
+    }
+    return containerExtent >= (paneCount * minPaneExtent);
+  }
+
+  static bool _hasMinExtentForFractions({
+    required List<double> paneFractions,
+    required double containerExtent,
+  }) {
+    for (final fraction in paneFractions) {
+      if ((fraction * containerExtent) < minPaneExtent) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static List<double> _normalizeFractions(List<double> paneFractions) {
+    final sum = paneFractions.fold<double>(0, (total, item) => total + item);
+    if (sum == 0) {
+      return paneFractions;
+    }
+    return paneFractions.map((item) => item / sum).toList(growable: false);
   }
 }
 

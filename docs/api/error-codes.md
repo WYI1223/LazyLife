@@ -36,6 +36,8 @@ Notes:
 
 - `PR-0205A` (Notes UI shell alignment) is Flutter-only and does not add/change
   any FFI error code.
+- `PR-0206` (Notes split layout v1) is Flutter-only and does not add/change
+  any FFI error code.
 
 ## Command Parser (Flutter)
 
