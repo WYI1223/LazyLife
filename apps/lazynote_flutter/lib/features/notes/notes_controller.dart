@@ -231,6 +231,7 @@ class NotesController extends ChangeNotifier {
   int _listRequestId = 0;
   int _detailRequestId = 0;
   int _tagsRequestId = 0;
+  bool _disposed = false;
 
   /// Current list phase.
   NotesListPhase get listPhase => _listPhase;
@@ -257,7 +258,12 @@ class NotesController extends ChangeNotifier {
   String? get selectedAtomId => _activeNoteId;
 
   /// Currently active tab note id.
-  String? get activeNoteId => _workspaceProvider.activeNoteId ?? _activeNoteId;
+  String? get activeNoteId {
+    if (_workspaceProvider.layoutState.paneOrder.length > 1) {
+      return _workspaceProvider.activeNoteId;
+    }
+    return _workspaceProvider.activeNoteId ?? _activeNoteId;
+  }
 
   /// Current preview tab id (replaced by next explorer-open unless pinned).
   String? get previewTabId => _previewTabId;
@@ -267,6 +273,9 @@ class NotesController extends ChangeNotifier {
     final workspaceTabs =
         _workspaceProvider.openTabsByPane[_workspaceProvider.activePaneId] ??
         const <String>[];
+    if (_workspaceProvider.layoutState.paneOrder.length > 1) {
+      return List.unmodifiable(workspaceTabs);
+    }
     if (workspaceTabs.isEmpty) {
       return List.unmodifiable(_openNoteIds);
     }
@@ -315,6 +324,48 @@ class NotesController extends ChangeNotifier {
 
   /// Workspace state owner used by Notes bridge (M2).
   WorkspaceProvider get workspaceProvider => _workspaceProvider;
+
+  /// Splits current active pane and keeps controller/editor routing aligned.
+  WorkspaceSplitResult splitActivePane({
+    required WorkspaceSplitDirection direction,
+    required double containerExtent,
+  }) {
+    final result = _workspaceProvider.splitActivePane(
+      direction: direction,
+      containerExtent: containerExtent,
+    );
+    if (result != WorkspaceSplitResult.ok) {
+      return result;
+    }
+    _syncWorkspaceFromControllerState();
+    _adoptWorkspaceActivePaneState(loadDetail: false);
+    notifyListeners();
+    return result;
+  }
+
+  /// Switches active pane pointer and refreshes active editor target.
+  bool switchActivePane(String paneId) {
+    if (!_workspaceProvider.layoutState.paneOrder.contains(paneId)) {
+      return false;
+    }
+    _workspaceProvider.switchActivePane(paneId);
+    _adoptWorkspaceActivePaneState();
+    return true;
+  }
+
+  /// Cycles active pane focus in layout order.
+  void activateNextPane() {
+    final order = _workspaceProvider.layoutState.paneOrder;
+    if (order.length <= 1) {
+      return;
+    }
+    final currentIndex = order.indexOf(_workspaceProvider.activePaneId);
+    if (currentIndex < 0) {
+      return;
+    }
+    final nextPaneId = order[(currentIndex + 1) % order.length];
+    switchActivePane(nextPaneId);
+  }
 
   /// Returns and clears the latest non-fatal create warning.
   String? takeCreateWarningMessage() {
@@ -386,6 +437,7 @@ class NotesController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _autosaveTimer?.cancel();
     _savedBadgeTimer?.cancel();
     if (_ownsWorkspaceProvider) {
@@ -585,6 +637,9 @@ class NotesController extends ChangeNotifier {
     _switchBlockErrorMessage = null;
     _previewTabId = atomId;
     _syncWorkspaceFromControllerState();
+    // Why: preview-replace can target a note currently owned by another pane;
+    // enforce active-pane snapshot before async detail result returns.
+    _syncWorkspaceActiveSnapshot();
     notifyListeners();
 
     await _loadSelectedDetail(atomId: atomId);
@@ -1307,6 +1362,9 @@ class NotesController extends ChangeNotifier {
     _requestEditorFocus();
     _switchBlockErrorMessage = null;
     _syncWorkspaceFromControllerState();
+    // Why: keep split-mode active pane projection aligned even when detail
+    // request fails. Prevents controller/workspace active-note divergence.
+    _syncWorkspaceActiveSnapshot();
     notifyListeners();
 
     await _loadSelectedDetail(atomId: atomId);
@@ -1324,30 +1382,39 @@ class NotesController extends ChangeNotifier {
   }
 
   /// Moves active tab forward (Ctrl+Tab behavior).
+  ///
+  /// Split mode cycles inside active-pane tabs only.
   Future<void> activateNextOpenNote() async {
-    if (_openNoteIds.length <= 1 || _activeNoteId == null) {
+    final scopedOpenNoteIds = openNoteIds;
+    final scopedActiveNoteId = activeNoteId;
+    if (scopedOpenNoteIds.length <= 1 || scopedActiveNoteId == null) {
       return;
     }
-    final currentIndex = _openNoteIds.indexOf(_activeNoteId!);
+    final currentIndex = scopedOpenNoteIds.indexOf(scopedActiveNoteId);
     if (currentIndex < 0) {
       return;
     }
-    final nextIndex = (currentIndex + 1) % _openNoteIds.length;
-    await activateOpenNote(_openNoteIds[nextIndex]);
+    final nextIndex = (currentIndex + 1) % scopedOpenNoteIds.length;
+    await activateOpenNote(scopedOpenNoteIds[nextIndex]);
   }
 
   /// Moves active tab backward (Ctrl+Shift+Tab behavior).
+  ///
+  /// Split mode cycles inside active-pane tabs only.
   Future<void> activatePreviousOpenNote() async {
-    if (_openNoteIds.length <= 1 || _activeNoteId == null) {
+    final scopedOpenNoteIds = openNoteIds;
+    final scopedActiveNoteId = activeNoteId;
+    if (scopedOpenNoteIds.length <= 1 || scopedActiveNoteId == null) {
       return;
     }
-    final currentIndex = _openNoteIds.indexOf(_activeNoteId!);
+    final currentIndex = scopedOpenNoteIds.indexOf(scopedActiveNoteId);
     if (currentIndex < 0) {
       return;
     }
     final prevIndex =
-        (currentIndex - 1 + _openNoteIds.length) % _openNoteIds.length;
-    await activateOpenNote(_openNoteIds[prevIndex]);
+        (currentIndex - 1 + scopedOpenNoteIds.length) %
+        scopedOpenNoteIds.length;
+    await activateOpenNote(scopedOpenNoteIds[prevIndex]);
   }
 
   /// Closes one opened tab.
@@ -1752,20 +1819,30 @@ class NotesController extends ChangeNotifier {
   }
 
   Future<void> _loadSelectedDetail({required String atomId}) async {
+    if (_disposed) {
+      return;
+    }
     final requestId = ++_detailRequestId;
     _detailLoading = true;
     _detailErrorMessage = null;
     _selectedNote = _findListItem(atomId) ?? _selectedNote;
+    if (_disposed) {
+      return;
+    }
     notifyListeners();
 
     try {
       await _prepare();
-      if (requestId != _detailRequestId || atomId != _activeNoteId) {
+      if (_disposed ||
+          requestId != _detailRequestId ||
+          atomId != _activeNoteId) {
         return;
       }
 
       final response = await _noteGetInvoker(atomId: atomId);
-      if (requestId != _detailRequestId || atomId != _activeNoteId) {
+      if (_disposed ||
+          requestId != _detailRequestId ||
+          atomId != _activeNoteId) {
         return;
       }
 
@@ -1776,6 +1853,9 @@ class NotesController extends ChangeNotifier {
           message: response.message,
           fallback: 'Failed to load note detail.',
         );
+        if (_disposed) {
+          return;
+        }
         notifyListeners();
         return;
       }
@@ -1790,19 +1870,30 @@ class NotesController extends ChangeNotifier {
         _detailErrorMessage = null;
         _refreshSaveStateForActive();
         _syncWorkspaceActiveSnapshot();
+        if (_disposed) {
+          return;
+        }
         notifyListeners();
         return;
       }
 
       _detailLoading = false;
       _detailErrorMessage = 'Note detail is empty.';
+      if (_disposed) {
+        return;
+      }
       notifyListeners();
     } catch (error) {
-      if (requestId != _detailRequestId || atomId != _activeNoteId) {
+      if (_disposed ||
+          requestId != _detailRequestId ||
+          atomId != _activeNoteId) {
         return;
       }
       _detailLoading = false;
       _detailErrorMessage = 'Note detail load failed unexpectedly: $error';
+      if (_disposed) {
+        return;
+      }
       notifyListeners();
     }
   }
@@ -2121,6 +2212,35 @@ class NotesController extends ChangeNotifier {
         _workspacePersistedContentFor(atomId);
   }
 
+  void _adoptWorkspaceActivePaneState({bool loadDetail = true}) {
+    final paneActiveId = _workspaceProvider.activeNoteId;
+    _activeNoteId = paneActiveId;
+    if (paneActiveId == null) {
+      _selectedNote = null;
+      _activeDraftAtomId = null;
+      _activeDraftContent = '';
+      _detailLoading = false;
+      _detailErrorMessage = null;
+      _setSaveState(NoteSaveState.clean);
+      return;
+    }
+
+    final selected = _selectedNote?.atomId == paneActiveId
+        ? _selectedNote
+        : null;
+    final local =
+        _noteCache[paneActiveId] ?? selected ?? _findListItem(paneActiveId);
+    _selectedNote = local;
+    _activeDraftAtomId = paneActiveId;
+    _activeDraftContent = _workspaceDraftContentFor(paneActiveId);
+    _refreshSaveStateForActive();
+    _switchBlockErrorMessage = null;
+    _requestEditorFocus();
+    if (loadDetail) {
+      unawaited(_loadSelectedDetail(atomId: paneActiveId));
+    }
+  }
+
   void _syncWorkspaceActiveSnapshot() {
     final activeId = _activeNoteId;
     if (activeId == null) {
@@ -2138,23 +2258,60 @@ class NotesController extends ChangeNotifier {
   void _syncWorkspaceFromControllerState() {
     _workspaceProvider.beginBatchSync();
     try {
+      final paneOrder = List<String>.from(
+        _workspaceProvider.layoutState.paneOrder,
+      );
+      final activePaneId = _workspaceProvider.activePaneId;
+      final paneTabsBeforeReset = <String, List<String>>{};
+      for (final paneId in paneOrder) {
+        paneTabsBeforeReset[paneId] = List<String>.from(
+          _workspaceProvider.openTabsByPane[paneId] ?? const <String>[],
+        );
+      }
+
       _workspaceProvider.resetAll();
-      if (_openNoteIds.isEmpty) {
+      final restoredNoteIds = <String>{};
+      for (final paneId in paneOrder) {
+        final paneTabs = paneTabsBeforeReset[paneId] ?? const <String>[];
+        for (final atomId in paneTabs) {
+          if (!_openNoteIds.contains(atomId) && _activeNoteId != atomId) {
+            continue;
+          }
+          _workspaceProvider.syncExternalNote(
+            noteId: atomId,
+            paneId: paneId,
+            persistedContent: _workspacePersistedContentFor(atomId),
+            draftContent: _workspaceDraftContentFor(atomId),
+            saveState: _workspaceSaveStateForNote(atomId),
+            activate: activePaneId == paneId && _activeNoteId == atomId,
+          );
+          restoredNoteIds.add(atomId);
+        }
+      }
+
+      if (_openNoteIds.isEmpty && _activeNoteId == null) {
         return;
       }
+
       for (final atomId in _openNoteIds) {
+        if (restoredNoteIds.contains(atomId)) {
+          continue;
+        }
         _workspaceProvider.syncExternalNote(
           noteId: atomId,
+          paneId: activePaneId,
           persistedContent: _workspacePersistedContentFor(atomId),
           draftContent: _workspaceDraftContentFor(atomId),
           saveState: _workspaceSaveStateForNote(atomId),
           activate: _activeNoteId == atomId,
         );
+        restoredNoteIds.add(atomId);
       }
       if (_activeNoteId case final activeId?) {
-        if (!_openNoteIds.contains(activeId)) {
+        if (!restoredNoteIds.contains(activeId)) {
           _workspaceProvider.syncExternalNote(
             noteId: activeId,
+            paneId: activePaneId,
             persistedContent: _workspacePersistedContentFor(activeId),
             draftContent: _workspaceDraftContentFor(activeId),
             saveState: _workspaceSaveStateForNote(activeId),

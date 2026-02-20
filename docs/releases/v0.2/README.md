@@ -146,9 +146,9 @@ Recommended order:
 3. Workspace lane (depends on bridge lane complete):
    - `PR-0204-workspace-provider-foundation` (addresses R02-1.1/1.2/1.3 by design)
    - `PR-0205A-notes-ui-shell-alignment`
-   - `PR-0205-explorer-recursive-lazy-ui` (M1 landed: recursive lazy tree + smoke tests)
-   - `PR-0205B-explorer-tab-open-intent-migration` (planned: move preview/pinned semantics to tab model lane; freeze before split lane)
-   - `PR-0206-split-layout-v1` (start after PR-0205B contract/interaction freeze)
+   - `PR-0205-explorer-recursive-lazy-ui` (completed: recursive lazy tree + stability regressions)
+   - `PR-0205B-explorer-tab-open-intent-migration` (completed: preview/pinned semantic ownership freeze)
+   - `PR-0206-split-layout-v1` (in review: post-review R1/R2/R3 remediation landed, awaiting QA)
    - `PR-0207-explorer-context-actions-dnd-baseline`
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en`
@@ -200,7 +200,23 @@ Recommended order:
    - [x] add M2 regressions (`notes_controller_tabs_test.dart`, `tab_open_intent_migration_test.dart`)
    - [x] no regression in `notes_page_c1..c4`
    - [x] `PR-0206` start gate satisfied (`M1` interaction freeze completed)
-   - [ ] M3/M4 cleanup + closure
+   - [x] M3/M4 cleanup + closure
+7. `PR-0206` split layout v1 (M1-M4 baseline + post-review remediation)
+   - [x] add split-capable workspace layout model fields (`splitDirection`, `paneFractions`)
+   - [x] add `WorkspaceProvider.splitActivePane` with max-pane guard, direction lock, and min-size (`200px`) guard
+   - [x] add provider-level split regression tests (`test/workspace_provider_test.dart`)
+   - [x] wire split commands and user-visible rejection feedback in Notes shell UI (M2)
+   - [x] add widget regressions for split command feedback (`test/workspace_split_v1_test.dart`)
+   - [x] route tab/editor projection by active pane and keep pane-local tab topology during sync (M3)
+   - [x] add next-pane focus command and bridge regressions (`notes_controller_workspace_bridge_test.dart`)
+   - [x] M4 hardening + closure (contracts/docs synced, split no-op feedback regression added)
+   - [x] R1 fix: prevent controller/workspace active-note divergence when `note_get` fails in split mode
+   - [x] R1 regression: add "detail failure does not fork active state" test
+   - [x] R2 fix: route `Ctrl+Tab` / `Ctrl+Shift+Tab` by active-pane tab strip semantics (pane-local cycle)
+   - [x] R2 regression: split-mode keyboard cycle test with disjoint pane tabs
+   - [x] R3 fix: defensive copy and unmodifiable list wrapping in `WorkspaceLayoutState`
+   - [x] R3 regression: input list mutation does not affect stored layout state
+   - [x] re-run split verification bundle and update `PR-0206` status back to completed/in-review
 
 ## Quality Gates
 
