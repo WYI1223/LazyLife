@@ -1168,4 +1168,63 @@ void main() {
 
     expect(find.text('New Folder Title'), findsWidgets);
   });
+
+  testWidgets(
+    'literal Untitled title does not fallback to note_ref display name',
+    (WidgetTester tester) async {
+      const folderId = '11111111-1111-4111-8111-111111111111';
+      const noteRefId = '33333333-3333-4333-8333-333333333333';
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(atomId: 'note-1', content: 'Untitled', updatedAt: 1),
+      };
+      final controller = _controllerWithStore(
+        store,
+        workspaceListChildrenInvoker: ({parentNodeId}) async {
+          if (parentNodeId == null) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: folderId,
+                kind: 'folder',
+                displayName: 'Team',
+                sortOrder: 0,
+              ),
+            ]);
+          }
+          if (parentNodeId == folderId) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: noteRefId,
+                kind: 'note_ref',
+                parentNodeId: folderId,
+                atomId: 'note-1',
+                displayName: 'Display Alias',
+                sortOrder: 0,
+              ),
+            ]);
+          }
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      await tester.pumpWidget(
+        _buildHarness(controller: controller, onOpen: (_) {}),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('notes_tree_toggle_$folderId')));
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const Key('notes_tree_note_row_$noteRefId'));
+      expect(
+        find.descendant(of: row, matching: find.text('Untitled')),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(of: row, matching: find.text('Display Alias')),
+        findsNothing,
+      );
+    },
+  );
 }

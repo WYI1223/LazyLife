@@ -981,13 +981,17 @@ class _NoteExplorerState extends State<NoteExplorer> {
         continue;
       }
       final note = widget.controller.noteById(noteId);
-      // Keep note-row title projection unified across folders/uncategorized:
-      // prefer atom/draft-derived title and only fallback when not loaded.
-      final projectedTitle = widget.controller.titleForTab(noteId);
+      // Keep note-row title projection unified across folders/uncategorized.
+      // Fallback to node label only when note snapshot is unavailable.
+      final projectedTitle = note == null
+          ? null
+          : widget.controller.titleForTab(noteId);
+      final trimmedNodeLabel = item.displayName.trim();
       final displayName =
-          projectedTitle == 'Untitled' && item.displayName.trim().isNotEmpty
-          ? item.displayName
-          : projectedTitle;
+          projectedTitle ??
+          (trimmedNodeLabel.isEmpty
+              ? widget.controller.titleForTab(noteId)
+              : item.displayName);
       rows.add(
         ExplorerTreeItem.note(
           key: Key('notes_tree_note_row_${item.nodeId}'),
