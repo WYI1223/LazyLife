@@ -27,6 +27,7 @@ NotesController _buildController({
   final store = <String, rust_api.NoteItem>{
     'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 2),
     'note-2': _note(atomId: 'note-2', content: '# two', updatedAt: 1),
+    'note-3': _note(atomId: 'note-3', content: '# three', updatedAt: 0),
   };
   return NotesController(
     workspaceProvider: workspaceProvider,
@@ -37,7 +38,7 @@ NotesController _buildController({
         errorCode: null,
         message: 'ok',
         appliedLimit: 50,
-        items: [store['note-1']!, store['note-2']!],
+        items: [store['note-1']!, store['note-2']!, store['note-3']!],
       );
     },
     noteGetInvoker: ({required atomId}) async {
@@ -245,6 +246,56 @@ void main() {
     // Why: split mode tab strip is active-pane scoped; Ctrl+Tab must not pull
     // tabs from non-active panes.
     expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
+    expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
+  });
+
+  testWidgets('Ctrl+Shift+Tab stays pane-local in split mode', (
+    WidgetTester tester,
+  ) async {
+    final workspaceProvider = WorkspaceProvider();
+    final controller = _buildController(workspaceProvider: workspaceProvider);
+    addTearDown(controller.dispose);
+    addTearDown(workspaceProvider.dispose);
+
+    await tester.pumpWidget(
+      _wrapWithMaterial(NotesPage(controller: controller)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('notes_list_item_note-2')));
+    await tester.pump();
+    await tester.pump();
+    expect(controller.activeNoteId, 'note-2');
+    expect(controller.workspaceProvider.activePaneId, isNot('pane.primary'));
+
+    await tester.tap(find.byKey(const Key('notes_next_pane_button')));
+    await tester.pump();
+    await tester.pump();
+    expect(controller.workspaceProvider.activePaneId, 'pane.primary');
+    expect(controller.activeNoteId, 'note-1');
+
+    await tester.tap(find.byKey(const Key('notes_list_item_note-3')));
+    await tester.pump();
+    await tester.pump();
+    expect(controller.activeNoteId, 'note-3');
+    expect(controller.workspaceProvider.activePaneId, 'pane.primary');
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.pump();
+
+    // Why: reverse tab cycle should stay within active-pane tab set.
+    expect(controller.workspaceProvider.activePaneId, 'pane.primary');
+    expect(controller.activeNoteId, 'note-1');
     expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
   });
 }
