@@ -325,4 +325,57 @@ void main() {
     expect(controller.workspaceProvider.activePaneId, primaryPane);
     expect(controller.activeNoteId, 'note-3');
   });
+
+  test('M1 closeActivePane merges split tabs and keeps active note', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
+      'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
+      'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
+    };
+    final controller = _buildController(store: store);
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    final primaryPane = controller.workspaceProvider.activePaneId;
+    expect(
+      controller.splitActivePane(
+        direction: WorkspaceSplitDirection.horizontal,
+        containerExtent: 1200,
+      ),
+      WorkspaceSplitResult.ok,
+    );
+    final splitPane = controller.workspaceProvider.activePaneId;
+    await controller.openNoteFromExplorer('note-2');
+    controller.pinPreviewTab('note-2');
+    await controller.openNoteFromExplorer('note-3');
+    expect(controller.workspaceProvider.activePaneId, splitPane);
+    expect(controller.activeNoteId, 'note-3');
+
+    final merged = controller.closeActivePane();
+
+    expect(merged, WorkspaceMergeResult.ok);
+    expect(controller.workspaceProvider.layoutState.paneOrder, [primaryPane]);
+    expect(controller.workspaceProvider.activePaneId, primaryPane);
+    expect(controller.activeNoteId, 'note-3');
+    expect(controller.openNoteIds, ['note-1', 'note-2', 'note-3']);
+    expect(
+      controller.workspaceProvider.openTabsByPane.containsKey(splitPane),
+      isFalse,
+    );
+  });
+
+  test('M1 closeActivePane is blocked on single-pane layout', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
+    };
+    final controller = _buildController(store: store);
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    final merged = controller.closeActivePane();
+
+    expect(merged, WorkspaceMergeResult.singlePaneBlocked);
+    expect(controller.workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.activeNoteId, 'note-1');
+  });
 }

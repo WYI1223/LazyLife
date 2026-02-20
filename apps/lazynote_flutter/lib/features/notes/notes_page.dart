@@ -312,6 +312,26 @@ class _NotesPageState extends State<NotesPage>
     _showSplitFeedback('Switched to pane $paneOrdinal.');
   }
 
+  void _handleCloseActivePane() {
+    final result = _controller.closeActivePane();
+    if (result == WorkspaceMergeResult.ok) {
+      final paneCount =
+          _controller.workspaceProvider.layoutState.paneOrder.length;
+      final paneLabel = paneCount == 1 ? 'pane' : 'panes';
+      _showSplitFeedback('Pane closed. $paneCount $paneLabel remaining.');
+      return;
+    }
+
+    final message = switch (result) {
+      WorkspaceMergeResult.singlePaneBlocked =>
+        'Cannot close pane: only one pane is available.',
+      WorkspaceMergeResult.paneNotFound =>
+        'Cannot close pane: active pane is unavailable.',
+      WorkspaceMergeResult.ok => 'Pane closed.',
+    };
+    _showSplitFeedback(message, isError: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final mergedListenable = Listenable.merge([
@@ -473,6 +493,15 @@ class _NotesPageState extends State<NotesPage>
                             onPressed: _handleActivateNextPane,
                             icon: Icon(
                               Icons.switch_right_outlined,
+                              color: headerTextColor,
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('notes_close_pane_button'),
+                            tooltip: 'Close pane',
+                            onPressed: _handleCloseActivePane,
+                            icon: Icon(
+                              Icons.vertical_split_outlined,
                               color: headerTextColor,
                             ),
                           ),

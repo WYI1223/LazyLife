@@ -343,6 +343,18 @@ class NotesController extends ChangeNotifier {
     return result;
   }
 
+  /// Closes active pane and merges it into adjacent pane.
+  WorkspaceMergeResult closeActivePane() {
+    final result = _workspaceProvider.closeActivePane();
+    if (result != WorkspaceMergeResult.ok) {
+      return result;
+    }
+    _syncWorkspaceFromControllerState();
+    _adoptWorkspaceActivePaneState(loadDetail: false);
+    notifyListeners();
+    return result;
+  }
+
   /// Switches active pane pointer and refreshes active editor target.
   bool switchActivePane(String paneId) {
     if (!_workspaceProvider.layoutState.paneOrder.contains(paneId)) {

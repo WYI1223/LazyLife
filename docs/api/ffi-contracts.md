@@ -139,6 +139,24 @@ This PR updates Flutter-side workspace split interaction only.
   buttons are UI-only interactions and do not call new FFI endpoints
   directly
 
+## Split Pane Unsplit/Merge (Flutter-only, PR-0206B)
+
+This PR extends Flutter-side split workflow with explicit pane close/merge.
+
+- no Rust FFI API added/removed/renamed
+- no generated Dart binding shape change
+- no new FFI stable error-code namespace
+- close-pane command result handling is local to Flutter runtime:
+  - `WorkspaceMergeResult.ok`
+  - `WorkspaceMergeResult.singlePaneBlocked`
+  - `WorkspaceMergeResult.paneNotFound`
+- merge policy is local runtime behavior:
+  - target pane: previous sibling, or next when closing first pane
+  - closed-pane tabs are appended to target in deterministic order
+  - active note is preserved when possible after merge
+- close-pane command entry (`notes_close_pane_button`) is UI-only interaction
+  and does not call new FFI endpoints directly
+
 ---
 
 ## Workspace Tree APIs (PR-0203 + PR-0221)

@@ -270,4 +270,76 @@ void main() {
     expect(provider.openTabsByPane[activeSplitPane], const ['note-2']);
     expect(provider.openTabsByPane[primaryPane], isEmpty);
   });
+
+  test('closeActivePane blocks when only one pane exists', () {
+    final provider = WorkspaceProvider();
+    addTearDown(provider.dispose);
+
+    final result = provider.closeActivePane();
+
+    expect(result, WorkspaceMergeResult.singlePaneBlocked);
+    expect(provider.layoutState.paneOrder.length, 1);
+  });
+
+  test('closeActivePane merges active split pane into previous pane', () {
+    final provider = WorkspaceProvider();
+    addTearDown(provider.dispose);
+
+    provider.openNote(noteId: 'note-1', initialContent: 'n1');
+    expect(
+      provider.splitActivePane(
+        direction: WorkspaceSplitDirection.horizontal,
+        containerExtent: 1200,
+      ),
+      WorkspaceSplitResult.ok,
+    );
+    final splitPane = provider.activePaneId;
+    final primaryPane = provider.layoutState.primaryPaneId;
+    provider.openNote(noteId: 'note-2', initialContent: 'n2');
+    provider.openNote(noteId: 'note-3', initialContent: 'n3');
+    expect(provider.activePaneId, splitPane);
+    expect(provider.activeNoteId, 'note-3');
+
+    final merged = provider.closeActivePane();
+
+    expect(merged, WorkspaceMergeResult.ok);
+    expect(provider.layoutState.paneOrder, [primaryPane]);
+    expect(provider.layoutState.paneFractions, [1.0]);
+    expect(provider.activePaneId, primaryPane);
+    expect(provider.activeNoteId, 'note-3');
+    expect(provider.openTabsByPane[primaryPane], [
+      'note-1',
+      'note-2',
+      'note-3',
+    ]);
+    expect(provider.openTabsByPane.containsKey(splitPane), isFalse);
+  });
+
+  test('closeActivePane uses next pane when closing first pane', () {
+    final provider = WorkspaceProvider();
+    addTearDown(provider.dispose);
+
+    provider.openNote(noteId: 'note-1', initialContent: 'n1');
+    expect(
+      provider.splitActivePane(
+        direction: WorkspaceSplitDirection.horizontal,
+        containerExtent: 1200,
+      ),
+      WorkspaceSplitResult.ok,
+    );
+    final splitPane = provider.activePaneId;
+    final primaryPane = provider.layoutState.primaryPaneId;
+    provider.openNote(noteId: 'note-2', initialContent: 'n2');
+    provider.switchActivePane(primaryPane);
+    provider.openNote(noteId: 'note-3', initialContent: 'n3');
+    expect(provider.activePaneId, primaryPane);
+
+    final merged = provider.closeActivePane();
+
+    expect(merged, WorkspaceMergeResult.ok);
+    expect(provider.layoutState.paneOrder, [splitPane]);
+    expect(provider.activePaneId, splitPane);
+    expect(provider.activeNoteId, 'note-3');
+    expect(provider.openTabsByPane[splitPane], ['note-2', 'note-1', 'note-3']);
+  });
 }
