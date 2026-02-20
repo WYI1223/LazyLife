@@ -230,7 +230,7 @@ Conclusion:
 
 - QA passed with accepted limitations.
 - limitations are non-blocking for `PR-0206` scope and should be tracked as
-  follow-up UX enhancements (e.g. explicit unsplit/merge command).
+  follow-up UX enhancements in `PR-0206B` (explicit unsplit/merge command).
 
 ## Acceptance Criteria
 
