@@ -57,6 +57,7 @@ NotesController _controllerWithStore(
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
   WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
+  WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
 }) {
   return NotesController(
     prepare: () async {},
@@ -83,6 +84,7 @@ NotesController _controllerWithStore(
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
     workspaceDeleteFolderInvoker: workspaceDeleteFolderInvoker,
     workspaceCreateNoteRefInvoker: workspaceCreateNoteRefInvoker,
+    workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
   );
 }
 
@@ -93,6 +95,7 @@ Widget _buildHarness({
   ExplorerNoteCreateInFolderInvoker? onCreateNoteInFolderRequested,
   ExplorerFolderDeleteInvoker? onDeleteFolderRequested,
   ExplorerFolderCreateInvoker? onCreateFolderRequested,
+  ExplorerNodeRenameInvoker? onRenameNodeRequested,
   WorkspaceListChildrenInvoker? treeLoader,
 }) {
   return MaterialApp(
@@ -108,6 +111,7 @@ Widget _buildHarness({
             onCreateNoteInFolderRequested: onCreateNoteInFolderRequested,
             onDeleteFolderRequested: onDeleteFolderRequested,
             onCreateFolderRequested: onCreateFolderRequested,
+            onRenameNodeRequested: onRenameNodeRequested,
             workspaceListChildrenInvoker: treeLoader,
           );
         },
@@ -982,7 +986,96 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(Key('notes_tree_folder_$childId')), findsNothing);
-    expect(find.byKey(Key('notes_folder_delete_button_$childId')), findsNothing);
+    expect(
+      find.byKey(Key('notes_folder_delete_button_$childId')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('rename child folder refreshes parent branch immediately', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
+    };
+    const parentId = '11111111-1111-4111-8111-111111111111';
+    const childId = '22222222-2222-4222-8222-222222222222';
+    var childName = 'Child';
+    final controller = _controllerWithStore(
+      store,
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        if (parentNodeId == null) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: parentId,
+              kind: 'folder',
+              displayName: 'Team',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == parentId) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: childId,
+              kind: 'folder',
+              parentNodeId: parentId,
+              displayName: childName,
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      },
+      workspaceRenameNodeInvoker: ({required nodeId, required newName}) async {
+        if (nodeId == childId) {
+          childName = newName;
+        }
+        return const rust_api.WorkspaceActionResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+        );
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _buildHarness(
+        controller: controller,
+        onOpen: (_) {},
+        onRenameNodeRequested: (nodeId, newName) {
+          return controller.renameWorkspaceNode(
+            nodeId: nodeId,
+            newName: newName,
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+    await tester.pumpAndSettle();
+    expect(find.text('Child'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(Key('notes_tree_folder_$childId')),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notes_context_action_rename')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('notes_rename_node_input')),
+      'Child Renamed',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('notes_rename_node_confirm_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Child Renamed'), findsOneWidget);
+    expect(find.text('Child'), findsNothing);
   });
 
   testWidgets('uncategorized note title updates after draft edit', (
@@ -1013,5 +1106,66 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('New Title'), findsWidgets);
+  });
+
+  testWidgets('folder note title follows draft projection', (
+    WidgetTester tester,
+  ) async {
+    const folderId = '11111111-1111-4111-8111-111111111111';
+    const noteRefId = '22222222-2222-4222-8222-222222222222';
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(
+        atomId: 'note-1',
+        content: '# Old Folder Title',
+        updatedAt: 1,
+      ),
+    };
+    final controller = _controllerWithStore(
+      store,
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        if (parentNodeId == null) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: folderId,
+              kind: 'folder',
+              displayName: 'Team',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == folderId) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: noteRefId,
+              kind: 'note_ref',
+              parentNodeId: folderId,
+              atomId: 'note-1',
+              displayName: 'Untitled note',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _buildHarness(controller: controller, onOpen: (_) {}),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('notes_tree_toggle_$folderId')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Old Folder Title'), findsWidgets);
+
+    controller.updateActiveDraft('# New Folder Title');
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 1700));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New Folder Title'), findsWidgets);
   });
 }
