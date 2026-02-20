@@ -441,6 +441,8 @@ class _NotesPageState extends State<NotesPage>
         UiSlotContextKeys.notesController: _controller,
         UiSlotContextKeys.notesOnOpenNoteRequested:
             _controller.openNoteFromExplorer,
+        UiSlotContextKeys.notesOnOpenNotePinnedRequested:
+            _controller.openNoteFromExplorerPinned,
         UiSlotContextKeys.notesOnCreateNoteRequested: () async {
           await _controller.createNote();
           if (!context.mounted) {
@@ -489,6 +491,7 @@ class _NotesPageState extends State<NotesPage>
         return NoteExplorer(
           controller: _controller,
           onOpenNoteRequested: _controller.openNoteFromExplorer,
+          onOpenNotePinnedRequested: _controller.openNoteFromExplorerPinned,
           onCreateNoteRequested: () async {
             await _controller.createNote();
             if (!context.mounted) {

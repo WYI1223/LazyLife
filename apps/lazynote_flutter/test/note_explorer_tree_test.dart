@@ -80,6 +80,7 @@ NotesController _controllerWithStore(
 Widget _buildHarness({
   required NotesController controller,
   required ValueChanged<String> onOpen,
+  ValueChanged<String>? onOpenPinned,
   ExplorerFolderCreateInvoker? onCreateFolderRequested,
   WorkspaceListChildrenInvoker? treeLoader,
 }) {
@@ -91,6 +92,7 @@ Widget _buildHarness({
           return NoteExplorer(
             controller: controller,
             onOpenNoteRequested: onOpen,
+            onOpenNotePinnedRequested: onOpenPinned,
             onCreateNoteRequested: () async {},
             onCreateFolderRequested: onCreateFolderRequested,
             workspaceListChildrenInvoker: treeLoader,
@@ -626,6 +628,53 @@ void main() {
     await tester.pump();
 
     expect(opened, const <String>['note-1']);
+  });
+
+  testWidgets('double tap emits pinned-open intent when callback is provided', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
+    };
+    final opened = <String>[];
+    final pinned = <String>[];
+    final controller = _controllerWithStore(store);
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    Future<rust_api.WorkspaceListChildrenResponse> loader({
+      String? parentNodeId,
+    }) async {
+      if (parentNodeId != null) {
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      }
+      return _ok(<rust_api.WorkspaceNodeItem>[
+        _node(
+          nodeId: 'root-note-1',
+          kind: 'note_ref',
+          atomId: 'note-1',
+          displayName: 'Note One',
+        ),
+      ]);
+    }
+
+    await tester.pumpWidget(
+      _buildHarness(
+        controller: controller,
+        onOpen: opened.add,
+        onOpenPinned: pinned.add,
+        treeLoader: loader,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final noteFinder = find.byKey(const Key('notes_list_item_note-1'));
+    await tester.tap(noteFinder);
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.tap(noteFinder);
+    await tester.pumpAndSettle();
+
+    expect(pinned, const <String>['note-1']);
   });
 
   testWidgets('root error displays retry action and can recover', (

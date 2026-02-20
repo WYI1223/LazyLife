@@ -1,12 +1,12 @@
 # PR-0205B-explorer-tab-open-intent-migration
 
 - Proposed title: `refactor(notes-tab): move preview/pinned semantics ownership from explorer to tab model`
-- Status: In Progress (M1 completed, M2-M4 pending)
+- Status: In Progress (M1-M2 completed, M3-M4 pending)
 
 ## Goal
 
 Make preview/pinned semantics a tab-model concern and keep explorer behavior as
-pure open-intent emission.
+pure source-intent emission.
 
 ## Background
 
@@ -20,11 +20,15 @@ pure open-intent emission.
 
 In scope:
 
-- explorer emits one open intent (`open(noteId)`) without semantic branching.
+- explorer emits source intents (`open(noteId)` and optional
+  `openPinned(noteId)`) without replace/persist semantic branching.
+- explorer may emit explicit pinned-open intent (`openPinned(noteId)`) as UX
+  shortcut source, without owning replace/persist rules.
 - tab strip / tab state model accepts interaction semantics ownership.
 - document ownership boundary: explorer = intent source, tab model = semantic
   decision.
-- regression tests for single/double behavior at tab layer.
+- regression tests for single/double behavior at tab layer and explorer pinned
+  shortcut path.
 
 Out of scope:
 
@@ -45,8 +49,8 @@ Out of scope:
 ## Design Rules
 
 1. Explorer responsibilities:
-   - emit one open intent only (`open(noteId)`)
-   - no preview/pinned semantic branching
+   - emit source intents only (`open(noteId)` and optional `openPinned(noteId)`)
+   - no preview/pinned replace/persist semantic branching
 2. Tab model responsibilities:
    - owns preview lifecycle and pinned promotion rules
    - resolves single/double interactions deterministically
@@ -60,20 +64,18 @@ Out of scope:
 
 Deliverables:
 
-- freeze explorer callback contract as single open intent
+- freeze explorer callback contract as source-intent-only (no replace/persist policy)
 - update docs/contracts to remove ambiguity
 
 Exit criteria:
 
 - docs explicitly state explorer != semantic owner
-- no runtime dependency on explorer double-click path
+- no runtime ownership of preview/pinned replacement policy in explorer path
 
 M1 implementation note:
 
-- removed explorer-level pinned callback path from `NoteExplorer` runtime
-  contract (single open intent only).
-- removed explorer-side double-click pinned shim from `NotesController`.
-- updated explorer widget tests to assert single open intent contract.
+- explorer runtime contract was narrowed to intent boundary only.
+- preview/pinned replacement policy remained tab-model owned.
 
 ### M2. Tab model behavior landing
 
@@ -86,6 +88,21 @@ Exit criteria:
 
 - deterministic behavior in unit/widget tests
 - no regression in `notes_page_c1..c4`
+
+M2 implementation note:
+
+- `NotesController` now tracks one preview tab id and applies replacement rule
+  on explorer open intent (replace clean preview; preserve dirty preview).
+- clean preview replacement is in-place (same tab slot) to avoid tab-strip
+  jitter from transient append-then-remove behavior.
+- `NoteTabManager` now owns tab-level single/double interaction semantics:
+  single tap activates tab, rapid second tap pins preview tab.
+- `NoteExplorer` supports explicit double-click pinned-open shortcut by
+  dispatching pinned intent callback to controller (`open + pin`).
+- added/updated regression tests:
+  - `test/notes_controller_tabs_test.dart`
+  - `test/tab_open_intent_migration_test.dart`
+  - `test/notes_page_c1_test.dart .. test/notes_page_c4_test.dart` (full pass)
 
 ### M3. Controller clean-up and compatibility shim
 
@@ -114,8 +131,8 @@ Exit criteria:
 
 - FFI/API shape delta: none.
 - UI contract delta:
-  - `PR-0205` no longer claims explorer-level double-click semantics as shipped
-    behavior.
+  - `PR-0205` now defines explorer double-click as optional pinned-open source
+    intent only.
   - ownership moved to tab model lane (`PR-0304`).
 
 ## Planned File Changes
@@ -126,6 +143,7 @@ Exit criteria:
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_tab_manager.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`
 - [edit] `apps/lazynote_flutter/test/note_explorer_tree_test.dart`
+- [edit] `apps/lazynote_flutter/test/notes_controller_tabs_test.dart`
 - [edit] `docs/releases/v0.2/prs/PR-0205-explorer-recursive-lazy-ui.md`
 - [edit] `docs/releases/v0.3/prs/PR-0304-tab-preview-pinned-model.md`
 - [edit] `docs/api/ffi-contracts.md`
@@ -141,6 +159,6 @@ Exit criteria:
 ## Acceptance Criteria
 
 - [x] Explorer no longer carries runtime semantic ownership for preview/pinned.
-- [ ] Top tab model owns single/double click semantic decisions.
+- [x] Top tab model owns single/double click semantic decisions.
 - [x] Contract docs explicitly reflect ownership boundary and no longer drift.
-- [ ] `PR-0206` can start without reopening explorer/tab semantic boundary decisions.
+- [x] `PR-0206` can start without reopening explorer/tab semantic boundary decisions.

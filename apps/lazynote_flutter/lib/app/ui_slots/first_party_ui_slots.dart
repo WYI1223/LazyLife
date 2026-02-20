@@ -141,6 +141,10 @@ void _registerNotesSlots(UiSlotRegistry registry) {
         final onOpenNoteRequested = slotContext.require<ValueChanged<String>>(
           UiSlotContextKeys.notesOnOpenNoteRequested,
         );
+        final onOpenNotePinnedRequested = slotContext
+            .read<ValueChanged<String>>(
+              UiSlotContextKeys.notesOnOpenNotePinnedRequested,
+            );
         final onCreateNoteRequested = slotContext
             .require<Future<void> Function()>(
               UiSlotContextKeys.notesOnCreateNoteRequested,
@@ -156,6 +160,7 @@ void _registerNotesSlots(UiSlotRegistry registry) {
         return NoteExplorer(
           controller: controller,
           onOpenNoteRequested: onOpenNoteRequested,
+          onOpenNotePinnedRequested: onOpenNotePinnedRequested,
           onCreateNoteRequested: onCreateNoteRequested,
           onCreateFolderRequested: onCreateFolderRequested,
           onDeleteFolderRequested: onDeleteFolderRequested,

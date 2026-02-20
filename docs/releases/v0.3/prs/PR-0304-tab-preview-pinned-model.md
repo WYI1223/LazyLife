@@ -13,15 +13,18 @@ Implement deterministic preview/pinned tab behavior similar to modern IDE editor
 - Explorer/tree and other entry points only emit open intents (`preview` or `pin`).
 - No source widget should hardcode replace/persist behavior outside tab model.
 - v0.2 transition dependency: `PR-0205B-explorer-tab-open-intent-migration`.
+  - v0.2 `PR-0205B M2` already landed baseline tab semantics in Notes tab
+    (single tap activate, rapid second tap pin preview) and explorer
+    double-click pinned-open shortcut intent.
 
 ## Scope (v0.3)
 
 In scope:
 
-- single-click open as preview tab (replaceable)
-- double-click open as pinned tab (persistent)
-- visual distinction between preview and pinned tabs
-- context actions for convert preview -> pinned
+- unify preview/pinned model across all open sources (explorer/tab/launcher)
+- finalize explicit open-intent types (`preview`/`pin`) in shared tab state
+- visual distinction and persistence policy for preview vs pinned tabs
+- context actions for convert preview -> pinned (and future reverse if needed)
 
 Out of scope:
 

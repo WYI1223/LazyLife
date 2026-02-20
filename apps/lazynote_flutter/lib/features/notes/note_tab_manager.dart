@@ -25,6 +25,9 @@ class NoteTabManager extends StatefulWidget {
 
 class _NoteTabManagerState extends State<NoteTabManager> {
   final ScrollController _scrollController = ScrollController();
+  static const Duration _doubleTapThreshold = Duration(milliseconds: 280);
+  String? _lastPrimaryTapNoteId;
+  DateTime? _lastPrimaryTapAt;
   // Why: keep the custom scroll rail hidden by default to reduce visual noise;
   // it only appears when the pointer is over the tab strip.
   bool _showScrollRail = false;
@@ -64,6 +67,21 @@ class _NoteTabManagerState extends State<NoteTabManager> {
       return;
     }
     _scrollController.jumpTo(nextOffset);
+  }
+
+  void _handleTabPrimaryTap(String noteId) {
+    final now = DateTime.now();
+    final lastId = _lastPrimaryTapNoteId;
+    final lastAt = _lastPrimaryTapAt;
+    _lastPrimaryTapNoteId = noteId;
+    _lastPrimaryTapAt = now;
+
+    if (lastId == noteId &&
+        lastAt != null &&
+        now.difference(lastAt) <= _doubleTapThreshold) {
+      widget.controller.pinPreviewTab(noteId);
+    }
+    widget.controller.activateOpenNote(noteId);
   }
 
   @override
@@ -112,7 +130,13 @@ class _NoteTabManagerState extends State<NoteTabManager> {
               itemBuilder: (context, index) {
                 final noteId = openNoteIds[index];
                 final active = noteId == activeNoteId;
-                return _buildTabChip(context, noteId: noteId, active: active);
+                final preview = widget.controller.isPreviewTab(noteId);
+                return _buildTabChip(
+                  context,
+                  noteId: noteId,
+                  active: active,
+                  preview: preview,
+                );
               },
             ),
           ),
@@ -137,6 +161,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
     BuildContext context, {
     required String noteId,
     required bool active,
+    required bool preview,
   }) {
     final title = widget.controller.titleForTab(noteId);
     final background = active ? Colors.transparent : kNotesSidebarBackground;
@@ -184,7 +209,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
           highlightColor: Colors.transparent,
           hoverColor: kNotesItemHoverColor,
           onTap: () {
-            widget.controller.activateOpenNote(noteId);
+            _handleTabPrimaryTap(noteId);
           },
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 96, maxWidth: 220),
@@ -202,10 +227,25 @@ class _NoteTabManagerState extends State<NoteTabManager> {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: foreground,
+                        fontStyle: preview
+                            ? FontStyle.italic
+                            : FontStyle.normal,
                         fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
+                  if (preview) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      key: Key('note_tab_preview_indicator_$noteId'),
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: kNotesSecondaryText,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 3),
                   InkWell(
                     key: Key('note_tab_close_$noteId'),

@@ -136,7 +136,102 @@ void main() {
 
     expect(controller.openNoteIds, ['note-1', 'note-2']);
     expect(controller.activeNoteId, 'note-2');
+    expect(controller.previewTabId, 'note-2');
+    expect(controller.isPreviewTab('note-2'), isTrue);
   });
+
+  test('explorer pinned-open immediately pins target tab', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
+      'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
+    };
+    final controller = _buildController(store: store);
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    await controller.openNoteFromExplorerPinned('note-2');
+
+    expect(controller.openNoteIds, ['note-1', 'note-2']);
+    expect(controller.activeNoteId, 'note-2');
+    expect(controller.previewTabId, isNull);
+    expect(controller.isPreviewTab('note-2'), isFalse);
+  });
+
+  test('explorer open replaces previous clean preview tab', () async {
+    final store = <String, rust_api.NoteItem>{
+      'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
+      'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
+      'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
+    };
+    final controller = _buildController(store: store);
+    addTearDown(controller.dispose);
+
+    await controller.loadNotes();
+    await controller.openNoteFromExplorer('note-2');
+    expect(controller.openNoteIds, ['note-1', 'note-2']);
+    expect(controller.previewTabId, 'note-2');
+
+    await controller.openNoteFromExplorer('note-3');
+
+    expect(controller.openNoteIds, ['note-1', 'note-3']);
+    expect(controller.activeNoteId, 'note-3');
+    expect(controller.previewTabId, 'note-3');
+    expect(controller.isPreviewTab('note-2'), isFalse);
+  });
+
+  test(
+    'preview replacement does not expose transient appended tab count',
+    () async {
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
+        'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
+        'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
+      };
+      final controller = _buildController(store: store);
+      addTearDown(controller.dispose);
+
+      await controller.loadNotes();
+      await controller.openNoteFromExplorer('note-2');
+      final observedTabCounts = <int>[];
+      void trackCount() {
+        observedTabCounts.add(controller.openNoteIds.length);
+      }
+
+      controller.addListener(trackCount);
+      addTearDown(() => controller.removeListener(trackCount));
+
+      await controller.openNoteFromExplorer('note-3');
+
+      expect(controller.openNoteIds, ['note-1', 'note-3']);
+      expect(observedTabCounts, isNotEmpty);
+      expect(observedTabCounts.every((count) => count <= 2), isTrue);
+    },
+  );
+
+  test(
+    'dirty preview is promoted and not replaced by next explorer open',
+    () async {
+      final store = <String, rust_api.NoteItem>{
+        'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
+        'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
+        'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
+      };
+      final controller = _buildController(store: store);
+      addTearDown(controller.dispose);
+
+      await controller.loadNotes();
+      await controller.openNoteFromExplorer('note-2');
+      expect(controller.previewTabId, 'note-2');
+      controller.updateActiveDraft('# second changed');
+      expect(controller.previewTabId, isNull);
+
+      await controller.openNoteFromExplorer('note-3');
+
+      expect(controller.openNoteIds, ['note-1', 'note-2', 'note-3']);
+      expect(controller.previewTabId, 'note-3');
+      expect(controller.activeNoteId, 'note-3');
+    },
+  );
 
   test('tab close helpers keep deterministic active tab', () async {
     final store = <String, rust_api.NoteItem>{

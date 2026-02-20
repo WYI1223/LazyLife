@@ -56,13 +56,13 @@ Out of scope:
   - other bridge exceptions must surface explicit error envelope for UI retry
 - UI callback contract:
   - single click: `onOpenNoteRequested(atomId)`
-  - explorer-level double-click pinned semantics are intentionally deferred to
-    tab model migration (`PR-0205B` -> `PR-0304` ownership lane).
+  - optional double click: `onOpenNotePinnedRequested(atomId)` as explicit
+    pinned-open shortcut
   - folder create: `onCreateFolderRequested(name, parentNodeId?)`
     - `parentNodeId = null` for root create
     - non-null parent id must satisfy UUID format
-  - semantic ownership: callbacks are **open intents only**; deterministic
-    preview/pinned replacement rules are owned by tab model (`PR-0304`).
+  - semantic ownership: callbacks are **source intents only**; deterministic
+    preview/pinned replacement/persist rules are owned by tab model (`PR-0304`).
 - References:
   - `docs/api/ffi-contracts.md`
   - `docs/api/workspace-tree-contract.md`
@@ -73,14 +73,16 @@ Out of scope:
    - request children only when expanded first time
 2. Single click note:
    - emit open-note intent callback
-3. Create child folder:
+3. Double click note (optional):
+   - emit pinned-open intent callback
+4. Create child folder:
    - folder row action opens create dialog and passes current folder id as parent
 
 ## Step-by-Step
 
 1. Build recursive tree item components.
 2. Integrate lazy children query with loading/error states.
-3. Keep explorer open-intent callback minimal and defer preview/pinned semantic
+3. Keep explorer intent callbacks minimal and defer preview/pinned semantic
    ownership to tab model lane (`PR-0205B` / `PR-0304`).
 4. Add widget tests for expand/collapse and open behavior.
 
