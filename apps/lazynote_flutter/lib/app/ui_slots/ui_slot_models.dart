@@ -20,6 +20,8 @@ abstract final class UiSlotContextKeys {
   static const String onBackToWorkbench = 'on_back_to_workbench';
   static const String notesController = 'notes_controller';
   static const String notesOnOpenNoteRequested = 'notes_on_open_note_requested';
+  static const String notesOnOpenNotePinnedRequested =
+      'notes_on_open_note_pinned_requested';
   static const String notesOnCreateNoteRequested =
       'notes_on_create_note_requested';
   static const String notesOnDeleteFolderRequested =

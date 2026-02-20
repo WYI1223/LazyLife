@@ -107,9 +107,14 @@ This PR consumes existing workspace-tree APIs and does not change FFI shape.
     error + retry
 - UI callback semantics:
   - single click -> emit open-note intent callback
-  - explorer runtime contract exposes no dedicated double-click callback path
-  - explorer-level pinned semantics are deferred to tab-model migration
+  - explorer optional double-click callback -> emit pinned-open intent callback
+    (open + pin shortcut)
+  - explorer double-click remains source intent only; preview replacement and
+    persist policy is tab-model owned
     (`docs/releases/v0.2/prs/PR-0205B-explorer-tab-open-intent-migration.md`)
+  - current v0.2 tab strip semantics:
+    - single tap on tab = activate
+    - rapid second tap on same tab = pin preview tab (stop replacement)
   - deterministic preview/pinned replace/persist behavior is owned by tab model
     (`docs/releases/v0.3/prs/PR-0304-tab-preview-pinned-model.md`)
 

@@ -190,10 +190,14 @@ Recommended order:
    - [x] keep explorer open callback as single intent only; preview/pinned semantic ownership is deferred to `PR-0205B` -> `PR-0304` tab model
    - [x] add explorer tree regression tests (`test/note_explorer_tree_test.dart`)
 6. `PR-0205B` explorer/tab semantic transition
-   - [x] M1 contract freeze: explorer runtime API emits single open intent only
-   - [x] remove explorer-side pinned/double-click runtime branch and controller shim
+   - [x] M1 contract freeze: explorer runtime keeps source-intent boundary only
+   - [x] preview/pinned replacement policy ownership is in tab model (not explorer)
    - [x] sync `PR-0205` + `PR-0205B` wording to avoid ownership drift
-   - [ ] M2 tab-model semantic landing (single/double policy in tab lane)
+   - [x] M2 tab-model semantic landing (single tap activate + rapid second tap pin preview)
+   - [x] support explorer note-row double-click as explicit pinned-open shortcut intent
+   - [x] preview replacement uses in-place tab swap (no transient append/remove jitter)
+   - [x] add M2 regressions (`notes_controller_tabs_test.dart`, `tab_open_intent_migration_test.dart`)
+   - [x] no regression in `notes_page_c1..c4`
    - [x] `PR-0206` start gate satisfied (`M1` interaction freeze completed)
    - [ ] M3/M4 cleanup + closure
 

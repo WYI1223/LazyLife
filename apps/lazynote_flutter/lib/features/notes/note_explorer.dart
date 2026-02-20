@@ -59,6 +59,7 @@ class NoteExplorer extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onOpenNoteRequested,
+    this.onOpenNotePinnedRequested,
     required this.onCreateNoteRequested,
     this.onCreateFolderRequested,
     this.onDeleteFolderRequested,
@@ -71,6 +72,9 @@ class NoteExplorer extends StatefulWidget {
 
   /// Callback emitted when user requests opening one note.
   final ValueChanged<String> onOpenNoteRequested;
+
+  /// Optional callback emitted when user requests opening one note as pinned.
+  final ValueChanged<String>? onOpenNotePinnedRequested;
 
   /// Callback emitted when user requests creating one note.
   final Future<void> Function() onCreateNoteRequested;
@@ -99,11 +103,14 @@ const double _scrollThickness = 4;
 
 class _NoteExplorerState extends State<NoteExplorer> {
   static const String _defaultUncategorizedFolderId = '__uncategorized__';
+  static const Duration _doubleTapThreshold = Duration(milliseconds: 280);
   final ScrollController _listScrollController = ScrollController();
   late ExplorerTreeState _treeState;
   bool _treeBootstrapped = false;
   List<String> _treeVisibleNoteIds = const <String>[];
   int _treeObservedRevision = 0;
+  String? _lastNoteTapId;
+  DateTime? _lastNoteTapAt;
   static final RegExp _uuidPattern = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
@@ -518,6 +525,24 @@ class _NoteExplorerState extends State<NoteExplorer> {
     );
   }
 
+  void _handleNoteTap(String noteId) {
+    final now = DateTime.now();
+    final lastId = _lastNoteTapId;
+    final lastAt = _lastNoteTapAt;
+    _lastNoteTapId = noteId;
+    _lastNoteTapAt = now;
+    final isSecondTap =
+        widget.onOpenNotePinnedRequested != null &&
+        lastId == noteId &&
+        lastAt != null &&
+        now.difference(lastAt) <= _doubleTapThreshold;
+
+    widget.onOpenNoteRequested(noteId);
+    if (isSecondTap) {
+      widget.onOpenNotePinnedRequested!(noteId);
+    }
+  }
+
   void _appendWorkspaceRows(
     BuildContext context, {
     required List<Widget> rows,
@@ -667,7 +692,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
           ),
           depth: depth + 1,
           selected: noteId == widget.controller.activeNoteId,
-          onTap: () => widget.onOpenNoteRequested(noteId),
+          onTap: () => _handleNoteTap(noteId),
           previewText: _previewText(noteId: noteId, note: note),
         ),
       );
@@ -817,7 +842,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
           ),
           selected: noteId == widget.controller.activeNoteId,
           depth: depth + 1,
-          onTap: () => widget.onOpenNoteRequested(noteId),
+          onTap: () => _handleNoteTap(noteId),
           previewText: _previewText(noteId: noteId, note: item),
         ),
       );
