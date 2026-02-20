@@ -100,9 +100,15 @@ This PR consumes existing workspace-tree APIs and does not change FFI shape.
 - `Uncategorized` is a Flutter synthetic root folder id (`__uncategorized__`):
   - controller intercepts this parent id locally and must not forward it to Rust FFI
   - Rust `workspace_list_children(parent_node_id)` still only accepts `null` or UUID parent ids
+- bridge exception policy:
+  - when bridge is unavailable (e.g. test host without Rust init), controller may
+    use deterministic synthetic fallback
+  - other exceptions are surfaced as explicit error envelopes so UI can render
+    error + retry
 - UI callback semantics:
   - single click -> emit open-note intent callback
-  - double click -> emit pinned-open intent callback when pinned callback is provided
+  - explorer-level pinned semantics are deferred to tab-model migration
+    (`docs/releases/v0.2/prs/PR-0205B-explorer-tab-open-intent-migration.md`)
   - deterministic preview/pinned replace/persist behavior is owned by tab model
     (`docs/releases/v0.3/prs/PR-0304-tab-preview-pinned-model.md`)
 

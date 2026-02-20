@@ -30,7 +30,6 @@ In scope:
 - recursive folder rendering
 - lazy load children on expand
 - single-click emits preview-open intent callback
-- double-click emits pinned-open intent callback
 - folder row action: create child folder (UUID parent only)
 - hover-first minimalist explorer actions
 - explorer-level loading/error/empty states for lazy children
@@ -41,6 +40,7 @@ Out of scope:
 - full drag edge split behavior
 - advanced tree virtualization
 - workspace provider contract changes
+- tab-model ownership migration for preview/pinned semantics (tracked by `PR-0205B`)
 
 ## Contract Impact
 
@@ -51,10 +51,13 @@ Out of scope:
   - `Uncategorized` (`__uncategorized__`) is UI-only and resolved in controller.
   - this id must not be forwarded to Rust `workspace_list_children`, which keeps
     UUID/null parent contract.
+- bridge exception handling rule:
+  - bridge unavailable in host (test/dev) may use deterministic synthetic fallback
+  - other bridge exceptions must surface explicit error envelope for UI retry
 - UI callback contract:
   - single click: `onOpenNoteRequested(atomId)`
-  - double click: `onOpenNotePinnedRequested(atomId)` when callback is provided;
-    otherwise keep single-click behavior unchanged.
+  - explorer-level double-click pinned semantics are intentionally deferred to
+    tab model migration (`PR-0205B` -> `PR-0304` ownership lane).
   - folder create: `onCreateFolderRequested(name, parentNodeId?)`
     - `parentNodeId = null` for root create
     - non-null parent id must satisfy UUID format
@@ -70,16 +73,15 @@ Out of scope:
    - request children only when expanded first time
 2. Single click note:
    - emit preview-open intent callback
-3. Double click note:
-   - emit pinned-open intent callback
-4. Create child folder:
+3. Create child folder:
    - folder row action opens create dialog and passes current folder id as parent
 
 ## Step-by-Step
 
 1. Build recursive tree item components.
 2. Integrate lazy children query with loading/error states.
-3. Wire preview/pinned **intent callbacks** through existing controller/provider contracts (no API shape change).
+3. Keep explorer open-intent callback minimal and defer preview/pinned semantic
+   ownership to tab model lane (`PR-0205B` / `PR-0304`).
 4. Add widget tests for expand/collapse and open behavior.
 
 ## Planned File Changes
@@ -101,7 +103,8 @@ Out of scope:
 
 - [x] Explorer renders nested folders recursively.
 - [x] Child nodes load lazily on expansion.
-- [x] Single/double click intent callbacks are deterministic and test-covered.
+- [x] Explorer single-click open intent callback is deterministic and test-covered.
+- [ ] Preview/pinned single/double semantic split is migrated to tab model (`PR-0205B`).
 - [x] Error/empty/loading states are visible and recoverable.
 - [x] Explorer states (default/hover/selected/loading/error) remain visually consistent with the shared UI style system.
 - [x] Create-folder refresh preserves user expand/collapse state and only refreshes affected parent branch.
@@ -114,12 +117,14 @@ Out of scope:
   `apps/lazynote_flutter/lib/features/notes/explorer_tree_item.dart`.
 - added tree state/cache manager in
   `apps/lazynote_flutter/lib/features/notes/explorer_tree_state.dart`.
-- added explorer controller bridge for workspace children load and pinned-open
-  path in `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`.
+- added explorer controller bridge for workspace children load in
+  `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`.
 - added root-level folder create entry (`New folder`) and refresh-on-create/delete
   behavior in `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`.
 - refined refresh semantics to avoid forced `Uncategorized` re-expand on each
   refresh and to reload only the created folder's parent branch.
+- changed workspace tree exception handling to avoid silent fallback on all
+  errors and preserve explicit error + retry UX for real backend faults.
 - injected default root `Uncategorized` folder in tree responses while preserving
   legacy root note visibility for backward compatibility.
 - added regression tests in

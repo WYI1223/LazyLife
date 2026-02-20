@@ -76,6 +76,7 @@ In scope:
 - workspace provider foundation 鈥?incl. R02-1.1/1.2/1.3 design constraints (`PR-0204`)
 - notes shell style alignment with shared UI standards (`PR-0205A`)
 - recursive explorer UI with lazy loading (`PR-0205`)
+- explorer open-intent vs tab semantic ownership transition (`PR-0205B`)
 - split layout v1 (limited split, min-size guard) (`PR-0206`)
 - explorer context actions + drag-reorder baseline (`PR-0207`)
 - hardening and release closure 鈥?incl. regression verification for bridge PRs (`PR-0208`)
@@ -146,6 +147,7 @@ Recommended order:
    - `PR-0204-workspace-provider-foundation` (addresses R02-1.1/1.2/1.3 by design)
    - `PR-0205A-notes-ui-shell-alignment`
    - `PR-0205-explorer-recursive-lazy-ui` (M1 landed: recursive lazy tree + smoke tests)
+   - `PR-0205B-explorer-tab-open-intent-migration` (planned: move preview/pinned semantics to tab model lane)
    - `PR-0206-split-layout-v1`
    - `PR-0207-explorer-context-actions-dnd-baseline`
 4. Support lane (parallel after shell baseline is stable):
@@ -230,6 +232,7 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0204-workspace-provider-foundation.md`
 - `docs/releases/v0.2/prs/PR-0205A-notes-ui-shell-alignment.md`
 - `docs/releases/v0.2/prs/PR-0205-explorer-recursive-lazy-ui.md`
+- `docs/releases/v0.2/prs/PR-0205B-explorer-tab-open-intent-migration.md`
 - `docs/releases/v0.2/prs/PR-0206-split-layout-v1.md`
 - `docs/releases/v0.2/prs/PR-0207-explorer-context-actions-dnd-baseline.md`
 - `docs/releases/v0.2/prs/PR-0208-workspace-hardening-doc-closure.md`

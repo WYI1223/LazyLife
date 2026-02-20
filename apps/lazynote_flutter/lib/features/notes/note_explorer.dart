@@ -860,27 +860,27 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
-    final nameController = TextEditingController();
+    var draftName = '';
     final folderName = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
-            final canSubmit = nameController.text.trim().isNotEmpty;
+            final canSubmit = draftName.trim().isNotEmpty;
             return AlertDialog(
               key: const Key('notes_create_folder_dialog'),
               title: const Text('Create folder'),
               content: TextField(
                 key: const Key('notes_create_folder_name_input'),
-                controller: nameController,
                 autofocus: true,
                 decoration: const InputDecoration(hintText: 'Folder name'),
-                onChanged: (_) {
+                onChanged: (value) {
+                  draftName = value;
                   setState(() {});
                 },
                 onSubmitted: (_) {
                   if (canSubmit) {
-                    Navigator.of(dialogContext).pop(nameController.text.trim());
+                    Navigator.of(dialogContext).pop(draftName.trim());
                   }
                 },
               ),
@@ -895,9 +895,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
                   key: const Key('notes_create_folder_confirm_button'),
                   onPressed: canSubmit
                       ? () {
-                          Navigator.of(
-                            dialogContext,
-                          ).pop(nameController.text.trim());
+                          Navigator.of(dialogContext).pop(draftName.trim());
                         }
                       : null,
                   child: const Text('Create'),
@@ -912,12 +910,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
 
+    final revisionBefore = widget.controller.workspaceTreeRevision;
     final response = await invoker(folderName.trim(), parentNodeId);
     if (!mounted) {
       return;
     }
     if (response.ok) {
-      await _reloadRootTree(force: true, refreshParentNodeId: parentNodeId);
+      if (widget.controller.workspaceTreeRevision == revisionBefore) {
+        await _reloadRootTree(force: true, refreshParentNodeId: parentNodeId);
+      }
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
@@ -1022,12 +1023,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
 
+    final revisionBefore = widget.controller.workspaceTreeRevision;
     final response = await invoker(node.id, selectedMode.wireValue);
     if (!mounted) {
       return;
     }
     if (response.ok) {
-      await _reloadRootTree(force: true);
+      if (widget.controller.workspaceTreeRevision == revisionBefore) {
+        await _reloadRootTree(force: true);
+      }
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(

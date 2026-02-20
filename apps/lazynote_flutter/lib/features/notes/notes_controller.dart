@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
@@ -566,8 +567,11 @@ class NotesController extends ChangeNotifier {
   ///
   /// Contract:
   /// - Returns core FFI response when call succeeds.
-  /// - Falls back to deterministic local synthetic tree when bridge call throws
-  ///   (typically in widget tests without Rust runtime).
+  /// - Uses local synthetic list only for the synthetic Uncategorized folder id.
+  /// - Uses synthetic fallback only when bridge is unavailable (e.g. Rust bridge
+  ///   not initialized in test host).
+  /// - Returns explicit error envelope when bridge call throws so UI can render
+  ///   actionable error + retry state.
   Future<rust_api.WorkspaceListChildrenResponse> listWorkspaceChildren({
     String? parentNodeId,
   }) async {
@@ -584,7 +588,15 @@ class NotesController extends ChangeNotifier {
         response: response,
       );
     } catch (error) {
-      return _fallbackWorkspaceChildren(parentNodeId: parentNodeId);
+      if (_shouldUseWorkspaceTreeSyntheticFallback(error)) {
+        return _fallbackWorkspaceChildren(parentNodeId: parentNodeId);
+      }
+      return rust_api.WorkspaceListChildrenResponse(
+        ok: false,
+        errorCode: 'internal_error',
+        message: 'Workspace tree load failed unexpectedly: $error',
+        items: const <rust_api.WorkspaceNodeItem>[],
+      );
     }
   }
 
@@ -2196,6 +2208,22 @@ class NotesController extends ChangeNotifier {
       message: 'fallback',
       items: <rust_api.WorkspaceNodeItem>[],
     );
+  }
+
+  bool _shouldUseWorkspaceTreeSyntheticFallback(Object error) {
+    if (error is MissingPluginException) {
+      return true;
+    }
+    final text = error.toString().toLowerCase();
+    final mentionsRustBridge =
+        text.contains('rustlib') ||
+        text.contains('rust bridge') ||
+        text.contains('no implementation found for method');
+    final looksLikeInitGap =
+        text.contains('not initialized') ||
+        text.contains('initialize') ||
+        text.contains('init');
+    return mentionsRustBridge && looksLikeInitGap;
   }
 
   String _titleFromContent(String content) {
