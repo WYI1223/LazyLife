@@ -51,6 +51,15 @@ Out of scope:
   - `Uncategorized` (`__uncategorized__`) is UI-only and resolved in controller.
   - this id must not be forwarded to Rust `workspace_list_children`, which keeps
     UUID/null parent contract.
+  - projection requirement (v0.2 freeze):
+    - treat `Uncategorized` as folder-like UI grouping, not a persisted core folder node
+    - render root `note_ref` under `Uncategorized`
+    - also render legacy notes without any workspace `note_ref`
+    - notes already referenced by workspace nodes must not be duplicated in `Uncategorized`
+    - root-level visual tree should not render the same `note_ref` again outside `Uncategorized`
+  - explorer ordering projection requirement:
+    - same-parent children are rendered with `folder` before `note_ref`
+    - inside each kind group, keep `sort_order` ascending
 - bridge exception handling rule:
   - bridge unavailable in host (test/dev) may use deterministic synthetic fallback
   - other bridge exceptions must surface explicit error envelope for UI retry
@@ -134,6 +143,10 @@ Out of scope:
 - fixed child-create immediate visibility under revision-refresh path by
   explicitly refreshing the affected parent branch after successful create.
 - injected default root `Uncategorized` folder in tree responses while preserving
-  legacy root note visibility for backward compatibility.
+  root note-ref visibility and legacy unreferenced notes for backward compatibility
+  (no duplication for notes already referenced under folders).
+- normalized explorer child ordering in UI projection:
+  - `folder` rows render before `note_ref` rows within same parent
+  - tie-breaking remains deterministic (`sort_order`, then `node_id`)
 - added regression tests in
   `apps/lazynote_flutter/test/note_explorer_tree_test.dart`.

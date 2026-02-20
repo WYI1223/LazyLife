@@ -39,16 +39,24 @@ This document defines Flutter-callable workspace tree contracts exposed by
 1. All APIs are request/response and async; no watch/stream contract in v0.2.
 2. `parent_node_id = null` means root-level operation.
 3. `workspace_list_children` returns deterministic ordering from core repository.
-4. Read paths follow hybrid visibility policy:
-- invalid/dangling `note_ref` entries are filtered from default child listing.
-5. `workspace_delete_folder` requires explicit mode:
-- `dissolve`
-- `delete_all`
-6. `workspace_move_node` normalizes `target_order` by clamping to visible sibling range:
-- `< 0` -> `0`
-- `> sibling_count` -> append at tail (`sibling_count`)
+4. Read paths follow hybrid visibility policy.
+   - invalid/dangling `note_ref` entries are filtered from default child listing.
+5. `workspace_delete_folder` requires explicit mode.
+   - `dissolve`
+   - `delete_all`
+6. `workspace_move_node` normalizes `target_order` by clamping to visible sibling range.
+   - `< 0` -> `0`
+   - `> sibling_count` -> append at tail (`sibling_count`)
 7. API-layer rename is generic (`workspace_rename_node`), but v0.2 Notes UI policy only exposes rename on `folder` rows.
 8. Root-level note refs may be rendered by Flutter under synthetic `Uncategorized`; this is a UI projection, not a core schema node.
+9. v0.2 `Uncategorized` projection requirements.
+   - include root-level `note_ref` + legacy notes with no workspace reference
+   - do not duplicate notes already referenced under workspace folders
+   - avoid rendering the same root `note_ref` both at root and under `Uncategorized`
+10. Notes Explorer applies UI-local row ordering projection for readability.
+   - children are grouped `folder` before `note_ref`
+   - within kind groups, rows follow `sort_order ASC, node_id ASC`
+   - this is a presentation rule and does not alter core persisted ordering semantics
 
 ## Error Codes
 

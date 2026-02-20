@@ -343,4 +343,50 @@ void main() {
       '11111111-1111-4111-8111-111111111111::22222222-2222-4222-8222-222222222222',
     ]);
   });
+
+  testWidgets('folder context menu responds on toggle-icon secondary click', (
+    tester,
+  ) async {
+    const folderId = '11111111-1111-4111-8111-111111111111';
+    final controller = _controller(
+      store: <String, rust_api.NoteItem>{
+        'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+      },
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        if (parentNodeId != null) {
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        }
+        return _ok(<rust_api.WorkspaceNodeItem>[
+          _node(nodeId: folderId, kind: 'folder', displayName: 'Folder A'),
+        ]);
+      },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _harness(
+        controller: controller,
+        onCreateNoteInFolderRequested: (parentNodeId) async {
+          return const rust_api.WorkspaceActionResponse(
+            ok: true,
+            errorCode: null,
+            message: 'ok',
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('notes_tree_toggle_$folderId')),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('notes_context_action_newNote')),
+      findsOneWidget,
+    );
+  });
 }

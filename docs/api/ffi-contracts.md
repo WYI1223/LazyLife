@@ -100,6 +100,16 @@ This PR consumes existing workspace-tree APIs and does not change FFI shape.
 - `Uncategorized` is a Flutter synthetic root folder id (`__uncategorized__`):
   - controller intercepts this parent id locally and must not forward it to Rust FFI
   - Rust `workspace_list_children(parent_node_id)` still only accepts `null` or UUID parent ids
+  - synthetic child composition:
+    - root-level `note_ref` rows are rendered under `Uncategorized`
+    - notes with no workspace `note_ref` anywhere are rendered as legacy items
+    - notes already referenced in workspace folders are not duplicated
+  - root presentation requirement:
+    - root folder list remains folder-only in UI projection
+    - root `note_ref` visibility is owned by `Uncategorized` projection (single source)
+  - explorer row ordering projection (UI-local):
+    - children are grouped by kind: `folder` first, `note_ref` second
+    - within same kind, rows use `sort_order` ascending, then `node_id` for tie-break
 - bridge exception policy:
   - when bridge is unavailable (e.g. test host without Rust init), controller may
     use deterministic synthetic fallback
@@ -174,6 +184,8 @@ This milestone extends explorer interactions while reusing existing contracts.
   - `note_ref` rows are not renameable in v0.2 (title comes from atom projection)
   - right-click blank area provides create actions
   - row context menu takes precedence over blank-area context menu on the same gesture target
+  - folder row right-click hit area is row-wide (icon/text/row whitespace), and
+    should not fall through to blank-area menu
   - default Notes side-panel slot must forward context callbacks via slot keys:
     - `notes_on_create_note_in_folder_requested`
     - `notes_on_rename_node_requested`
