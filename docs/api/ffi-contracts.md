@@ -119,6 +119,26 @@ This PR consumes existing workspace-tree APIs and does not change FFI shape.
   - deterministic preview/pinned replace/persist behavior is owned by tab model
     (`docs/releases/v0.3/prs/PR-0304-tab-preview-pinned-model.md`)
 
+## Notes Split Layout v1 (Flutter-only, PR-0206)
+
+This PR updates Flutter-side workspace split interaction only.
+
+- no Rust FFI API added/removed/renamed
+- no generated Dart binding shape change
+- no new FFI stable error-code namespace
+- split command result handling is local to Flutter runtime:
+  - `WorkspaceSplitResult.ok`
+  - `WorkspaceSplitResult.paneNotFound`
+  - `WorkspaceSplitResult.maxPanesReached`
+  - `WorkspaceSplitResult.directionLocked`
+  - `WorkspaceSplitResult.minSizeBlocked`
+- split guard constants are local UI/runtime policy:
+  - `maxPaneCount = 4`
+  - `minPaneExtent = 200`
+- active-pane focus command (`notes_next_pane_button`) and split command
+  buttons are UI-only interactions and do not call new FFI endpoints
+  directly
+
 ---
 
 ## Workspace Tree APIs (PR-0203 + PR-0221)

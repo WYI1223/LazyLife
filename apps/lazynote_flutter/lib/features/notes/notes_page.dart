@@ -13,6 +13,7 @@ import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
+import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Notes feature page mounted in Workbench left pane (PR-0010C foundation).
@@ -247,6 +248,70 @@ class _NotesPageState extends State<NotesPage>
     }
   }
 
+  void _showSplitFeedback(String message, {bool isError = false}) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      return;
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: isError ? Colors.red.shade700 : null,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+  }
+
+  void _handleSplitCommand({
+    required WorkspaceSplitDirection direction,
+    required double editorWidthExtent,
+    required double editorHeightExtent,
+  }) {
+    final containerExtent = direction == WorkspaceSplitDirection.horizontal
+        ? editorWidthExtent
+        : editorHeightExtent;
+    final result = _controller.splitActivePane(
+      direction: direction,
+      containerExtent: containerExtent,
+    );
+    if (result == WorkspaceSplitResult.ok) {
+      final workspace = _controller.workspaceProvider;
+      final paneCount = workspace.layoutState.paneOrder.length;
+      _showSplitFeedback('Split created. $paneCount panes ready.');
+      return;
+    }
+
+    final message = switch (result) {
+      WorkspaceSplitResult.paneNotFound =>
+        'Cannot split: active pane is unavailable.',
+      WorkspaceSplitResult.maxPanesReached =>
+        'Cannot split: maximum pane count (${WorkspaceProvider.maxPaneCount}) reached.',
+      WorkspaceSplitResult.directionLocked =>
+        'Cannot split: v0.2 keeps one split direction per workspace.',
+      WorkspaceSplitResult.minSizeBlocked =>
+        'Cannot split: each pane must stay at least ${WorkspaceProvider.minPaneExtent.toInt()}px.',
+      WorkspaceSplitResult.ok => 'Split created.',
+    };
+    _showSplitFeedback(message, isError: true);
+  }
+
+  void _handleActivateNextPane() {
+    final workspace = _controller.workspaceProvider;
+    if (workspace.layoutState.paneOrder.length <= 1) {
+      _showSplitFeedback('Only one pane is available.');
+      return;
+    }
+    _controller.activateNextPane();
+    final activeIndex = workspace.layoutState.paneOrder.indexOf(
+      workspace.activePaneId,
+    );
+    final paneOrdinal = activeIndex < 0 ? '?' : '${activeIndex + 1}';
+    _showSplitFeedback('Switched to pane $paneOrdinal.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final mergedListenable = Listenable.merge([
@@ -311,6 +376,16 @@ class _NotesPageState extends State<NotesPage>
                   // Why: explorer should keep a stable shell width so note
                   // navigation does not reflow with content pane resizing.
                   const explorerWidth = 276.0;
+                  final editorWidthExtent =
+                      (constraints.maxWidth - explorerWidth - 1)
+                          .clamp(0, constraints.maxWidth)
+                          .toDouble();
+                  final activePaneIndex = workspace.layoutState.paneOrder
+                      .indexOf(workspace.activePaneId);
+                  final paneOrdinal = activePaneIndex < 0
+                      ? '?'
+                      : '${activePaneIndex + 1}';
+                  final paneCount = workspace.layoutState.paneOrder.length;
 
                   return Column(
                     key: const Key('notes_page_root'),
@@ -343,24 +418,64 @@ class _NotesPageState extends State<NotesPage>
                                   ),
                             ),
                           ),
-                          if (!compactHeader) ...[
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: kNotesSidebarBackground,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                'Ctrl+Tab switch',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: secondaryTextColor),
-                              ),
+                          const SizedBox(width: 12),
+                          Container(
+                            key: const Key('notes_active_pane_indicator'),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
                             ),
-                          ],
+                            decoration: BoxDecoration(
+                              color: kNotesSidebarBackground,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              compactHeader
+                                  ? 'P $paneOrdinal/$paneCount'
+                                  : 'Pane $paneOrdinal/$paneCount',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: secondaryTextColor),
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('notes_split_horizontal_button'),
+                            tooltip: 'Split right',
+                            onPressed: () {
+                              _handleSplitCommand(
+                                direction: WorkspaceSplitDirection.horizontal,
+                                editorWidthExtent: editorWidthExtent,
+                                editorHeightExtent: paneHeight,
+                              );
+                            },
+                            icon: Icon(
+                              Icons.splitscreen_outlined,
+                              color: headerTextColor,
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('notes_split_vertical_button'),
+                            tooltip: 'Split down',
+                            onPressed: () {
+                              _handleSplitCommand(
+                                direction: WorkspaceSplitDirection.vertical,
+                                editorWidthExtent: editorWidthExtent,
+                                editorHeightExtent: paneHeight,
+                              );
+                            },
+                            icon: Icon(
+                              Icons.view_agenda_outlined,
+                              color: headerTextColor,
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('notes_next_pane_button'),
+                            tooltip: 'Next pane',
+                            onPressed: _handleActivateNextPane,
+                            icon: Icon(
+                              Icons.switch_right_outlined,
+                              color: headerTextColor,
+                            ),
+                          ),
                           IconButton(
                             key: const Key('notes_reload_button'),
                             tooltip: 'Reload notes',
