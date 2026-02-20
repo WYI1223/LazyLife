@@ -151,7 +151,7 @@ Recommended order:
    - `PR-0205-explorer-recursive-lazy-ui` (completed: recursive lazy tree + stability regressions)
    - `PR-0205B-explorer-tab-open-intent-migration` (completed: preview/pinned semantic ownership freeze)
    - `PR-0206-split-layout-v1` (in review: post-review remediation landed; QA summary logged with accepted v0.2 limitations)
-   - `PR-0206B-split-pane-unsplit-merge` (planned follow-up: explicit pane close/merge command)
+   - `PR-0206B-split-pane-unsplit-merge` (in review: explicit pane close/merge command landed with regressions)
    - `PR-0207-explorer-context-actions-dnd-baseline`
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en`
@@ -222,10 +222,10 @@ Recommended order:
    - [x] re-run split verification bundle and update `PR-0206` status back to completed/in-review
    - [x] QA summary logged: narrow-width split attempts blocked by `200px` guard and no unsplit action (accepted as v0.2 baseline limits)
 8. `PR-0206B` split pane unsplit/merge follow-up
-   - [ ] add explicit `close active pane` command and merge result mapping
-   - [ ] merge closed-pane tabs to deterministic target pane
-   - [ ] keep active note/editor focus coherent after merge
-   - [ ] add provider/controller/widget regressions for merge/blocked behavior
+   - [x] add explicit `close active pane` command and merge result mapping
+   - [x] merge closed-pane tabs to deterministic target pane
+   - [x] keep active note/editor focus coherent after merge
+   - [x] add provider/controller/widget regressions for merge/blocked behavior
 
 ## Quality Gates
 

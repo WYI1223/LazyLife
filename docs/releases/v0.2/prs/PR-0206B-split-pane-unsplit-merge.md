@@ -1,7 +1,7 @@
 # PR-0206B-split-pane-unsplit-merge
 
 - Proposed title: `feat(workspace-ui): split pane unsplit/merge baseline`
-- Status: Planned
+- Status: In Review (M1-M2 landed)
 
 ## Goal
 
@@ -27,7 +27,8 @@ Out of scope:
 
 ## UX Rules
 
-1. `Close pane` is disabled/hidden when only one pane exists.
+1. `Close pane` is always available but returns explicit blocked feedback when
+   only one pane exists.
 2. Merge target is deterministic:
    - prefer previous pane in order
    - if closing first pane, use next pane
@@ -58,6 +59,19 @@ No Rust FFI shape change is expected in this PR.
    - widget command behavior and blocked feedback
 5. Sync release/docs wording for v0.2 split baseline.
 
+## Implementation Notes
+
+- `WorkspaceProvider.closeActivePane()` is added with deterministic merge target
+  policy and stable `WorkspaceMergeResult`.
+- `NotesController.closeActivePane()` bridges provider merge behavior and
+  preserves active-pane editor routing.
+- Notes shell adds `notes_close_pane_button` and maps merge outcomes to
+  actionable SnackBar feedback.
+- regression coverage added/extended in:
+  - `test/workspace_provider_test.dart`
+  - `test/notes_controller_workspace_bridge_test.dart`
+  - `test/workspace_split_v1_test.dart`
+
 ## Planned File Changes
 
 - [edit] `apps/lazynote_flutter/lib/features/workspace/workspace_models.dart`
@@ -78,10 +92,15 @@ No Rust FFI shape change is expected in this PR.
 - `cd apps/lazynote_flutter && flutter test test/workspace_split_v1_test.dart`
 - `cd apps/lazynote_flutter && flutter test`
 
+Verification replay (2026-02-20):
+
+- `flutter analyze` passed.
+- `flutter test test/workspace_provider_test.dart test/notes_controller_workspace_bridge_test.dart test/workspace_split_v1_test.dart` passed.
+
 ## Acceptance Criteria
 
-- [ ] Users can explicitly close active pane when pane count > 1.
-- [ ] Merge target and tab migration order are deterministic.
-- [ ] Active note/editor focus remains coherent after merge.
-- [ ] Single-pane close action is safely blocked with clear feedback.
-- [ ] No new FFI/API contract drift is introduced.
+- [x] Users can explicitly close active pane when pane count > 1.
+- [x] Merge target and tab migration order are deterministic.
+- [x] Active note/editor focus remains coherent after merge.
+- [x] Single-pane close action is safely blocked with clear feedback.
+- [x] No new FFI/API contract drift is introduced.

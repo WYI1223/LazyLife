@@ -15,6 +15,9 @@ enum WorkspaceSplitResult {
   minSizeBlocked,
 }
 
+/// Stable result codes for close-pane merge command handling.
+enum WorkspaceMergeResult { ok, singlePaneBlocked, paneNotFound }
+
 /// Minimal layout state shape kept split-ready for v0.2/v0.3.
 @immutable
 class WorkspaceLayoutState {

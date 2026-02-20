@@ -207,6 +207,65 @@ void main() {
     expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
   });
 
+  testWidgets('close pane command on single-pane shows blocked feedback', (
+    WidgetTester tester,
+  ) async {
+    final workspaceProvider = WorkspaceProvider();
+    final controller = _buildController(workspaceProvider: workspaceProvider);
+    addTearDown(controller.dispose);
+    addTearDown(workspaceProvider.dispose);
+
+    await tester.pumpWidget(
+      _wrapWithMaterial(NotesPage(controller: controller)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    await tester.tap(find.byKey(const Key('notes_close_pane_button')));
+    await tester.pump();
+
+    expect(
+      find.text('Cannot close pane: only one pane is available.'),
+      findsOneWidget,
+    );
+    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+  });
+
+  testWidgets('close pane command merges active pane into adjacent pane', (
+    WidgetTester tester,
+  ) async {
+    final workspaceProvider = WorkspaceProvider();
+    final controller = _buildController(workspaceProvider: workspaceProvider);
+    addTearDown(controller.dispose);
+    addTearDown(workspaceProvider.dispose);
+
+    await tester.pumpWidget(
+      _wrapWithMaterial(NotesPage(controller: controller)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
+    await tester.pump();
+    await tester.pump();
+    expect(workspaceProvider.layoutState.paneOrder.length, 2);
+
+    await tester.tap(find.byKey(const Key('notes_list_item_note-2')));
+    await tester.pump();
+    await tester.pump();
+    expect(controller.activeNoteId, 'note-2');
+
+    await tester.tap(find.byKey(const Key('notes_close_pane_button')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.activeNoteId, 'note-2');
+    expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
+    expect(find.text('Pane closed. 1 pane remaining.'), findsOneWidget);
+  });
+
   testWidgets('Ctrl+Tab stays pane-local in split mode', (
     WidgetTester tester,
   ) async {

@@ -38,6 +38,8 @@ Notes:
   any FFI error code.
 - `PR-0206` (Notes split layout v1) is Flutter-only and does not add/change
   any FFI error code.
+- `PR-0206B` (split pane unsplit/merge follow-up) is Flutter-only and does not
+  add/change any FFI error code.
 
 ## Command Parser (Flutter)
 

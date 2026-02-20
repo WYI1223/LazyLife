@@ -217,6 +217,71 @@ class WorkspaceProvider extends ChangeNotifier {
     return WorkspaceSplitResult.ok;
   }
 
+  /// Closes current active pane and merges its tabs into adjacent pane.
+  ///
+  /// Merge target policy:
+  /// - prefer previous pane in layout order
+  /// - when closing first pane, use next pane
+  WorkspaceMergeResult closeActivePane() {
+    final paneOrder = _layoutState.paneOrder;
+    if (paneOrder.length <= 1) {
+      return WorkspaceMergeResult.singlePaneBlocked;
+    }
+
+    final closingPaneId = _activePaneId;
+    final closingIndex = paneOrder.indexOf(closingPaneId);
+    if (closingIndex < 0) {
+      return WorkspaceMergeResult.paneNotFound;
+    }
+
+    final targetIndex = closingIndex > 0 ? closingIndex - 1 : 1;
+    final targetPaneId = paneOrder[targetIndex];
+    final targetTabs = _openTabsByPane.putIfAbsent(
+      targetPaneId,
+      () => <String>[],
+    );
+    final closingTabs = List<String>.from(
+      _openTabsByPane[closingPaneId] ?? const <String>[],
+    );
+    final closingActive = _activeTabByPane[closingPaneId];
+
+    for (final noteId in closingTabs) {
+      if (!targetTabs.contains(noteId)) {
+        targetTabs.add(noteId);
+      }
+    }
+
+    final currentTargetActive = _activeTabByPane[targetPaneId];
+    final nextTargetActive = () {
+      if (closingActive != null && targetTabs.contains(closingActive)) {
+        return closingActive;
+      }
+      if (currentTargetActive != null &&
+          targetTabs.contains(currentTargetActive)) {
+        return currentTargetActive;
+      }
+      if (targetTabs.isNotEmpty) {
+        return targetTabs.last;
+      }
+      return null;
+    }();
+
+    _openTabsByPane.remove(closingPaneId);
+    _activeTabByPane.remove(closingPaneId);
+    _activeTabByPane[targetPaneId] = nextTargetActive;
+    _activePaneId = targetPaneId;
+
+    final nextOrder = List<String>.from(paneOrder)..removeAt(closingIndex);
+    final nextFractions = List<double>.from(_layoutState.paneFractions)
+      ..removeAt(closingIndex);
+    _layoutState = _layoutState.copyWith(
+      paneOrder: nextOrder,
+      paneFractions: _normalizeFractions(nextFractions),
+    );
+    _markChanged();
+    return WorkspaceMergeResult.ok;
+  }
+
   /// Opens one note tab in the target pane and initializes its buffer.
   void openNote({
     required String noteId,
