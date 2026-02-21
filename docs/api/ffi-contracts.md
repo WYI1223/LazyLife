@@ -190,6 +190,8 @@ This milestone extends explorer interactions while reusing existing contracts.
     - `notes_on_create_note_in_folder_requested`
     - `notes_on_rename_node_requested`
     - `notes_on_move_node_requested`
+      - M1/menu path: `(node_id, new_parent_node_id)` (`target_order = null`)
+      - M2/drag path: `(node_id, new_parent_node_id, {target_order})`
   - move uses minimal target-parent dialog (drag reorder is M2)
   - explorer refresh must preserve expand/collapse state after actions
   - successful child-folder delete must refresh affected parent branch to avoid stale child rows

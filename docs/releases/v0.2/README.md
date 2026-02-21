@@ -243,7 +243,10 @@ Recommended order:
    - [x] fix synthetic `Uncategorized` note title live projection from draft content
    - [x] fix default NotesPage slot wiring for create-note-in-folder / rename / move callbacks
    - [x] add NotesPage + first-party slot integration regression (`notes_page_explorer_slot_wiring_test.dart`)
-   - [ ] start M2 drag reorder baseline after M1 acceptance
+   - [x] freeze M2 drag boundary (target matrix, same-kind reorder rule, source/target refresh policy)
+   - [x] implement M2 drag controller + drop indicator
+   - [x] wire drag move via `workspace_move_node` (same-parent reorder + cross-parent move)
+   - [x] add M2 drag regressions (success/failure/invalid-target)
 
 ## Quality Gates
 

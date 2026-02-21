@@ -634,10 +634,11 @@ class _NotesPageState extends State<NotesPage>
               );
             },
         UiSlotContextKeys.notesOnMoveNodeRequested:
-            (String nodeId, String? newParentNodeId) {
+            (String nodeId, String? newParentNodeId, {int? targetOrder}) {
               return _controller.moveWorkspaceNode(
                 nodeId: nodeId,
                 newParentNodeId: newParentNodeId,
+                targetOrder: targetOrder,
               );
             },
       }),
@@ -698,10 +699,11 @@ class _NotesPageState extends State<NotesPage>
               newName: newName,
             );
           },
-          onMoveNodeRequested: (nodeId, newParentNodeId) {
+          onMoveNodeRequested: (nodeId, newParentNodeId, {targetOrder}) {
             return _controller.moveWorkspaceNode(
               nodeId: nodeId,
               newParentNodeId: newParentNodeId,
+              targetOrder: targetOrder,
             );
           },
         );
