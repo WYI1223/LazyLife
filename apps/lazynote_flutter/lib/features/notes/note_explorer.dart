@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
+import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_item.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_state.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
@@ -69,8 +70,9 @@ typedef ExplorerNodeRenameInvoker =
 typedef ExplorerNodeMoveInvoker =
     Future<rust_api.WorkspaceActionResponse> Function(
       String nodeId,
-      String? newParentNodeId,
-    );
+      String? newParentNodeId, {
+      int? targetOrder,
+    });
 
 /// Optional tree builder hook for tests/future workspace integration.
 typedef ExplorerFolderTreeBuilder =
@@ -151,7 +153,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
   DateTime? _lastNoteTapAt;
   Offset? _lastRowContextMenuPosition;
   DateTime? _lastRowContextMenuAt;
+  final ExplorerDragController _dragController = const ExplorerDragController();
   bool _rowContextMenuPending = false;
+  bool _dragInProgress = false;
   static final RegExp _uuidPattern = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
@@ -536,6 +540,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
           return _buildScrollableRows(rows);
         }
 
+        if (_dragInProgress && widget.onMoveNodeRequested != null) {
+          rows.add(_buildRootDropLane(context));
+        }
         _appendWorkspaceRows(context, rows: rows, items: rootItems, depth: 0);
         return _buildScrollableRows(rows);
       },
@@ -693,6 +700,305 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     await _showBlankAreaContextMenu(globalPosition: globalPosition);
+  }
+
+  Widget _buildRootDropLane(BuildContext context) {
+    return DragTarget<ExplorerDragPayload>(
+      key: const Key('notes_tree_root_drop_lane'),
+      onWillAcceptWithDetails: (details) =>
+          _dragController.planForRootDrop(payload: details.data) != null,
+      onAcceptWithDetails: (details) {
+        final plan = _dragController.planForRootDrop(payload: details.data);
+        if (plan == null) {
+          return;
+        }
+        unawaited(
+          _performDragMove(context: context, payload: details.data, plan: plan),
+        );
+      },
+      builder: (context, candidateData, rejectedData) {
+        final active = candidateData.isNotEmpty;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 10, 4),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              color: active
+                  ? kNotesItemSelectedColor
+                  : kNotesItemHoverColor.withValues(alpha: 0.45),
+              border: Border.all(
+                color: active
+                    ? kNotesSecondaryText.withValues(alpha: 0.65)
+                    : kNotesDividerColor,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'Drop here to move to root',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: kNotesSecondaryText,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _wrapWorkspaceRowWithDrag({
+    required BuildContext context,
+    required rust_api.WorkspaceNodeItem node,
+    required List<rust_api.WorkspaceNodeItem> siblings,
+    required int depth,
+    required Widget child,
+  }) {
+    if (widget.onMoveNodeRequested == null) {
+      return child;
+    }
+
+    final isSyntheticRoot = _isSyntheticRootNodeId(node.nodeId);
+    final canDrag = _dragController.canDragNode(
+      node: node,
+      isSyntheticRootNodeId: isSyntheticRoot,
+      isStableNodeId: _looksLikeUuid(node.nodeId),
+    );
+    final payload = canDrag
+        ? ExplorerDragPayload(
+            nodeId: node.nodeId,
+            kind: node.kind,
+            sourceParentNodeId: _normalizeParentForMutation(node.parentNodeId),
+          )
+        : null;
+
+    Widget draggableChild = child;
+    if (payload != null) {
+      draggableChild = Draggable<ExplorerDragPayload>(
+        data: payload,
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: _buildDragFeedback(context, node: node, depth: depth),
+        childWhenDragging: Opacity(opacity: 0.45, child: child),
+        maxSimultaneousDrags: 1,
+        onDragStarted: () {
+          if (!_dragInProgress && mounted) {
+            setState(() {
+              _dragInProgress = true;
+            });
+          }
+        },
+        onDragEnd: (_) {
+          if (_dragInProgress && mounted) {
+            setState(() {
+              _dragInProgress = false;
+            });
+          }
+        },
+        child: child,
+      );
+    }
+
+    return DragTarget<ExplorerDragPayload>(
+      onWillAcceptWithDetails: (details) =>
+          _resolveRowDropPlan(
+            payload: details.data,
+            targetNode: node,
+            siblings: siblings,
+          ) !=
+          null,
+      onAcceptWithDetails: (details) {
+        final plan = _resolveRowDropPlan(
+          payload: details.data,
+          targetNode: node,
+          siblings: siblings,
+        );
+        if (plan == null) {
+          return;
+        }
+        unawaited(
+          _performDragMove(context: context, payload: details.data, plan: plan),
+        );
+      },
+      builder: (context, candidateData, rejectedData) {
+        ExplorerDragPayload? candidate;
+        for (final entry in candidateData) {
+          if (entry != null) {
+            candidate = entry;
+            break;
+          }
+        }
+        final plan = candidate == null
+            ? null
+            : _resolveRowDropPlan(
+                payload: candidate,
+                targetNode: node,
+                siblings: siblings,
+              );
+        if (plan == null) {
+          return draggableChild;
+        }
+        final isReorder = plan.isReorder;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isReorder
+                    ? kNotesSecondaryText.withValues(alpha: 0.8)
+                    : Colors.transparent,
+                width: isReorder ? 2 : 0,
+              ),
+            ),
+            color: !isReorder
+                ? kNotesItemSelectedColor.withValues(alpha: 0.35)
+                : Colors.transparent,
+          ),
+          child: draggableChild,
+        );
+      },
+    );
+  }
+
+  ExplorerDropPlan? _resolveRowDropPlan({
+    required ExplorerDragPayload payload,
+    required rust_api.WorkspaceNodeItem targetNode,
+    required List<rust_api.WorkspaceNodeItem> siblings,
+  }) {
+    return _dragController.planForRowDrop(
+      payload: payload,
+      targetNode: targetNode,
+      siblings: siblings,
+      normalizeParent: _normalizeParentForMutation,
+      isStableNodeId: (nodeId) => _looksLikeUuid(nodeId),
+      isSyntheticRootNodeId: _isSyntheticRootNodeId,
+    );
+  }
+
+  Widget _buildDragFeedback(
+    BuildContext context, {
+    required rust_api.WorkspaceNodeItem node,
+    required int depth,
+  }) {
+    final icon = node.kind == 'folder'
+        ? Icons.folder_outlined
+        : kNotesItemPlaceholderIcon;
+    return Material(
+      color: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: kNotesCanvasBackground,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: kNotesDividerColor),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(10 + depth * 2, 8, 10, 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: kNotesSecondaryText),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    node.displayName.trim().isEmpty
+                        ? node.nodeId
+                        : node.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: kNotesPrimaryText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _performDragMove({
+    required BuildContext context,
+    required ExplorerDragPayload payload,
+    required ExplorerDropPlan plan,
+  }) async {
+    final invoker = widget.onMoveNodeRequested;
+    if (invoker == null) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final revisionBefore = widget.controller.workspaceTreeRevision;
+    final response = await invoker(
+      payload.nodeId,
+      plan.newParentNodeId,
+      targetOrder: plan.targetOrder,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (response.ok) {
+      if (widget.controller.workspaceTreeRevision == revisionBefore) {
+        await _reloadRootTree(force: true);
+      }
+      await _refreshDropBranches(
+        sourceParentNodeId: plan.sourceParentNodeId,
+        targetParentNodeId: plan.targetParentNodeId,
+      );
+      messenger
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Moved.'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      return;
+    }
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+  }
+
+  Future<void> _refreshDropBranches({
+    required String? sourceParentNodeId,
+    required String? targetParentNodeId,
+  }) async {
+    var rootRefreshed = false;
+    Future<void> refreshParent(String? parentNodeId) async {
+      if (parentNodeId == null) {
+        if (rootRefreshed) {
+          return;
+        }
+        rootRefreshed = true;
+        await _reloadRootTree(force: true);
+        return;
+      }
+      await _refreshParentBranch(parentNodeId);
+    }
+
+    await refreshParent(sourceParentNodeId);
+    if (targetParentNodeId != sourceParentNodeId) {
+      await refreshParent(targetParentNodeId);
+    }
   }
 
   Future<void> _showFolderContextMenu({
@@ -875,47 +1181,54 @@ class _NoteExplorerState extends State<NoteExplorer> {
         final canDelete =
             widget.onDeleteFolderRequested != null &&
             _looksLikeUuid(item.nodeId);
+        final folderRow = ExplorerTreeItem.folder(
+          key: Key('notes_tree_folder_row_${item.nodeId}'),
+          node: item,
+          depth: depth,
+          selected: false,
+          expanded: expanded,
+          canCreateChild: canCreateChild,
+          canDelete: canDelete,
+          onTap: () {
+            unawaited(_treeState.toggleFolder(item.nodeId));
+          },
+          onCreateChildFolder: canCreateChild
+              ? widget.controller.workspaceCreateFolderInFlight
+                    ? null
+                    : () => _showCreateFolderDialog(
+                        context,
+                        parentNodeId: item.nodeId,
+                      )
+              : null,
+          onDeleteFolder: canDelete
+              ? () => _showDeleteFolderDialog(
+                  context,
+                  ExplorerFolderNode(
+                    id: item.nodeId,
+                    label: item.displayName,
+                    parentId: item.parentNodeId,
+                    deletable: true,
+                  ),
+                )
+              : null,
+          onSecondaryTapDown: (details) {
+            _recordRowContextMenuTrigger(details.globalPosition);
+            unawaited(
+              _showFolderContextMenu(
+                context: context,
+                folderNode: item,
+                globalPosition: details.globalPosition,
+              ),
+            );
+          },
+        );
         rows.add(
-          ExplorerTreeItem.folder(
-            key: Key('notes_tree_folder_row_${item.nodeId}'),
+          _wrapWorkspaceRowWithDrag(
+            context: context,
             node: item,
+            siblings: items,
             depth: depth,
-            selected: false,
-            expanded: expanded,
-            canCreateChild: canCreateChild,
-            canDelete: canDelete,
-            onTap: () {
-              unawaited(_treeState.toggleFolder(item.nodeId));
-            },
-            onCreateChildFolder: canCreateChild
-                ? widget.controller.workspaceCreateFolderInFlight
-                      ? null
-                      : () => _showCreateFolderDialog(
-                          context,
-                          parentNodeId: item.nodeId,
-                        )
-                : null,
-            onDeleteFolder: canDelete
-                ? () => _showDeleteFolderDialog(
-                    context,
-                    ExplorerFolderNode(
-                      id: item.nodeId,
-                      label: item.displayName,
-                      parentId: item.parentNodeId,
-                      deletable: true,
-                    ),
-                  )
-                : null,
-            onSecondaryTapDown: (details) {
-              _recordRowContextMenuTrigger(details.globalPosition);
-              unawaited(
-                _showFolderContextMenu(
-                  context: context,
-                  folderNode: item,
-                  globalPosition: details.globalPosition,
-                ),
-              );
-            },
+            child: folderRow,
           ),
         );
 
@@ -1013,31 +1326,38 @@ class _NoteExplorerState extends State<NoteExplorer> {
           (trimmedNodeLabel.isEmpty
               ? widget.controller.titleForTab(noteId)
               : item.displayName);
+      final noteRow = ExplorerTreeItem.note(
+        key: Key('notes_tree_note_row_${item.nodeId}'),
+        node: rust_api.WorkspaceNodeItem(
+          nodeId: item.nodeId,
+          kind: item.kind,
+          parentNodeId: item.parentNodeId,
+          atomId: item.atomId,
+          displayName: displayName,
+          sortOrder: item.sortOrder,
+        ),
+        depth: depth + 1,
+        selected: noteId == widget.controller.activeNoteId,
+        onTap: () => _handleNoteTap(noteId),
+        previewText: _previewText(noteId: noteId, note: note),
+        onSecondaryTapDown: (details) {
+          _recordRowContextMenuTrigger(details.globalPosition);
+          unawaited(
+            _showNoteContextMenu(
+              context: context,
+              noteNode: item,
+              globalPosition: details.globalPosition,
+            ),
+          );
+        },
+      );
       rows.add(
-        ExplorerTreeItem.note(
-          key: Key('notes_tree_note_row_${item.nodeId}'),
-          node: rust_api.WorkspaceNodeItem(
-            nodeId: item.nodeId,
-            kind: item.kind,
-            parentNodeId: item.parentNodeId,
-            atomId: item.atomId,
-            displayName: displayName,
-            sortOrder: item.sortOrder,
-          ),
+        _wrapWorkspaceRowWithDrag(
+          context: context,
+          node: item,
+          siblings: items,
           depth: depth + 1,
-          selected: noteId == widget.controller.activeNoteId,
-          onTap: () => _handleNoteTap(noteId),
-          previewText: _previewText(noteId: noteId, note: note),
-          onSecondaryTapDown: (details) {
-            _recordRowContextMenuTrigger(details.globalPosition);
-            unawaited(
-              _showNoteContextMenu(
-                context: context,
-                noteNode: item,
-                globalPosition: details.globalPosition,
-              ),
-            );
-          },
+          child: noteRow,
         ),
       );
     }

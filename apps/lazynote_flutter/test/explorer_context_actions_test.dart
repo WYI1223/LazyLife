@@ -143,7 +143,7 @@ void main() {
               message: 'ok',
             );
           },
-          onMoveNodeRequested: (nodeId, parentNodeId) async {
+          onMoveNodeRequested: (nodeId, parentNodeId, {targetOrder}) async {
             return const rust_api.WorkspaceActionResponse(
               ok: true,
               errorCode: null,
@@ -311,8 +311,8 @@ void main() {
     await tester.pumpWidget(
       _harness(
         controller: controller,
-        onMoveNodeRequested: (nodeId, parentNodeId) async {
-          moveCalls.add('$nodeId::$parentNodeId');
+        onMoveNodeRequested: (nodeId, parentNodeId, {targetOrder}) async {
+          moveCalls.add('$nodeId::$parentNodeId::$targetOrder');
           return const rust_api.WorkspaceActionResponse(
             ok: true,
             errorCode: null,
@@ -340,7 +340,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(moveCalls, const <String>[
-      '11111111-1111-4111-8111-111111111111::22222222-2222-4222-8222-222222222222',
+      '11111111-1111-4111-8111-111111111111::22222222-2222-4222-8222-222222222222::null',
     ]);
   });
 

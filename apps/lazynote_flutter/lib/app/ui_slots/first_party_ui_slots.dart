@@ -167,7 +167,11 @@ void _registerNotesSlots(UiSlotRegistry registry) {
             >(UiSlotContextKeys.notesOnRenameNodeRequested);
         final onMoveNodeRequested = slotContext
             .read<
-              Future<rust_api.WorkspaceActionResponse> Function(String, String?)
+              Future<rust_api.WorkspaceActionResponse> Function(
+                String,
+                String?, {
+                int? targetOrder,
+              })
             >(UiSlotContextKeys.notesOnMoveNodeRequested);
         return NoteExplorer(
           controller: controller,
