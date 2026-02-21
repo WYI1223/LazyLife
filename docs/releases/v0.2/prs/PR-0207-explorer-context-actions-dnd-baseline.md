@@ -239,6 +239,10 @@ Verification replay (2026-02-20):
 
 - M2: drag reorder baseline (same-parent then cross-parent) with clear drop indicators. (landed)
 - M3: hardening/docs closure (error/retry UX, edge-case regression expansion). (landed)
+- M4 transition lane (planned):
+  - `PR-0207B` contract freeze for ordering + move semantics
+  - `PR-0207C` implementation (no-reorder move + title-only explorer note rows + legacy note_ref backfill)
+  - `PR-0207D` closure replay (docs sync + migration/QA evidence + obsolete reorder cleanup)
 
 ## Acceptance Criteria (M2)
 
