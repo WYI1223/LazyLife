@@ -80,6 +80,9 @@ In scope:
 - split layout v1 (limited split, min-size guard) (`PR-0206`)
 - split pane unsplit/merge follow-up (`PR-0206B`)
 - explorer context actions + drag-reorder baseline (`PR-0207`)
+- explorer ordering/move contract freeze follow-up (`PR-0207B`)
+- explorer ordering + legacy note_ref backfill implementation (`PR-0207C`)
+- explorer ordering closure + QA replay (`PR-0207D`)
 - hardening and release closure 鈥?incl. regression verification for bridge PRs (`PR-0208`)
 - CN/EN localization baseline (`PR-0209`)
 - debug viewer readability phase-2 upgrade 鈥?incl. optional `log_dart_event` FFI (`PR-0210`)
@@ -154,6 +157,9 @@ Recommended order:
    - `PR-0206B-split-pane-unsplit-merge` (in review: explicit pane close/merge command landed with regressions)
    - `PR-0207-explorer-context-actions-dnd-baseline` (completed: M1/M2 feature landing + M3 closure)
    - `PR-0207A-explorer-note-ref-title-rename-freeze` (completed: v0.2 title/rename boundary closure)
+   - `PR-0207B-explorer-ordering-contract-freeze` (planned)
+   - `PR-0207C-explorer-ordering-and-backfill-implementation` (planned)
+   - `PR-0207D-explorer-ordering-closure` (planned)
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en`
    - `PR-0210-debug-viewer-readability-upgrade` (optional: add log_dart_event FFI)
@@ -248,6 +254,10 @@ Recommended order:
    - [x] wire drag move via `workspace_move_node` (same-parent reorder + cross-parent move)
    - [x] add M2 drag regressions (success/failure/invalid-target)
    - [x] complete M3 closure (docs/contract sync + verification replay)
+10. `PR-0207B/0207C/0207D` ordering/move transition lane
+   - [ ] `PR-0207B`: freeze ordering + move semantics contract
+   - [ ] `PR-0207C`: implement no-reorder move policy + title-only rows + legacy note_ref backfill
+   - [ ] `PR-0207D`: closure replay (docs sync + migration/QA evidence + obsolete reorder cleanup)
 
 ## Quality Gates
 
@@ -296,6 +306,9 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0206B-split-pane-unsplit-merge.md`
 - `docs/releases/v0.2/prs/PR-0207-explorer-context-actions-dnd-baseline.md`
 - `docs/releases/v0.2/prs/PR-0207A-explorer-note-ref-title-rename-freeze.md`
+- `docs/releases/v0.2/prs/PR-0207B-explorer-ordering-contract-freeze.md`
+- `docs/releases/v0.2/prs/PR-0207C-explorer-ordering-and-backfill-implementation.md`
+- `docs/releases/v0.2/prs/PR-0207D-explorer-ordering-closure.md`
 - `docs/releases/v0.2/prs/PR-0208-workspace-hardening-doc-closure.md`
 - `docs/releases/v0.2/prs/PR-0209-ui-localization-cn-en.md`
 - `docs/releases/v0.2/prs/PR-0210-debug-viewer-readability-upgrade.md`
