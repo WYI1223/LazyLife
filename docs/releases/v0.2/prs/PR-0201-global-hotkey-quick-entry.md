@@ -1,13 +1,19 @@
 # PR-0201-global-hotkey-quick-entry
 
 - Proposed title: `feat(windows): global hotkey + quick entry window`
-- Status: Planned
+- Status: Deferred to v0.3 (`PR-0311-windows-global-hotkey-quick-entry`)
 
 ## Goal
 
 Provide a global quick-entry entrypoint on Windows for capture-first flow.
 
-## Scope (v0.2)
+## Deferral Decision (2026-02-22)
+
+- deferred from v0.2 to v0.3 to avoid introducing runner/lifecycle instability
+  during v0.2 closure
+- execution owner moved to `docs/releases/v0.3/prs/PR-0311-windows-global-hotkey-quick-entry.md`
+
+## Scope (target: v0.3)
 
 In scope:
 

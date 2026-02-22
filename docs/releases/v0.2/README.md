@@ -10,11 +10,9 @@ Theme:
 - hierarchical explorer baseline
 - limited split layout baseline
 - extension kernel contracts (command/parser/provider/ui slot/capability)
-- quick-entry productivity flow
 - CN/EN localization baseline
 - diagnostics viewer readability phase-2 hardening
 - docs language policy baseline
-- links/index/open foundation
 
 v0.2 is the architectural bridge between:
 
@@ -25,15 +23,13 @@ v0.2 is the architectural bridge between:
 
 At the end of v0.2, users should be able to:
 
-1. Open quick entry with a global hotkey (Windows baseline).
-2. Navigate notes in a folder-style tree (lazy loaded).
-3. Open notes in an active pane and switch pane focus explicitly.
-4. Use basic split layout (non-recursive baseline) with safe min-size constraints.
-5. Continue using stable autosave + tag filtering from v0.1.
-6. Switch UI language between Chinese and English.
-7. Read debug logs with normalized semantics and denser high-volume readability.
-8. Open indexed note links (file/folder/url) safely from app actions.
-9. Keep existing features stable while extension architecture is introduced behind interfaces.
+1. Navigate notes in a folder-style tree (lazy loaded).
+2. Open notes in an active pane and switch pane focus explicitly.
+3. Use basic split layout (non-recursive baseline) with safe min-size constraints.
+4. Continue using stable autosave + tag filtering from v0.1.
+5. Switch UI language between Chinese and English.
+6. Read debug logs with normalized semantics and denser high-volume readability.
+7. Keep existing features stable while extension architecture is introduced behind interfaces.
 
 ## Architecture Outcomes
 
@@ -50,14 +46,13 @@ At the end of v0.2, engineering should have:
 5. Flutter localization scaffolding and language preference persistence.
 6. Debug viewer phase-2 semantic normalization and rendering pipeline.
 7. Canonical docs language policy and entrypoint baseline.
-8. Link extraction/index/open use-case pipeline.
-9. Extension kernel interfaces for:
+8. Extension kernel interfaces for:
    - command registration
    - input parser chain
    - provider SPI (auth/pull/push/conflict)
    - UI extension slot model
-10. Capability model and API lifecycle/deprecation policy baseline.
-11. Workspace delete-policy contract baseline (hybrid note/folder semantics).
+9. Capability model and API lifecycle/deprecation policy baseline.
+10. Workspace delete-policy contract baseline (hybrid note/folder semantics).
 
 This is the required substrate for v0.3 recursive split and drag-to-split.
 
@@ -69,7 +64,6 @@ In scope:
   - Rust safety + observability hardening (`PR-0219`)
   - Flutter RustBridge lifecycle hardening (`PR-0220A`)
   - settings & config correctness (`PR-0220B`)
-- global hotkey quick-entry window (`PR-0201`)
 - notes tree schema + repository/service (`PR-0202`)
 - workspace tree delete policy (hybrid C+B semantics) (`PR-0221`)
 - tree FFI contracts + docs update (`PR-0203`)
@@ -90,7 +84,6 @@ In scope:
 - `log_dart_event` FFI contract + binding (`PR-0210A`)
 - `log_dart_event` Dart call-site integration (`PR-0210B`)
 - docs language policy and docs index baseline (`PR-0211`)
-- links/index/open foundation (`PR-0212`)
 - extension kernel contracts (`PR-0213`)
 - command registry + parser chain baseline (`PR-0214`)
 - provider SPI + sync contract (`PR-0215`)
@@ -107,6 +100,11 @@ Out of scope:
 - third-party general scripting runtime for plugins
 - database maintenance tooling (vacuum, purge) 鈥?reserved for v0.2.x patch or v0.3
 
+Deferred to v0.3 (scope migration):
+
+- `PR-0201-global-hotkey-quick-entry` -> `PR-0311-windows-global-hotkey-quick-entry`
+- `PR-0212-links-index-open-v1` -> `PR-0306A-links-index-open-foundation`
+
 > **Note:** v0.1 uses soft-delete only. Without periodic vacuum, long-running databases will accumulate deleted records and bloat. This is a known issue to be addressed in a maintenance-focused PR after v0.2 stabilizes.
 
 ## Dependencies from v0.1
@@ -121,7 +119,7 @@ Recommended prerequisite completion:
 
 Parallel track allowed:
 
-- `PR-0201` can progress in parallel with `PR-0010*`.
+- no additional parallel track is required after scope migration.
 
 ## Execution Order
 
@@ -135,7 +133,7 @@ Recommended order:
    - `PR-0202-notes-tree-schema-core`
    - `PR-0221-workspace-tree-delete-policy-hybrid`
    - `PR-0203-tree-ffi-contracts`
-   - migration numbering note: `0008` workspace delete policy, `0009` workspace note_ref backfill, links uses `0010`
+   - migration numbering note: `0008` workspace delete policy, `0009` workspace note_ref backfill; links migration `0010` is executed in deferred v0.3 `PR-0306A`
    - current priority (execution refinement):
      - `PR-0202` tree schema/repo/service baseline is completed (status calibrated; delete-policy extension tracked in `PR-0221`)
      - `PR-0203` Workspace CRUD FFI parity is completed (create/list/rename/move + delete contract alignment)
@@ -156,8 +154,8 @@ Recommended order:
    - `PR-0205A-notes-ui-shell-alignment`
    - `PR-0205-explorer-recursive-lazy-ui` (completed: recursive lazy tree + stability regressions)
    - `PR-0205B-explorer-tab-open-intent-migration` (completed: preview/pinned semantic ownership freeze)
-   - `PR-0206-split-layout-v1` (in review: post-review remediation landed; QA summary logged with accepted v0.2 limitations)
-   - `PR-0206B-split-pane-unsplit-merge` (in review: explicit pane close/merge command landed with regressions)
+   - `PR-0206-split-layout-v1` (completed: post-review remediation + QA replay closed)
+   - `PR-0206B-split-pane-unsplit-merge` (completed: explicit pane close/merge command + regressions closed)
    - `PR-0207-explorer-context-actions-dnd-baseline` (completed: M1/M2 feature landing + M3 closure)
    - `PR-0207A-explorer-note-ref-title-rename-freeze` (completed: v0.2 title/rename boundary closure)
    - `PR-0207B-explorer-ordering-contract-freeze` (completed: docs contract freeze landed)
@@ -170,8 +168,8 @@ Recommended order:
    - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (completed: sync FFI contract + binding + smoke tests)
    - `PR-0210B-diagnostics-log-dart-event-integration` (completed: allowlisted Dart call-site wiring + non-blocking guardrails)
    - `PR-0211-docs-language-policy-and-index`
-   - `PR-0212-links-index-open-v1`
-   - `PR-0201-global-hotkey-quick-entry`
+   - deferred to v0.3: `PR-0306A-links-index-open-foundation` (from `PR-0212`)
+   - deferred to v0.3: `PR-0311-windows-global-hotkey-quick-entry` (from `PR-0201`)
 5. Closure:
    - `PR-0208-workspace-hardening-doc-closure` (verifies regression targets from bridge lane)
 
@@ -312,7 +310,7 @@ Recommended order:
 - `cargo test --all`
 - `flutter analyze`
 - `flutter test`
-- Windows smoke run for hotkey and split-shell interaction
+- Windows smoke run for split-shell interaction
 - startup/memory/command-latency/background-cpu baseline capture for post-v0.2 regression tracking
 
 ## Acceptance Criteria (Release-Level)
@@ -326,9 +324,8 @@ v0.2 is complete when:
 5. Docs/API contracts are synchronized with implementation.
 6. CN/EN language switch is stable and persisted locally.
 7. Debug viewer phase-2 rendering remains readable under continuous high-volume refresh.
-8. Link index/open baseline is implemented with scheme safety guards.
-9. Extension kernel contracts are implemented and used by first-party flows where applicable.
-10. API lifecycle/deprecation policy is documented and linked from governance docs.
+8. Extension kernel contracts are implemented and used by first-party flows where applicable.
+9. API lifecycle/deprecation policy is documented and linked from governance docs.
 
 ## PR Specs
 
@@ -340,7 +337,6 @@ Infrastructure bridge (execute first):
 
 Feature lanes:
 
-- `docs/releases/v0.2/prs/PR-0201-global-hotkey-quick-entry.md`
 - `docs/releases/v0.2/prs/PR-0202-notes-tree-schema-core.md`
 - `docs/releases/v0.2/prs/PR-0221-workspace-tree-delete-policy-hybrid.md`
 - `docs/releases/v0.2/prs/PR-0203-tree-ffi-contracts.md`
@@ -362,7 +358,6 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0210A-diagnostics-log-dart-event-ffi-contract.md`
 - `docs/releases/v0.2/prs/PR-0210B-diagnostics-log-dart-event-integration.md`
 - `docs/releases/v0.2/prs/PR-0211-docs-language-policy-and-index.md`
-- `docs/releases/v0.2/prs/PR-0212-links-index-open-v1.md`
 - `docs/releases/v0.2/prs/PR-0213-extension-kernel-contracts.md`
 - `docs/releases/v0.2/prs/PR-0214-command-registry-and-parser-chain.md`
 - `docs/releases/v0.2/prs/PR-0215-provider-spi-and-sync-contract.md`

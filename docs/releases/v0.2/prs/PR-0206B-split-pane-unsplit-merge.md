@@ -1,7 +1,7 @@
 # PR-0206B-split-pane-unsplit-merge
 
 - Proposed title: `feat(workspace-ui): split pane unsplit/merge baseline`
-- Status: In Review (M1-M2 landed)
+- Status: Completed
 
 ## Goal
 

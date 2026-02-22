@@ -1,7 +1,7 @@
 # PR-0206-split-layout-v1
 
 - Proposed title: `feat(workspace-ui): limited split layout v1 with min-size guard`
-- Status: In Review (post-review remediation landed)
+- Status: Completed
 
 ## Goal
 

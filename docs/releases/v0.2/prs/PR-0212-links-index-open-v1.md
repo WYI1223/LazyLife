@@ -1,13 +1,19 @@
 # PR-0212-links-index-open-v1
 
 - Proposed title: `feat(links): links extraction/index and safe open v1 (Windows first)`
-- Status: Planned
+- Status: Deferred to v0.3 (`PR-0306A-links-index-open-foundation`)
 
 ## Goal
 
 Deliver v1 baseline for links parsing/indexing and safe open behavior for folder/file/url targets.
 
-## Scope (v0.2)
+## Deferral Decision (2026-02-22)
+
+- deferred from v0.2 to v0.3 due to editor-first sequencing: links/index/open
+  implementation should follow editor/perf/reliability stabilization
+- execution owner moved to `docs/releases/v0.3/prs/PR-0306A-links-index-open-foundation.md`
+
+## Scope (target: v0.3)
 
 In scope:
 
