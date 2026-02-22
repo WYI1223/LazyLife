@@ -1,0 +1,142 @@
+# PR-0255A-frontend-code-health-report
+
+- Proposed title: `docs(frontend): code health report with risk-ranked module inventory`
+- Status: Planned
+
+## Goal
+
+Produce a frontend code health report owned/reviewed by frontend TL/owner, with
+high-risk module inventory and explicit risk levels.
+
+Primary reference template:
+
+- `docs/development/report-templates/code-health-report-template.zh-CN.md`
+
+## Scope
+
+In scope:
+
+- read indexed baseline artifacts from `PR-0254C`
+- inspect key frontend modules and coupling patterns
+- produce risk-ranked module list with evidence references
+
+Out of scope:
+
+- refactor implementation
+- module boundary redesign details (handled by `PR-0255B`)
+- timeline planning (handled by `PR-0255C`)
+
+## Required Output
+
+- `docs/reports/v0.2.5/frontend-review/01-code-health-report.md`
+
+Output must follow the structure and terminology from the primary reference
+template.
+
+Report must include:
+
+1. module inventory (top risk set)
+2. risk level per module (`High` / `Medium` / `Low`)
+3. evidence links (dependency graph, size, code references)
+4. primary risk type (coupling, complexity, test gap, ownership drift)
+
+## Milestones
+
+### M1 - Scope and Baseline Lock
+
+Goal:
+
+- lock report scope and reproducible baseline before scoring
+
+Tasks:
+
+1. consume baseline index from `PR-0254C`
+2. freeze target module list and exclusion list
+3. lock branch/commit and environment metadata
+
+Deliverables:
+
+- report section `Section 0 (Document Metadata)` draft
+- module inventory draft list
+
+Exit Criteria:
+
+- [ ] baseline inputs are confirmed reproducible
+- [ ] scope is signed off by frontend TL/owner
+
+### M2 - Evidence Collection
+
+Goal:
+
+- gather objective evidence for each module using a unified method
+
+Tasks:
+
+1. static checks (structure/dependency/size/code reading)
+2. dynamic checks (main flows and failure observations)
+3. engineering checks (`analyze` / tests / CI signals)
+
+Deliverables:
+
+- report sections `Section 2 (Scope and Method)` and `Section 7 (Appendix and Evidence)` draft
+- evidence links mapped to module list
+
+Exit Criteria:
+
+- [ ] every candidate module has at least one evidence anchor
+- [ ] no risk statement exists without evidence link
+
+### M3 - Risk Grading and Health Conclusion
+
+Goal:
+
+- produce a reviewable risk-ranked module inventory and summary conclusion
+
+Tasks:
+
+1. apply unified scoring and `P0/P1/P2` rules
+2. complete high-risk module table
+3. complete execution summary and priority initial judgment
+
+Deliverables:
+
+- report sections `Section 1/3/4/5/6` complete draft
+
+Exit Criteria:
+
+- [ ] P0/P1/P2 grading is consistent and auditable
+- [ ] top risk conclusions are evidence-backed
+
+### M4 - TL Review and Closure
+
+Goal:
+
+- finalize report quality and close `PR-0255A`
+
+Tasks:
+
+1. TL/owner review and wording normalization
+2. resolve review comments and freeze final file
+3. hand off input contract to `PR-0255B`
+
+Deliverables:
+
+- final `01-code-health-report.md`
+- closure note in `PR-0255A`
+
+Exit Criteria:
+
+- [ ] report passes "no-solution-leak" boundary (`0255A` only risk diagnosis)
+- [ ] report is accepted as canonical input for `PR-0255B`
+
+## Planned File Changes
+
+- [add] `docs/reports/v0.2.5/frontend-review/01-code-health-report.md`
+- [edit] `docs/releases/v0.2.5/README.md` (progress marker)
+
+## Acceptance Criteria
+
+- [ ] high-risk module list is explicit and evidence-backed
+- [ ] each listed risk has a concrete module/file anchor
+- [ ] risk grading is consistent and reviewable
+- [ ] milestone outputs (`M1`-`M4`) are complete and review-signed
