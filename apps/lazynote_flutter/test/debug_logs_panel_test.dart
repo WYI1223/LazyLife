@@ -144,6 +144,32 @@ void main() {
     expect(meta.message, equals('event=slow_query'));
   });
 
+  test('LogLineMeta parses ISO prefix line and normalizes milliseconds', () {
+    const line =
+        '2026-02-15T10:23:45.1Z WARN [lazynote_core::diag] src/diag.rs:42: event=slow_query';
+    final meta = LogLineMeta.parse(line);
+    expect(meta.timestamp, equals('10:23:45.100'));
+    expect(meta.level, equals('warn'));
+    expect(meta.message, equals('event=slow_query'));
+  });
+
+  test('LogLineMeta parses time-only line and normalizes WARNING alias', () {
+    const line =
+        '[10:23:45.42] warning [lazynote_core::diag] event=degraded_mode';
+    final meta = LogLineMeta.parse(line);
+    expect(meta.timestamp, equals('10:23:45.420'));
+    expect(meta.level, equals('warn'));
+    expect(meta.message, equals('event=degraded_mode'));
+  });
+
+  test('LogLineMeta normalizes ERR alias to error level', () {
+    const line = 'ERR [lazynote_core::diag] event=panic_captured';
+    final meta = LogLineMeta.parse(line);
+    expect(meta.timestamp, isNull);
+    expect(meta.level, equals('error'));
+    expect(meta.message, equals('event=panic_captured'));
+  });
+
   test('LogLineMeta parses detailed_format line - ERROR', () {
     const line =
         '[2026-02-15 10:23:46.000001 +00:00] ERROR [lazynote_core::db::open] src/db.rs:7: event=panic_captured';
@@ -224,6 +250,35 @@ void main() {
 
     // Full raw line should appear as the message when format is not recognised.
     expect(find.textContaining(plainLine), findsWidgets);
+  });
+
+  testWidgets('debug panel copies raw line from row-level copy action', (
+    WidgetTester tester,
+  ) async {
+    const line =
+        '2026-02-15T10:23:45.1Z WARN [lazynote_core::diag] src/diag.rs:42: very long diagnostic payload';
+    String? copiedLine;
+    await tester.pumpWidget(
+      wrapWithL10n(
+        SizedBox(
+          width: 800,
+          height: 640,
+          child: DebugLogsPanel(
+            snapshotLoader: () async => _snapshot(line),
+            copyTextHandler: (text) async {
+              copiedLine = text;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.content_copy).first);
+    await tester.pump();
+
+    expect(copiedLine, equals(line));
+    expect(find.text('Visible logs copied.'), findsOneWidget);
   });
 }
 

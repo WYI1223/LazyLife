@@ -9,13 +9,20 @@ import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Inline live logs panel used across Workbench shell pages.
 class DebugLogsPanel extends StatefulWidget {
-  const DebugLogsPanel({super.key, this.snapshotLoader});
+  const DebugLogsPanel({
+    super.key,
+    this.snapshotLoader,
+    this.copyTextHandler,
+  });
 
   /// Test hook to disable periodic refresh and keep pump flows stable.
   static bool autoRefreshEnabled = true;
 
   /// Optional loader override for widget tests.
   final Future<DebugLogSnapshot> Function()? snapshotLoader;
+
+  /// Optional clipboard-copy override for widget tests.
+  final Future<void> Function(String text)? copyTextHandler;
 
   @override
   State<DebugLogsPanel> createState() => _DebugLogsPanelState();
@@ -191,11 +198,32 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
       return;
     }
 
-    await Clipboard.setData(ClipboardData(text: snapshot.tailText));
+    await _copyText(snapshot.tailText);
     if (!mounted) {
       return;
     }
     _setActionMessage(l10n.debugLogsVisibleLogsCopied);
+  }
+
+  Future<void> _copySingleLogLine(String rawLine) async {
+    if (rawLine.isEmpty) {
+      return;
+    }
+    await _copyText(rawLine);
+    if (!mounted) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    _setActionMessage(l10n.debugLogsVisibleLogsCopied);
+  }
+
+  Future<void> _copyText(String text) async {
+    final handler = widget.copyTextHandler;
+    if (handler != null) {
+      await handler(text);
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: text));
   }
 
   Future<void> _openLogFolder() async {
@@ -254,7 +282,10 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
         controller: _scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [for (final line in lines) _LogLineRow(line: line)],
+          children: [
+            for (final line in lines)
+              _LogLineRow(line: line, onCopyRawLine: _copySingleLogLine),
+          ],
         ),
       ),
     );
@@ -372,22 +403,39 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
 /// level badge.  Falls back to plain text for lines that do not match the
 /// expected [flexi_logger::detailed_format] format.
 class _LogLineRow extends StatelessWidget {
-  const _LogLineRow({required this.line});
+  const _LogLineRow({required this.line, required this.onCopyRawLine});
 
   final String line;
+  final ValueChanged<String> onCopyRawLine;
 
-  static const double _timestampWidth = 76;
-  static const double _levelWidth = 40;
+  static const double _timestampWidth = 84;
+  static const double _levelWidth = 52;
   static const double _fontSize = 12;
+  static const TextStyle _monoTextStyle = TextStyle(
+    fontSize: _fontSize,
+    fontFamily: 'monospace',
+    height: 1.25,
+  );
 
   @override
   Widget build(BuildContext context) {
     final meta = LogLineMeta.parse(line);
     final rowBg = _rowBackground(meta.level);
     final levelColor = _levelColor(context, meta.level);
+    final badgeBg = _levelBadgeBackground(meta.level);
+    final messageColor = _messageColor(context, meta.level);
+    final copyLabel = MaterialLocalizations.of(context).copyButtonLabel;
 
     return Container(
-      color: rowBg,
+      decoration: BoxDecoration(
+        color: rowBg,
+        border: Border(
+          left: BorderSide(
+            color: levelColor.withAlpha(190),
+            width: 2,
+          ),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,18 +444,22 @@ class _LogLineRow extends StatelessWidget {
             width: _timestampWidth,
             child: SelectableText(
               meta.timestamp ?? '',
-              style: const TextStyle(fontSize: _fontSize),
+              style: _monoTextStyle,
             ),
           ),
           const SizedBox(width: 4),
-          SizedBox(
+          Container(
             width: _levelWidth,
-            child: SelectableText(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
               meta.level?.toUpperCase() ?? '',
-              style: TextStyle(
-                fontSize: _fontSize,
+              style: _monoTextStyle.copyWith(
                 color: levelColor,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -415,7 +467,25 @@ class _LogLineRow extends StatelessWidget {
           Expanded(
             child: SelectableText(
               meta.message,
-              style: const TextStyle(fontSize: _fontSize),
+              textWidthBasis: TextWidthBasis.parent,
+              style: _monoTextStyle.copyWith(
+                color: messageColor,
+                fontWeight: meta.level == 'error'
+                    ? FontWeight.w600
+                    : FontWeight.w400,
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          Tooltip(
+            message: copyLabel,
+            child: IconButton(
+              onPressed: () => onCopyRawLine(meta.raw),
+              icon: const Icon(Icons.content_copy, size: 14),
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 20, height: 20),
+              padding: EdgeInsets.zero,
+              splashRadius: 14,
             ),
           ),
         ],
@@ -427,6 +497,20 @@ class _LogLineRow extends StatelessWidget {
     return switch (level) {
       'error' => Colors.red.shade50,
       'warn' => Colors.amber.shade50,
+      'info' => Colors.green.shade50,
+      'debug' => Colors.blueGrey.shade50,
+      'trace' => Colors.grey.shade200,
+      _ => null,
+    };
+  }
+
+  Color? _levelBadgeBackground(String? level) {
+    return switch (level) {
+      'error' => Colors.red.shade100,
+      'warn' => Colors.amber.shade100,
+      'info' => Colors.green.shade100,
+      'debug' => Colors.blueGrey.shade100,
+      'trace' => Colors.grey.shade300,
       _ => null,
     };
   }
@@ -438,6 +522,14 @@ class _LogLineRow extends StatelessWidget {
       'info' => Colors.green.shade700,
       'debug' => Colors.blueGrey.shade600,
       'trace' => Colors.grey.shade600,
+      _ => Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87,
+    };
+  }
+
+  Color _messageColor(BuildContext context, String? level) {
+    return switch (level) {
+      'error' => Colors.red.shade900,
+      'warn' => Colors.orange.shade900,
       _ => Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87,
     };
   }
