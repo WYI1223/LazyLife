@@ -1,7 +1,7 @@
 ﻿# PR-0208-workspace-hardening-doc-closure
 
 - Proposed title: `chore(workspace): hardening, regression coverage, and doc closure`
-- Status: In Progress (M1/M2 completed, M3 pending)
+- Status: Completed
 
 ## Goal
 
@@ -50,7 +50,7 @@ M1 progress:
 - [x] WAL replay assertion added: `crates/lazynote_core/tests/db_migrations.rs`
 - [x] workspace integration race bundle added: `apps/lazynote_flutter/test/workspace_integration_flow_test.dart`
 - [x] bridge regression suites replayed (`cargo test -p lazynote_ffi`, targeted flutter suites)
-- [ ] finalize one consolidated replay evidence block in this PR note
+- [x] consolidate replay evidence in this PR note
 
 ### M2 - Runtime Hardening Pass
 
@@ -77,6 +77,13 @@ M2 progress:
    - architecture note updates if state invariants are clarified
 2. Execute full replay bundle and capture pass summary.
 3. Mark PR-0208 completed with evidence links/commands.
+
+M3 progress:
+
+- [x] sync release docs (`docs/releases/v0.2/README.md`, this PR document)
+- [x] API contract review completed: no FFI signature or stable error-code catalog change in this PR
+- [x] replay evidence consolidated (Rust + Flutter targeted + Flutter full gate)
+- [x] PR status moved to Completed
 
 ## Detailed Execution Steps
 
@@ -126,9 +133,15 @@ Manual smoke (Windows):
 - `cd apps/lazynote_flutter && flutter test` (pass)
 - `cd apps/lazynote_flutter && flutter analyze` (pass)
 
+Contract closure note:
+
+- `docs/api/ffi-contracts.md`: no function-shape delta introduced by PR-0208
+- `docs/api/error-codes.md`: no new/changed stable error code introduced by PR-0208
+- Runtime hardening is UI/controller-side messaging and regression locking only
+
 ## Acceptance Criteria
 
 - [x] Core workspace interactions are regression-covered.
 - [x] Error handling is actionable and non-destructive.
-- [ ] Release docs and API docs match shipped behavior.
+- [x] Release docs and API docs match shipped behavior.
 - [x] Bridge-lane regression matrix (0204/0219/0220A/0220B) has explicit replay evidence.

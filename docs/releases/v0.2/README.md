@@ -265,7 +265,7 @@ Recommended order:
    - [x] M2 partial: actionable workspace mutation errors for `db_busy`/`db_error`
    - [x] M2 partial: stale detail-response guard regression (`notes_controller_tabs_test.dart`)
    - [x] complete M2 runtime hardening sweep from PR-0208 plan (notes/workspace core async + recovery paths)
-   - [ ] complete M3 docs closure and full replay evidence capture
+   - [x] complete M3 docs closure and full replay evidence capture
 
 ## Quality Gates
 
