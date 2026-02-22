@@ -87,6 +87,10 @@ class RustBridge {
       File(path).existsSync();
 
   @visibleForTesting
+  static String Function() resolvedExecutablePathResolver = () =>
+      Platform.resolvedExecutable;
+
+  @visibleForTesting
   static ExternalLibrary Function(String path) externalLibraryOpener =
       ExternalLibrary.open;
 
@@ -155,6 +159,7 @@ class RustBridge {
     _loggingInitFuture = null;
     operatingSystem = () => Platform.operatingSystem;
     fileExists = (path) => File(path).existsSync();
+    resolvedExecutablePathResolver = () => Platform.resolvedExecutable;
     externalLibraryOpener = ExternalLibrary.open;
     rustLibInit = (externalLibrary) {
       if (externalLibrary != null) {
@@ -194,15 +199,26 @@ class RustBridge {
     }
 
     final useOverridePaths = candidateLibraryPathsOverride != null;
+    final executableDir = File(resolvedExecutablePathResolver()).parent;
+    final bundledPath = executableDir.uri
+        .resolve(dynamicLibraryFileName)
+        .toFilePath();
     final candidates =
         candidateLibraryPathsOverride ??
         <String>[
+          // First choice for packaged desktop builds.
+          bundledPath,
+          // Keep CWD lookup for local launchers that copy the DLL into run dir.
+          dynamicLibraryFileName,
+          // Backward compatible dev layouts.
           '../../crates/target/release/$dynamicLibraryFileName',
           '../../crates/lazynote_ffi/target/release/$dynamicLibraryFileName',
         ];
 
     for (final candidatePath in candidates) {
       final filePath = useOverridePaths
+          ? candidatePath
+          : File(candidatePath).isAbsolute
           ? candidatePath
           : Directory.current.uri.resolve(candidatePath).toFilePath();
       if (fileExists(filePath)) {

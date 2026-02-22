@@ -115,6 +115,28 @@ void main() {
     expect(logMessages.length, 2);
   });
 
+  test('packaged build probes executable directory first', () async {
+    RustBridge.resetForTesting();
+    RustBridge.operatingSystem = () => 'windows';
+    RustBridge.resolvedExecutablePathResolver = () =>
+        r'D:\bundle\lazynote_flutter.exe';
+
+    final bundledDll = r'D:\bundle\lazynote_ffi.dll';
+    RustBridge.fileExists = (path) => path == bundledDll;
+
+    final openedCandidates = <String>[];
+    RustBridge.externalLibraryOpener = (path) {
+      openedCandidates.add(path);
+      throw StateError('cannot open $path');
+    };
+    RustBridge.logger = ({required message, error, stackTrace}) {};
+    RustBridge.rustLibInit = (_) async {};
+
+    await RustBridge.init();
+
+    expect(openedCandidates, [bundledDll]);
+  });
+
   test('bootstrapLogging de-duplicates concurrent calls', () async {
     RustBridge.resetForTesting();
     RustBridge.candidateLibraryPathsOverride = const [];
@@ -308,28 +330,31 @@ void main() {
     expect(capturedLevel, 'trace');
   });
 
-  test('bootstrapLogging remains non-blocking when dart event logging throws', () async {
-    RustBridge.resetForTesting();
-    DartEventLogger.resetForTesting();
+  test(
+    'bootstrapLogging remains non-blocking when dart event logging throws',
+    () async {
+      RustBridge.resetForTesting();
+      DartEventLogger.resetForTesting();
 
-    RustBridge.entryDbPathResolver = () async =>
-        '${Directory.systemTemp.path}${Platform.pathSeparator}data${Platform.pathSeparator}entry.sqlite3';
-    RustBridge.logDirPathResolver = () async =>
-        '${Directory.systemTemp.path}${Platform.pathSeparator}logs';
-    RustBridge.rustLibInit = (_) async {};
-    RustBridge.configureEntryDbPathCall = ({required dbPath}) => '';
-    RustBridge.initLoggingCall = ({required level, required logDir}) => '';
-    DartEventLogger.invoker =
-        ({
-          required String level,
-          required String eventName,
-          required String module,
-          required String message,
-        }) {
-          throw StateError('log_dart_event unavailable');
-        };
+      RustBridge.entryDbPathResolver = () async =>
+          '${Directory.systemTemp.path}${Platform.pathSeparator}data${Platform.pathSeparator}entry.sqlite3';
+      RustBridge.logDirPathResolver = () async =>
+          '${Directory.systemTemp.path}${Platform.pathSeparator}logs';
+      RustBridge.rustLibInit = (_) async {};
+      RustBridge.configureEntryDbPathCall = ({required dbPath}) => '';
+      RustBridge.initLoggingCall = ({required level, required logDir}) => '';
+      DartEventLogger.invoker =
+          ({
+            required String level,
+            required String eventName,
+            required String module,
+            required String message,
+          }) {
+            throw StateError('log_dart_event unavailable');
+          };
 
-    final snapshot = await RustBridge.bootstrapLogging();
-    expect(snapshot.isSuccess, isTrue);
-  });
+      final snapshot = await RustBridge.bootstrapLogging();
+      expect(snapshot.isSuccess, isTrue);
+    },
+  );
 }

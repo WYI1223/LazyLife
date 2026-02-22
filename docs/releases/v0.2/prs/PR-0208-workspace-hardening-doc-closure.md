@@ -153,7 +153,7 @@ Pre-release packaging dry run (for closure handoff):
   - `apps/lazynote_flutter/build/code-size/snapshot.windows-x64.json`
   - `apps/lazynote_flutter/build/code-size/trace.windows-x64.json`
 - packaged artifact: `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip`
-- artifact SHA256: `AACEBBE38BAB2A2BB323636248B1C2EB170609972C17299B636D770D05021470`
+- packaged hash file: `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip.sha256.txt`
 
 Contract closure note:
 
