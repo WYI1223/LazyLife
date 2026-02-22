@@ -54,8 +54,7 @@ class DartEventLogger {
   @visibleForTesting
   static Duration defaultDedupeWindow = const Duration(seconds: 2);
 
-  static final Map<String, DateTime> _lastLoggedAtByKey =
-      <String, DateTime>{};
+  static final Map<String, DateTime> _lastLoggedAtByKey = <String, DateTime>{};
   static const int _maxDedupeKeys = 256;
 
   @visibleForTesting

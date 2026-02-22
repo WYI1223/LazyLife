@@ -306,46 +306,49 @@ void main() {
     expect(movedTargetOrder, isNull);
   });
 
-  test('moveWorkspaceNode logs success event without blocking response', () async {
-    var loggedEventName = '';
-    DartEventLogger.invoker =
-        ({
-          required String level,
-          required String eventName,
-          required String module,
-          required String message,
-        }) {
-          loggedEventName = eventName;
-          return const rust_api.LogDartEventResponse(
-            ok: true,
-            errorCode: null,
-            message: 'ok',
-          );
-        };
-
-    final controller = _buildController(
-      store: <String, rust_api.NoteItem>{
-        'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
-      },
-      workspaceMoveNodeInvoker:
-          ({required nodeId, newParentId, targetOrder}) async {
-            return const rust_api.WorkspaceActionResponse(
+  test(
+    'moveWorkspaceNode logs success event without blocking response',
+    () async {
+      var loggedEventName = '';
+      DartEventLogger.invoker =
+          ({
+            required String level,
+            required String eventName,
+            required String module,
+            required String message,
+          }) {
+            loggedEventName = eventName;
+            return const rust_api.LogDartEventResponse(
               ok: true,
               errorCode: null,
               message: 'ok',
             );
-          },
-    );
-    addTearDown(controller.dispose);
+          };
 
-    final response = await controller.moveWorkspaceNode(
-      nodeId: '11111111-1111-4111-8111-111111111111',
-      newParentNodeId: null,
-    );
+      final controller = _buildController(
+        store: <String, rust_api.NoteItem>{
+          'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+        },
+        workspaceMoveNodeInvoker:
+            ({required nodeId, newParentId, targetOrder}) async {
+              return const rust_api.WorkspaceActionResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+              );
+            },
+      );
+      addTearDown(controller.dispose);
 
-    expect(response.ok, isTrue);
-    expect(loggedEventName, 'workspace.node_move.ok');
-  });
+      final response = await controller.moveWorkspaceNode(
+        nodeId: '11111111-1111-4111-8111-111111111111',
+        newParentNodeId: null,
+      );
+
+      expect(response.ok, isTrue);
+      expect(loggedEventName, 'workspace.node_move.ok');
+    },
+  );
 
   test('moveWorkspaceNode remains successful when logger throws', () async {
     DartEventLogger.invoker =

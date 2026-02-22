@@ -19,7 +19,10 @@ class AppLocaleController extends ChangeNotifier {
     return switch (_language) {
       UiLanguage.system => null,
       UiLanguage.en => const Locale('en'),
-      UiLanguage.zhCn => const Locale.fromSubtags(languageCode: 'zh', countryCode: 'CN'),
+      UiLanguage.zhCn => const Locale.fromSubtags(
+        languageCode: 'zh',
+        countryCode: 'CN',
+      ),
     };
   }
 

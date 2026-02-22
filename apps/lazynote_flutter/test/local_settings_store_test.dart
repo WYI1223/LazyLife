@@ -243,10 +243,9 @@ void main() {
     expect(persisted, isTrue);
     expect(LocalSettingsStore.uiLanguage, UiLanguage.en);
 
-    final decoded = jsonDecode(
-          await File(settingsPath).readAsString(),
-        )
-        as Map<String, dynamic>;
+    final decoded =
+        jsonDecode(await File(settingsPath).readAsString())
+            as Map<String, dynamic>;
     final uiRoot = decoded['ui'] as Map<String, dynamic>;
     expect(uiRoot['language'], 'en');
   });
