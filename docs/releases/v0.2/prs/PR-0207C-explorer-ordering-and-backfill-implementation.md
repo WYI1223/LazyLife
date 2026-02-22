@@ -1,7 +1,7 @@
 # PR-0207C-explorer-ordering-and-backfill-implementation
 
 - Proposed title: `feat(workspace-tree): implement canonical ordering + legacy note_ref backfill`
-- Status: In Progress (depends on PR-0207B)
+- Status: Completed
 
 ## Goal
 
@@ -82,9 +82,16 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Explorer drag no longer supports same-parent reorder.
-- [ ] Folder/root move remains functional and deterministic.
-- [ ] Ordering behavior matches frozen contract across all branches.
-- [ ] Explorer note rows are title-only and render no preview text.
-- [ ] Legacy notes are materialized into workspace tree via idempotent backfill.
-- [ ] Regression tests cover move semantics + ordering + migration.
+- [x] Explorer drag no longer supports same-parent reorder.
+- [x] Folder/root move remains functional and deterministic.
+- [x] Ordering behavior matches frozen contract across all branches.
+- [x] Explorer note rows are title-only and render no preview text.
+- [x] Legacy notes are materialized into workspace tree via idempotent backfill.
+- [x] Regression tests cover move semantics + ordering + migration.
+
+## Verification Replay (2026-02-22)
+
+- `cd crates && cargo test -p lazynote_core --test db_migrations` passed.
+- `cd crates && cargo test -p lazynote_core --test workspace_tree` passed.
+- `cd apps/lazynote_flutter && flutter analyze` passed.
+- `cd apps/lazynote_flutter && flutter test test/explorer_drag_controller_test.dart test/note_explorer_tree_test.dart test/notes_controller_workspace_tree_guards_test.dart` passed.

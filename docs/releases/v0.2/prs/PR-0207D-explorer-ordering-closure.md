@@ -1,7 +1,7 @@
 # PR-0207D-explorer-ordering-closure
 
 - Proposed title: `chore(workspace-tree): ordering/move closure, contract sync, and QA replay`
-- Status: Planned (depends on PR-0207B + PR-0207C)
+- Status: Completed
 
 ## Goal
 
@@ -73,9 +73,35 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Docs/contracts/release plan have zero drift.
-- [ ] Migration replay confirms idempotent legacy backfill behavior.
-- [ ] Obsolete reorder/sort_order UI code and tests are removed without regression.
-- [ ] Explorer note rows are verified title-only in QA replay.
-- [ ] QA checklist is executable and recorded.
-- [ ] PR-0207 lane can be marked fully closed with new semantics.
+- [x] Docs/contracts/release plan have zero drift.
+- [x] Migration replay confirms idempotent legacy backfill behavior.
+- [x] Obsolete reorder/sort_order UI code and tests are removed without regression.
+- [x] Explorer note rows are verified title-only in QA replay.
+- [x] QA checklist is executable and recorded.
+- [x] PR-0207 lane can be marked fully closed with new semantics.
+
+## Closure Notes (2026-02-22)
+
+1. Contract/release synchronization:
+   - `PR-0207C` marked completed and acceptance checked.
+   - `README` transition-lane status updated (`PR-0207C`/`PR-0207D` completed).
+   - `PR-0207` baseline doc now explicitly marked as historical M2 semantics and points to final semantics in `PR-0207B/0207C/0207D`.
+2. Safe deletion audit:
+   - Explorer same-parent reorder path remains removed in runtime policy:
+     - row-drop only supports move-into-folder
+     - UI move requests pass `target_order = null`
+   - Explorer note row preview line remains removed (title-only row policy).
+   - `sort_order` remains backend compatibility field (no direct same-parent reorder UI contract).
+3. QA checklist replay:
+   - nested folder move reachability verified (parent -> child folder drop path).
+   - ordering snapshots verified for root/folder/uncategorized policy.
+   - title-only explorer note rows verified.
+   - legacy note backfill behavior verified by migration replay tests.
+
+## Verification Replay (2026-02-22)
+
+- `cd crates && cargo test -p lazynote_core --test db_migrations` passed.
+- `cd crates && cargo test -p lazynote_core --test workspace_tree` passed.
+- `cd apps/lazynote_flutter && flutter analyze` passed.
+- `cd apps/lazynote_flutter && flutter test test/explorer_drag_controller_test.dart test/note_explorer_tree_test.dart test/notes_controller_workspace_tree_guards_test.dart` passed.
+- `cd apps/lazynote_flutter && flutter test` passed.

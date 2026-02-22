@@ -65,6 +65,13 @@ This document defines Flutter-callable workspace tree contracts exposed by
    - `Uncategorized` note rows: `updated_at DESC`, then `atom_id ASC`
 13. Note rows in Explorer are title-only in v0.2 transition policy; preview text is not rendered.
 
+## Closure Note (PR-0207D)
+
+- 2026-02-22 replay confirms this contract matches shipped runtime behavior:
+  - parent-change-only move on Explorer UI path (`target_order = null`)
+  - title-only note rows in Explorer
+  - legacy active note backfill via migration `0009_workspace_note_ref_backfill.sql`
+
 ## Error Codes
 
 See canonical registry: `docs/api/error-codes.md` (Workspace Tree section).

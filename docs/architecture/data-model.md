@@ -83,6 +83,10 @@ This is a UI policy freeze that coexists with the current schema:
    - `Uncategorized` note rows: by note `updated_at DESC`, then note id tie-break
 4. Explorer note rows are title-only (no preview text line in row rendering).
 
+Closure note (PR-0207D, 2026-02-22):
+
+- Transition policy replay completed and docs/contracts are synchronized.
+
 ---
 
 ## Atom Time-Matrix (v0.1.5+)
