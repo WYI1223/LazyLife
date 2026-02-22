@@ -9,6 +9,7 @@ Theme:
 
 - semantic freeze for currently drifting behavior contracts
 - Dart "god-object" decomposition and dependency decoupling
+- code-generated architecture/size baseline before refactor
 - release-process hardening and closure replay
 
 This release is intended to reduce v0.3 planning risk, not to add major
@@ -23,6 +24,22 @@ v0.2.5 uses a strict three-stage lane:
 3. closure replay + v0.3 handoff (`PR-0253`)
 
 No code refactor should start before the contract freeze is accepted.
+
+v0.2.5 also uses an analysis sub-lane before large refactor slices:
+
+1. baseline contract freeze (`PR-0254A`)
+2. tooling pipeline implementation (`PR-0254B`)
+3. baseline artifact closure (`PR-0254C`)
+
+The baseline sub-lane only produces code-generated artifacts and an index.
+
+v0.2.5 then uses a frontend review doc lane:
+
+1. code health report (`PR-0255A`)
+2. module split blueprint (`PR-0255B`)
+3. phased refactor plan (`PR-0255C`)
+
+`PR-0252` must start after `PR-0255C` is accepted.
 
 ## User-Facing Outcomes
 
@@ -39,13 +56,17 @@ At the end of v0.2.5, engineering should have:
 1. One frozen semantic contract set for Notes/Workspace interactions.
 2. Key Dart god-objects decomposed into smaller modules with clear ownership.
 3. Stable build/package workflow for Windows release artifacts.
-4. v0.3 plan re-baselined against the new semantics and boundaries.
+4. Code-generated dependency and size baseline artifacts with replay index.
+5. Frontend TL review reports for risk, boundaries, and phased execution.
+6. v0.3 plan re-baselined against the new semantics and boundaries.
 
 ## Scope
 
 In scope:
 
 - semantic clarification + contract freeze
+- architecture/size baseline generation and artifact indexing
+- frontend TL review reports (docs-only)
 - Dart decoupling/refactor (behavior-parity only)
 - v0.2.5 closure replay and v0.3 handoff update
 
@@ -58,12 +79,20 @@ Out of scope:
 ## Execution Order
 
 1. `PR-0251-semantics-freeze-and-v0.3-rebaseline-docs`
-2. `PR-0252-dart-modular-refactor-and-decoupling`
-3. `PR-0253-v0.2.5-closure-and-v0.3-handoff`
+2. `PR-0254A-architecture-baseline-contract`
+3. `PR-0254B-architecture-baseline-tooling-implementation`
+4. `PR-0254C-architecture-baseline-report-closure`
+5. `PR-0255A-frontend-code-health-report`
+6. `PR-0255B-frontend-module-split-blueprint`
+7. `PR-0255C-frontend-phased-refactor-plan`
+8. `PR-0252-dart-modular-refactor-and-decoupling`
+9. `PR-0253-v0.2.5-closure-and-v0.3-handoff`
 
 ## Milestones
 
 - `M1` (Docs Freeze): semantic ownership and contract boundaries locked.
+- `M1.5` (Baseline): dependency graph + size baseline generated and indexed.
+- `M1.6` (Review): frontend TL reports approved (risk, boundaries, phase plan).
 - `M2` (Code Refactor): god-object decomposition with strict behavior parity.
 - `M3` (Closure): replay, evidence capture, and v0.3 dependency handoff.
 
@@ -82,6 +111,8 @@ Out of scope:
 - `flutter analyze`
 - `flutter test`
 - `dart format --output=none --set-exit-if-changed .`
+- architecture graph replay (`lakos`, `cargo-modules`)
+- size hotspot replay (`flutter --analyze-size`, `cargo-bloat`)
 - Windows release bundle build replay (`scripts/build_windows_release_bundle.ps1`)
 
 ## Acceptance Criteria (Release-Level)
@@ -89,12 +120,20 @@ Out of scope:
 v0.2.5 is complete when:
 
 1. Semantics and boundaries are frozen in docs and no longer ambiguous.
-2. Target god-objects are decomposed with behavior parity preserved.
-3. CI gates are green with no known format/lint drift.
-4. v0.3 roadmap/plan is synchronized with v0.2.5 outputs.
+2. Baseline dependency/size artifacts are generated with reproducible index.
+3. Frontend TL three reports are completed and accepted.
+4. Target god-objects are decomposed with behavior parity preserved.
+5. CI gates are green with no known format/lint drift.
+6. v0.3 roadmap/plan is synchronized with v0.2.5 outputs.
 
 ## PR Specs
 
 - `docs/releases/v0.2.5/prs/PR-0251-semantics-freeze-and-v0.3-rebaseline-docs.md`
+- `docs/releases/v0.2.5/prs/PR-0254A-architecture-baseline-contract.md`
+- `docs/releases/v0.2.5/prs/PR-0254B-architecture-baseline-tooling-implementation.md`
+- `docs/releases/v0.2.5/prs/PR-0254C-architecture-baseline-report-closure.md`
+- `docs/releases/v0.2.5/prs/PR-0255A-frontend-code-health-report.md`
+- `docs/releases/v0.2.5/prs/PR-0255B-frontend-module-split-blueprint.md`
+- `docs/releases/v0.2.5/prs/PR-0255C-frontend-phased-refactor-plan.md`
 - `docs/releases/v0.2.5/prs/PR-0252-dart-modular-refactor-and-decoupling.md`
 - `docs/releases/v0.2.5/prs/PR-0253-v0.2.5-closure-and-v0.3-handoff.md`

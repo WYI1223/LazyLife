@@ -8,6 +8,11 @@
 Refactor large Dart "god-object" modules into smaller units with explicit
 boundaries, while preserving existing runtime behavior and contracts.
 
+Prerequisite:
+
+- `PR-0254C` baseline artifact index is completed.
+- `PR-0255C` phased refactor plan is completed and approved.
+
 ## Scope
 
 In scope:
@@ -67,4 +72,5 @@ Out of scope:
 - [ ] Target god-objects are decomposed with clear ownership boundaries.
 - [ ] No user-visible behavior change is introduced by refactor.
 - [ ] Existing contracts (`docs/api/*`) remain valid without drift.
+- [ ] Refactor ordering follows `PR-0255B/PR-0255C` priorities.
 - [ ] CI checks remain green with no format/lint regressions.
