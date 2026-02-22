@@ -13,9 +13,10 @@ No risk interpretation is included here. Interpretation belongs to follow-up rev
 Open these files first:
 
 1. `docs/reports/v0.2.5/architecture-baseline/artifacts/RUN_SUMMARY.md`
-2. `docs/reports/v0.2.5/architecture-baseline/artifacts/frontend/lakos/lakos.svg`
-3. `docs/reports/v0.2.5/architecture-baseline/artifacts/backend/cargo-modules/lazynote_core-dependencies.svg`
-4. `docs/reports/v0.2.5/architecture-baseline/artifacts/backend/cargo-modules/lazynote_ffi-dependencies.svg`
+2. `docs/reports/v0.2.5/architecture-baseline/BASELINE_INDEX.md`
+3. `docs/reports/v0.2.5/architecture-baseline/artifacts/frontend/lakos/lakos.svg`
+4. `docs/reports/v0.2.5/architecture-baseline/artifacts/backend/cargo-modules/lazynote_core-dependencies.svg`
+5. `docs/reports/v0.2.5/architecture-baseline/artifacts/backend/cargo-modules/lazynote_ffi-dependencies.svg`
 
 ## Artifact Layout
 

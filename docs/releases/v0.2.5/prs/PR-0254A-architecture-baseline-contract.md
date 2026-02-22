@@ -1,7 +1,7 @@
 # PR-0254A-architecture-baseline-contract
 
 - Proposed title: `docs(architecture): freeze baseline analysis contract for v0.2.5`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -46,7 +46,7 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Analysis toolchain and scope are frozen with no ambiguity.
-- [ ] Artifact naming/output location is documented and stable.
-- [ ] `PR-0254B` has a deterministic implementation checklist.
-- [ ] `PR-0254C` has a deterministic artifact-index closure checklist.
+- [x] Analysis toolchain and scope are frozen with no ambiguity.
+- [x] Artifact naming/output location is documented and stable.
+- [x] `PR-0254B` has a deterministic implementation checklist.
+- [x] `PR-0254C` has a deterministic artifact-index closure checklist.

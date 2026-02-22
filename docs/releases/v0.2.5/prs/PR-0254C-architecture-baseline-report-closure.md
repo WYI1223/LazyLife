@@ -1,7 +1,7 @@
 # PR-0254C-architecture-baseline-report-closure
 
 - Proposed title: `docs(analysis): close architecture baseline artifacts and replay index`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -25,15 +25,11 @@ Out of scope:
 
 ## Closure Checklist
 
-1. Replay:
-   - run full baseline scripts and confirm artifact integrity
-2. Artifact index:
-   - build a stable inventory with artifact path, command source, and timestamp
-3. Integrity checks:
-   - confirm each required artifact exists and is non-empty
-4. Documentation sync:
-   - update `docs/releases/v0.2.5/README.md` progress and gate
-   - add index links for future replay and downstream report PRs
+- [x] run full baseline scripts and confirm artifact integrity
+- [x] build a stable inventory with artifact path, command source, and timestamp
+- [x] confirm each required artifact exists and is non-empty
+- [x] update `docs/releases/v0.2.5/README.md` progress and gate
+- [x] add index links for future replay and downstream report PRs
 
 ## Planned File Changes
 
@@ -50,7 +46,7 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] Baseline index contains reproducible evidence links and replay metadata.
-- [ ] No deep analysis/recommendation text is included in this PR.
-- [ ] v0.2.5 plan marks baseline lane as completed.
-- [ ] `PR-0255A/B/C` start from indexed artifacts, not ad hoc assumptions.
+- [x] Baseline index contains reproducible evidence links and replay metadata.
+- [x] No deep analysis/recommendation text is included in this PR.
+- [x] v0.2.5 plan marks baseline lane as completed.
+- [x] `PR-0255A/B/C` start from indexed artifacts, not ad hoc assumptions.
