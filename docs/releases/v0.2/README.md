@@ -158,8 +158,8 @@ Recommended order:
    - `PR-0207-explorer-context-actions-dnd-baseline` (completed: M1/M2 feature landing + M3 closure)
    - `PR-0207A-explorer-note-ref-title-rename-freeze` (completed: v0.2 title/rename boundary closure)
    - `PR-0207B-explorer-ordering-contract-freeze` (completed: docs contract freeze landed)
-   - `PR-0207C-explorer-ordering-and-backfill-implementation` (planned)
-   - `PR-0207D-explorer-ordering-closure` (planned)
+   - `PR-0207C-explorer-ordering-and-backfill-implementation` (completed: no-reorder policy + title-only rows + legacy note_ref backfill)
+   - `PR-0207D-explorer-ordering-closure` (completed: docs/status sync + verification replay + QA closure)
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en`
    - `PR-0210-debug-viewer-readability-upgrade` (optional: add log_dart_event FFI)
@@ -251,13 +251,13 @@ Recommended order:
    - [x] add NotesPage + first-party slot integration regression (`notes_page_explorer_slot_wiring_test.dart`)
    - [x] freeze M2 drag boundary (target matrix, same-kind reorder rule, source/target refresh policy)
    - [x] implement M2 drag controller + drop indicator
-   - [x] wire drag move via `workspace_move_node` (same-parent reorder + cross-parent move)
+   - [x] wire drag move via `workspace_move_node` (historical M2 baseline; replaced by PR-0207C parent-change-only policy)
    - [x] add M2 drag regressions (success/failure/invalid-target)
    - [x] complete M3 closure (docs/contract sync + verification replay)
 10. `PR-0207B/0207C/0207D` ordering/move transition lane
    - [x] `PR-0207B`: freeze ordering + move semantics contract
-   - [ ] `PR-0207C`: implement no-reorder move policy + title-only rows + legacy note_ref backfill
-   - [ ] `PR-0207D`: closure replay (docs sync + migration/QA evidence + obsolete reorder cleanup)
+   - [x] `PR-0207C`: implement no-reorder move policy + title-only rows + legacy note_ref backfill
+   - [x] `PR-0207D`: closure replay (docs sync + migration/QA evidence + obsolete reorder cleanup)
 
 ## Quality Gates
 

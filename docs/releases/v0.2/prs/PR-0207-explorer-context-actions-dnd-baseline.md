@@ -3,6 +3,10 @@
 - Proposed title: `feat(notes-ui): explorer context actions and baseline drag reorder`
 - Status: Completed
 
+> Final v0.2 ordering/move semantics are locked by
+> `PR-0207B` (contract freeze), `PR-0207C` (runtime alignment),
+> and `PR-0207D` (closure replay). This document is retained as M1/M2 history.
+
 ## Goal
 
 Add practical file-manager interactions to explorer tree for daily notes operations.
@@ -40,7 +44,7 @@ In scope:
   - new folder
   - rename (folder-only in v0.2)
   - move
-- baseline drag-reorder (same parent first, cross-parent second; post-M1)
+- baseline drag/reorder history (post-M1; superseded by PR-0207C policy)
 - visual hover action affordances
 
 Out of scope:
@@ -62,7 +66,7 @@ M1 only lands context actions and deterministic refresh behavior:
 
 M1 explicitly does **not** include drag reorder implementation.
 
-## M2 Boundary (drag baseline, start implementation against this)
+## M2 Boundary (historical baseline, superseded by PR-0207C)
 
 M2 only lands deterministic drag/move baseline behavior:
 
@@ -113,7 +117,7 @@ M2 frozen rules:
    - create/rename/move success + recoverable failure
    - expansion-state preservation assertions
 
-## Step-by-Step (M2)
+## Step-by-Step (M2 historical record)
 
 1. Freeze drag/drop target matrix and rejection rules.
    - row drag source: `folder` / `note_ref` (except synthetic root)
@@ -239,15 +243,16 @@ Verification replay (2026-02-20):
 
 - M2: drag reorder baseline (same-parent then cross-parent) with clear drop indicators. (landed)
 - M3: hardening/docs closure (error/retry UX, edge-case regression expansion). (landed)
-- M4 transition lane (in progress):
+- M4 transition lane (completed):
   - `PR-0207B` contract freeze for ordering + move semantics
   - `PR-0207C` implementation (no-reorder move + title-only explorer note rows + legacy note_ref backfill)
   - `PR-0207D` closure replay (docs sync + migration/QA evidence + obsolete reorder cleanup)
 - transition note:
   - PR-0207 M2 same-parent reorder behavior is treated as legacy baseline.
   - PR-0207B/0207C replace it with parent-change-only move semantics.
+  - PR-0207D records closure replay evidence and marks transition lane complete.
 
-## Acceptance Criteria (M2)
+## Acceptance Criteria (M2 historical baseline)
 
 - [x] Drag reorder works within same parent and same-kind group.
 - [x] Drag move works across parents and keeps projection invariants.

@@ -206,6 +206,14 @@ This milestone extends explorer interactions while reusing existing contracts.
   - dissolve mapping: root-level note refs are rendered under synthetic `Uncategorized`;
     promoted child folders stay as root folders
 
+Closure note (PR-0207D, 2026-02-22):
+
+- PR-0207 transition lane is closed.
+- Runtime policy now follows PR-0207B/0207C freeze:
+  - parent-change-only move on UI path (`target_order = null`)
+  - title-only explorer note rows
+  - legacy note visibility backed by migration `0009_workspace_note_ref_backfill.sql`
+
 ---
 
 ## Workspace Tree APIs (PR-0203 + PR-0221)

@@ -77,3 +77,8 @@ Out of scope:
 - [x] Note-row contract clearly states "title-only, no preview text".
 - [x] Legacy-note backfill requirement is documented as mandatory follow-up.
 - [x] Contract docs and release plan are synchronized.
+
+## Closure Sync (PR-0207D)
+
+- 2026-02-22: runtime alignment (`PR-0207C`) and closure replay (`PR-0207D`)
+  completed; freeze contract remains the active v0.2 policy.
