@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
@@ -1007,6 +1008,14 @@ class NotesController extends ChangeNotifier {
           message: response.message,
           fallback: 'Failed to move workspace node.',
         );
+        DartEventLogger.tryLog(
+          level: 'warn',
+          eventName: 'workspace.node_move.error',
+          module: 'notes.notes_controller',
+          message:
+              'Workspace move failed (${response.errorCode ?? "unknown"}).',
+          dedupe: false,
+        );
         _workspaceNodeMutationErrorMessage = message;
         return rust_api.WorkspaceActionResponse(
           ok: false,
@@ -1014,11 +1023,25 @@ class NotesController extends ChangeNotifier {
           message: message,
         );
       }
+      DartEventLogger.tryLog(
+        level: 'info',
+        eventName: 'workspace.node_move.ok',
+        module: 'notes.notes_controller',
+        message: 'Workspace move succeeded.',
+        dedupe: false,
+      );
       _workspaceNodeMutationErrorMessage = null;
       _bumpWorkspaceTreeRevision();
       return response;
     } catch (error) {
       final message = 'Workspace node move failed unexpectedly: $error';
+      DartEventLogger.tryLog(
+        level: 'warn',
+        eventName: 'workspace.node_move.exception',
+        module: 'notes.notes_controller',
+        message: 'Workspace move failed unexpectedly.',
+        dedupe: false,
+      );
       _workspaceNodeMutationErrorMessage = message;
       return rust_api.WorkspaceActionResponse(
         ok: false,

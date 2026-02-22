@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kReleaseMode, visibleForTesting;
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
+import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/core/local_paths.dart';
 import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
 
@@ -337,6 +338,7 @@ class RustBridge {
     RustLoggingInitSnapshot complete(RustLoggingInitSnapshot snapshot) {
       _latestLoggingInitSnapshot = snapshot;
       _loggingInitFuture = null;
+      _emitBootstrapLoggingEvent(snapshot);
       return snapshot;
     }
 
@@ -414,12 +416,44 @@ class RustBridge {
     return complete(result);
   }
 
+  static void _emitBootstrapLoggingEvent(RustLoggingInitSnapshot snapshot) {
+    final isSuccess = snapshot.isSuccess;
+    DartEventLogger.tryLog(
+      level: isSuccess ? 'info' : 'warn',
+      eventName: isSuccess
+          ? 'rust_bridge.logging_bootstrap.ok'
+          : 'rust_bridge.logging_bootstrap.error',
+      module: 'core.rust_bridge',
+      message: isSuccess
+          ? 'Rust logging bootstrap completed successfully.'
+          : 'Rust logging bootstrap failed.',
+    );
+  }
+
   /// Runs Rust smoke APIs used by diagnostics UI.
   static Future<RustHealthSnapshot> runHealthCheck() async {
-    await init();
-    return RustHealthSnapshot(
-      ping: rust_api.ping(),
-      coreVersion: rust_api.coreVersion(),
-    );
+    try {
+      await init();
+      final snapshot = RustHealthSnapshot(
+        ping: rust_api.ping(),
+        coreVersion: rust_api.coreVersion(),
+      );
+      DartEventLogger.tryLog(
+        level: 'debug',
+        eventName: 'rust_bridge.health_check.ok',
+        module: 'core.rust_bridge',
+        message: 'Rust health check completed.',
+      );
+      return snapshot;
+    } catch (_) {
+      DartEventLogger.tryLog(
+        level: 'warn',
+        eventName: 'rust_bridge.health_check.error',
+        module: 'core.rust_bridge',
+        message: 'Rust health check failed.',
+        dedupeWindow: Duration.zero,
+      );
+      rethrow;
+    }
   }
 }

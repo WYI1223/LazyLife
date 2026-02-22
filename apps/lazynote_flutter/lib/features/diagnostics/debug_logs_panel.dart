@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/core/debug/log_reader.dart';
+import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/features/diagnostics/log_line_meta.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
@@ -42,15 +43,18 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
   bool _refreshInFlight = false;
   bool _hasQueuedRefresh = false;
   bool _queuedShowLoading = false;
+  bool _followTail = true;
 
   static const Duration _refreshInterval = Duration(seconds: 3);
   static const double _fallbackLogHeight = 320;
   static const int _maxActionMessageChars = 180;
+  static const double _tailFollowThreshold = 32;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scrollController.addListener(_handleScrollPositionChanged);
     _refreshLogs(showLoading: true);
     _startAutoRefreshTimerIfNeeded();
   }
@@ -59,8 +63,17 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
   void dispose() {
     _refreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    _scrollController.removeListener(_handleScrollPositionChanged);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleScrollPositionChanged() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    final extentAfter = _scrollController.position.extentAfter;
+    _followTail = extentAfter <= _tailFollowThreshold;
   }
 
   @override
@@ -134,6 +147,7 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
         return;
       }
       final changed = !_sameSnapshot(_snapshot, snapshot);
+      final shouldFollowTailAfterUpdate = _followTail || _snapshot == null;
       if (!showLoading && !changed && _error == null) {
         return;
       }
@@ -143,6 +157,9 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
         _loading = false;
         _lastRefreshAt = DateTime.now();
       });
+      if (shouldFollowTailAfterUpdate) {
+        _scheduleScrollToTail();
+      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -164,6 +181,23 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
         unawaited(_refreshLogs(showLoading: nextShowLoading));
       }
     }
+  }
+
+  void _scheduleScrollToTail() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_followTail || !_scrollController.hasClients) {
+        return;
+      }
+      final position = _scrollController.position;
+      if (!position.hasPixels) {
+        return;
+      }
+      final max = position.maxScrollExtent;
+      if ((max - position.pixels).abs() <= 1) {
+        return;
+      }
+      _scrollController.jumpTo(max);
+    });
   }
 
   bool _sameSnapshot(DebugLogSnapshot? left, DebugLogSnapshot right) {
@@ -203,6 +237,12 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
       return;
     }
     _setActionMessage(l10n.debugLogsVisibleLogsCopied);
+    DartEventLogger.tryLog(
+      level: 'info',
+      eventName: 'diagnostics.logs.copy_visible',
+      module: 'diagnostics.debug_logs_panel',
+      message: 'Visible diagnostics logs copied.',
+    );
   }
 
   Future<void> _copySingleLogLine(String rawLine) async {
@@ -239,11 +279,23 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
         return;
       }
       _setActionMessage(l10n.debugLogsOpenedLogFolder);
+      DartEventLogger.tryLog(
+        level: 'info',
+        eventName: 'diagnostics.logs.open_folder.ok',
+        module: 'diagnostics.debug_logs_panel',
+        message: 'Diagnostics log folder opened.',
+      );
     } catch (error) {
       if (!mounted) {
         return;
       }
       _setActionMessage(l10n.debugLogsOpenFolderFailed(error.toString()));
+      DartEventLogger.tryLog(
+        level: 'warn',
+        eventName: 'diagnostics.logs.open_folder.error',
+        module: 'diagnostics.debug_logs_panel',
+        message: 'Diagnostics log folder open failed.',
+      );
     }
   }
 
