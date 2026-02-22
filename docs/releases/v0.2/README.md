@@ -167,8 +167,8 @@ Recommended order:
    - `PR-0209-ui-localization-cn-en` (completed: M1/M2/M3 landed)
    - `PR-0210-debug-viewer-readability-upgrade` (completed: readability parser/rendering hardening + regressions)
    - `PR-0210C-diagnostics-session-single-file-log-policy` (completed: startup-scoped single-file logs + retention cleanup)
-   - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (follow-up FFI contract/codegen)
-   - `PR-0210B-diagnostics-log-dart-event-integration` (follow-up Dart integration/safety)
+   - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (completed: sync FFI contract + binding + smoke tests)
+   - `PR-0210B-diagnostics-log-dart-event-integration` (next: Dart call-site integration/safety)
    - `PR-0211-docs-language-policy-and-index`
    - `PR-0212-links-index-open-v1`
    - `PR-0201-global-hotkey-quick-entry`
@@ -293,6 +293,11 @@ Recommended order:
     - [x] keep diagnostics viewer on single-file tail read path
     - [x] replay `cargo test` + `flutter analyze/test` and close docs/status sync
     - [x] retention thresholds frozen: `max_age_days=7`, `max_files=20`, `max_total_bytes=50MB`
+15. `PR-0210A` diagnostics `log_dart_event` FFI contract (completed)
+    - [x] freeze payload bounds + stable error codes
+    - [x] land Rust FFI API + core bridge and regenerate FRB bindings
+    - [x] add Flutter contract smoke for generated sync call path
+    - [x] sync `ffi-contracts` + `error-codes` and close docs/status
 
 ## Quality Gates
 
