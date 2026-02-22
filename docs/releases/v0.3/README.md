@@ -75,6 +75,9 @@ Required baseline:
 - explorer recursive lazy rendering
 - split layout v1
 - extension kernel + provider SPI + capability model
+- v0.2.5 semantic freeze outputs (`PR-0251`)
+- v0.2.5 Dart decoupling baseline for notes/workspace seams (`PR-0252`)
+- v0.2.5 closure replay and handoff evidence (`PR-0253`)
 
 ## Execution Order
 

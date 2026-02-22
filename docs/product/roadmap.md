@@ -16,6 +16,11 @@
    - focus PRs: `PR-0202` to `PR-0221` (deferred from v0.2: `PR-0201`, `PR-0212`)
    - plan: `docs/releases/v0.2/README.md`
    - closure kit: `docs/releases/v0.2/CLOSURE_KIT.md`
+2.5. v0.2.5 (debt paydown and semantic freeze bridge)
+   - scope: semantics freeze, Dart god-object decomposition, decoupling, closure replay, v0.3 handoff re-baseline
+   - focus PRs: `PR-0251` to `PR-0253`
+   - plan: `docs/releases/v0.2.5/README.md`
+   - gate: v0.2 closure must be green before v0.2.5 closure handoff
 3. v0.3 (IDE-grade recursive workspace)
    - scope: recursive split, drag-to-split, cross-pane coherence, perf gate, links/index/open foundation, workspace launcher experience, local task-calendar projection, Google Calendar provider pluginization, Windows global hotkey quick-entry
    - focus PRs: `PR-0301` to `PR-0311` (plus `PR-0306A`)
