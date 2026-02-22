@@ -85,7 +85,9 @@ In scope:
 - explorer ordering closure + QA replay (`PR-0207D`)
 - hardening and release closure 鈥?incl. regression verification for bridge PRs (`PR-0208`)
 - CN/EN localization baseline (`PR-0209`)
-- debug viewer readability phase-2 upgrade 鈥?incl. optional `log_dart_event` FFI (`PR-0210`)
+- debug viewer readability phase-2 upgrade (readability only) (`PR-0210`)
+- `log_dart_event` FFI contract + binding (`PR-0210A`)
+- `log_dart_event` Dart call-site integration (`PR-0210B`)
 - docs language policy and docs index baseline (`PR-0211`)
 - links/index/open foundation (`PR-0212`)
 - extension kernel contracts (`PR-0213`)
@@ -161,8 +163,10 @@ Recommended order:
    - `PR-0207C-explorer-ordering-and-backfill-implementation` (completed: no-reorder policy + title-only rows + legacy note_ref backfill)
    - `PR-0207D-explorer-ordering-closure` (completed: docs/status sync + verification replay + QA closure)
 4. Support lane (parallel after shell baseline is stable):
-   - `PR-0209-ui-localization-cn-en` (in progress: M1 contract freeze completed)
-   - `PR-0210-debug-viewer-readability-upgrade` (optional: add log_dart_event FFI)
+   - `PR-0209-ui-localization-cn-en` (completed: M1/M2/M3 landed)
+   - `PR-0210-debug-viewer-readability-upgrade` (readability-only track)
+   - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (follow-up FFI contract/codegen)
+   - `PR-0210B-diagnostics-log-dart-event-integration` (follow-up Dart integration/safety)
    - `PR-0211-docs-language-policy-and-index`
    - `PR-0212-links-index-open-v1`
    - `PR-0201-global-hotkey-quick-entry`
@@ -273,8 +277,14 @@ Recommended order:
    - [x] M2: add `l10n` scaffold + `ui.language` persistence + app/runtime switch wiring
    - [x] M2: migrate Workbench/Settings/Diagnostics/Notes baseline strings
    - [x] M3 partial: replay `flutter analyze` + full `flutter test` after Notes migration
-   - [x] M3: add dedicated startup locale-resolution and runtime-switch regression tests
-   - [x] M3: final release/doc closure and mark PR completed
+    - [x] M3: add dedicated startup locale-resolution and runtime-switch regression tests
+    - [x] M3: final release/doc closure and mark PR completed
+13. `PR-0210` debug viewer readability upgrade (in progress; readability-only scope)
+    - [x] freeze readability-only contract and defer `log_dart_event` to `PR-0210A/B`
+    - [ ] land mixed-format parser normalization (`detailed`/`ISO`/`time-only` + level alias normalization)
+    - [ ] land dense row readability hierarchy and row-level raw-copy action
+    - [ ] keep refresh/coalescing pipeline unchanged
+    - [ ] replay `flutter analyze` + targeted/full tests and close PR status/docs sync
 
 ## Quality Gates
 
@@ -329,6 +339,8 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0208-workspace-hardening-doc-closure.md`
 - `docs/releases/v0.2/prs/PR-0209-ui-localization-cn-en.md`
 - `docs/releases/v0.2/prs/PR-0210-debug-viewer-readability-upgrade.md`
+- `docs/releases/v0.2/prs/PR-0210A-diagnostics-log-dart-event-ffi-contract.md`
+- `docs/releases/v0.2/prs/PR-0210B-diagnostics-log-dart-event-integration.md`
 - `docs/releases/v0.2/prs/PR-0211-docs-language-policy-and-index.md`
 - `docs/releases/v0.2/prs/PR-0212-links-index-open-v1.md`
 - `docs/releases/v0.2/prs/PR-0213-extension-kernel-contracts.md`
