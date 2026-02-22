@@ -4,6 +4,11 @@
 
 v0.2 upgrades Notes from a single-pane feature into a workspace-capable foundation.
 
+## Release Status
+
+- Status: **Closure Ready** (scope and deferred mapping are frozen in docs)
+- Closure execution entry: `docs/releases/v0.2/CLOSURE_KIT.md`
+
 Theme:
 
 - workspace runtime architecture
