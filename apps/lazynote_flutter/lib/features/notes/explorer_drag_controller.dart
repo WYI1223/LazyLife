@@ -20,17 +20,13 @@ class ExplorerDragPayload {
 class ExplorerDropPlan {
   const ExplorerDropPlan({
     required this.newParentNodeId,
-    required this.targetOrder,
     required this.sourceParentNodeId,
     required this.targetParentNodeId,
   });
 
   final String? newParentNodeId;
-  final int? targetOrder;
   final String? sourceParentNodeId;
   final String? targetParentNodeId;
-
-  bool get isReorder => targetOrder != null;
 }
 
 /// Stateless decision helper for explorer drag/drop baseline.
@@ -56,7 +52,6 @@ class ExplorerDragController {
   ExplorerDropPlan? planForRowDrop({
     required ExplorerDragPayload payload,
     required rust_api.WorkspaceNodeItem targetNode,
-    required List<rust_api.WorkspaceNodeItem> siblings,
     required String? Function(String? parentNodeId) normalizeParent,
     required bool Function(String nodeId) isStableNodeId,
     required bool Function(String nodeId) isSyntheticRootNodeId,
@@ -73,42 +68,24 @@ class ExplorerDragController {
       return null;
     }
 
-    final sourceParent = payload.sourceParentNodeId;
-    final targetParent = normalizeParent(targetNode.parentNodeId);
-    final sameParent = sourceParent == targetParent;
-
-    // Same-parent reorder is only allowed inside the same kind group.
-    if (sameParent) {
-      if (payload.kind != targetNode.kind) {
-        return null;
-      }
-      final targetOrder = _sameParentTargetOrder(
-        payload: payload,
-        targetNode: targetNode,
-        siblings: siblings,
-        isStableNodeId: isStableNodeId,
-      );
-      if (targetOrder == null) {
-        return null;
-      }
-      return ExplorerDropPlan(
-        newParentNodeId: targetParent,
-        targetOrder: targetOrder,
-        sourceParentNodeId: sourceParent,
-        targetParentNodeId: targetParent,
-      );
-    }
-
-    // Cross-parent move is allowed only when dropping onto a folder row.
+    // v0.2 transition freeze: row-drop only supports "move into folder".
+    // Same-parent reorder remains unsupported.
     if (targetNode.kind != 'folder') {
       return null;
     }
 
+    final sourceParent = payload.sourceParentNodeId;
+    final targetFolderId = targetNodeId;
+
+    // No-op: source already belongs to this folder.
+    if (sourceParent == targetFolderId) {
+      return null;
+    }
+
     return ExplorerDropPlan(
-      newParentNodeId: targetNodeId,
-      targetOrder: null,
+      newParentNodeId: targetFolderId,
       sourceParentNodeId: sourceParent,
-      targetParentNodeId: targetNodeId,
+      targetParentNodeId: targetFolderId,
     );
   }
 
@@ -119,31 +96,8 @@ class ExplorerDragController {
     }
     return ExplorerDropPlan(
       newParentNodeId: null,
-      targetOrder: null,
       sourceParentNodeId: payload.sourceParentNodeId,
       targetParentNodeId: null,
     );
-  }
-
-  int? _sameParentTargetOrder({
-    required ExplorerDragPayload payload,
-    required rust_api.WorkspaceNodeItem targetNode,
-    required List<rust_api.WorkspaceNodeItem> siblings,
-    required bool Function(String nodeId) isStableNodeId,
-  }) {
-    final group = siblings
-        .where((entry) => entry.kind == payload.kind)
-        .where((entry) => isStableNodeId(entry.nodeId.trim()))
-        .toList(growable: false);
-    final sourceIndex = group.indexWhere(
-      (entry) => entry.nodeId == payload.nodeId,
-    );
-    final targetIndex = group.indexWhere(
-      (entry) => entry.nodeId == targetNode.nodeId,
-    );
-    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex) {
-      return null;
-    }
-    return targetIndex;
   }
 }

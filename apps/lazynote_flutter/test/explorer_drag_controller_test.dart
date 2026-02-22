@@ -41,7 +41,7 @@ void main() {
   bool isSyntheticRootNodeId(String nodeId) =>
       nodeId.trim() == '__uncategorized__';
 
-  test('same-parent same-kind drop resolves reorder targetOrder', () {
+  test('same-parent drop is rejected', () {
     const parentId = '11111111-1111-4111-8111-111111111111';
     const nodeA = '22222222-2222-4222-8222-222222222222';
     const nodeB = '33333333-3333-4333-8333-333333333333';
@@ -58,28 +58,12 @@ void main() {
         parentNodeId: parentId,
         atomId: 'note-a',
       ),
-      siblings: <rust_api.WorkspaceNodeItem>[
-        _node(
-          nodeId: nodeA,
-          kind: 'note_ref',
-          parentNodeId: parentId,
-          atomId: 'note-a',
-        ),
-        _node(
-          nodeId: nodeB,
-          kind: 'note_ref',
-          parentNodeId: parentId,
-          atomId: 'note-b',
-        ),
-      ],
       normalizeParent: normalizeParent,
       isStableNodeId: isStableNodeId,
       isSyntheticRootNodeId: isSyntheticRootNodeId,
     );
 
-    expect(plan, isNotNull);
-    expect(plan!.newParentNodeId, parentId);
-    expect(plan.targetOrder, 0);
+    expect(plan, isNull);
   });
 
   test('cross-parent drop onto folder resolves move-to-folder plan', () {
@@ -94,10 +78,6 @@ void main() {
         sourceParentNodeId: sourceParent,
       ),
       targetNode: _node(nodeId: targetFolder, kind: 'folder'),
-      siblings: <rust_api.WorkspaceNodeItem>[
-        _node(nodeId: sourceParent, kind: 'folder'),
-        _node(nodeId: targetFolder, kind: 'folder'),
-      ],
       normalizeParent: normalizeParent,
       isStableNodeId: isStableNodeId,
       isSyntheticRootNodeId: isSyntheticRootNodeId,
@@ -105,7 +85,31 @@ void main() {
 
     expect(plan, isNotNull);
     expect(plan!.newParentNodeId, targetFolder);
-    expect(plan.targetOrder, isNull);
+  });
+
+  test('drop onto child folder under same parent is allowed', () {
+    const parentId = '11111111-1111-4111-8111-111111111111';
+    const childFolder = '22222222-2222-4222-8222-222222222222';
+    const noteRef = '33333333-3333-4333-8333-333333333333';
+
+    final plan = controller.planForRowDrop(
+      payload: const ExplorerDragPayload(
+        nodeId: noteRef,
+        kind: 'note_ref',
+        sourceParentNodeId: parentId,
+      ),
+      targetNode: _node(
+        nodeId: childFolder,
+        kind: 'folder',
+        parentNodeId: parentId,
+      ),
+      normalizeParent: normalizeParent,
+      isStableNodeId: isStableNodeId,
+      isSyntheticRootNodeId: isSyntheticRootNodeId,
+    );
+
+    expect(plan, isNotNull);
+    expect(plan!.newParentNodeId, childFolder);
   });
 
   test('same-parent cross-kind drop is rejected', () {
@@ -125,15 +129,6 @@ void main() {
         parentNodeId: parentId,
         atomId: 'note-a',
       ),
-      siblings: <rust_api.WorkspaceNodeItem>[
-        _node(nodeId: folderNode, kind: 'folder', parentNodeId: parentId),
-        _node(
-          nodeId: noteRef,
-          kind: 'note_ref',
-          parentNodeId: parentId,
-          atomId: 'note-a',
-        ),
-      ],
       normalizeParent: normalizeParent,
       isStableNodeId: isStableNodeId,
       isSyntheticRootNodeId: isSyntheticRootNodeId,
