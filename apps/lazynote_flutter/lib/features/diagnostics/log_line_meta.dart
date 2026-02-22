@@ -35,23 +35,48 @@ class LogLineMeta {
   // Matches flexi_logger detailed_format:
   //   [2026-02-15 10:23:45.123456 +00:00] INFO [lazynote_core::logging] src/logging.rs:100: event=app_start
   //
-  // Group 1 - HH:MM:SS.mmm (first 3 of the 6 fractional-second digits)
+  // Group 1 - HH:MM:SS(.fraction) token
   // Group 2 - level token   (e.g. INFO)
   // Group 3 - message body  (everything after "file:line: ")
   static final RegExp _detailedPattern = RegExp(
-    r'^\[\d{4}-\d{2}-\d{2} (\d{2}:\d{2}:\d{2}\.\d{3})\d* [^\]]+\] (\w+) \[[^\]]+\] .+?:\d+: (.*)$',
+    r'^\[\d{4}-\d{2}-\d{2} ([0-9:.]+) [^\]]+\] ([A-Za-z]+) \[[^\]]+\] .+?:\d+: (.*)$',
+    caseSensitive: false,
   );
 
   // Backward-compatible matcher for the previously documented shape:
   //   [2026-02-15 10:23:45.123456 UTC] INFO [src/logging.rs:100] event=app_start
   static final RegExp _bracketFilePattern = RegExp(
-    r'^\[\d{4}-\d{2}-\d{2} (\d{2}:\d{2}:\d{2}\.\d{3})\d* [^\]]+\] (\w+) \[[^\]]*:\d+\] (.*)$',
+    r'^\[\d{4}-\d{2}-\d{2} ([0-9:.]+) [^\]]+\] ([A-Za-z]+) \[[^\]]*:\d+\] (.*)$',
+    caseSensitive: false,
+  );
+
+  // ISO-like prefix matcher:
+  //   2026-02-15T10:23:45.1Z WARN [lazynote_core::diag] src/diag.rs:42: event=slow_query
+  static final RegExp _isoPrefixPattern = RegExp(
+    r'^\d{4}-\d{2}-\d{2}[ T]([0-9:.]+)(?: ?(?:Z|[+-]\d{2}:?\d{2}|UTC|GMT))?\s+([A-Za-z]+)\s+(.*)$',
+    caseSensitive: false,
+  );
+
+  // Time-only prefix matcher:
+  //   [10:23:45.42] warning [module::path] message
+  static final RegExp _timeOnlyPattern = RegExp(
+    r'^\[?(\d{2}:\d{2}:\d{2}(?:\.\d+)?)\]?\s+([A-Za-z]+)\s+(.*)$',
+    caseSensitive: false,
   );
 
   // Legacy default_format matcher (no timestamp):
   //   INFO [lazynote_core::db::open] event=db_open module=db status=ok
   static final RegExp _defaultPattern = RegExp(
-    r'^(TRACE|DEBUG|INFO|WARN|ERROR) \[[^\]]+\] (.*)$',
+    r'^(TRACE|DEBUG|INFO|WARN|WARNING|ERROR|ERR)\s+(?:\[[^\]]+\]\s+)?(.*)$',
+    caseSensitive: false,
+  );
+
+  static final RegExp _timeTokenPattern = RegExp(
+    r'(\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?',
+  );
+  static final RegExp _modulePrefixPattern = RegExp(r'^\[[^\]]+\]\s*(.*)$');
+  static final RegExp _sourcePrefixPattern = RegExp(
+    r'^[A-Za-z0-9_./\\-]+:\d+:\s*(.*)$',
   );
 
   /// Parses [raw] and returns a [LogLineMeta].
@@ -65,9 +90,9 @@ class LogLineMeta {
     final detailed = _detailedPattern.firstMatch(normalized);
     if (detailed != null) {
       return LogLineMeta(
-        timestamp: detailed.group(1),
-        level: detailed.group(2)?.toLowerCase(),
-        message: detailed.group(3) ?? '',
+        timestamp: _normalizeTimestamp(detailed.group(1)),
+        level: _normalizeLevel(detailed.group(2)),
+        message: _normalizeMessage(detailed.group(3) ?? ''),
         raw: raw,
       );
     }
@@ -75,9 +100,29 @@ class LogLineMeta {
     final bracketFile = _bracketFilePattern.firstMatch(normalized);
     if (bracketFile != null) {
       return LogLineMeta(
-        timestamp: bracketFile.group(1),
-        level: bracketFile.group(2)?.toLowerCase(),
-        message: bracketFile.group(3) ?? '',
+        timestamp: _normalizeTimestamp(bracketFile.group(1)),
+        level: _normalizeLevel(bracketFile.group(2)),
+        message: _normalizeMessage(bracketFile.group(3) ?? ''),
+        raw: raw,
+      );
+    }
+
+    final isoPrefix = _isoPrefixPattern.firstMatch(normalized);
+    if (isoPrefix != null) {
+      return LogLineMeta(
+        timestamp: _normalizeTimestamp(isoPrefix.group(1)),
+        level: _normalizeLevel(isoPrefix.group(2)),
+        message: _normalizeMessage(isoPrefix.group(3) ?? ''),
+        raw: raw,
+      );
+    }
+
+    final timeOnly = _timeOnlyPattern.firstMatch(normalized);
+    if (timeOnly != null) {
+      return LogLineMeta(
+        timestamp: _normalizeTimestamp(timeOnly.group(1)),
+        level: _normalizeLevel(timeOnly.group(2)),
+        message: _normalizeMessage(timeOnly.group(3) ?? ''),
         raw: raw,
       );
     }
@@ -86,12 +131,64 @@ class LogLineMeta {
     if (defaultLine != null) {
       return LogLineMeta(
         timestamp: null,
-        level: defaultLine.group(1)?.toLowerCase(),
-        message: defaultLine.group(2) ?? '',
+        level: _normalizeLevel(defaultLine.group(1)),
+        message: _normalizeMessage(defaultLine.group(2) ?? ''),
         raw: raw,
       );
     }
 
     return LogLineMeta(timestamp: null, level: null, message: raw, raw: raw);
+  }
+
+  static String? _normalizeTimestamp(String? rawToken) {
+    if (rawToken == null || rawToken.trim().isEmpty) {
+      return null;
+    }
+    final match = _timeTokenPattern.firstMatch(rawToken);
+    if (match == null) {
+      return null;
+    }
+
+    final hhmmss = match.group(1)!;
+    var fraction = match.group(2) ?? '';
+    if (fraction.isEmpty) {
+      fraction = '000';
+    } else if (fraction.length < 3) {
+      fraction = fraction.padRight(3, '0');
+    } else if (fraction.length > 3) {
+      fraction = fraction.substring(0, 3);
+    }
+    return '$hhmmss.$fraction';
+  }
+
+  static String? _normalizeLevel(String? token) {
+    if (token == null) {
+      return null;
+    }
+    return switch (token.toLowerCase()) {
+      'trace' => 'trace',
+      'debug' => 'debug',
+      'info' => 'info',
+      'warn' => 'warn',
+      'warning' => 'warn',
+      'error' => 'error',
+      'err' => 'error',
+      _ => null,
+    };
+  }
+
+  static String _normalizeMessage(String message) {
+    var normalized = message.trimLeft();
+
+    final module = _modulePrefixPattern.firstMatch(normalized);
+    if (module != null) {
+      normalized = module.group(1) ?? normalized;
+    }
+
+    final source = _sourcePrefixPattern.firstMatch(normalized);
+    if (source != null) {
+      normalized = source.group(1) ?? normalized;
+    }
+    return normalized;
   }
 }
