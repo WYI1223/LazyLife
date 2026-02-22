@@ -280,6 +280,99 @@ void main() {
     expect(copiedLine, equals(line));
     expect(find.text('Visible logs copied.'), findsOneWidget);
   });
+
+  testWidgets('debug panel follows tail by default after refresh', (
+    WidgetTester tester,
+  ) async {
+    var tailText = _manyLines(count: 120);
+
+    await tester.pumpWidget(
+      wrapWithL10n(
+        SizedBox(
+          width: 800,
+          height: 420,
+          child: DebugLogsPanel(
+            snapshotLoader: () async => _snapshot(tailText),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final scrollableFinder = find.descendant(
+      of: find.byType(DebugLogsPanel),
+      matching: find.byType(Scrollable),
+    );
+    ScrollableState scrollableState = tester.state<ScrollableState>(
+      scrollableFinder.first,
+    );
+    expect(
+      (scrollableState.position.maxScrollExtent -
+              scrollableState.position.pixels)
+          .abs(),
+      lessThan(2),
+    );
+
+    tailText = _manyLines(count: 180);
+    await tester.tap(find.text('Refresh'));
+    await tester.pump();
+    await tester.pump();
+
+    scrollableState = tester.state<ScrollableState>(scrollableFinder.first);
+    expect(
+      (scrollableState.position.maxScrollExtent -
+              scrollableState.position.pixels)
+          .abs(),
+      lessThan(2),
+    );
+  });
+
+  testWidgets('debug panel keeps manual upward scroll position on refresh', (
+    WidgetTester tester,
+  ) async {
+    var tailText = _manyLines(count: 120);
+
+    await tester.pumpWidget(
+      wrapWithL10n(
+        SizedBox(
+          width: 800,
+          height: 420,
+          child: DebugLogsPanel(
+            snapshotLoader: () async => _snapshot(tailText),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final scrollableFinder = find.descendant(
+      of: find.byType(DebugLogsPanel),
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(scrollableFinder.first, const Offset(0, 180));
+    await tester.pumpAndSettle();
+
+    ScrollableState scrollableState = tester.state<ScrollableState>(
+      scrollableFinder.first,
+    );
+    expect(
+      scrollableState.position.pixels,
+      lessThan(scrollableState.position.maxScrollExtent - 32),
+    );
+
+    tailText = _manyLines(count: 180);
+    await tester.tap(find.text('Refresh'));
+    await tester.pump();
+    await tester.pump();
+
+    scrollableState = tester.state<ScrollableState>(scrollableFinder.first);
+    expect(
+      scrollableState.position.pixels,
+      lessThan(scrollableState.position.maxScrollExtent - 32),
+    );
+  });
 }
 
 DebugLogSnapshot _snapshot(String tailText) {
@@ -289,4 +382,14 @@ DebugLogSnapshot _snapshot(String tailText) {
     activeFile: null,
     tailText: tailText,
   );
+}
+
+String _manyLines({required int count}) {
+  final buffer = StringBuffer();
+  for (var i = 0; i < count; i += 1) {
+    buffer.writeln(
+      '[2026-02-22 12:00:${(i % 60).toString().padLeft(2, '0')}.000 +00:00] INFO [diag] line_$i',
+    );
+  }
+  return buffer.toString();
 }

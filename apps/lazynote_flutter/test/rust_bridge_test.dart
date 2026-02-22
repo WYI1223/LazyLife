@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
 
@@ -9,6 +10,7 @@ void main() {
   tearDown(() {
     RustBridge.resetForTesting();
     LocalSettingsStore.resetForTesting();
+    DartEventLogger.resetForTesting();
   });
 
   test('init de-duplicates concurrent calls', () async {
@@ -304,5 +306,30 @@ void main() {
     expect(snapshot.isSuccess, isTrue);
     expect(snapshot.level, 'trace');
     expect(capturedLevel, 'trace');
+  });
+
+  test('bootstrapLogging remains non-blocking when dart event logging throws', () async {
+    RustBridge.resetForTesting();
+    DartEventLogger.resetForTesting();
+
+    RustBridge.entryDbPathResolver = () async =>
+        '${Directory.systemTemp.path}${Platform.pathSeparator}data${Platform.pathSeparator}entry.sqlite3';
+    RustBridge.logDirPathResolver = () async =>
+        '${Directory.systemTemp.path}${Platform.pathSeparator}logs';
+    RustBridge.rustLibInit = (_) async {};
+    RustBridge.configureEntryDbPathCall = ({required dbPath}) => '';
+    RustBridge.initLoggingCall = ({required level, required logDir}) => '';
+    DartEventLogger.invoker =
+        ({
+          required String level,
+          required String eventName,
+          required String module,
+          required String message,
+        }) {
+          throw StateError('log_dart_event unavailable');
+        };
+
+    final snapshot = await RustBridge.bootstrapLogging();
+    expect(snapshot.isSuccess, isTrue);
   });
 }
