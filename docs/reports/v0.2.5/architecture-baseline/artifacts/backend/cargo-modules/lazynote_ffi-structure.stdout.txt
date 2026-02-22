@@ -1,0 +1,244 @@
+
+[2m[0m[38;5;68mcrate[0m lazynote_ffi
+[2m├── [0m[38;5;68mmod[0m api[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68menum[0m AtomFfiError[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m code[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m message[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m AtomListItem[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m AtomListResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m EntryActionResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m failure[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m success[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m EntrySearchItem[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m EntrySearchResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68menum[0m LogDartEventFfiError[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m code[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m message[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m LogDartEventResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m NoteItem[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m NoteResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68menum[0m NotesFfiError[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m code[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m message[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m NotesListResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m TagsListResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m WorkspaceActionResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68menum[0m WorkspaceFfiError[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m code[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m message[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m WorkspaceListChildrenResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m WorkspaceNodeItem[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m WorkspaceNodeResponse[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m sse_decode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m sse_encode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m atom_list_failure[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m atom_type_label[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m atom_update_status[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m atom_update_status_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m calendar_list_by_range[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m calendar_list_by_range_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m calendar_update_event[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m calendar_update_event_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m configure_entry_db_path[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m core_version[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68masync fn[0m entry_create_note[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m entry_create_note_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m entry_create_task[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m entry_create_task_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m entry_schedule[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m entry_schedule_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m entry_search[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m entry_search_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m init_logging[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m is_db_busy[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m log_dart_event[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m log_dart_event_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_db_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_log_dart_event_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_note_service_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_repo_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_task_service_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_tree_repo_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_tree_service_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m map_workspace_db_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m normalize_entry_limit[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m normalize_log_dart_event_level[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m normalize_section_limit[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m note_create[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m note_create_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m note_failure[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m note_get[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m note_get_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m note_set_tags[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m note_set_tags_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m note_update[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m note_update_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m notes_list[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m notes_list_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m parse_entry_search_kind[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m parse_folder_delete_mode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m parse_note_id[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m parse_optional_parent_node_id[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m parse_workspace_atom_id[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m parse_workspace_node_id[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m ping[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m resolve_entry_db_path[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m set_configured_entry_db_path[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m tags_list[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m tags_list_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m tasks_list_inbox[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m tasks_list_inbox_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m tasks_list_today[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m tasks_list_today_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m tasks_list_upcoming[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m tasks_list_upcoming_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m to_atom_list_item[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m to_entry_search_item[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m to_note_item[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m to_workspace_node_item[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m try_log_dart_event[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m validate_log_dart_event_event_name[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m validate_log_dart_event_message[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m validate_log_dart_event_module[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m with_atom_service[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m with_note_service[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m with_task_service[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m with_tree_service[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m workspace_create_folder[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_create_folder_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m workspace_create_note_ref[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_create_note_ref_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m workspace_delete_folder[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_delete_folder_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_failure[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m workspace_list_children[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_list_children_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_list_failure[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m workspace_move_node[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_move_node_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_node_failure[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m workspace_node_kind_label[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68masync fn[0m workspace_rename_node[2m:[0m [38;5;107mpub[0m
+[2m│   └── [0m[38;5;68mfn[0m workspace_rename_node_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m└── [0m[38;5;68mmod[0m frb_generated[2m:[0m [38;5;215mpub(crate)[0m
+[2m    ├── [0m[38;5;68mtrait[0m CstDecode[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mstruct[0m FLUTTER_RUST_BRIDGE_HANDLER[2m:[0m [38;5;107mpub[0m
+[2m    │   └── [0m[38;5;68mfn[0m initialize[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mstruct[0m FrbWrapper[2m:[0m [38;5;215mpub(crate)[0m
+[2m    ├── [0m[38;5;68mstruct[0m IdGenerator[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   └── [0m[38;5;68mfn[0m next_id[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mstruct[0m MoiArc[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m decrement_strong_count[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m decrement_strong_count_raw[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   ├── [0m[38;5;68mfn[0m from_raw[2m:[0m [38;5;215mpub(crate)[0m
+[2m    │   ├── [0m[38;5;68mfn[0m increment_strong_count[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m into_inner[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   ├── [0m[38;5;68mfn[0m into_raw[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   └── [0m[38;5;68mfn[0m try_unwrap[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mtype[0m MoiArcPool[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mstruct[0m MoiArcPoolInner[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mstruct[0m MoiArcPoolValue[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mtrait[0m MoiArcValue[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mtype[0m ObjectId[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mtype[0m RustAutoOpaque[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mtype[0m RustAutoOpaqueMoi[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mtype[0m RustOpaque[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mtype[0m RustOpaqueMoi[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mtrait[0m SseDecode[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mtrait[0m SseEncode[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mstruct[0m StreamSink[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m add[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m add[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m add_error[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m add_error[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m add_raw[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   ├── [0m[38;5;68mfn[0m add_raw[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m deserialize[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mfn[0m into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   └── [0m[38;5;68mfn[0m into_into_dart[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m decode_rust_opaque_moi[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m pde_ffi_dispatcher_primary_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m pde_ffi_dispatcher_sync_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m transform_result_sse[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__atom_update_status_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__calendar_list_by_range_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__calendar_update_event_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__configure_entry_db_path_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__core_version_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__entry_create_note_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__entry_create_task_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__entry_schedule_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__entry_search_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__init_logging_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__log_dart_event_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__note_create_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__note_get_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__note_set_tags_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__note_update_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__notes_list_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__ping_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__tags_list_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__tasks_list_inbox_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__tasks_list_today_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__tasks_list_upcoming_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__workspace_create_folder_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__workspace_create_note_ref_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__workspace_delete_folder_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__workspace_list_children_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mfn[0m wire__crate__api__workspace_move_node_impl[2m:[0m [38;5;167mpub(self)[0m
+[2m    └── [0m[38;5;68mfn[0m wire__crate__api__workspace_rename_node_impl[2m:[0m [38;5;167mpub(self)[0m

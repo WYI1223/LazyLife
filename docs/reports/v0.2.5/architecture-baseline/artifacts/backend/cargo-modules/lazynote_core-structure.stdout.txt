@@ -1,0 +1,301 @@
+
+[2m[0m[38;5;68mcrate[0m lazynote_core
+[2m├── [0m[38;5;68mfn[0m core_version[2m:[0m [38;5;107mpub[0m
+[2m├── [0m[38;5;68mmod[0m db[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68menum[0m DbError[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mtype[0m DbResult[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m migrations[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m Migration[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m apply_migrations[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m current_user_version[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m latest_version[2m:[0m [38;5;107mpub[0m
+[2m│   │   └── [0m[38;5;68mfn[0m validate_registry[2m:[0m [38;5;167mpub(self)[0m
+[2m│   └── [0m[38;5;68mmod[0m open[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m bootstrap_connection[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m open_db[2m:[0m [38;5;107mpub[0m
+[2m│       └── [0m[38;5;68mfn[0m open_db_in_memory[2m:[0m [38;5;107mpub[0m
+[2m├── [0m[38;5;68mmod[0m extension[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m capability[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m RuntimeCapability[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m as_str[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m description[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m RuntimeCapabilityError[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m parse_runtime_capability[2m:[0m [38;5;107mpub[0m
+[2m│   │   └── [0m[38;5;68mfn[0m supported_runtime_capability_strings[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m kernel[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mtrait[0m ExtensionAdapter[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m ExtensionHealth[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m ExtensionInvocation[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m required_capabilities[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68menum[0m ExtensionKernelError[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m ExtensionRegistry[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m assert_invocation_allowed[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m assert_runtime_capability[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m get[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m is_empty[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m len[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_by_capability[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m register_adapter[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m register_first_party_baseline[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m ExtensionSource[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m FirstPartyExtensionAdapter[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m manifest[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m notes_shell_baseline[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m source[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mstruct[0m RegisteredExtension[2m:[0m [38;5;107mpub[0m
+[2m│   └── [0m[38;5;68mmod[0m manifest[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m ExtensionManifest[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m declared_runtime_capabilities[2m:[0m [38;5;107mpub[0m
+[2m│       │   └── [0m[38;5;68mfn[0m validate[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m ManifestEntrypoints[2m:[0m [38;5;107mpub[0m
+[2m│       │   └── [0m[38;5;68mfn[0m empty[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m ManifestValidationError[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mfn[0m is_semver_triplet[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m is_valid_extension_id[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m require_entrypoint[2m:[0m [38;5;167mpub(self)[0m
+[2m│       └── [0m[38;5;68mfn[0m supported_capabilities[2m:[0m [38;5;107mpub[0m
+[2m├── [0m[38;5;68mmod[0m logging[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68menum[0m LogDartEventError[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mstruct[0m LogRetentionPolicy[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m LogRetentionSummary[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m LoggingState[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mstruct[0m ManagedLogFile[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m build_mode[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m build_session_file_spec[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m cleanup_managed_logs_best_effort[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m default_log_level[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m init_logging[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m install_panic_hook_once[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m is_managed_log_file[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m log_dart_event[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m logging_status[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mfn[0m normalize_level[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m normalize_log_dir[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m panic_payload_summary[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m plan_log_deletions[2m:[0m [38;5;167mpub(self)[0m
+[2m│   ├── [0m[38;5;68mfn[0m sanitize_inline_field[2m:[0m [38;5;167mpub(self)[0m
+[2m│   └── [0m[38;5;68mfn[0m sanitize_message[2m:[0m [38;5;167mpub(self)[0m
+[2m├── [0m[38;5;68mmod[0m model[2m:[0m [38;5;107mpub[0m
+[2m│   └── [0m[38;5;68mmod[0m atom[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m Atom[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m is_active[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m restore[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m soft_delete[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m try_new[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m validate[2m:[0m [38;5;107mpub[0m
+[2m│       │   └── [0m[38;5;68mfn[0m with_id[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m AtomDe[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mtype[0m AtomId[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m AtomType[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m AtomValidationError[2m:[0m [38;5;107mpub[0m
+[2m│       └── [0m[38;5;68menum[0m TaskStatus[2m:[0m [38;5;107mpub[0m
+[2m├── [0m[38;5;68mfn[0m ping[2m:[0m [38;5;107mpub[0m
+[2m├── [0m[38;5;68mmod[0m repo[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m atom_repo[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m AtomListQuery[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mtrait[0m AtomRepository[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m RepoError[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mtype[0m RepoResult[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m SectionAtomRow[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m SqliteAtomRepository[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m create_atom[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_by_time_range[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_inbox[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_today[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_upcoming[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m get_atom[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_atoms[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m soft_delete_atom[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m try_new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m update_atom[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m update_atom_status[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m update_event_times[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m atom_exists[2m:[0m [38;5;215mpub(crate)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m atom_type_to_db[2m:[0m [38;5;215mpub(crate)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m bool_to_int[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m ensure_connection_ready[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m parse_atom_row[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m parse_atom_type[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m parse_section_atom_row[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m parse_task_status[2m:[0m [38;5;215mpub(crate)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m table_has_column[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m task_status_to_db[2m:[0m [38;5;215mpub(crate)[0m
+[2m│   ├── [0m[38;5;68mmod[0m note_repo[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m NoteListQuery[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m NoteRecord[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mtrait[0m NoteRepository[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m SqliteNoteRepository[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m create_note[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m get_note[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_notes[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_tags[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m set_note_tags[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m try_new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m update_note_full[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m ensure_note_connection_ready[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m load_tags_for_atoms[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m load_tags_for_note[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m normalize_note_limit[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m normalize_tag[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m normalize_tags[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m note_exists_in_tx[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m parse_uuid[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   ├── [0m[38;5;68mfn[0m table_exists[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   └── [0m[38;5;68mfn[0m table_has_column[2m:[0m [38;5;167mpub(self)[0m
+[2m│   └── [0m[38;5;68mmod[0m tree_repo[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m SqliteTreeRepository[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m atom_kind[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m create_folder[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m create_note_ref[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m delete_folder_delete_all[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m delete_folder_dissolve[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m get_node[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m list_children[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m move_node[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m rename_node[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   └── [0m[38;5;68mfn[0m try_new[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m TreeRepoError[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mtype[0m TreeRepoResult[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mtrait[0m TreeRepository[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m WorkspaceNode[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mtype[0m WorkspaceNodeId[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m WorkspaceNodeKind[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mfn[0m ensure_active_folder_exists[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m ensure_tree_connection_ready[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m list_active_child_ids[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m list_referenced_note_atoms_in_subtree[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m list_visible_child_ids[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m load_required_node[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m next_sort_order[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m parse_uuid[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m parse_workspace_kind[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m parse_workspace_node_row[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m soft_delete_workspace_subtree[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m table_exists[2m:[0m [38;5;167mpub(self)[0m
+[2m│       └── [0m[38;5;68mfn[0m table_has_column[2m:[0m [38;5;167mpub(self)[0m
+[2m├── [0m[38;5;68mmod[0m search[2m:[0m [38;5;107mpub[0m
+[2m│   └── [0m[38;5;68mmod[0m fts[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m SearchError[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m SearchHit[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m SearchQuery[2m:[0m [38;5;107mpub[0m
+[2m│       │   └── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mtype[0m SearchResult[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mfn[0m atom_type_to_db[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m build_match_expression[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m escape_fts_term[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m is_match_syntax_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m map_query_error[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m parse_atom_type[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m parse_search_hit[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68mfn[0m search_all[2m:[0m [38;5;107mpub[0m
+[2m│       └── [0m[38;5;68mfn[0m search_error_code[2m:[0m [38;5;167mpub(self)[0m
+[2m├── [0m[38;5;68mmod[0m service[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m atom_service[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m AtomService[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m create_atom[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m create_note[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m create_task[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m get_atom[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_atoms[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m schedule_event[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m soft_delete_atom[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m update_atom[2m:[0m [38;5;107mpub[0m
+[2m│   │   └── [0m[38;5;68mstruct[0m ScheduleEventRequest[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m note_service[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m MarkdownPreview[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m NoteService[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m create_note[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m get_note[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_notes[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m list_tags[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m set_note_tags[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m update_note[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68menum[0m NoteServiceError[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m NotesListResult[2m:[0m [38;5;107mpub[0m
+[2m│   │   └── [0m[38;5;68mfn[0m derive_markdown_preview[2m:[0m [38;5;107mpub[0m
+[2m│   ├── [0m[38;5;68mmod[0m task_service[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m SectionAtom[2m:[0m [38;5;107mpub[0m
+[2m│   │   ├── [0m[38;5;68mstruct[0m TaskService[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m enrich_with_tags[2m:[0m [38;5;167mpub(self)[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_by_time_range[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_inbox[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_today[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m fetch_upcoming[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   ├── [0m[38;5;68mfn[0m update_event_times[2m:[0m [38;5;107mpub[0m
+[2m│   │   │   └── [0m[38;5;68mfn[0m update_status[2m:[0m [38;5;107mpub[0m
+[2m│   │   └── [0m[38;5;68menum[0m TaskServiceError[2m:[0m [38;5;107mpub[0m
+[2m│   └── [0m[38;5;68mmod[0m tree_service[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68menum[0m FolderDeleteMode[2m:[0m [38;5;107mpub[0m
+[2m│       ├── [0m[38;5;68mstruct[0m TreeService[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m create_folder[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m create_note_ref[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m delete_folder[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m ensure_atom_is_note[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m ensure_parent_is_folder[2m:[0m [38;5;167mpub(self)[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m list_children[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m move_node[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m│       │   ├── [0m[38;5;68mfn[0m rename_node[2m:[0m [38;5;107mpub[0m
+[2m│       │   └── [0m[38;5;68mfn[0m would_create_cycle[2m:[0m [38;5;167mpub(self)[0m
+[2m│       ├── [0m[38;5;68menum[0m TreeServiceError[2m:[0m [38;5;107mpub[0m
+[2m│       └── [0m[38;5;68mfn[0m normalize_display_name[2m:[0m [38;5;167mpub(self)[0m
+[2m└── [0m[38;5;68mmod[0m sync[2m:[0m [38;5;107mpub[0m
+[2m    ├── [0m[38;5;68mmod[0m provider_registry[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68mstruct[0m ProviderRegistry[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m active_provider[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m active_provider_id[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m active_status[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m auth_active[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m clear_active[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m conflict_map_active[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m get[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m is_empty[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m len[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m provider_ids[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m provider_status[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m pull_active[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m push_active[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m register[2m:[0m [38;5;107mpub[0m
+[2m    │   │   ├── [0m[38;5;68mfn[0m require_active[2m:[0m [38;5;167mpub(self)[0m
+[2m    │   │   └── [0m[38;5;68mfn[0m select_active[2m:[0m [38;5;107mpub[0m
+[2m    │   ├── [0m[38;5;68menum[0m ProviderRegistryError[2m:[0m [38;5;107mpub[0m
+[2m    │   └── [0m[38;5;68mfn[0m is_valid_provider_id[2m:[0m [38;5;167mpub(self)[0m
+[2m    ├── [0m[38;5;68mmod[0m provider_spi[2m:[0m [38;5;107mpub[0m
+[2m    │   └── [0m[38;5;68mtrait[0m ProviderSpi[2m:[0m [38;5;107mpub[0m
+[2m    └── [0m[38;5;68mmod[0m provider_types[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ConflictMapDecision[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m ConflictReason[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m ConflictResolution[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderAuthRequest[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderAuthResult[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m ProviderAuthState[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderConflict[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderConflictMapRequest[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderConflictMapResult[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderErrorEnvelope[2m:[0m [38;5;107mpub[0m
+[2m        │   └── [0m[38;5;68mfn[0m new[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m ProviderHealth[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderPullRequest[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderPullResult[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderPushChange[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderPushRequest[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderPushResult[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderRecord[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mtype[0m ProviderResult[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m ProviderStatus[2m:[0m [38;5;107mpub[0m
+[2m        │   └── [0m[38;5;68mfn[0m unauthenticated[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m PushOperation[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m SyncEntityKind[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68menum[0m SyncStage[2m:[0m [38;5;107mpub[0m
+[2m        ├── [0m[38;5;68mstruct[0m SyncSummary[2m:[0m [38;5;107mpub[0m
+[2m        │   ├── [0m[38;5;68mfn[0m duration_ms[2m:[0m [38;5;107mpub[0m
+[2m        │   ├── [0m[38;5;68mfn[0m failure[2m:[0m [38;5;107mpub[0m
+[2m        │   └── [0m[38;5;68mfn[0m success[2m:[0m [38;5;107mpub[0m
+[2m        └── [0m[38;5;68mfn[0m now_epoch_ms[2m:[0m [38;5;107mpub[0m

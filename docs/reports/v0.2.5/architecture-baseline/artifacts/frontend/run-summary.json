@@ -1,0 +1,42 @@
+﻿{
+    "generated_at":  "2026-02-22T07:10:44.6382102-05:00",
+    "repo_root":  "D:\\Learn\\CS\\github\\LazyLfie",
+    "output_dir":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend",
+    "tools":  {
+                  "lakos":  {
+                                "tool":  "lakos",
+                                "available":  true,
+                                "executed":  true,
+                                "success":  true,
+                                "exit_code":  0,
+                                "target":  "apps/lazynote_flutter/lib",
+                                "args":  [
+                                             "--cycles-allowed",
+                                             "apps/lazynote_flutter/lib"
+                                         ],
+                                "stdout_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos.stdout.txt",
+                                "stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos.stderr.txt",
+                                "help_stdout":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos-help.stdout.txt",
+                                "help_stderr":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos-help.stderr.txt",
+                                "dot_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos.dot",
+                                "svg_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos.svg",
+                                "dot_available":  true,
+                                "render_exit_code":  0,
+                                "render_stdout":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos-render.stdout.txt",
+                                "render_stderr":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\lakos\\lakos-render.stderr.txt",
+                                "note":  ""
+                            },
+                  "analyze_size":  {
+                                       "tool":  "flutter-analyze-size",
+                                       "available":  true,
+                                       "success":  true,
+                                       "source_dir":  "D:\\Learn\\CS\\github\\LazyLfie\\apps\\lazynote_flutter\\build\\code-size",
+                                       "copied_files":  [
+                                                            "snapshot.windows-x64.json",
+                                                            "trace.windows-x64.json"
+                                                        ],
+                                       "output_dir":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\frontend\\size",
+                                       "note":  ""
+                                   }
+              }
+}

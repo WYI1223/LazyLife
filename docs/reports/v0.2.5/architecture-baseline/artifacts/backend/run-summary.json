@@ -1,0 +1,76 @@
+﻿{
+    "generated_at":  "2026-02-22T07:10:47.9848128-05:00",
+    "repo_root":  "D:\\Learn\\CS\\github\\LazyLfie",
+    "output_dir":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend",
+    "cargo_workspace":  "D:\\Learn\\CS\\github\\LazyLfie\\crates",
+    "skip_bloat":  true,
+    "tools":  {
+                  "cargo":  {
+                                "available":  true,
+                                "executable":  "C:\\Users\\W_YI1\\.cargo\\bin\\cargo.exe"
+                            },
+                  "cargo_modules":  {
+                                        "tool":  "cargo-modules",
+                                        "available":  true,
+                                        "success":  true,
+                                        "probe":  {
+                                                      "available":  true,
+                                                      "exit_code":  0,
+                                                      "reason":  "",
+                                                      "help_stdout":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\tool-probes\\modules-help.stdout.txt",
+                                                      "help_stderr":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\tool-probes\\modules-help.stderr.txt"
+                                                  },
+                                        "dot_available":  true,
+                                        "package_runs":  [
+                                                             {
+                                                                 "package":  "lazynote_core",
+                                                                 "success":  true,
+                                                                 "structure_exit_code":  0,
+                                                                 "structure_stdout_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-structure.stdout.txt",
+                                                                 "structure_stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-structure.stderr.txt",
+                                                                 "dependencies_exit_code":  0,
+                                                                 "dependencies_dot_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-dependencies.dot",
+                                                                 "dependencies_stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-dependencies.stderr.txt",
+                                                                 "render_exit_code":  0,
+                                                                 "render_success":  true,
+                                                                 "render_svg_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-dependencies.svg",
+                                                                 "render_stdout_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-render.stdout.txt",
+                                                                 "render_stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_core-render.stderr.txt"
+                                                             },
+                                                             {
+                                                                 "package":  "lazynote_ffi",
+                                                                 "success":  true,
+                                                                 "structure_exit_code":  0,
+                                                                 "structure_stdout_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-structure.stdout.txt",
+                                                                 "structure_stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-structure.stderr.txt",
+                                                                 "dependencies_exit_code":  0,
+                                                                 "dependencies_dot_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-dependencies.dot",
+                                                                 "dependencies_stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-dependencies.stderr.txt",
+                                                                 "render_exit_code":  0,
+                                                                 "render_success":  true,
+                                                                 "render_svg_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-dependencies.svg",
+                                                                 "render_stdout_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-render.stdout.txt",
+                                                                 "render_stderr_file":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\cargo-modules\\lazynote_ffi-render.stderr.txt"
+                                                             }
+                                                         ],
+                                        "note":  ""
+                                    },
+                  "cargo_bloat":  {
+                                      "tool":  "cargo-bloat",
+                                      "available":  true,
+                                      "skipped":  true,
+                                      "success":  true,
+                                      "probe":  {
+                                                    "available":  true,
+                                                    "exit_code":  0,
+                                                    "reason":  "",
+                                                    "help_stdout":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\tool-probes\\bloat-help.stdout.txt",
+                                                    "help_stderr":  "D:\\Learn\\CS\\github\\LazyLfie\\docs\\reports\\v0.2.5\\architecture-baseline\\artifacts\\backend\\tool-probes\\bloat-help.stderr.txt"
+                                                },
+                                      "package_runs":  [
+
+                                                       ],
+                                      "note":  "Skipped by request."
+                                  }
+              }
+}

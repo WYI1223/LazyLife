@@ -1,0 +1,4 @@
+[1;33mwarning[0m[1m:[0m [1msome trace filter directives would enable traces that are disabled statically[0m
+ [1;38;5;21m|[0m `warn` would enable the WARN level for all targets
+ [1;38;5;21m=[0m [1mnote:[0m the static max level is `off`
+ [1;38;5;21m=[0m [1mhelp:[0m to enable logging, remove the `max_level_off` feature from the `tracing` crate

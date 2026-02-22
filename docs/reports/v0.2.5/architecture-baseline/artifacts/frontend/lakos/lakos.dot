@@ -1,0 +1,330 @@
+digraph "" {
+  graph [style=rounded fontname="Arial Black" fontsize=13 penwidth=2.6];
+  node [shape=rect style="filled,rounded" fontname=Arial fontsize=15 fillcolor=Lavender penwidth=1.3];
+  edge [penwidth=1.3];
+  "/app/app.dart" [label="app"];
+  "/app/app_locale_controller.dart" [label="app_locale_controller"];
+  "/app/routes.dart" [label="routes"];
+  "/app/ui_slots/first_party_ui_slots.dart" [label="first_party_ui_slots"];
+  "/app/ui_slots/ui_slot_host.dart" [label="ui_slot_host"];
+  "/app/ui_slots/ui_slot_models.dart" [label="ui_slot_models"];
+  "/app/ui_slots/ui_slot_registry.dart" [label="ui_slot_registry"];
+  "/core/bindings/api.dart" [label="api"];
+  "/core/bindings/frb_generated.dart" [label="frb_generated"];
+  "/core/bindings/frb_generated.io.dart" [label="frb_generated.io"];
+  "/core/debug/log_reader.dart" [label="log_reader"];
+  "/core/diagnostics/dart_event_logger.dart" [label="dart_event_logger"];
+  "/core/local_paths.dart" [label="local_paths"];
+  "/core/rust_bridge.dart" [label="rust_bridge"];
+  "/core/settings/local_settings_store.dart" [label="local_settings_store"];
+  "/core/settings/ui_language.dart" [label="ui_language"];
+  "/features/calendar/calendar_controller.dart" [label="calendar_controller"];
+  "/features/calendar/calendar_event_dialog.dart" [label="calendar_event_dialog"];
+  "/features/calendar/calendar_page.dart" [label="calendar_page"];
+  "/features/calendar/calendar_sidebar.dart" [label="calendar_sidebar"];
+  "/features/calendar/calendar_style.dart" [label="calendar_style"];
+  "/features/calendar/event_block.dart" [label="event_block"];
+  "/features/calendar/week_grid_view.dart" [label="week_grid_view"];
+  "/features/diagnostics/debug_logs_panel.dart" [label="debug_logs_panel"];
+  "/features/diagnostics/log_line_meta.dart" [label="log_line_meta"];
+  "/features/diagnostics/rust_diagnostics_page.dart" [label="rust_diagnostics_page"];
+  "/features/entry/command_parser.dart" [label="command_parser"];
+  "/features/entry/command_registry.dart" [label="command_registry"];
+  "/features/entry/command_router.dart" [label="command_router"];
+  "/features/entry/entry_shell_page.dart" [label="entry_shell_page"];
+  "/features/entry/entry_state.dart" [label="entry_state"];
+  "/features/entry/single_entry_controller.dart" [label="single_entry_controller"];
+  "/features/entry/single_entry_panel.dart" [label="single_entry_panel"];
+  "/features/entry/workbench_shell_layout.dart" [label="workbench_shell_layout"];
+  "/features/notes/explorer_context_menu.dart" [label="explorer_context_menu"];
+  "/features/notes/explorer_drag_controller.dart" [label="explorer_drag_controller"];
+  "/features/notes/explorer_tree_item.dart" [label="explorer_tree_item"];
+  "/features/notes/explorer_tree_state.dart" [label="explorer_tree_state"];
+  "/features/notes/notes_controller.dart" [label="notes_controller"];
+  "/features/notes/notes_page.dart" [label="notes_page"];
+  "/features/notes/notes_style.dart" [label="notes_style"];
+  "/features/notes/note_content_area.dart" [label="note_content_area"];
+  "/features/notes/note_editor.dart" [label="note_editor"];
+  "/features/notes/note_explorer.dart" [label="note_explorer"];
+  "/features/notes/note_tab_manager.dart" [label="note_tab_manager"];
+  "/features/reminders/reminder_scheduler.dart" [label="reminder_scheduler"];
+  "/features/reminders/reminder_service.dart" [label="reminder_service"];
+  "/features/search/search_results_view.dart" [label="search_results_view"];
+  "/features/settings/settings_capability_page.dart" [label="settings_capability_page"];
+  "/features/tags/tag_filter.dart" [label="tag_filter"];
+  "/features/tasks/tasks_controller.dart" [label="tasks_controller"];
+  "/features/tasks/tasks_page.dart" [label="tasks_page"];
+  "/features/tasks/tasks_section_card.dart" [label="tasks_section_card"];
+  "/features/tasks/tasks_style.dart" [label="tasks_style"];
+  "/features/workspace/workspace_models.dart" [label="workspace_models"];
+  "/features/workspace/workspace_provider.dart" [label="workspace_provider"];
+  "/l10n/app_localizations.dart" [label="app_localizations"];
+  "/l10n/app_localizations_en.dart" [label="app_localizations_en"];
+  "/l10n/app_localizations_zh.dart" [label="app_localizations_zh"];
+  "/main.dart" [label="main"];
+  subgraph "cluster~" {
+    label="lib";
+    "/main.dart";
+    subgraph "cluster~/app" {
+      label="app";
+      "/app/app.dart";
+      "/app/app_locale_controller.dart";
+      "/app/routes.dart";
+      subgraph "cluster~/app/ui_slots" {
+        label="ui_slots";
+        "/app/ui_slots/first_party_ui_slots.dart";
+        "/app/ui_slots/ui_slot_host.dart";
+        "/app/ui_slots/ui_slot_models.dart";
+        "/app/ui_slots/ui_slot_registry.dart";
+      }
+    }
+    subgraph "cluster~/core" {
+      label="core";
+      "/core/local_paths.dart";
+      "/core/rust_bridge.dart";
+      subgraph "cluster~/core/bindings" {
+        label="bindings";
+        "/core/bindings/api.dart";
+        "/core/bindings/frb_generated.dart";
+        "/core/bindings/frb_generated.io.dart";
+      }
+      subgraph "cluster~/core/debug" {
+        label="debug";
+        "/core/debug/log_reader.dart";
+      }
+      subgraph "cluster~/core/diagnostics" {
+        label="diagnostics";
+        "/core/diagnostics/dart_event_logger.dart";
+      }
+      subgraph "cluster~/core/settings" {
+        label="settings";
+        "/core/settings/local_settings_store.dart";
+        "/core/settings/ui_language.dart";
+      }
+    }
+    subgraph "cluster~/features" {
+      label="features";
+      subgraph "cluster~/features/calendar" {
+        label="calendar";
+        "/features/calendar/calendar_controller.dart";
+        "/features/calendar/calendar_event_dialog.dart";
+        "/features/calendar/calendar_page.dart";
+        "/features/calendar/calendar_sidebar.dart";
+        "/features/calendar/calendar_style.dart";
+        "/features/calendar/event_block.dart";
+        "/features/calendar/week_grid_view.dart";
+      }
+      subgraph "cluster~/features/diagnostics" {
+        label="diagnostics";
+        "/features/diagnostics/debug_logs_panel.dart";
+        "/features/diagnostics/log_line_meta.dart";
+        "/features/diagnostics/rust_diagnostics_page.dart";
+      }
+      subgraph "cluster~/features/entry" {
+        label="entry";
+        "/features/entry/command_parser.dart";
+        "/features/entry/command_registry.dart";
+        "/features/entry/command_router.dart";
+        "/features/entry/entry_shell_page.dart";
+        "/features/entry/entry_state.dart";
+        "/features/entry/single_entry_controller.dart";
+        "/features/entry/single_entry_panel.dart";
+        "/features/entry/workbench_shell_layout.dart";
+      }
+      subgraph "cluster~/features/notes" {
+        label="notes";
+        "/features/notes/explorer_context_menu.dart";
+        "/features/notes/explorer_drag_controller.dart";
+        "/features/notes/explorer_tree_item.dart";
+        "/features/notes/explorer_tree_state.dart";
+        "/features/notes/notes_controller.dart";
+        "/features/notes/notes_page.dart";
+        "/features/notes/notes_style.dart";
+        "/features/notes/note_content_area.dart";
+        "/features/notes/note_editor.dart";
+        "/features/notes/note_explorer.dart";
+        "/features/notes/note_tab_manager.dart";
+      }
+      subgraph "cluster~/features/reminders" {
+        label="reminders";
+        "/features/reminders/reminder_scheduler.dart";
+        "/features/reminders/reminder_service.dart";
+      }
+      subgraph "cluster~/features/search" {
+        label="search";
+        "/features/search/search_results_view.dart";
+      }
+      subgraph "cluster~/features/settings" {
+        label="settings";
+        "/features/settings/settings_capability_page.dart";
+      }
+      subgraph "cluster~/features/tags" {
+        label="tags";
+        "/features/tags/tag_filter.dart";
+      }
+      subgraph "cluster~/features/tasks" {
+        label="tasks";
+        "/features/tasks/tasks_controller.dart";
+        "/features/tasks/tasks_page.dart";
+        "/features/tasks/tasks_section_card.dart";
+        "/features/tasks/tasks_style.dart";
+      }
+      subgraph "cluster~/features/workspace" {
+        label="workspace";
+        "/features/workspace/workspace_models.dart";
+        "/features/workspace/workspace_provider.dart";
+      }
+    }
+    subgraph "cluster~/l10n" {
+      label="l10n";
+      "/l10n/app_localizations.dart";
+      "/l10n/app_localizations_en.dart";
+      "/l10n/app_localizations_zh.dart";
+    }
+  }
+  "/app/app.dart" -> "/app/app_locale_controller.dart";
+  "/app/app.dart" -> "/app/routes.dart";
+  "/app/app.dart" -> "/core/settings/local_settings_store.dart";
+  "/app/app.dart" -> "/features/entry/entry_shell_page.dart";
+  "/app/app.dart" -> "/l10n/app_localizations.dart";
+  "/app/app_locale_controller.dart" -> "/core/settings/local_settings_store.dart";
+  "/app/app_locale_controller.dart" -> "/core/settings/ui_language.dart";
+  "/app/ui_slots/first_party_ui_slots.dart" -> "/app/ui_slots/ui_slot_models.dart";
+  "/app/ui_slots/first_party_ui_slots.dart" -> "/app/ui_slots/ui_slot_registry.dart";
+  "/app/ui_slots/first_party_ui_slots.dart" -> "/core/bindings/api.dart";
+  "/app/ui_slots/first_party_ui_slots.dart" -> "/features/notes/note_explorer.dart";
+  "/app/ui_slots/first_party_ui_slots.dart" -> "/features/notes/notes_controller.dart";
+  "/app/ui_slots/first_party_ui_slots.dart" -> "/l10n/app_localizations.dart";
+  "/app/ui_slots/ui_slot_host.dart" -> "/app/ui_slots/ui_slot_models.dart";
+  "/app/ui_slots/ui_slot_host.dart" -> "/app/ui_slots/ui_slot_registry.dart";
+  "/app/ui_slots/ui_slot_registry.dart" -> "/app/ui_slots/ui_slot_models.dart";
+  "/core/bindings/api.dart" -> "/core/bindings/frb_generated.dart";
+  "/core/bindings/frb_generated.dart" -> "/core/bindings/api.dart";
+  "/core/bindings/frb_generated.io.dart" -> "/core/bindings/api.dart";
+  "/core/bindings/frb_generated.io.dart" -> "/core/bindings/frb_generated.dart";
+  "/core/debug/log_reader.dart" -> "/core/local_paths.dart";
+  "/core/diagnostics/dart_event_logger.dart" -> "/core/bindings/api.dart";
+  "/core/rust_bridge.dart" -> "/core/bindings/api.dart";
+  "/core/rust_bridge.dart" -> "/core/bindings/frb_generated.dart";
+  "/core/rust_bridge.dart" -> "/core/diagnostics/dart_event_logger.dart";
+  "/core/rust_bridge.dart" -> "/core/local_paths.dart";
+  "/core/rust_bridge.dart" -> "/core/settings/local_settings_store.dart";
+  "/core/settings/local_settings_store.dart" -> "/core/local_paths.dart";
+  "/core/settings/local_settings_store.dart" -> "/core/settings/ui_language.dart";
+  "/features/calendar/calendar_controller.dart" -> "/core/bindings/api.dart";
+  "/features/calendar/calendar_controller.dart" -> "/core/rust_bridge.dart";
+  "/features/calendar/calendar_event_dialog.dart" -> "/core/bindings/api.dart";
+  "/features/calendar/calendar_page.dart" -> "/core/bindings/api.dart";
+  "/features/calendar/calendar_page.dart" -> "/features/calendar/calendar_controller.dart";
+  "/features/calendar/calendar_page.dart" -> "/features/calendar/calendar_event_dialog.dart";
+  "/features/calendar/calendar_page.dart" -> "/features/calendar/calendar_sidebar.dart";
+  "/features/calendar/calendar_page.dart" -> "/features/calendar/calendar_style.dart";
+  "/features/calendar/calendar_page.dart" -> "/features/calendar/week_grid_view.dart";
+  "/features/calendar/calendar_sidebar.dart" -> "/features/calendar/calendar_style.dart";
+  "/features/calendar/event_block.dart" -> "/features/calendar/calendar_style.dart";
+  "/features/calendar/week_grid_view.dart" -> "/core/bindings/api.dart";
+  "/features/calendar/week_grid_view.dart" -> "/features/calendar/calendar_style.dart";
+  "/features/calendar/week_grid_view.dart" -> "/features/calendar/event_block.dart";
+  "/features/diagnostics/debug_logs_panel.dart" -> "/core/debug/log_reader.dart";
+  "/features/diagnostics/debug_logs_panel.dart" -> "/core/diagnostics/dart_event_logger.dart";
+  "/features/diagnostics/debug_logs_panel.dart" -> "/features/diagnostics/log_line_meta.dart";
+  "/features/diagnostics/debug_logs_panel.dart" -> "/l10n/app_localizations.dart";
+  "/features/diagnostics/rust_diagnostics_page.dart" -> "/core/rust_bridge.dart";
+  "/features/diagnostics/rust_diagnostics_page.dart" -> "/l10n/app_localizations.dart";
+  "/features/entry/command_registry.dart" -> "/core/bindings/api.dart";
+  "/features/entry/command_registry.dart" -> "/features/entry/command_parser.dart";
+  "/features/entry/command_router.dart" -> "/features/entry/command_parser.dart";
+  "/features/entry/entry_shell_page.dart" -> "/app/app_locale_controller.dart";
+  "/features/entry/entry_shell_page.dart" -> "/app/ui_slots/first_party_ui_slots.dart";
+  "/features/entry/entry_shell_page.dart" -> "/app/ui_slots/ui_slot_host.dart";
+  "/features/entry/entry_shell_page.dart" -> "/app/ui_slots/ui_slot_models.dart";
+  "/features/entry/entry_shell_page.dart" -> "/app/ui_slots/ui_slot_registry.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/calendar/calendar_page.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/diagnostics/rust_diagnostics_page.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/entry/single_entry_controller.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/entry/single_entry_panel.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/entry/workbench_shell_layout.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/notes/notes_controller.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/notes/notes_page.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/settings/settings_capability_page.dart";
+  "/features/entry/entry_shell_page.dart" -> "/features/tasks/tasks_page.dart";
+  "/features/entry/entry_shell_page.dart" -> "/l10n/app_localizations.dart";
+  "/features/entry/entry_state.dart" -> "/features/entry/command_router.dart";
+  "/features/entry/single_entry_controller.dart" -> "/core/bindings/api.dart";
+  "/features/entry/single_entry_controller.dart" -> "/core/rust_bridge.dart";
+  "/features/entry/single_entry_controller.dart" -> "/features/entry/command_parser.dart";
+  "/features/entry/single_entry_controller.dart" -> "/features/entry/command_registry.dart";
+  "/features/entry/single_entry_controller.dart" -> "/features/entry/command_router.dart";
+  "/features/entry/single_entry_controller.dart" -> "/features/entry/entry_state.dart";
+  "/features/entry/single_entry_panel.dart" -> "/core/settings/local_settings_store.dart";
+  "/features/entry/single_entry_panel.dart" -> "/features/entry/entry_state.dart";
+  "/features/entry/single_entry_panel.dart" -> "/features/entry/single_entry_controller.dart";
+  "/features/entry/single_entry_panel.dart" -> "/features/search/search_results_view.dart";
+  "/features/entry/workbench_shell_layout.dart" -> "/features/diagnostics/debug_logs_panel.dart";
+  "/features/notes/explorer_drag_controller.dart" -> "/core/bindings/api.dart";
+  "/features/notes/explorer_tree_item.dart" -> "/core/bindings/api.dart";
+  "/features/notes/explorer_tree_item.dart" -> "/features/notes/notes_style.dart";
+  "/features/notes/explorer_tree_item.dart" -> "/l10n/app_localizations.dart";
+  "/features/notes/explorer_tree_state.dart" -> "/core/bindings/api.dart";
+  "/features/notes/notes_controller.dart" -> "/core/bindings/api.dart";
+  "/features/notes/notes_controller.dart" -> "/core/diagnostics/dart_event_logger.dart";
+  "/features/notes/notes_controller.dart" -> "/core/rust_bridge.dart";
+  "/features/notes/notes_controller.dart" -> "/features/workspace/workspace_models.dart";
+  "/features/notes/notes_controller.dart" -> "/features/workspace/workspace_provider.dart";
+  "/features/notes/notes_page.dart" -> "/app/ui_slots/first_party_ui_slots.dart";
+  "/features/notes/notes_page.dart" -> "/app/ui_slots/ui_slot_host.dart";
+  "/features/notes/notes_page.dart" -> "/app/ui_slots/ui_slot_models.dart";
+  "/features/notes/notes_page.dart" -> "/app/ui_slots/ui_slot_registry.dart";
+  "/features/notes/notes_page.dart" -> "/features/notes/note_content_area.dart";
+  "/features/notes/notes_page.dart" -> "/features/notes/note_explorer.dart";
+  "/features/notes/notes_page.dart" -> "/features/notes/note_tab_manager.dart";
+  "/features/notes/notes_page.dart" -> "/features/notes/notes_controller.dart";
+  "/features/notes/notes_page.dart" -> "/features/notes/notes_style.dart";
+  "/features/notes/notes_page.dart" -> "/features/workspace/workspace_models.dart";
+  "/features/notes/notes_page.dart" -> "/features/workspace/workspace_provider.dart";
+  "/features/notes/notes_page.dart" -> "/l10n/app_localizations.dart";
+  "/features/notes/note_content_area.dart" -> "/features/notes/note_editor.dart";
+  "/features/notes/note_content_area.dart" -> "/features/notes/notes_controller.dart";
+  "/features/notes/note_content_area.dart" -> "/features/notes/notes_style.dart";
+  "/features/notes/note_content_area.dart" -> "/l10n/app_localizations.dart";
+  "/features/notes/note_editor.dart" -> "/features/notes/notes_style.dart";
+  "/features/notes/note_editor.dart" -> "/l10n/app_localizations.dart";
+  "/features/notes/note_explorer.dart" -> "/core/bindings/api.dart";
+  "/features/notes/note_explorer.dart" -> "/features/notes/explorer_context_menu.dart";
+  "/features/notes/note_explorer.dart" -> "/features/notes/explorer_drag_controller.dart";
+  "/features/notes/note_explorer.dart" -> "/features/notes/explorer_tree_item.dart";
+  "/features/notes/note_explorer.dart" -> "/features/notes/explorer_tree_state.dart";
+  "/features/notes/note_explorer.dart" -> "/features/notes/notes_controller.dart";
+  "/features/notes/note_explorer.dart" -> "/features/notes/notes_style.dart";
+  "/features/notes/note_explorer.dart" -> "/features/tags/tag_filter.dart";
+  "/features/notes/note_explorer.dart" -> "/l10n/app_localizations.dart";
+  "/features/notes/note_tab_manager.dart" -> "/features/notes/notes_controller.dart";
+  "/features/notes/note_tab_manager.dart" -> "/features/notes/notes_style.dart";
+  "/features/notes/note_tab_manager.dart" -> "/l10n/app_localizations.dart";
+  "/features/reminders/reminder_scheduler.dart" -> "/core/bindings/api.dart";
+  "/features/reminders/reminder_scheduler.dart" -> "/features/reminders/reminder_service.dart";
+  "/features/search/search_results_view.dart" -> "/core/bindings/api.dart";
+  "/features/settings/settings_capability_page.dart" -> "/app/app_locale_controller.dart";
+  "/features/settings/settings_capability_page.dart" -> "/core/settings/ui_language.dart";
+  "/features/settings/settings_capability_page.dart" -> "/l10n/app_localizations.dart";
+  "/features/tags/tag_filter.dart" -> "/features/notes/notes_style.dart";
+  "/features/tasks/tasks_controller.dart" -> "/core/bindings/api.dart";
+  "/features/tasks/tasks_controller.dart" -> "/core/rust_bridge.dart";
+  "/features/tasks/tasks_page.dart" -> "/features/tasks/tasks_controller.dart";
+  "/features/tasks/tasks_page.dart" -> "/features/tasks/tasks_section_card.dart";
+  "/features/tasks/tasks_page.dart" -> "/features/tasks/tasks_style.dart";
+  "/features/tasks/tasks_section_card.dart" -> "/core/bindings/api.dart";
+  "/features/tasks/tasks_section_card.dart" -> "/features/tasks/tasks_controller.dart";
+  "/features/tasks/tasks_section_card.dart" -> "/features/tasks/tasks_style.dart";
+  "/features/workspace/workspace_provider.dart" -> "/features/workspace/workspace_models.dart";
+  "/l10n/app_localizations.dart" -> "/l10n/app_localizations_en.dart";
+  "/l10n/app_localizations.dart" -> "/l10n/app_localizations_zh.dart";
+  "/l10n/app_localizations_en.dart" -> "/l10n/app_localizations.dart";
+  "/l10n/app_localizations_zh.dart" -> "/l10n/app_localizations.dart";
+  "/main.dart" -> "/app/app.dart";
+  "/main.dart" -> "/app/app_locale_controller.dart";
+  "/main.dart" -> "/core/rust_bridge.dart";
+  "/main.dart" -> "/core/settings/local_settings_store.dart";
+  "/main.dart" -> "/features/reminders/reminder_scheduler.dart";
+}
+

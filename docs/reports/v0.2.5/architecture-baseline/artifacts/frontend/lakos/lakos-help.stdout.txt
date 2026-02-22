@@ -1,0 +1,22 @@
+FormatException: Could not find an option named "--help".
+
+Usage: lakos [options] <root-directory>
+
+-f, --format=<FORMAT>        Output format.
+                             [dot (default), json]
+-o, --output=<FILE>          Save output to a file instead of printing it.
+                             (defaults to "STDOUT")
+    --[no-]tree              Show directory structure as subgraphs.
+                             (defaults to on)
+-m, --[no-]metrics           Compute and show global metrics.
+                             (defaults to --no-metrics)
+    --[no-]node-metrics      Show node metrics. Only works when --metrics is true.
+                             (defaults to --no-node-metrics)
+-i, --ignore=<GLOB>          Exclude files and directories with a glob pattern.
+                             (defaults to "!**")
+    --[no-]cycles-allowed    With --no-cycles-allowed lakos runs normally
+                             but exits with a non-zero exit code
+                             if a dependency cycle is detected.
+                             Useful for CI builds.
+                             (defaults to --no-cycles-allowed)
+
