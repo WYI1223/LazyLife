@@ -111,6 +111,18 @@ Producer: `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`
 | `busy` | local action guard rejected operation | user triggered folder create/delete while previous same action is still running | disable repeated action and retry after current operation ends |
 | `save_blocked` | pre-delete local draft flush failed | active note has unsaved draft and `flushPendingSave()` returned false | prompt user to retry save or keep editing before delete |
 
+## Diagnostics Log Bridge (FFI) - PR-0210A
+
+Producer: `crates/lazynote_ffi/src/api.rs`
+
+| Code | Meaning | Typical Cause | UI Handling |
+| --- | --- | --- | --- |
+| `invalid_level` | log level value invalid | level not in `trace/debug/info/warn/error` | show validation error and keep input |
+| `invalid_event_name` | event_name invalid | blank or exceeds max length | show validation error and keep input |
+| `invalid_module` | module invalid | blank or exceeds max length | show validation error and keep input |
+| `invalid_message` | message invalid | blank or exceeds max length | show validation error and keep input |
+| `logging_not_initialized` | Rust logging bootstrap unavailable | `init_logging` not called yet in process | show non-fatal diagnostics warning and retry later |
+
 ## Reserved Pattern
 
 - Use lowercase snake case.

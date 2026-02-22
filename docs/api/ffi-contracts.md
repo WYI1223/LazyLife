@@ -28,6 +28,36 @@ This file is the consolidated index for FFI contracts.
     - `db_error` for DB open/bootstrap failures
     - `internal_error` for search execution failures
 
+## Diagnostics Log Bridge API (PR-0210A)
+
+- `log_dart_event(level, event_name, module, message) -> LogDartEventResponse`
+  - sync call
+  - additive API; no existing signature changed
+  - writes one structured Dart event into Rust session log stream
+
+### Payload Constraints
+
+- `level`: case-insensitive `trace|debug|info|warn|error` (`warning` normalized to `warn`)
+- `event_name`: non-empty trimmed string, max `64` chars
+- `module`: non-empty trimmed string, max `64` chars
+- `message`: non-empty trimmed string, max `512` chars
+
+### Response Shape
+
+`LogDartEventResponse`:
+
+- `ok: bool`
+- `error_code: String?`
+- `message: String`
+
+### Stable Error Codes
+
+- `invalid_level`
+- `invalid_event_name`
+- `invalid_module`
+- `invalid_message`
+- `logging_not_initialized`
+
 ## Notes/Tags APIs (PR-0010B)
 
 All APIs are use-case level and async.

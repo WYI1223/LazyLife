@@ -13,7 +13,7 @@
 //! - docs/architecture/logging.md
 
 use flexi_logger::{FileSpec, Logger, LoggerHandle, WriteMode};
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
 use once_cell::sync::OnceCell;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -66,6 +66,15 @@ struct LoggingState {
     level: &'static str,
     log_dir: PathBuf,
     _logger: LoggerHandle,
+}
+
+/// Runtime error variants for `log_dart_event`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LogDartEventError {
+    /// Input level is not one of supported values.
+    InvalidLevel(String),
+    /// Logging bootstrap has not been initialized in current process.
+    LoggingNotInitialized,
 }
 
 /// Initializes core logging with level and directory.
@@ -190,6 +199,62 @@ pub fn init_logging(level: &str, log_dir: &str) -> Result<(), String> {
         ));
     }
 
+    Ok(())
+}
+
+/// Emits one structured Dart-side diagnostics event into the active session log.
+///
+/// # Invariants
+/// - Requires logging initialization in current process.
+/// - Never panics.
+pub fn log_dart_event(
+    level: &str,
+    event_name: &str,
+    module: &str,
+    message: &str,
+) -> Result<(), LogDartEventError> {
+    let normalized_level =
+        normalize_level(level).map_err(|_| LogDartEventError::InvalidLevel(level.to_string()))?;
+    let state = LOGGING_STATE
+        .get()
+        .ok_or(LogDartEventError::LoggingNotInitialized)?;
+
+    let normalized_event_name = sanitize_inline_field(event_name);
+    let normalized_module = sanitize_inline_field(module);
+    let normalized_message = sanitize_inline_field(message);
+
+    match normalized_level {
+        "trace" => trace!(
+            "event=dart_event module=dart event_name={} dart_module={} message={}",
+            normalized_event_name,
+            normalized_module,
+            normalized_message
+        ),
+        "debug" => log::debug!(
+            "event=dart_event module=dart event_name={} dart_module={} message={}",
+            normalized_event_name,
+            normalized_module,
+            normalized_message
+        ),
+        "info" => info!(
+            "event=dart_event module=dart event_name={} dart_module={} message={}",
+            normalized_event_name, normalized_module, normalized_message
+        ),
+        "warn" => warn!(
+            "event=dart_event module=dart event_name={} dart_module={} message={}",
+            normalized_event_name, normalized_module, normalized_message
+        ),
+        "error" => error!(
+            "event=dart_event module=dart event_name={} dart_module={} message={}",
+            normalized_event_name, normalized_module, normalized_message
+        ),
+        _ => {
+            return Err(LogDartEventError::InvalidLevel(level.to_string()));
+        }
+    }
+
+    // Keep sync bridge behavior deterministic for diagnostics timeline reads.
+    state._logger.flush();
     Ok(())
 }
 
@@ -467,12 +532,16 @@ fn sanitize_message(value: &str, max_chars: usize) -> String {
     truncated
 }
 
+fn sanitize_inline_field(value: &str) -> String {
+    value.replace(['\n', '\r'], " ").trim().to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        build_session_file_spec, cleanup_managed_logs_best_effort, init_logging, logging_status,
-        normalize_level, normalize_log_dir, sanitize_message, LogRetentionPolicy,
-        LOG_FILE_BASENAME,
+        build_session_file_spec, cleanup_managed_logs_best_effort, init_logging, log_dart_event,
+        logging_status, normalize_level, normalize_log_dir, sanitize_message, LogDartEventError,
+        LogRetentionPolicy, LOG_FILE_BASENAME,
     };
     use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -512,6 +581,15 @@ mod tests {
         assert!(!sanitized.contains('\n'));
         assert!(!sanitized.contains('\r'));
         assert!(sanitized.ends_with("..."));
+    }
+
+    #[test]
+    fn log_dart_event_rejects_invalid_level() {
+        let result = log_dart_event("verbose", "startup", "app", "hello");
+        assert!(matches!(
+            result,
+            Err(LogDartEventError::InvalidLevel(value)) if value == "verbose"
+        ));
     }
 
     #[test]

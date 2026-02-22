@@ -13,11 +13,12 @@
 
 use lazynote_core::db::open_db;
 use lazynote_core::{
-    core_version as core_version_inner, init_logging as init_logging_inner, ping as ping_inner,
-    search_all, AtomId, AtomService, AtomType, FolderDeleteMode, NoteRecord, NoteService,
-    NoteServiceError, ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository,
-    SqliteNoteRepository, SqliteTreeRepository, TaskService, TaskServiceError, TreeRepoError,
-    TreeService, TreeServiceError, WorkspaceNode, WorkspaceNodeKind,
+    core_version as core_version_inner, init_logging as init_logging_inner,
+    log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId, AtomService,
+    AtomType, FolderDeleteMode, LogDartEventError, NoteRecord, NoteService, NoteServiceError,
+    ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository, SqliteNoteRepository,
+    SqliteTreeRepository, TaskService, TaskServiceError, TreeRepoError, TreeService,
+    TreeServiceError, WorkspaceNode, WorkspaceNodeKind,
 };
 use log::error;
 use std::path::PathBuf;
@@ -27,6 +28,9 @@ use uuid::Uuid;
 const ENTRY_DEFAULT_LIMIT: u32 = 10;
 const ENTRY_SEARCH_MAX_LIMIT: u32 = 50;
 const ENTRY_DB_FILE_NAME: &str = "lazynote_entry.sqlite3";
+const LOG_DART_EVENT_MAX_EVENT_NAME_CHARS: usize = 64;
+const LOG_DART_EVENT_MAX_MODULE_CHARS: usize = 64;
+const LOG_DART_EVENT_MAX_MESSAGE_CHARS: usize = 512;
 static ENTRY_DB_PATH_OVERRIDE: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 /// Minimal health-check API for FRB smoke integration.
@@ -81,6 +85,175 @@ pub fn configure_entry_db_path(db_path: String) -> String {
     match set_configured_entry_db_path(db_path.as_str()) {
         Ok(()) => String::new(),
         Err(err) => err,
+    }
+}
+
+/// Dart-side diagnostics logging response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LogDartEventResponse {
+    /// Whether operation succeeded.
+    pub ok: bool,
+    /// Stable machine-readable error code for failure paths.
+    pub error_code: Option<String>,
+    /// Human-readable message for diagnostics/UI.
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LogDartEventFfiError {
+    InvalidLevel(String),
+    InvalidEventName(String),
+    InvalidModule(String),
+    InvalidMessage(String),
+    LoggingNotInitialized,
+}
+
+impl LogDartEventFfiError {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidLevel(_) => "invalid_level",
+            Self::InvalidEventName(_) => "invalid_event_name",
+            Self::InvalidModule(_) => "invalid_module",
+            Self::InvalidMessage(_) => "invalid_message",
+            Self::LoggingNotInitialized => "logging_not_initialized",
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::InvalidLevel(value) => {
+                format!("invalid level `{value}`; expected trace|debug|info|warn|error")
+            }
+            Self::InvalidEventName(value) => format!("invalid event_name: {value}"),
+            Self::InvalidModule(value) => format!("invalid module: {value}"),
+            Self::InvalidMessage(value) => format!("invalid message: {value}"),
+            Self::LoggingNotInitialized => {
+                "logging is not initialized; call init_logging first".to_string()
+            }
+        }
+    }
+}
+
+/// Writes one structured Dart event into the Rust session log stream.
+///
+/// # FFI contract
+/// - Sync call.
+/// - additive API; does not change existing FFI signatures.
+/// - payload validation is enforced at FFI boundary.
+#[flutter_rust_bridge::frb(sync)]
+pub fn log_dart_event(
+    level: String,
+    event_name: String,
+    module: String,
+    message: String,
+) -> LogDartEventResponse {
+    log_dart_event_impl(level, event_name, module, message)
+}
+
+fn log_dart_event_impl(
+    level: String,
+    event_name: String,
+    module: String,
+    message: String,
+) -> LogDartEventResponse {
+    match try_log_dart_event(level, event_name, module, message) {
+        Ok(()) => LogDartEventResponse {
+            ok: true,
+            error_code: None,
+            message: "Dart event logged.".to_string(),
+        },
+        Err(err) => LogDartEventResponse {
+            ok: false,
+            error_code: Some(err.code().to_string()),
+            message: err.message(),
+        },
+    }
+}
+
+fn try_log_dart_event(
+    level: String,
+    event_name: String,
+    module: String,
+    message: String,
+) -> Result<(), LogDartEventFfiError> {
+    let normalized_level = normalize_log_dart_event_level(level.as_str())?;
+    let normalized_event_name = validate_log_dart_event_event_name(event_name.as_str())?;
+    let normalized_module = validate_log_dart_event_module(module.as_str())?;
+    let normalized_message = validate_log_dart_event_message(message.as_str())?;
+
+    log_dart_event_inner(
+        normalized_level.as_str(),
+        normalized_event_name.as_str(),
+        normalized_module.as_str(),
+        normalized_message.as_str(),
+    )
+    .map_err(map_log_dart_event_error)
+}
+
+fn normalize_log_dart_event_level(raw: &str) -> Result<String, LogDartEventFfiError> {
+    let normalized = raw.trim().to_ascii_lowercase();
+    let accepted = match normalized.as_str() {
+        "trace" | "debug" | "info" | "warn" | "error" => normalized,
+        "warning" => "warn".to_string(),
+        _ => {
+            return Err(LogDartEventFfiError::InvalidLevel(raw.to_string()));
+        }
+    };
+    Ok(accepted)
+}
+
+fn validate_log_dart_event_event_name(raw: &str) -> Result<String, LogDartEventFfiError> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err(LogDartEventFfiError::InvalidEventName(
+            "value cannot be blank".to_string(),
+        ));
+    }
+    if trimmed.chars().count() > LOG_DART_EVENT_MAX_EVENT_NAME_CHARS {
+        return Err(LogDartEventFfiError::InvalidEventName(format!(
+            "value exceeds max {} chars",
+            LOG_DART_EVENT_MAX_EVENT_NAME_CHARS
+        )));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn validate_log_dart_event_module(raw: &str) -> Result<String, LogDartEventFfiError> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err(LogDartEventFfiError::InvalidModule(
+            "value cannot be blank".to_string(),
+        ));
+    }
+    if trimmed.chars().count() > LOG_DART_EVENT_MAX_MODULE_CHARS {
+        return Err(LogDartEventFfiError::InvalidModule(format!(
+            "value exceeds max {} chars",
+            LOG_DART_EVENT_MAX_MODULE_CHARS
+        )));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn validate_log_dart_event_message(raw: &str) -> Result<String, LogDartEventFfiError> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err(LogDartEventFfiError::InvalidMessage(
+            "value cannot be blank".to_string(),
+        ));
+    }
+    if trimmed.chars().count() > LOG_DART_EVENT_MAX_MESSAGE_CHARS {
+        return Err(LogDartEventFfiError::InvalidMessage(format!(
+            "value exceeds max {} chars",
+            LOG_DART_EVENT_MAX_MESSAGE_CHARS
+        )));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn map_log_dart_event_error(err: LogDartEventError) -> LogDartEventFfiError {
+    match err {
+        LogDartEventError::InvalidLevel(value) => LogDartEventFfiError::InvalidLevel(value),
+        LogDartEventError::LoggingNotInitialized => LogDartEventFfiError::LoggingNotInitialized,
     }
 }
 
@@ -1615,13 +1788,15 @@ mod tests {
     use super::{
         calendar_list_by_range_impl, calendar_update_event_impl, configure_entry_db_path,
         core_version, entry_create_note_impl, entry_create_task_impl, entry_schedule_impl,
-        entry_search_impl, init_logging, map_db_error, map_repo_error, map_workspace_db_error,
-        note_create_impl, note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl,
-        ping, tags_list_impl, workspace_create_folder_impl, workspace_create_note_ref_impl,
-        workspace_delete_folder_impl, workspace_list_children_impl, workspace_move_node_impl,
-        workspace_rename_node_impl, NotesFfiError, WorkspaceFfiError,
+        entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
+        map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
+        note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
+        workspace_create_folder_impl, workspace_create_note_ref_impl, workspace_delete_folder_impl,
+        workspace_list_children_impl, workspace_move_node_impl, workspace_rename_node_impl,
+        NotesFfiError, WorkspaceFfiError,
     };
     use lazynote_core::db::open_db;
+    use lazynote_core::LogDartEventError;
     use lazynote_core::{SqliteTreeRepository, TreeService};
     use std::sync::{Mutex, MutexGuard};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1658,6 +1833,65 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let error = init_logging("verbose".to_string(), "tmp/logs".to_string());
         assert!(!error.is_empty());
+    }
+
+    #[test]
+    fn log_dart_event_rejects_invalid_level() {
+        let _guard = acquire_test_db_lock();
+        let response = log_dart_event_impl(
+            "verbose".to_string(),
+            "app.start".to_string(),
+            "workbench".to_string(),
+            "hello".to_string(),
+        );
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_level"));
+    }
+
+    #[test]
+    fn log_dart_event_rejects_blank_event_name() {
+        let _guard = acquire_test_db_lock();
+        let response = log_dart_event_impl(
+            "info".to_string(),
+            "   ".to_string(),
+            "workbench".to_string(),
+            "hello".to_string(),
+        );
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_event_name"));
+    }
+
+    #[test]
+    fn log_dart_event_rejects_blank_module() {
+        let _guard = acquire_test_db_lock();
+        let response = log_dart_event_impl(
+            "info".to_string(),
+            "app.start".to_string(),
+            "   ".to_string(),
+            "hello".to_string(),
+        );
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_module"));
+    }
+
+    #[test]
+    fn log_dart_event_rejects_oversized_message() {
+        let _guard = acquire_test_db_lock();
+        let long_message = "x".repeat(513);
+        let response = log_dart_event_impl(
+            "info".to_string(),
+            "app.start".to_string(),
+            "workbench".to_string(),
+            long_message,
+        );
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("invalid_message"));
+    }
+
+    #[test]
+    fn log_dart_event_maps_logging_not_initialized_error() {
+        let mapped = map_log_dart_event_error(LogDartEventError::LoggingNotInitialized);
+        assert_eq!(mapped.code(), "logging_not_initialized");
     }
 
     #[test]

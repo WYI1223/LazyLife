@@ -35,7 +35,9 @@ pub use extension::manifest::{
     CAPABILITY_COMMAND, CAPABILITY_PARSER, CAPABILITY_PROVIDER, CAPABILITY_UI_SLOT,
 };
 /// Re-export logging entry points for FFI/UI layers.
-pub use logging::{default_log_level, init_logging, logging_status};
+pub use logging::{
+    default_log_level, init_logging, log_dart_event, logging_status, LogDartEventError,
+};
 /// Re-export canonical Atom model types.
 pub use model::atom::{Atom, AtomId, AtomType, AtomValidationError, TaskStatus};
 /// Re-export repository contracts and SQLite implementation.
