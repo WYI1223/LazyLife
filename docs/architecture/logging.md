@@ -1,254 +1,94 @@
-# Logging Strategy (v0.1)
+# Logging Strategy (v0.2)
 
-本文件定义 LazyNote 在 v0.1 的日志设计，用于排障与用户问题回传，不用于遥测分析。
+This document defines LazyNote logging behavior for local diagnostics in v0.2.
 
 ## 1. Goals
 
-- Diagnose FFI / DB / sync issues in Rust core.
-- Provide user-friendly log export for bug reports.
-- Keep logging safe by default (privacy-first, non-crashing).
+- Keep diagnostics stable and readable for local debugging.
+- Preserve startup safety: logging failures must not block app launch.
+- Keep privacy-first policy (metadata logging by default).
 
 ## 2. Non-goals
 
-- Not a telemetry/analytics system.
-- No remote log upload in v0.1.
+- Remote telemetry or analytics.
+- Cross-device log transport.
+- Structured JSON log backend (plain text remains baseline in v0.2).
 
-## 3. Log Levels
+## 3. Ownership and Path Contract
 
-- Debug builds default: `debug`
-- Release builds default: `info`
-- Optional runtime override via settings (temporary, for local diagnostics only).
-- Runtime override levels allowed in v0.1: `info | debug | trace`.
-- Runtime override is session-scoped: app restart falls back to build default.
+- Flutter resolves the platform log directory and passes it to Rust via
+  `init_logging(level, log_dir)`.
+- Rust never hardcodes platform paths.
+- Example Windows path: `%APPDATA%/LazyLife/logs`.
 
-## 4. Log Location
+## 4. Session File Policy (PR-0210C)
 
-### Ownership
+- One process startup writes to one session log file.
+- Filename includes startup timestamp and PID for traceability.
+- Current shape:
+  - `lazynote_pid<PID>_<YYYY-MM-DD_HH-MM-SS>.log`
+- No append to previous session files.
 
-- Flutter computes platform log directory using `path_provider`.
-- Rust receives `log_dir` via FFI `init_logging()` and writes rolling files.
-- Rust must not guess or hardcode platform paths.
+## 5. Reader Policy (Diagnostics Viewer)
 
-### Example path (Windows)
+- Default diagnostics path reads tail content from a single active file.
+- No cross-file concatenation in default viewer flow.
+- Historical files are inspected through "open log folder".
 
-- `%APPDATA%/LazyLife/logs`
+## 6. Retention Policy
 
-### Path contract (v0.1)
+Retention cleanup is best-effort and runs during logging initialization only.
+Cleanup failures do not block logging startup.
 
-- Flutter should resolve the unified app root directory first:
-  - Windows: `%APPDATA%/LazyLife/`
-  - fallback: `<app_support>/LazyLife/`
-- Flutter appends `logs/` and passes the absolute path to Rust.
+Thresholds:
 
-### File naming (recommended)
+- `max_age_days = 7`
+- `max_files = 20`
+- `max_total_bytes = 50MB`
 
-- `lazynote.log` (active)
-- `lazynote.log.1` ... `lazynote.log.N` (rolled files)
+Cleanup applies to managed log files (`lazynote*.log`) and keeps newest files
+first while enforcing age/count/size limits.
 
-## 5. FFI API Contract
+## 7. FFI Contract
 
 ### `init_logging(level, log_dir)`
 
-- Must be called once during app startup, before `core_init` / `db_open` / `migrate`.
-- Repeated calls are idempotent only when `level + log_dir` are unchanged.
-- Logging initialization must never crash the app.
-- Initialization failures are returned as strings.
-- Later calls must not silently reconfigure to a different `level` or `log_dir` in the same session.
+- Called during startup before core DB operations.
+- Idempotent only when `level + log_dir` are unchanged.
+- Reconfiguration to a different level or directory in the same process is
+  rejected.
+- Signature remains unchanged in v0.2 (compatibility requirement).
 
-Recommended semantic contract:
-
-- Success: empty error (`null` / empty string, depending on binding style) and logging enabled.
-- Failure: human-readable error string for UI display and troubleshooting.
-
-## 6. Privacy / Redaction Policy (Mandatory)
+## 8. Privacy and Redaction
 
 Never log:
 
-- note content
-- task titles
-- calendar event descriptions
-- auth tokens / refresh tokens / secrets
+- note/task content
+- event descriptions
+- tokens, secrets, credentials
 
-Only log metadata:
+Log metadata only:
 
-- IDs (internal stable IDs), counts, durations, status/error codes
+- IDs, status codes, counts, durations, lifecycle events
 
-User-provided strings:
+User-provided strings must be sanitized/truncated before logging.
 
-- must be truncated and/or hashed before logging
-- never store full free-text input directly in logs
-- recommended pattern: log `input_len` + `input_hash`, not raw input
+## 9. Failure Policy
 
-## 7. Retention
+- Logging setup failure returns an error string to caller.
+- App launch must continue even if logging bootstrap fails.
+- Retention cleanup failures are warning-level and non-fatal.
 
-v0.1 default:
+## 10. Current Implementation Notes
 
-- rolling files by size: `10MB x 5 files`
+- Rust logger uses `flexi_logger::detailed_format`.
+- Panic hook logs sanitized panic summaries and flushes logger handle.
+- Diagnostics viewer reads file tail for large files and drops incomplete
+  trailing lines to avoid half-written row artifacts.
 
-Optional extension (later):
+## 11. Related Specs
 
-- add age-based cleanup (e.g. keep 7 days max)
-
-## 8. Event Checklist (v0.1)
-
-Minimum events to log:
-
-- `app_start` / `core_init` (include app version, platform, build mode)
-- `db_open`
-- `db_migrate_start` / `db_migrate_done` (include from/to schema version)
-- `fts_update` (include batch size and duration)
-- FFI use-case events:
-  - `create_note`
-  - `search`
-  - `schedule`
-  - `sync`
-  - `export`
-  - `import`
-- core CRUD events:
-  - `atom_create`
-  - `atom_update`
-  - `atom_soft_delete`
-- `sync_start` / `sync_done` / `sync_error`
-  - include `token_updated`, `pulled_count`, `written_count`, `conflict_count`
-- `export_start` / `export_done` / `export_error`
-- `import_start` / `import_done` / `import_error`
-- `panic_captured` (via Rust panic hook, with sanitized message only)
-- `error` (unexpected failures)
-
-## 9. Event Field Baseline
-
-Required common fields:
-
-- `ts` (timestamp)
-- `level`
-- `event`
-- `module` (`ffi`, `db`, `search`, `sync`, `import_export`)
-- `status` (`ok` / `error`)
-
-Recommended optional fields:
-
-- `duration_ms` (when applicable)
-- `error_code` (if any)
-- `entity_id` / `count` (metadata only)
-- `build_mode`
-- `platform`
-- `session_id`
-
-## 10. Export for Bug Reports
-
-v0.1 should support local export flow:
-
-- user triggers "Export Logs"
-- app bundles current rolling logs into one archive
-- user manually attaches archive in issue/bug report
-
-Constraints:
-
-- no automatic upload
-- no background network transfer
-
-## 11. Failure Policy
-
-- If logging setup fails, app continues running.
-- Failures are surfaced as user-readable diagnostics (string error).
-- Core business operations must not depend on logging success.
-
-## 12. Implementation Notes (Current)
-
-- Rust side:
-  - structured logging is enabled
-  - rolling appender is enabled (`10MB x 5`)
-  - log format: `flexi_logger::detailed_format` (added in PR-0017A)
-    - line format: `[YYYY-MM-DD HH:MM:SS.ffffff TZ] LEVEL [module] file:line: message`
-    - example: `[2026-02-15 10:23:45.123456 +00:00] INFO [lazynote_core::logging] src/logging.rs:100: event=app_start`
-  - startup + core operations emit metadata-only events
-- Flutter side:
-  - computes `log_dir` via `path_provider`
-  - calls `init_logging(level, log_dir)` during startup bootstrap
-  - shows a non-fatal startup hint when logging bootstrap fails
-- Workbench diagnostics:
-  - inline live log panel is available in the split-shell workbench
-  - panel supports refresh, copy visible logs, open log folder, and periodic polling
-  - panel keeps mounted while left-side placeholder pages switch
-  - refresh safety:
-    - only one refresh request runs in-flight
-    - overlapping refresh triggers are coalesced into one trailing refresh
-    - periodic polling pauses while app is background/inactive and resumes on foreground
-  - file-read safety:
-    - for large rolling logs, diagnostics reads from file tail window instead of full-file reads
-    - incomplete trailing lines (not `\n`-terminated) are discarded before display
-  - log row rendering (added in PR-0017A):
-    - each row shows: `HH:MM:SS.mmm | LEVEL | message`
-    - severity colors: ERROR=red, WARN=amber, INFO=green, DEBUG=blue-grey, TRACE=grey
-    - row backgrounds: ERROR=red-50, WARN=amber-50, others=transparent
-    - best-effort parsing: unrecognised lines fall back to raw text in the message column
-
-See also: `docs/releases/v0.1/prs/PR-0017-workbench-debug-logs.md`.
-See also: `docs/releases/v0.1/prs/PR-0017A-debug-viewer-readability-baseline.md`.
-See also: `docs/development/bug-archive.md` (`BUG-2026-001`).
-
-### Remaining gap (v0.1)
-
-- Zip export flow for bug reports is not implemented yet.
-
-## 13. Implementation Rollout Plan (Staged)
-
-为降低工具链风险（特别是 FRB codegen / Flutter daemon 卡死），v0.1 采用三阶段落地：
-
-### Phase A: Core-only logging (no FRB/codegen changes)
-
-Scope:
-
-- Implement `init_logging(level, log_dir)` in `lazynote_core`.
-- Add rolling policy (`10MB x 5`) and panic hook logging.
-- Add key event logs in core paths:
-  - `db_open` / `db_migrate_*`
-  - `atom_create` / `atom_update` / `atom_soft_delete`
-  - `search`
-
-Validation:
-
-- `cd crates && cargo check -p lazynote_core`
-- `cd crates && cargo test -p lazynote_core`
-
-Notes:
-
-- Phase A must not depend on Flutter toolchain readiness.
-
-### Phase B: FFI surface for logging init (codegen isolated)
-
-Scope:
-
-- Expose `init_logging(level, log_dir)` from `lazynote_ffi`.
-- Regenerate FRB binding artifacts as a standalone step.
-
-Validation:
-
-- `cd crates && cargo check -p lazynote_ffi`
-- FRB generated files are updated and compile cleanly.
-
-Notes:
-
-- If CI/runner repeatedly times out on codegen, run this phase locally first, then commit generated artifacts.
-
-### Phase C: Flutter bootstrap integration
-
-Scope:
-
-- In Flutter startup, compute log directory and call FFI `init_logging`.
-- Show non-fatal init error in diagnostics UI (do not block app launch).
-
-Validation:
-
-- `cd apps/lazynote_flutter && flutter analyze`
-- `cd apps/lazynote_flutter && flutter test`
-- `flutter run -d windows` startup remains stable.
-
-Notes:
-
-- Logging init failure must not prevent `runApp`.
-
-### Rollback policy
-
-- If any phase becomes unstable, rollback only that phase and keep earlier phases merged.
-- Never bundle all three phases into one commit.
+- `docs/releases/v0.2/prs/PR-0210-debug-viewer-readability-upgrade.md`
+- `docs/releases/v0.2/prs/PR-0210C-diagnostics-session-single-file-log-policy.md`
+- `docs/releases/v0.2/prs/PR-0210A-diagnostics-log-dart-event-ffi-contract.md`
+- `docs/releases/v0.2/prs/PR-0210B-diagnostics-log-dart-event-integration.md`

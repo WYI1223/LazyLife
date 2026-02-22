@@ -1,7 +1,7 @@
 //! Core logging bootstrap and safety policy.
 //!
 //! # Responsibility
-//! - Initialize file-based rolling logs exactly once per process.
+//! - Initialize file-based session logs exactly once per process.
 //! - Emit stable, metadata-only diagnostic events from core.
 //!
 //! # Invariants
@@ -12,15 +12,52 @@
 //! # See also
 //! - docs/architecture/logging.md
 
-use flexi_logger::{Cleanup, Criterion, FileSpec, Logger, LoggerHandle, Naming, WriteMode};
-use log::{error, info};
+use flexi_logger::{FileSpec, Logger, LoggerHandle, WriteMode};
+use log::{error, info, warn};
 use once_cell::sync::OnceCell;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 const LOG_FILE_BASENAME: &str = "lazynote";
-const MAX_LOG_FILE_SIZE_BYTES: u64 = 10 * 1024 * 1024;
-const MAX_LOG_FILES: usize = 5;
+const LOG_FILE_SUFFIX: &str = "log";
+const LOG_FILE_DISCRIMINANT_PREFIX: &str = "pid";
+const LOG_RETENTION_MAX_AGE_DAYS: u64 = 7;
+const LOG_RETENTION_MAX_FILES: usize = 20;
+const LOG_RETENTION_MAX_TOTAL_BYTES: u64 = 50 * 1024 * 1024;
 const MAX_PANIC_PAYLOAD_CHARS: usize = 160;
+
+#[derive(Clone, Copy, Debug)]
+struct LogRetentionPolicy {
+    max_age_days: u64,
+    max_files: usize,
+    max_total_bytes: u64,
+}
+
+impl Default for LogRetentionPolicy {
+    fn default() -> Self {
+        Self {
+            max_age_days: LOG_RETENTION_MAX_AGE_DAYS,
+            max_files: LOG_RETENTION_MAX_FILES,
+            max_total_bytes: LOG_RETENTION_MAX_TOTAL_BYTES,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct LogRetentionSummary {
+    scanned: usize,
+    removed: usize,
+    retained: usize,
+    failed: usize,
+    warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+struct ManagedLogFile {
+    path: PathBuf,
+    modified_at: SystemTime,
+    size_bytes: u64,
+}
 
 static LOGGING_STATE: OnceCell<LoggingState> = OnceCell::new();
 static PANIC_HOOK_INSTALLED: OnceCell<()> = OnceCell::new();
@@ -78,20 +115,14 @@ pub fn init_logging(level: &str, log_dir: &str) -> Result<(), String> {
             )
         })?;
 
+        let retention_policy = LogRetentionPolicy::default();
+        let retention_summary =
+            cleanup_managed_logs_best_effort(&init_dir, retention_policy, SystemTime::now());
+
         let logger = Logger::try_with_str(init_level)
             .map_err(|err| format!("invalid log level `{init_level}`: {err}"))?
-            .log_to_file(
-                FileSpec::default()
-                    .directory(init_dir.as_path())
-                    .basename(LOG_FILE_BASENAME),
-            )
-            .rotate(
-                Criterion::Size(MAX_LOG_FILE_SIZE_BYTES),
-                Naming::Numbers,
-                Cleanup::KeepLogFiles(MAX_LOG_FILES),
-            )
+            .log_to_file(build_session_file_spec(&init_dir))
             .write_mode(WriteMode::BufferAndFlush)
-            .append()
             // Why: detailed_format adds timestamp + source location, enabling the
             // diagnostics viewer to parse and display a structured timestamp column.
             // Format: [YYYY-MM-DD HH:MM:SS.ffffff TZ] LEVEL [module] file:line: message
@@ -112,6 +143,31 @@ pub fn init_logging(level: &str, log_dir: &str) -> Result<(), String> {
             init_level,
             init_dir.display()
         );
+        if retention_summary.failed > 0 {
+            warn!(
+                "event=log_retention_cleanup module=core status=degraded scanned={} removed={} retained={} failed={} max_age_days={} max_files={} max_total_bytes={}",
+                retention_summary.scanned,
+                retention_summary.removed,
+                retention_summary.retained,
+                retention_summary.failed,
+                retention_policy.max_age_days,
+                retention_policy.max_files,
+                retention_policy.max_total_bytes
+            );
+            for warning in retention_summary.warnings.iter().take(5) {
+                warn!("event=log_retention_cleanup_warning module=core detail={}", warning);
+            }
+        } else {
+            info!(
+                "event=log_retention_cleanup module=core status=ok scanned={} removed={} retained={} max_age_days={} max_files={} max_total_bytes={}",
+                retention_summary.scanned,
+                retention_summary.removed,
+                retention_summary.retained,
+                retention_policy.max_age_days,
+                retention_policy.max_files,
+                retention_policy.max_total_bytes
+            );
+        }
 
         Ok(LoggingState {
             level: init_level,
@@ -192,6 +248,177 @@ fn build_mode() -> &'static str {
     }
 }
 
+fn build_session_file_spec(log_dir: &Path) -> FileSpec {
+    let pid = std::process::id();
+    FileSpec::default()
+        .directory(log_dir)
+        .basename(LOG_FILE_BASENAME)
+        .suffix(LOG_FILE_SUFFIX)
+        .discriminant(format!("{LOG_FILE_DISCRIMINANT_PREFIX}{pid}"))
+        .use_timestamp(true)
+}
+
+fn cleanup_managed_logs_best_effort(
+    log_dir: &Path,
+    policy: LogRetentionPolicy,
+    now: SystemTime,
+) -> LogRetentionSummary {
+    let mut summary = LogRetentionSummary::default();
+
+    let entries = match std::fs::read_dir(log_dir) {
+        Ok(entries) => entries,
+        Err(err) => {
+            summary.failed += 1;
+            summary.warnings.push(format!(
+                "failed to list log directory `{}`: {err}",
+                log_dir.display()
+            ));
+            return summary;
+        }
+    };
+
+    let mut files = Vec::new();
+    for entry in entries {
+        let entry = match entry {
+            Ok(value) => value,
+            Err(err) => {
+                summary.failed += 1;
+                summary
+                    .warnings
+                    .push(format!("failed to read log entry: {err}"));
+                continue;
+            }
+        };
+        let path = entry.path();
+        if !is_managed_log_file(&path) {
+            continue;
+        }
+
+        let metadata = match entry.metadata() {
+            Ok(value) => value,
+            Err(err) => {
+                summary.failed += 1;
+                summary.warnings.push(format!(
+                    "failed to read metadata for `{}`: {err}",
+                    path.display()
+                ));
+                continue;
+            }
+        };
+        if !metadata.is_file() {
+            continue;
+        }
+
+        let modified_at = match metadata.modified() {
+            Ok(value) => value,
+            Err(err) => {
+                summary.failed += 1;
+                summary.warnings.push(format!(
+                    "failed to read modified time for `{}`: {err}",
+                    path.display()
+                ));
+                continue;
+            }
+        };
+
+        files.push(ManagedLogFile {
+            path,
+            modified_at,
+            size_bytes: metadata.len(),
+        });
+    }
+
+    summary.scanned = files.len();
+    if files.is_empty() {
+        return summary;
+    }
+
+    let planned_deletions = plan_log_deletions(files, policy, now);
+    summary.retained = summary.scanned.saturating_sub(planned_deletions.len());
+
+    for path in planned_deletions {
+        match std::fs::remove_file(&path) {
+            Ok(()) => {
+                summary.removed += 1;
+            }
+            Err(err) => {
+                summary.failed += 1;
+                summary.retained += 1;
+                summary
+                    .warnings
+                    .push(format!("failed to remove `{}`: {err}", path.display()));
+            }
+        }
+    }
+
+    summary
+}
+
+fn plan_log_deletions(
+    mut files: Vec<ManagedLogFile>,
+    policy: LogRetentionPolicy,
+    now: SystemTime,
+) -> Vec<PathBuf> {
+    use std::cmp::Ordering;
+    use std::collections::BTreeSet;
+
+    files.sort_by(|left, right| {
+        let time = right.modified_at.cmp(&left.modified_at);
+        if time != Ordering::Equal {
+            return time;
+        }
+        left.path.cmp(&right.path)
+    });
+
+    let mut marked = BTreeSet::new();
+    let cutoff = now.checked_sub(Duration::from_secs(
+        policy.max_age_days.saturating_mul(24 * 60 * 60),
+    ));
+
+    let mut retained = Vec::new();
+    for file in files {
+        let expired = cutoff
+            .map(|deadline| file.modified_at <= deadline)
+            .unwrap_or(false);
+        if expired {
+            marked.insert(file.path);
+            continue;
+        }
+        retained.push(file);
+    }
+
+    if retained.len() > policy.max_files {
+        for file in retained.iter().skip(policy.max_files) {
+            marked.insert(file.path.clone());
+        }
+        retained.truncate(policy.max_files);
+    }
+
+    if policy.max_total_bytes > 0 {
+        let mut consumed = 0_u64;
+        for (index, file) in retained.iter().enumerate() {
+            let next = consumed.saturating_add(file.size_bytes);
+            // Keep at least the newest session file even when it is oversized.
+            if index > 0 && next > policy.max_total_bytes {
+                marked.insert(file.path.clone());
+                continue;
+            }
+            consumed = next;
+        }
+    }
+
+    marked.into_iter().collect()
+}
+
+fn is_managed_log_file(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    let normalized = name.to_ascii_lowercase();
+    normalized.starts_with(LOG_FILE_BASENAME)
+        && normalized.ends_with(&format!(".{LOG_FILE_SUFFIX}"))
+}
+
 fn install_panic_hook_once() {
     if PANIC_HOOK_INSTALLED.get().is_some() {
         return;
@@ -243,10 +470,12 @@ fn sanitize_message(value: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        init_logging, logging_status, normalize_level, normalize_log_dir, sanitize_message,
+        build_session_file_spec, cleanup_managed_logs_best_effort, init_logging, logging_status,
+        normalize_level, normalize_log_dir, sanitize_message, LogRetentionPolicy,
+        LOG_FILE_BASENAME,
     };
-    use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     fn unique_temp_dir(suffix: &str) -> PathBuf {
         let nanos = SystemTime::now()
@@ -283,6 +512,114 @@ mod tests {
         assert!(!sanitized.contains('\n'));
         assert!(!sanitized.contains('\r'));
         assert!(sanitized.ends_with("..."));
+    }
+
+    #[test]
+    fn session_file_spec_contains_pid_and_timestamp() {
+        let file_path = build_session_file_spec(Path::new("C:/logs")).as_pathbuf(None);
+        let file_name = file_path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .expect("file name must be UTF-8");
+
+        let pid_prefix = format!("{LOG_FILE_BASENAME}_pid{}_", std::process::id());
+        assert!(
+            file_name.starts_with(&pid_prefix),
+            "unexpected session file name: {file_name}"
+        );
+        assert!(file_name.ends_with(".log"));
+    }
+
+    #[test]
+    fn retention_cleanup_enforces_file_count_limit() {
+        let log_dir = unique_temp_dir("retention-max-files");
+        std::fs::create_dir_all(&log_dir).expect("temp log dir should be creatable");
+
+        let oldest = create_managed_log_file(&log_dir, "lazynote_a.log", 12);
+        std::thread::sleep(Duration::from_millis(20));
+        let middle = create_managed_log_file(&log_dir, "lazynote_b.log", 12);
+        std::thread::sleep(Duration::from_millis(20));
+        let newest = create_managed_log_file(&log_dir, "lazynote_c.log", 12);
+
+        let summary = cleanup_managed_logs_best_effort(
+            &log_dir,
+            LogRetentionPolicy {
+                max_age_days: 365,
+                max_files: 2,
+                max_total_bytes: 1024,
+            },
+            SystemTime::now(),
+        );
+        assert_eq!(summary.removed, 1);
+        assert_eq!(summary.failed, 0);
+        assert!(!oldest.exists());
+        assert!(middle.exists());
+        assert!(newest.exists());
+
+        std::fs::remove_dir_all(&log_dir).expect("temp log dir should be removable");
+    }
+
+    #[test]
+    fn retention_cleanup_enforces_total_size_limit() {
+        let log_dir = unique_temp_dir("retention-max-size");
+        std::fs::create_dir_all(&log_dir).expect("temp log dir should be creatable");
+
+        let oldest = create_managed_log_file(&log_dir, "lazynote_size_a.log", 8);
+        std::thread::sleep(Duration::from_millis(20));
+        let middle = create_managed_log_file(&log_dir, "lazynote_size_b.log", 8);
+        std::thread::sleep(Duration::from_millis(20));
+        let newest = create_managed_log_file(&log_dir, "lazynote_size_c.log", 8);
+
+        let summary = cleanup_managed_logs_best_effort(
+            &log_dir,
+            LogRetentionPolicy {
+                max_age_days: 365,
+                max_files: 20,
+                max_total_bytes: 12,
+            },
+            SystemTime::now(),
+        );
+        assert_eq!(summary.removed, 2);
+        assert_eq!(summary.failed, 0);
+        assert!(!oldest.exists());
+        assert!(!middle.exists());
+        assert!(newest.exists());
+
+        std::fs::remove_dir_all(&log_dir).expect("temp log dir should be removable");
+    }
+
+    #[test]
+    fn retention_cleanup_age_zero_removes_existing_logs() {
+        let log_dir = unique_temp_dir("retention-age-zero");
+        std::fs::create_dir_all(&log_dir).expect("temp log dir should be creatable");
+
+        let first = create_managed_log_file(&log_dir, "lazynote_age_a.log", 4);
+        let second = create_managed_log_file(&log_dir, "lazynote_age_b.log", 4);
+        let unrelated = create_managed_log_file(&log_dir, "other.log", 4);
+
+        let summary = cleanup_managed_logs_best_effort(
+            &log_dir,
+            LogRetentionPolicy {
+                max_age_days: 0,
+                max_files: 20,
+                max_total_bytes: 1024,
+            },
+            SystemTime::now(),
+        );
+        assert_eq!(summary.removed, 2);
+        assert_eq!(summary.failed, 0);
+        assert!(!first.exists());
+        assert!(!second.exists());
+        assert!(unrelated.exists());
+
+        std::fs::remove_dir_all(&log_dir).expect("temp log dir should be removable");
+    }
+
+    fn create_managed_log_file(log_dir: &Path, name: &str, size: usize) -> PathBuf {
+        let path = log_dir.join(name);
+        let content = vec![b'a'; size];
+        std::fs::write(&path, content).expect("log file should be writable");
+        path
     }
 
     #[test]
