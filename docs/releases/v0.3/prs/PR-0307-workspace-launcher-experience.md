@@ -25,7 +25,7 @@ Out of scope:
 
 ## Dependency
 
-Requires `PR-0212-links-index-open-v1` from v0.2.
+Requires `PR-0306A-links-index-open-foundation`.
 
 ## Step-by-Step
 
@@ -54,4 +54,3 @@ Requires `PR-0212-links-index-open-v1` from v0.2.
 - [ ] Workspace launcher can open grouped resources with explicit confirmation.
 - [ ] `Open All` respects configurable cap and ordering.
 - [ ] Single Entry command routing to launcher/open is stable.
-

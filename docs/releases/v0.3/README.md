@@ -10,7 +10,9 @@ Theme:
 - drag-to-split interaction
 - cross-pane editor coherence
 - performance guardrails for long markdown documents
+- links index/open foundation for launcher flows
 - workspace launcher user flow on top of links index
+- Windows global hotkey quick-entry integration
 - first-party pluginization on extension kernel (entry/provider/ui slots)
 
 ## User-Facing Outcomes
@@ -24,6 +26,7 @@ At the end of v0.3, users should be able to:
 5. Launch a workspace link set safely (`Open All` with confirmation/limits).
 6. Use local task-calendar projection without requiring external provider login.
 7. Connect Google Calendar via provider plugin flow (optional integration).
+8. Toggle/focus quick entry from global hotkey on Windows.
 
 ## Architecture Outcomes
 
@@ -37,6 +40,8 @@ At the end of v0.3, engineering should have:
 6. Local task-calendar projection rules as core capability.
 7. Google Calendar provider implemented against provider SPI, not app-internal coupling.
 8. First-party command/parser features migrated to registry-based plugin form.
+9. Links index/open pipeline available as launcher-ready foundation.
+10. Global hotkey quick-entry route aligned with tab/entry semantics on Windows.
 
 ## Scope
 
@@ -48,10 +53,12 @@ In scope:
 - preview/pinned tab model (`PR-0304`)
 - markdown segment rendering + perf gate (`PR-0305`)
 - reliability hardening and closure (`PR-0306`)
+- links/index/open foundation (`PR-0306A`)
 - workspace launcher experience (`PR-0307`)
 - local task-calendar projection (`PR-0308`)
 - Google Calendar provider plugin (`PR-0309`)
 - first-party command/parser pluginization (`PR-0310`)
+- Windows global hotkey quick-entry (`PR-0311`)
 
 Out of scope:
 
@@ -77,10 +84,12 @@ Required baseline:
 4. `PR-0304-tab-preview-pinned-model`
 5. `PR-0305-markdown-segment-rendering-performance-gate`
 6. `PR-0306-recursive-workspace-reliability-hardening`
-7. `PR-0307-workspace-launcher-experience`
-8. `PR-0308-local-task-calendar-projection`
-9. `PR-0309-google-calendar-provider-plugin`
-10. `PR-0310-first-party-command-parser-plugins`
+7. `PR-0306A-links-index-open-foundation`
+8. `PR-0307-workspace-launcher-experience`
+9. `PR-0308-local-task-calendar-projection`
+10. `PR-0309-google-calendar-provider-plugin`
+11. `PR-0310-first-party-command-parser-plugins`
+12. `PR-0311-windows-global-hotkey-quick-entry`
 
 ## Quality Gates
 
@@ -100,6 +109,7 @@ v0.3 is complete when:
 5. Workspace launcher flow is safe, constrained, and test-covered.
 6. Local task-calendar projection is stable and independent from external provider availability.
 7. Google Calendar integration runs through provider SPI with predictable auth/sync behavior.
+8. Windows global hotkey quick-entry flow is stable and non-destructive.
 
 ## PR Specs
 
@@ -109,7 +119,9 @@ v0.3 is complete when:
 - `docs/releases/v0.3/prs/PR-0304-tab-preview-pinned-model.md`
 - `docs/releases/v0.3/prs/PR-0305-markdown-segment-rendering-performance-gate.md`
 - `docs/releases/v0.3/prs/PR-0306-recursive-workspace-reliability-hardening.md`
+- `docs/releases/v0.3/prs/PR-0306A-links-index-open-foundation.md`
 - `docs/releases/v0.3/prs/PR-0307-workspace-launcher-experience.md`
 - `docs/releases/v0.3/prs/PR-0308-local-task-calendar-projection.md`
 - `docs/releases/v0.3/prs/PR-0309-google-calendar-provider-plugin.md`
 - `docs/releases/v0.3/prs/PR-0310-first-party-command-parser-plugins.md`
+- `docs/releases/v0.3/prs/PR-0311-windows-global-hotkey-quick-entry.md`

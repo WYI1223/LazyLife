@@ -2,14 +2,14 @@
 
 ## Release/PR Mapping (2026-02-14)
 
-* [x] `v0.2 / PR-0212-links-index-open-v1`:
-  * [x] P0 syntax baseline (Markdown links + supported target types)
-  * [x] P0 data model/index + query API
-  * [x] P0 safe open baseline (`http/https/file`, Windows first)
-  * [x] P1 partial UI baseline (link list/search/open entry)
-* [x] `v0.3 / PR-0307-workspace-launcher-experience`:
-  * [x] P1 Workspace Launcher + `Open All` + safety cap + ordering
-  * [x] P1 Single Entry bridge (`> open`, `> workspace`)
+* [ ] `v0.3 / PR-0306A-links-index-open-foundation`:
+  * [ ] P0 syntax baseline (Markdown links + supported target types)
+  * [ ] P0 data model/index + query API
+  * [ ] P0 safe open baseline (`http/https/file`, Windows first)
+  * [ ] P1 partial UI baseline (link list/search/open entry)
+* [ ] `v0.3 / PR-0307-workspace-launcher-experience`:
+  * [ ] P1 Workspace Launcher + `Open All` + safety cap + ordering
+  * [ ] P1 Single Entry bridge (`> open`, `> workspace`)
 * [ ] `v1.0 / PR-1006-links-launcher-cross-platform-and-whitelist`:
   * [ ] P2 cross-platform parity (`open`/`xdg-open`)
   * [ ] P2 optional scheme whitelist hardening
