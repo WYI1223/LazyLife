@@ -226,7 +226,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('notes_move_node_dialog')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('notes_move_node_target_dropdown')));
+      await tester.tap(
+        find.byKey(const Key('notes_move_node_target_dropdown')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Archive').last);
       await tester.pumpAndSettle();
