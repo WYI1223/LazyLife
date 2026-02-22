@@ -1,7 +1,7 @@
 # PR-0210A-diagnostics-log-dart-event-ffi-contract
 
 - Proposed title: `feat(ffi): add log_dart_event bridge contract for unified Dart/Rust timeline`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -30,9 +30,18 @@ Out of scope:
 2. Payload constraints
    - `level`: fixed enum-like string set (`trace|debug|info|warn|error`)
    - `event_name/module/message`: non-empty trimmed strings with length guard
+   - limits frozen:
+     - `event_name <= 64`
+     - `module <= 64`
+     - `message <= 512`
 3. Failure semantics
-   - invalid input maps to stable validation error code
-   - I/O/backend failure maps to stable runtime error code
+   - invalid input maps to stable validation error codes:
+     - `invalid_level`
+     - `invalid_event_name`
+     - `invalid_module`
+     - `invalid_message`
+   - runtime unavailability maps to:
+     - `logging_not_initialized`
 4. Compatibility
    - function is additive and backward-compatible for existing FFI clients
 
@@ -62,6 +71,27 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] FFI API is callable from Flutter bindings.
-- [ ] Invalid input/runtime failures map to documented stable codes.
-- [ ] Contract docs and generated bindings are in sync.
+- [x] FFI API is callable from Flutter bindings.
+- [x] Invalid input/runtime failures map to documented stable codes.
+- [x] Contract docs and generated bindings are in sync.
+
+## Closure Notes
+
+- Added sync FFI API:
+  - `log_dart_event(level, event_name, module, message) -> LogDartEventResponse`
+- Added core logging bridge:
+  - `lazynote_core::log_dart_event(...)` with runtime `logging_not_initialized` guard
+- Regenerated FRB bindings:
+  - `crates/lazynote_ffi/src/frb_generated.rs`
+  - `apps/lazynote_flutter/lib/core/bindings/api.dart`
+  - `apps/lazynote_flutter/lib/core/bindings/frb_generated.dart`
+  - `apps/lazynote_flutter/lib/core/bindings/frb_generated.io.dart`
+- Added contract smoke:
+  - `apps/lazynote_flutter/test/log_dart_event_contract_smoke_test.dart`
+- Synced contract/error docs:
+  - `docs/api/ffi-contracts.md`
+  - `docs/api/error-codes.md`
+- Verification replay:
+  - `cd crates && cargo test -p lazynote_ffi`
+  - `cd apps/lazynote_flutter && flutter analyze`
+  - `cd apps/lazynote_flutter && flutter test test/entry_search_contract_smoke_test.dart test/workspace_contract_smoke_test.dart test/log_dart_event_contract_smoke_test.dart`
