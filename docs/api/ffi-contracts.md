@@ -171,6 +171,16 @@ This PR extends Flutter-side split workflow with explicit pane close/merge.
 - close-pane command entry (`notes_close_pane_button`) is UI-only interaction
   and does not call new FFI endpoints directly
 
+## UI Localization CN/EN Baseline (Flutter-only, PR-0209)
+
+This PR delivers Flutter-side localization/runtime settings only.
+
+- no Rust FFI API added/removed/renamed
+- no generated Dart binding shape change from Rust side
+- no new stable error-code namespace
+- localization preference persistence (`settings.json -> ui.language`) is
+  Flutter-owned settings IO and does not introduce new FFI contracts
+
 ## Notes Explorer Context Actions Baseline (Flutter-only, PR-0207 M1)
 
 This milestone extends explorer interactions while reusing existing contracts.

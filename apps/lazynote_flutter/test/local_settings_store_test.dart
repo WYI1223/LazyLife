@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
+import 'package:lazynote_flutter/core/settings/ui_language.dart';
 
 void main() {
   tearDown(() {
@@ -32,6 +33,7 @@ void main() {
     expect(content, contains('"collapsed_height": 72'));
     expect(content, contains('"expanded_max_height": 420'));
     expect(content, contains('"animation_ms": 180'));
+    expect(content, contains('"language": "system"'));
   });
 
   test('backfills missing keys without overriding existing values', () async {
@@ -76,6 +78,8 @@ void main() {
 
     final logging = decoded['logging'] as Map<String, dynamic>;
     expect(logging.containsKey('level_override'), isTrue);
+    final uiRoot = decoded['ui'] as Map<String, dynamic>;
+    expect(uiRoot['language'], 'system');
   });
 
   test('loads entry ui tuning from existing settings file', () async {
@@ -188,6 +192,65 @@ void main() {
     expect(LocalSettingsStore.loggingLevelOverride, isNull);
   });
 
+  test('loads ui.language from settings file', () async {
+    final tempDir = await Directory.systemTemp.createTemp('lazynote-settings-');
+    addTearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final settingsPath =
+        '${tempDir.path}${Platform.pathSeparator}settings.json';
+    final existing = File(settingsPath);
+    await existing.parent.create(recursive: true);
+    await existing.writeAsString('''
+{
+  "schema_version": 1,
+  "entry": {
+    "ui": {
+      "collapsed_height": 72,
+      "expanded_max_height": 420,
+      "animation_ms": 180
+    }
+  },
+  "ui": {
+    "language": "zh-CN"
+  }
+}
+''');
+
+    LocalSettingsStore.settingsFilePathResolver = () async => settingsPath;
+    await LocalSettingsStore.ensureInitialized();
+
+    expect(LocalSettingsStore.uiLanguage, UiLanguage.zhCn);
+  });
+
+  test('saveUiLanguage persists value to settings file', () async {
+    final tempDir = await Directory.systemTemp.createTemp('lazynote-settings-');
+    addTearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final settingsPath =
+        '${tempDir.path}${Platform.pathSeparator}settings.json';
+    LocalSettingsStore.settingsFilePathResolver = () async => settingsPath;
+    await LocalSettingsStore.ensureInitialized();
+
+    final persisted = await LocalSettingsStore.saveUiLanguage(UiLanguage.en);
+    expect(persisted, isTrue);
+    expect(LocalSettingsStore.uiLanguage, UiLanguage.en);
+
+    final decoded = jsonDecode(
+          await File(settingsPath).readAsString(),
+        )
+        as Map<String, dynamic>;
+    final uiRoot = decoded['ui'] as Map<String, dynamic>;
+    expect(uiRoot['language'], 'en');
+  });
+
   test('schema_version > 1 falls back to defaults', () async {
     final tempDir = await Directory.systemTemp.createTemp('lazynote-settings-');
     addTearDown(() async {
@@ -223,6 +286,7 @@ void main() {
     expect(LocalSettingsStore.entryUiTuning.expandedMaxHeight, 420);
     expect(LocalSettingsStore.entryUiTuning.animationMs, 180);
     expect(LocalSettingsStore.loggingLevelOverride, isNull);
+    expect(LocalSettingsStore.uiLanguage, UiLanguage.system);
   });
 
   test('schema_version > 1 does not rewrite settings file', () async {

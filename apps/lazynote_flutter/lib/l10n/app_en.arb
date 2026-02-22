@@ -1,0 +1,294 @@
+﻿{
+  "@@locale": "en",
+  "lazyNoteWorkbenchTitle": "LazyNote Workbench",
+  "workbenchSectionNotes": "Notes",
+  "workbenchSectionNotesWithCount": "Notes ({count})",
+  "@workbenchSectionNotesWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workbenchSectionTasks": "Tasks",
+  "workbenchSectionCalendar": "Calendar",
+  "workbenchSectionSettings": "Settings",
+  "workbenchSectionRustDiagnostics": "Rust Diagnostics",
+  "workbenchHomeTitle": "Workbench Home",
+  "workbenchHomeDescription": "Use Workbench to run Single Entry flow and diagnostics while feature UIs are landing.",
+  "singleEntryTitle": "Single Entry",
+  "openSingleEntryButton": "Open Single Entry",
+  "focusSingleEntryButton": "Focus Single Entry",
+  "hideSingleEntryButton": "Hide Single Entry",
+  "workbenchDiagnosticsTitle": "Diagnostics",
+  "placeholderRoutesTitle": "Placeholder Routes",
+  "backToWorkbenchButton": "Back to Workbench",
+  "settingsCapabilityAuditTitle": "Extension capability audit (v0.2 baseline)",
+  "settingsCapabilityAuditDescription": "Runtime capability checks are deny-by-default. Undeclared capabilities are rejected at invocation time.",
+  "settingsRegisteredExtensions": "Registered Extensions",
+  "settingsCapabilityCatalog": "Capability Catalog",
+  "settingsNoRuntimePermissionsDeclared": "No runtime permissions declared (deny-by-default).",
+  "settingsLanguageTitle": "Language",
+  "settingsLanguageDescription": "Switch Workbench UI language immediately.",
+  "languageOptionSystem": "System",
+  "languageOptionEnglish": "English",
+  "languageOptionChineseSimplified": "Chinese (Simplified)",
+  "settingsLanguageSaveFailed": "Failed to save language preference.",
+  "loggingInitStatusNotAttempted": "Logging init status: not attempted in this process.",
+  "loggingInitStatusValue": "logging_init status: {status}",
+  "@loggingInitStatusValue": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "loggingInitLevelValue": "level: {level}",
+  "@loggingInitLevelValue": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "loggingInitLogDirValue": "logDir: {logDir}",
+  "@loggingInitLogDirValue": {
+    "placeholders": {
+      "logDir": {
+        "type": "String"
+      }
+    }
+  },
+  "loggingInitErrorValue": "error: {error}",
+  "@loggingInitErrorValue": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "rustDiagnosticsInitializing": "Initializing Rust bridge...",
+  "rustDiagnosticsInitFailed": "Rust bridge initialization failed",
+  "retryButton": "Retry",
+  "rustDiagnosticsConnected": "Rust bridge connected",
+  "rustDiagnosticsPingValue": "ping: {ping}",
+  "@rustDiagnosticsPingValue": {
+    "placeholders": {
+      "ping": {
+        "type": "String"
+      }
+    }
+  },
+  "rustDiagnosticsCoreVersionValue": "coreVersion: {version}",
+  "@rustDiagnosticsCoreVersionValue": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshButton": "Refresh",
+  "debugLogsNoVisibleLogsToCopy": "No visible logs to copy.",
+  "debugLogsVisibleLogsCopied": "Visible logs copied.",
+  "debugLogsOpenedLogFolder": "Opened log folder.",
+  "debugLogsOpenFolderFailed": "Open folder failed: {error}",
+  "@debugLogsOpenFolderFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "commonNever": "never",
+  "debugLogsLoadFailed": "Failed to load logs: {error}",
+  "@debugLogsLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsNoContentYet": "No log content available yet.",
+  "debugLogsPanelTitle": "Debug Logs (Live)",
+  "debugLogsAutoRefreshEverySeconds": "Auto refresh: every {seconds}s",
+  "@debugLogsAutoRefreshEverySeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "debugLogsLastRefreshValue": "Last refresh: {time}",
+  "@debugLogsLastRefreshValue": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsDirectoryValue": "Directory: {directory}",
+  "@debugLogsDirectoryValue": {
+    "placeholders": {
+      "directory": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsActiveFileValue": "Active file: {file}",
+  "@debugLogsActiveFileValue": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsCopyVisibleButton": "Copy Visible Logs",
+  "debugLogsOpenLogFolderButton": "Open Log Folder",
+  "commonCancel": "Cancel",
+  "commonClose": "Close",
+  "commonConfirm": "Confirm",
+  "commonCreate": "Create",
+  "notesBackShort": "Back",
+  "notesShellTitle": "Notes Shell",
+  "notesWorkspaceTitle": "My Workspace",
+  "notesPaneIndicator": "Pane {paneOrdinal}/{paneCount}",
+  "@notesPaneIndicator": {
+    "placeholders": {
+      "paneOrdinal": {
+        "type": "String"
+      },
+      "paneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSplitRightTooltip": "Split right",
+  "notesSplitDownTooltip": "Split down",
+  "notesNextPaneTooltip": "Next pane",
+  "notesClosePaneTooltip": "Close pane",
+  "notesReloadTooltip": "Reload notes",
+  "notesSplitCreatedWithCount": "Split created. {paneCount} panes ready.",
+  "@notesSplitCreatedWithCount": {
+    "placeholders": {
+      "paneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSplitCreatedSimple": "Split created.",
+  "notesSplitPaneUnavailable": "Cannot split: active pane is unavailable.",
+  "notesSplitMaxPaneReached": "Cannot split: maximum pane count ({maxPaneCount}) reached.",
+  "@notesSplitMaxPaneReached": {
+    "placeholders": {
+      "maxPaneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSplitDirectionLocked": "Cannot split: v0.2 keeps one split direction per workspace.",
+  "notesSplitMinSizeBlocked": "Cannot split: each pane must stay at least {minPaneWidth}px.",
+  "@notesSplitMinSizeBlocked": {
+    "placeholders": {
+      "minPaneWidth": {
+        "type": "int"
+      }
+    }
+  },
+  "notesOnlyOnePaneAvailable": "Only one pane is available.",
+  "notesSwitchedToPane": "Switched to pane {paneOrdinal}.",
+  "@notesSwitchedToPane": {
+    "placeholders": {
+      "paneOrdinal": {
+        "type": "String"
+      }
+    }
+  },
+  "notesPaneClosedWithCount": "Pane closed. {paneCount} remaining.",
+  "@notesPaneClosedWithCount": {
+    "placeholders": {
+      "paneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesPaneClosedSimple": "Pane closed.",
+  "notesClosePaneSingleBlocked": "Cannot close pane: only one pane is available.",
+  "notesClosePaneUnavailable": "Cannot close pane: active pane is unavailable.",
+  "notesUnsavedContentTitle": "Unsaved content",
+  "notesSaveFailedCloseBody": "Save failed. Retry or back up content before closing.",
+  "notesKeepEditingButton": "Keep editing",
+  "notesRetrySaveButton": "Retry save",
+  "notesNoOpenNotes": "No open notes",
+  "notesTabCloseOthers": "Close Others",
+  "notesTabCloseRight": "Close to the Right",
+  "notesLoadingNotes": "Loading notes...",
+  "notesDetailUnavailableWhenListError": "Cannot load detail while list is unavailable.",
+  "notesCreateFirstNoteHint": "Create your first note in C2.",
+  "notesSelectNoteToContinue": "Select a note to continue.",
+  "notesDetailNotAvailableYet": "Detail data is not available yet.",
+  "notesPathPlaceholder": "Omni-Bar / Private",
+  "notesAddIconButton": "Add icon",
+  "notesAddImageButton": "Add image",
+  "notesAddCommentButton": "Add comment",
+  "notesUpdatedAt": "Updated {value}",
+  "@notesUpdatedAt": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "notesRetryDetailButton": "Retry detail",
+  "notesSaveStatusSaved": "Saved",
+  "notesSaveStatusUnsaved": "Unsaved",
+  "notesSaveStatusSaving": "Saving...",
+  "notesSaveStatusFailed": "Save failed",
+  "notesRefreshDetailTooltip": "Refresh detail",
+  "notesShareAction": "Share",
+  "notesStarAction": "Star",
+  "notesMoreAction": "More",
+  "notesMoreActionsTooltip": "More actions",
+  "notesTagButton": "Tag",
+  "notesAddTagDialogTitle": "Add tag",
+  "notesTagInputHint": "tag",
+  "notesAddButton": "Add",
+  "notesEditorHintText": "Start writing...",
+  "notesNewFolderTooltip": "New folder",
+  "notesListLoadFailed": "Failed to load notes.",
+  "notesListEmpty": "No notes yet.",
+  "notesWorkspaceTreeEmpty": "No workspace items yet.",
+  "notesRetryTreeButton": "Retry",
+  "notesNoItemsLabel": "No items",
+  "notesDropToRootLabel": "Move to root",
+  "notesLegacyFolderProjects": "Projects",
+  "notesLegacyFolderPersonal": "Personal",
+  "notesNewPageButton": "New Page",
+  "notesCreateFolderDialogTitle": "Create folder",
+  "notesFolderNameHint": "Folder name",
+  "notesFolderCreatedToast": "Folder created.",
+  "notesDeleteFolderDialogTitle": "Delete folder",
+  "notesDeleteFolderTooltip": "Delete folder",
+  "notesFolderDeletedWithMode": "Folder deleted with {modeLabel}.",
+  "@notesFolderDeletedWithMode": {
+    "placeholders": {
+      "modeLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "notesDeleteModeDissolve": "Dissolve",
+  "notesDeleteModeDeleteAll": "Delete all",
+  "notesDeleteModeDissolveDescription": "Keep notes, move direct children to root.",
+  "notesDeleteModeDeleteAllDescription": "Delete folder subtree references and scoped notes.",
+  "notesNewChildFolderTooltip": "New child folder",
+  "notesMoveAction": "Move",
+  "notesMoveNodeDialogTitle": "Move node",
+  "notesMoveTargetFolderLabel": "Target folder",
+  "notesMoveTargetRootLabel": "Root",
+  "notesMovedToast": "Moved.",
+  "notesNoMoveTargetsToast": "No available move targets.",
+  "notesRenameAction": "Rename",
+  "notesRenameDialogTitle": "Rename",
+  "notesRenamedToast": "Renamed.",
+  "notesNoteCreatedToast": "Note created."
+}

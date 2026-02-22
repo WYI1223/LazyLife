@@ -75,6 +75,9 @@ This includes:
   },
   "logging": {
     "level_override": null
+  },
+  "ui": {
+    "language": "system"
   }
 }
 ```
@@ -125,6 +128,15 @@ This includes:
 - v0.2 behavior: when non-null, `RustBridge.bootstrapLogging()` uses this value
   before `defaultLogLevelResolver()`
 
+`ui.language`
+
+- string enum: `system | en | zh-CN`
+- default: `system`
+- invalid value falls back to `system`
+- v0.2 behavior:
+  - `system`: follow platform locale (limited to supported locale set)
+  - `en` / `zh-CN`: explicit locale override at app level
+
 ### Field Wiring Status (v0.2)
 
 - active at runtime:
@@ -132,6 +144,7 @@ This includes:
   - `entry.ui.expanded_max_height`
   - `entry.ui.animation_ms`
   - `logging.level_override`
+  - `ui.language`
 - persisted/backfilled but not wired yet:
   - `entry.result_limit` (TODO(v0.2): wire to SingleEntryController limit)
   - `entry.use_single_entry_as_home` (TODO(v0.2): wire to bootstrap route policy)
@@ -163,18 +176,21 @@ Write path:
 3. Runtime bridge settings are applied before first command/search execution when required.
 4. `logging.level_override` is applied by `RustBridge.bootstrapLogging()` when non-null.
 
-### Startup policy (v0.1)
+### Startup policy (v0.2)
 
-- Keep first frame non-blocking.
+- Locale-affecting setting is loaded in critical phase before first frame.
 - Current bootstrap execution order:
-  1. `LocalSettingsStore.ensureInitialized()`
-  2. `RustBridge.bootstrapLogging()`
-- Both run in background startup orchestration (not before `runApp`).
+  1. critical phase (before `runApp`): `LocalSettingsStore.ensureInitialized()`
+  2. background phase (after `runApp`):
+     - `RustBridge.bootstrapLogging()`
+     - reminder scheduler bootstrap
+- Critical phase remains best-effort: failure falls back to defaults and does
+  not block app launch.
 
 ### Layered loading trigger (future rule)
 
-When any setting changes first-frame UI behavior (for example: home route,
-theme, locale), startup must switch to layered loading:
+When any additional setting changes first-frame UI behavior (for example: home
+route, theme), startup must switch to layered loading:
 
 - critical settings: load before `runApp` (optionally with a short timeout)
 - non-critical settings: continue loading in background

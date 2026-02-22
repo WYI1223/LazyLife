@@ -4,6 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/features/notes/note_editor.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
+
+String _notesL10nText({
+  required BuildContext context,
+  required String fallback,
+  required String Function(AppLocalizations l10n) pick,
+}) {
+  final l10n = AppLocalizations.of(context);
+  return l10n == null ? fallback : pick(l10n);
+}
 
 /// Center editor/content area for active note.
 class NoteContentArea extends StatelessWidget {
@@ -54,14 +64,25 @@ class NoteContentArea extends StatelessWidget {
       case NotesListPhase.idle:
       case NotesListPhase.loading:
         if (atomId == null) {
-          return _statusPlaceholder(context, text: 'Loading notes...');
+          return _statusPlaceholder(
+            context,
+            text: _notesL10nText(
+              context: context,
+              fallback: 'Loading notes...',
+              pick: (l10n) => l10n.notesLoadingNotes,
+            ),
+          );
         }
         break;
       case NotesListPhase.error:
         if (atomId == null) {
           return _statusPlaceholder(
             context,
-            text: 'Cannot load detail while list is unavailable.',
+            text: _notesL10nText(
+              context: context,
+              fallback: 'Cannot load detail while list is unavailable.',
+              pick: (l10n) => l10n.notesDetailUnavailableWhenListError,
+            ),
           );
         }
         break;
@@ -69,7 +90,11 @@ class NoteContentArea extends StatelessWidget {
         if (atomId == null) {
           return _statusPlaceholder(
             context,
-            text: 'Create your first note in C2.',
+            text: _notesL10nText(
+              context: context,
+              fallback: 'Create your first note in C2.',
+              pick: (l10n) => l10n.notesCreateFirstNoteHint,
+            ),
           );
         }
         break;
@@ -78,7 +103,14 @@ class NoteContentArea extends StatelessWidget {
     }
 
     if (atomId == null) {
-      return _statusPlaceholder(context, text: 'Select a note to continue.');
+      return _statusPlaceholder(
+        context,
+        text: _notesL10nText(
+          context: context,
+          fallback: 'Select a note to continue.',
+          pick: (l10n) => l10n.notesSelectNoteToContinue,
+        ),
+      );
     }
     if (controller.detailErrorMessage case final error?) {
       return _detailErrorState(context, error: error);
@@ -97,7 +129,11 @@ class NoteContentArea extends StatelessWidget {
     if (note == null) {
       return _statusPlaceholder(
         context,
-        text: 'Detail data is not available yet.',
+        text: _notesL10nText(
+          context: context,
+          fallback: 'Detail data is not available yet.',
+          pick: (l10n) => l10n.notesDetailNotAvailableYet,
+        ),
       );
     }
 
@@ -131,7 +167,11 @@ class NoteContentArea extends StatelessWidget {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'Omni-Bar / Private',
+                                _notesL10nText(
+                                  context: context,
+                                  fallback: 'Omni-Bar / Private',
+                                  pick: (l10n) => l10n.notesPathPlaceholder,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall
@@ -217,18 +257,30 @@ class NoteContentArea extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: const [
+                children: [
                   _MetaChip(
                     chipKey: Key('notes_detail_add_icon_button'),
-                    label: 'Add icon',
+                    label: _notesL10nText(
+                      context: context,
+                      fallback: 'Add icon',
+                      pick: (l10n) => l10n.notesAddIconButton,
+                    ),
                   ),
                   _MetaChip(
                     chipKey: Key('notes_detail_add_image_button'),
-                    label: 'Add image',
+                    label: _notesL10nText(
+                      context: context,
+                      fallback: 'Add image',
+                      pick: (l10n) => l10n.notesAddImageButton,
+                    ),
                   ),
                   _MetaChip(
                     chipKey: Key('notes_detail_add_comment_button'),
-                    label: 'Add comment',
+                    label: _notesL10nText(
+                      context: context,
+                      fallback: 'Add comment',
+                      pick: (l10n) => l10n.notesAddCommentButton,
+                    ),
                   ),
                 ],
               ),
@@ -260,7 +312,12 @@ class NoteContentArea extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Updated ${_formatAbsoluteTime(note.updatedAt)}',
+                _notesL10nText(
+                  context: context,
+                  fallback: 'Updated ${_formatAbsoluteTime(note.updatedAt)}',
+                  pick: (l10n) =>
+                      l10n.notesUpdatedAt(_formatAbsoluteTime(note.updatedAt)),
+                ),
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
@@ -320,7 +377,13 @@ class NoteContentArea extends StatelessWidget {
               FilledButton.tonal(
                 key: const Key('notes_detail_retry_button'),
                 onPressed: controller.refreshSelectedDetail,
-                child: const Text('Retry detail'),
+                child: Text(
+                  _notesL10nText(
+                    context: context,
+                    fallback: 'Retry detail',
+                    pick: (l10n) => l10n.notesRetryDetailButton,
+                  ),
+                ),
               ),
             ],
           ),
@@ -397,7 +460,16 @@ class _SaveStatusWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.check, size: 14, color: Color(0xFF2E7D32)),
-            if (!compact) ...const [SizedBox(width: 4), Text('Saved')],
+            if (!compact) ...[
+              const SizedBox(width: 4),
+              Text(
+                _notesL10nText(
+                  context: context,
+                  fallback: 'Saved',
+                  pick: (l10n) => l10n.notesSaveStatusSaved,
+                ),
+              ),
+            ],
           ],
         );
       case NoteSaveState.dirty:
@@ -406,7 +478,16 @@ class _SaveStatusWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.circle, size: 7, color: kNotesSecondaryText),
-            if (!compact) ...const [SizedBox(width: 5), Text('Unsaved')],
+            if (!compact) ...[
+              const SizedBox(width: 5),
+              Text(
+                _notesL10nText(
+                  context: context,
+                  fallback: 'Unsaved',
+                  pick: (l10n) => l10n.notesSaveStatusUnsaved,
+                ),
+              ),
+            ],
           ],
         );
       case NoteSaveState.saving:
@@ -419,11 +500,26 @@ class _SaveStatusWidget extends StatelessWidget {
               height: 12,
               child: CircularProgressIndicator(strokeWidth: 1.8),
             ),
-            if (!compact) ...const [SizedBox(width: 6), Text('Saving...')],
+            if (!compact) ...[
+              const SizedBox(width: 6),
+              Text(
+                _notesL10nText(
+                  context: context,
+                  fallback: 'Saving...',
+                  pick: (l10n) => l10n.notesSaveStatusSaving,
+                ),
+              ),
+            ],
           ],
         );
       case NoteSaveState.error:
-        final fullError = controller.saveErrorMessage ?? 'Save failed';
+        final fullError =
+            controller.saveErrorMessage ??
+            _notesL10nText(
+              context: context,
+              fallback: 'Save failed',
+              pick: (l10n) => l10n.notesSaveStatusFailed,
+            );
         if (compact) {
           return Row(
             key: const Key('notes_save_status_error'),
@@ -447,7 +543,11 @@ class _SaveStatusWidget extends StatelessWidget {
                   size: 14,
                   color: Colors.redAccent,
                 ),
-                tooltip: 'Retry save',
+                tooltip: _notesL10nText(
+                  context: context,
+                  fallback: 'Retry save',
+                  pick: (l10n) => l10n.notesRetrySaveButton,
+                ),
                 visualDensity: VisualDensity.compact,
               ),
             ],
@@ -469,7 +569,11 @@ class _SaveStatusWidget extends StatelessWidget {
             Text(
               // Why: keep top-right action row stable; long backend error text
               // is rendered by the dedicated save-error banner below.
-              'Save failed',
+              _notesL10nText(
+                context: context,
+                fallback: 'Save failed',
+                pick: (l10n) => l10n.notesSaveStatusFailed,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -487,7 +591,13 @@ class _SaveStatusWidget extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               ),
-              child: const Text('Retry'),
+              child: Text(
+                _notesL10nText(
+                  context: context,
+                  fallback: 'Retry',
+                  pick: (l10n) => l10n.retryButton,
+                ),
+              ),
             ),
           ],
         );
@@ -521,7 +631,11 @@ class _TopActionCluster extends StatelessWidget {
         const SizedBox(width: 6),
         IconButton(
           key: const Key('notes_detail_refresh_button'),
-          tooltip: 'Refresh detail',
+          tooltip: _notesL10nText(
+            context: context,
+            fallback: 'Refresh detail',
+            pick: (l10n) => l10n.notesRefreshDetailTooltip,
+          ),
           onPressed: controller.refreshSelectedDetail,
           icon: const Icon(Icons.refresh, color: kNotesSecondaryText),
           iconSize: 18,
@@ -534,7 +648,11 @@ class _TopActionCluster extends StatelessWidget {
         else ...[
           _TopActionButton(
             buttonKey: const Key('notes_detail_share_button'),
-            label: 'Share',
+            label: _notesL10nText(
+              context: context,
+              fallback: 'Share',
+              pick: (l10n) => l10n.notesShareAction,
+            ),
             onPressed: () {},
           ),
           _TopActionButton(
@@ -560,13 +678,44 @@ class _MoreActionsMenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<_TopOverflowAction>(
       key: buttonKey,
-      tooltip: 'More actions',
+      tooltip: _notesL10nText(
+        context: context,
+        fallback: 'More actions',
+        pick: (l10n) => l10n.notesMoreActionsTooltip,
+      ),
       onSelected: (_) {},
       itemBuilder: (context) {
-        return const [
-          PopupMenuItem(value: _TopOverflowAction.share, child: Text('Share')),
-          PopupMenuItem(value: _TopOverflowAction.star, child: Text('Star')),
-          PopupMenuItem(value: _TopOverflowAction.more, child: Text('More')),
+        return [
+          PopupMenuItem(
+            value: _TopOverflowAction.share,
+            child: Text(
+              _notesL10nText(
+                context: context,
+                fallback: 'Share',
+                pick: (l10n) => l10n.notesShareAction,
+              ),
+            ),
+          ),
+          PopupMenuItem(
+            value: _TopOverflowAction.star,
+            child: Text(
+              _notesL10nText(
+                context: context,
+                fallback: 'Star',
+                pick: (l10n) => l10n.notesStarAction,
+              ),
+            ),
+          ),
+          PopupMenuItem(
+            value: _TopOverflowAction.more,
+            child: Text(
+              _notesL10nText(
+                context: context,
+                fallback: 'More',
+                pick: (l10n) => l10n.notesMoreAction,
+              ),
+            ),
+          ),
         ];
       },
       icon: const Icon(Icons.more_horiz, size: 18, color: kNotesSecondaryText),
@@ -642,7 +791,13 @@ class _NoteTagsSection extends StatelessWidget {
             onAddTag(entered);
           },
           icon: const Icon(Icons.add, size: 14),
-          label: const Text('Tag'),
+          label: Text(
+            _notesL10nText(
+              context: context,
+              fallback: 'Tag',
+              pick: (l10n) => l10n.notesTagButton,
+            ),
+          ),
           style: TextButton.styleFrom(
             foregroundColor: kNotesSecondaryText,
             visualDensity: VisualDensity.compact,
@@ -660,11 +815,23 @@ Future<String?> _promptTagInput(BuildContext context) async {
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        title: const Text('Add tag'),
+        title: Text(
+          _notesL10nText(
+            context: dialogContext,
+            fallback: 'Add tag',
+            pick: (l10n) => l10n.notesAddTagDialogTitle,
+          ),
+        ),
         content: TextField(
           key: const Key('notes_add_tag_input'),
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'tag'),
+          decoration: InputDecoration(
+            hintText: _notesL10nText(
+              context: dialogContext,
+              fallback: 'tag',
+              pick: (l10n) => l10n.notesTagInputHint,
+            ),
+          ),
           onChanged: (value) {
             draft = value;
           },
@@ -677,14 +844,26 @@ Future<String?> _promptTagInput(BuildContext context) async {
             onPressed: () {
               Navigator.of(dialogContext).pop();
             },
-            child: const Text('Cancel'),
+            child: Text(
+              _notesL10nText(
+                context: dialogContext,
+                fallback: 'Cancel',
+                pick: (l10n) => l10n.commonCancel,
+              ),
+            ),
           ),
           FilledButton.tonal(
             key: const Key('notes_add_tag_submit_button'),
             onPressed: () {
               Navigator.of(dialogContext).pop(draft);
             },
-            child: const Text('Add'),
+            child: Text(
+              _notesL10nText(
+                context: dialogContext,
+                fallback: 'Add',
+                pick: (l10n) => l10n.notesAddButton,
+              ),
+            ),
           ),
         ],
       );

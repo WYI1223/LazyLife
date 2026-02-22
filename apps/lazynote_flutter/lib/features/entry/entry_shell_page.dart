@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lazynote_flutter/app/app_locale_controller.dart';
 import 'package:lazynote_flutter/app/ui_slots/first_party_ui_slots.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_host.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
@@ -12,6 +13,7 @@ import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 import 'package:lazynote_flutter/features/settings/settings_capability_page.dart';
 import 'package:lazynote_flutter/features/tasks/tasks_page.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Left-pane sections inside Workbench shell.
 enum WorkbenchSection {
@@ -32,11 +34,13 @@ class EntryShellPage extends StatefulWidget {
     super.key,
     this.initialSection = WorkbenchSection.home,
     this.uiSlotRegistry,
+    this.localeController,
   });
 
   /// Initial left-pane section to render inside Workbench shell.
   final WorkbenchSection initialSection;
   final UiSlotRegistry? uiSlotRegistry;
+  final AppLocaleController? localeController;
 
   @override
   State<EntryShellPage> createState() => _EntryShellPageState();
@@ -110,37 +114,40 @@ class _EntryShellPageState extends State<EntryShellPage> {
     });
   }
 
-  String _titleForSection(WorkbenchSection section) {
+  String _titleForSection(BuildContext context, WorkbenchSection section) {
+    final l10n = AppLocalizations.of(context)!;
     final workspace = _notesController.workspaceProvider;
     final openTabs =
         workspace.openTabsByPane[workspace.activePaneId] ?? const <String>[];
     return switch (section) {
-      WorkbenchSection.home => 'LazyNote Workbench',
+      WorkbenchSection.home => l10n.lazyNoteWorkbenchTitle,
       WorkbenchSection.notes =>
-        openTabs.isEmpty ? 'Notes' : 'Notes (${openTabs.length})',
-      WorkbenchSection.tasks => 'Tasks',
-      WorkbenchSection.calendar => 'Calendar',
-      WorkbenchSection.settings => 'Settings',
-      WorkbenchSection.rustDiagnostics => 'Rust Diagnostics',
+        openTabs.isEmpty
+            ? l10n.workbenchSectionNotes
+            : l10n.workbenchSectionNotesWithCount(openTabs.length),
+      WorkbenchSection.tasks => l10n.workbenchSectionTasks,
+      WorkbenchSection.calendar => l10n.workbenchSectionCalendar,
+      WorkbenchSection.settings => l10n.workbenchSectionSettings,
+      WorkbenchSection.rustDiagnostics => l10n.workbenchSectionRustDiagnostics,
     };
   }
 
   Widget _buildWorkbenchHome() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Workbench Home',
+          l10n.workbenchHomeTitle,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
         Text(
-          'Use Workbench to run Single Entry flow and diagnostics while '
-          'feature UIs are landing.',
+          l10n.workbenchHomeDescription,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
-        Text('Single Entry', style: Theme.of(context).textTheme.titleMedium),
+        Text(l10n.singleEntryTitle, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Wrap(
           spacing: 12,
@@ -151,15 +158,15 @@ class _EntryShellPageState extends State<EntryShellPage> {
               onPressed: _openOrFocusSingleEntryPanel,
               child: Text(
                 _showSingleEntryPanel
-                    ? 'Focus Single Entry'
-                    : 'Open Single Entry',
+                    ? l10n.focusSingleEntryButton
+                    : l10n.openSingleEntryButton,
               ),
             ),
             if (_showSingleEntryPanel)
               OutlinedButton(
                 key: const Key('hide_single_entry_panel_button'),
                 onPressed: _hideSingleEntryPanel,
-                child: const Text('Hide Single Entry'),
+                child: Text(l10n.hideSingleEntryButton),
               ),
           ],
         ),
@@ -198,14 +205,14 @@ class _EntryShellPageState extends State<EntryShellPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Diagnostics',
+                  l10n.workbenchDiagnosticsTitle,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: () =>
                       _openSection(WorkbenchSection.rustDiagnostics),
-                  child: const Text('Rust Diagnostics'),
+                  child: Text(l10n.workbenchSectionRustDiagnostics),
                 ),
               ],
             );
@@ -213,7 +220,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
         ),
         const SizedBox(height: 24),
         Text(
-          'Placeholder Routes',
+          l10n.placeholderRoutesTitle,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
@@ -234,19 +241,19 @@ class _EntryShellPageState extends State<EntryShellPage> {
               children: [
                 OutlinedButton(
                   onPressed: () => _openSection(WorkbenchSection.notes),
-                  child: const Text('Notes'),
+                  child: Text(l10n.workbenchSectionNotes),
                 ),
                 OutlinedButton(
                   onPressed: () => _openSection(WorkbenchSection.tasks),
-                  child: const Text('Tasks'),
+                  child: Text(l10n.workbenchSectionTasks),
                 ),
                 OutlinedButton(
                   onPressed: () => _openSection(WorkbenchSection.calendar),
-                  child: const Text('Calendar'),
+                  child: Text(l10n.workbenchSectionCalendar),
                 ),
                 OutlinedButton(
                   onPressed: () => _openSection(WorkbenchSection.settings),
-                  child: const Text('Settings'),
+                  child: Text(l10n.workbenchSectionSettings),
                 ),
               ],
             );
@@ -257,11 +264,12 @@ class _EntryShellPageState extends State<EntryShellPage> {
   }
 
   Widget _buildRustDiagnosticsSection() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Rust Diagnostics',
+          l10n.workbenchSectionRustDiagnostics,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
@@ -269,7 +277,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
         const SizedBox(height: 16),
         FilledButton(
           onPressed: () => _openSection(WorkbenchSection.home),
-          child: const Text('Back to Workbench'),
+          child: Text(l10n.backToWorkbenchButton),
         ),
       ],
     );
@@ -301,6 +309,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
           ),
           WorkbenchSection.settings => SettingsCapabilityPage(
             onBackToWorkbench: () => _openSection(WorkbenchSection.home),
+            localeController: widget.localeController,
           ),
           WorkbenchSection.rustDiagnostics => _buildRustDiagnosticsSection(),
         };
@@ -314,7 +323,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
       animation: _notesController.workspaceProvider,
       builder: (context, _) {
         return WorkbenchShellLayout(
-          title: _titleForSection(_activeSection),
+          title: _titleForSection(context, _activeSection),
           content: _buildActiveLeftContent(),
         );
       },

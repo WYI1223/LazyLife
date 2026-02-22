@@ -263,7 +263,7 @@ void main() {
     expect(workspaceProvider.layoutState.paneOrder.length, 1);
     expect(controller.activeNoteId, 'note-2');
     expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
-    expect(find.text('Pane closed. 1 pane remaining.'), findsOneWidget);
+    expect(find.text('Pane closed. 1 remaining.'), findsOneWidget);
   });
 
   testWidgets('Ctrl+Tab stays pane-local in split mode', (

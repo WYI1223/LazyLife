@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// One rendered node row in workspace explorer tree.
 class ExplorerTreeItem extends StatelessWidget {
@@ -44,6 +45,15 @@ class ExplorerTreeItem extends StatelessWidget {
   final GestureTapDownCallback? onSecondaryTapDown;
 
   bool get isFolder => node.kind == 'folder';
+
+  String _l10nText({
+    required BuildContext context,
+    required String fallback,
+    required String Function(AppLocalizations l10n) pick,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    return l10n == null ? fallback : pick(l10n);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +124,11 @@ class ExplorerTreeItem extends StatelessWidget {
                 if (canCreateChild)
                   IconButton(
                     key: Key('notes_folder_create_button_${node.nodeId}'),
-                    tooltip: 'New child folder',
+                    tooltip: _l10nText(
+                      context: context,
+                      fallback: 'New child folder',
+                      pick: (l10n) => l10n.notesNewChildFolderTooltip,
+                    ),
                     onPressed: onCreateChildFolder,
                     constraints: const BoxConstraints.tightFor(
                       width: 22,
@@ -131,7 +145,11 @@ class ExplorerTreeItem extends StatelessWidget {
                 if (canDelete)
                   IconButton(
                     key: Key('notes_folder_delete_button_${node.nodeId}'),
-                    tooltip: 'Delete folder',
+                    tooltip: _l10nText(
+                      context: context,
+                      fallback: 'Delete folder',
+                      pick: (l10n) => l10n.notesDeleteFolderTooltip,
+                    ),
                     onPressed: onDeleteFolder,
                     constraints: const BoxConstraints.tightFor(
                       width: 22,

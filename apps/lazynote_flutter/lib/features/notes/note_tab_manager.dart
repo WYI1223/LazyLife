@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 enum _TabContextAction { close, closeOthers, closeRight }
 
@@ -31,6 +32,14 @@ class _NoteTabManagerState extends State<NoteTabManager> {
   // Why: keep the custom scroll rail hidden by default to reduce visual noise;
   // it only appears when the pointer is over the tab strip.
   bool _showScrollRail = false;
+
+  String _l10nText({
+    required String fallback,
+    required String Function(AppLocalizations l10n) pick,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    return l10n == null ? fallback : pick(l10n);
+  }
 
   @override
   void dispose() {
@@ -112,7 +121,10 @@ class _NoteTabManagerState extends State<NoteTabManager> {
     if (openNoteIds.isEmpty) {
       return Center(
         child: Text(
-          'No open notes',
+          _l10nText(
+            fallback: 'No open notes',
+            pick: (l10n) => l10n.notesNoOpenNotes,
+          ),
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
@@ -185,15 +197,33 @@ class _NoteTabManagerState extends State<NoteTabManager> {
             details.globalPosition.dx,
             details.globalPosition.dy,
           ),
-          items: const [
-            PopupMenuItem(value: _TabContextAction.close, child: Text('Close')),
+          items: [
+            PopupMenuItem(
+              value: _TabContextAction.close,
+              child: Text(
+                _l10nText(
+                  fallback: 'Close',
+                  pick: (l10n) => l10n.commonClose,
+                ),
+              ),
+            ),
             PopupMenuItem(
               value: _TabContextAction.closeOthers,
-              child: Text('Close Others'),
+              child: Text(
+                _l10nText(
+                  fallback: 'Close Others',
+                  pick: (l10n) => l10n.notesTabCloseOthers,
+                ),
+              ),
             ),
             PopupMenuItem(
               value: _TabContextAction.closeRight,
-              child: Text('Close Right'),
+              child: Text(
+                _l10nText(
+                  fallback: 'Close Right',
+                  pick: (l10n) => l10n.notesTabCloseRight,
+                ),
+              ),
             ),
           ],
         );

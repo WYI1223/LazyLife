@@ -1,12 +1,27 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/debug/log_reader.dart';
 import 'package:lazynote_flutter/features/diagnostics/debug_logs_panel.dart';
 import 'package:lazynote_flutter/features/diagnostics/log_line_meta.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 void main() {
+  Widget wrapWithL10n(Widget child) {
+    return MaterialApp(
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    );
+  }
+
   setUp(() {
     DebugLogsPanel.autoRefreshEnabled = false;
   });
@@ -34,13 +49,11 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 520,
-            height: 640,
-            child: DebugLogsPanel(snapshotLoader: loader),
-          ),
+      wrapWithL10n(
+        SizedBox(
+          width: 520,
+          height: 640,
+          child: DebugLogsPanel(snapshotLoader: loader),
         ),
       ),
     );
@@ -81,13 +94,11 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 520,
-            height: 640,
-            child: DebugLogsPanel(snapshotLoader: loader),
-          ),
+      wrapWithL10n(
+        SizedBox(
+          width: 520,
+          height: 640,
+          child: DebugLogsPanel(snapshotLoader: loader),
         ),
       ),
     );
@@ -176,14 +187,12 @@ void main() {
         '[2026-02-15 10:23:46.000001 +00:00] ERROR [lazynote_core::db::open] src/db.rs:7: event=panic_captured';
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 640,
-            child: DebugLogsPanel(
-              snapshotLoader: () async => _snapshot(errorLine),
-            ),
+      wrapWithL10n(
+        SizedBox(
+          width: 800,
+          height: 640,
+          child: DebugLogsPanel(
+            snapshotLoader: () async => _snapshot(errorLine),
           ),
         ),
       ),
@@ -201,14 +210,12 @@ void main() {
     const plainLine = 'unstructured log output';
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 640,
-            child: DebugLogsPanel(
-              snapshotLoader: () async => _snapshot(plainLine),
-            ),
+      wrapWithL10n(
+        SizedBox(
+          width: 800,
+          height: 640,
+          child: DebugLogsPanel(
+            snapshotLoader: () async => _snapshot(plainLine),
           ),
         ),
       ),

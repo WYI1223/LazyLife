@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Standalone diagnostics page wrapper.
 class RustDiagnosticsPage extends StatelessWidget {
@@ -7,8 +8,9 @@ class RustDiagnosticsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Rust Diagnostics')),
+      appBar: AppBar(title: Text(l10n.workbenchSectionRustDiagnostics)),
       body: const SafeArea(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -51,9 +53,10 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
   }
 
   Widget _buildLoggingStatus() {
+    final l10n = AppLocalizations.of(context)!;
     final snapshot = RustBridge.latestLoggingInitSnapshot;
     if (snapshot == null) {
-      return const Text('Logging init status: not attempted in this process.');
+      return Text(l10n.loggingInitStatusNotAttempted);
     }
 
     final statusText = snapshot.isSuccess ? 'ok' : 'error';
@@ -65,10 +68,10 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('logging_init status: $statusText'),
-            Text('level: ${snapshot.level}'),
-            Text('logDir: ${snapshot.logDir}'),
-            if (errorText != null) Text('error: $errorText'),
+            Text(l10n.loggingInitStatusValue(statusText)),
+            Text(l10n.loggingInitLevelValue(snapshot.level)),
+            Text(l10n.loggingInitLogDirValue(snapshot.logDir)),
+            if (errorText != null) Text(l10n.loggingInitErrorValue(errorText)),
           ],
         ),
       ),
@@ -77,6 +80,7 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return FutureBuilder<RustHealthSnapshot>(
       future: _healthFuture,
       builder: (context, snapshot) {
@@ -86,7 +90,7 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              const Text('Initializing Rust bridge...'),
+              Text(l10n.rustDiagnosticsInitializing),
               const SizedBox(height: 16),
               _buildLoggingStatus(),
             ],
@@ -99,8 +103,8 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
             children: [
               const Icon(Icons.error_outline, size: 40, color: Colors.red),
               const SizedBox(height: 12),
-              const Text(
-                'Rust bridge initialization failed',
+              Text(
+                l10n.rustDiagnosticsInitFailed,
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -109,7 +113,7 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              FilledButton(onPressed: _reload, child: const Text('Retry')),
+              FilledButton(onPressed: _reload, child: Text(l10n.retryButton)),
               const SizedBox(height: 16),
               _buildLoggingStatus(),
             ],
@@ -126,15 +130,15 @@ class _RustDiagnosticsContentState extends State<RustDiagnosticsContent> {
               color: Colors.green,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Rust bridge connected',
+            Text(
+              l10n.rustDiagnosticsConnected,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            Text('ping: ${health.ping}'),
-            Text('coreVersion: ${health.coreVersion}'),
+            Text(l10n.rustDiagnosticsPingValue(health.ping)),
+            Text(l10n.rustDiagnosticsCoreVersionValue(health.coreVersion)),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _reload, child: const Text('Refresh')),
+            FilledButton(onPressed: _reload, child: Text(l10n.refreshButton)),
             const SizedBox(height: 16),
             _buildLoggingStatus(),
           ],
