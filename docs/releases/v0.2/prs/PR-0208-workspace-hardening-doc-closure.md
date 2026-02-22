@@ -85,6 +85,18 @@ M3 progress:
 - [x] replay evidence consolidated (Rust + Flutter targeted + Flutter full gate)
 - [x] PR status moved to Completed
 
+### M4 - Release Closure Kit Handoff
+
+1. Publish the release-closure three-package execution entry.
+2. Sync release roadmap to closure-ready status.
+3. Freeze deferred mapping references for v0.3 carry-over.
+
+M4 progress:
+
+- [x] closure execution entry published: `docs/releases/v0.2/CLOSURE_KIT.md`
+- [x] roadmap synced with closure-ready marker: `docs/product/roadmap.md`
+- [x] deferred mapping references kept explicit in `docs/releases/v0.2/README.md`
+
 ## Detailed Execution Steps
 
 1. Run baseline replay on current branch to detect real gaps before patching.
@@ -132,6 +144,16 @@ Manual smoke (Windows):
 - `cd apps/lazynote_flutter && flutter test test/workspace_provider_test.dart test/notes_controller_workspace_bridge_test.dart test/rust_bridge_test.dart` (pass)
 - `cd apps/lazynote_flutter && flutter test` (pass)
 - `cd apps/lazynote_flutter && flutter analyze` (pass)
+
+Pre-release packaging dry run (for closure handoff):
+
+- `cd apps/lazynote_flutter && flutter build windows --release --analyze-size --code-size-directory build/code-size` (pass)
+- output binary: `apps/lazynote_flutter/build/windows/x64/runner/Release/lazynote_flutter.exe`
+- size-analysis files:
+  - `apps/lazynote_flutter/build/code-size/snapshot.windows-x64.json`
+  - `apps/lazynote_flutter/build/code-size/trace.windows-x64.json`
+- packaged artifact: `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip`
+- artifact SHA256: `AACEBBE38BAB2A2BB323636248B1C2EB170609972C17299B636D770D05021470`
 
 Contract closure note:
 
