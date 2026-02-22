@@ -147,7 +147,10 @@ class _EntryShellPageState extends State<EntryShellPage> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
-        Text(l10n.singleEntryTitle, style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          l10n.singleEntryTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 12,

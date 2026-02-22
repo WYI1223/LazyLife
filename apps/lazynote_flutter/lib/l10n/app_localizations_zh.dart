@@ -35,7 +35,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workbenchHomeTitle => '工作台主页';
 
   @override
-  String get workbenchHomeDescription => '在功能页面逐步落地期间，可在工作台中运行 Single Entry 流程与诊断能力。';
+  String get workbenchHomeDescription =>
+      '在功能页面逐步落地期间，可在工作台中运行 Single Entry 流程与诊断能力。';
 
   @override
   String get singleEntryTitle => 'Single Entry';
@@ -62,7 +63,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsCapabilityAuditTitle => '扩展能力审计（v0.2 基线）';
 
   @override
-  String get settingsCapabilityAuditDescription => '运行时能力检查默认为拒绝。未声明的能力会在调用时被拒绝。';
+  String get settingsCapabilityAuditDescription =>
+      '运行时能力检查默认为拒绝。未声明的能力会在调用时被拒绝。';
 
   @override
   String get settingsRegisteredExtensions => '已注册扩展';
@@ -476,7 +478,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
 /// The translations for Chinese, as used in China (`zh_CN`).
 class AppLocalizationsZhCn extends AppLocalizationsZh {
-  AppLocalizationsZhCn(): super('zh_CN');
+  AppLocalizationsZhCn() : super('zh_CN');
 
   @override
   String get lazyNoteWorkbenchTitle => 'LazyNote 工作台';
@@ -505,7 +507,8 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get workbenchHomeTitle => '工作台主页';
 
   @override
-  String get workbenchHomeDescription => '在功能页面逐步落地期间，可在工作台中运行 Single Entry 流程与诊断能力。';
+  String get workbenchHomeDescription =>
+      '在功能页面逐步落地期间，可在工作台中运行 Single Entry 流程与诊断能力。';
 
   @override
   String get singleEntryTitle => 'Single Entry';
@@ -532,7 +535,8 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get settingsCapabilityAuditTitle => '扩展能力审计（v0.2 基线）';
 
   @override
-  String get settingsCapabilityAuditDescription => '运行时能力检查默认为拒绝。未声明的能力会在调用时被拒绝。';
+  String get settingsCapabilityAuditDescription =>
+      '运行时能力检查默认为拒绝。未声明的能力会在调用时被拒绝。';
 
   @override
   String get settingsRegisteredExtensions => '已注册扩展';

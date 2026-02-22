@@ -1818,9 +1818,8 @@ class _NoteExplorerState extends State<NoteExplorer> {
             content: Text(
               _l10nText(
                 fallback: 'Folder deleted with ${selectedMode.wireValue}.',
-                pick: (l10n) => l10n.notesFolderDeletedWithMode(
-                  selectedMode.wireValue,
-                ),
+                pick: (l10n) =>
+                    l10n.notesFolderDeletedWithMode(selectedMode.wireValue),
               ),
             ),
             behavior: SnackBarBehavior.floating,
@@ -2273,9 +2272,9 @@ extension on _FolderDeleteMode {
   String description(BuildContext context) => switch (this) {
     _FolderDeleteMode.dissolve =>
       AppLocalizations.of(context)?.notesDeleteModeDissolveDescription ??
-      'Keep notes, move direct children to root.',
+          'Keep notes, move direct children to root.',
     _FolderDeleteMode.deleteAll =>
       AppLocalizations.of(context)?.notesDeleteModeDeleteAllDescription ??
-      'Delete folder subtree references and scoped notes.',
+          'Delete folder subtree references and scoped notes.',
   };
 }

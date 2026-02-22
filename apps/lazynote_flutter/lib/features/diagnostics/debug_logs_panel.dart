@@ -10,11 +10,7 @@ import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Inline live logs panel used across Workbench shell pages.
 class DebugLogsPanel extends StatefulWidget {
-  const DebugLogsPanel({
-    super.key,
-    this.snapshotLoader,
-    this.copyTextHandler,
-  });
+  const DebugLogsPanel({super.key, this.snapshotLoader, this.copyTextHandler});
 
   /// Test hook to disable periodic refresh and keep pump flows stable.
   static bool autoRefreshEnabled = true;
@@ -482,10 +478,7 @@ class _LogLineRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: rowBg,
         border: Border(
-          left: BorderSide(
-            color: levelColor.withAlpha(190),
-            width: 2,
-          ),
+          left: BorderSide(color: levelColor.withAlpha(190), width: 2),
         ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 4),
@@ -494,10 +487,7 @@ class _LogLineRow extends StatelessWidget {
         children: [
           SizedBox(
             width: _timestampWidth,
-            child: SelectableText(
-              meta.timestamp ?? '',
-              style: _monoTextStyle,
-            ),
+            child: SelectableText(meta.timestamp ?? '', style: _monoTextStyle),
           ),
           const SizedBox(width: 4),
           Container(

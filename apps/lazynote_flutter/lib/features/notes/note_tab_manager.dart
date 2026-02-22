@@ -201,10 +201,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
             PopupMenuItem(
               value: _TabContextAction.close,
               child: Text(
-                _l10nText(
-                  fallback: 'Close',
-                  pick: (l10n) => l10n.commonClose,
-                ),
+                _l10nText(fallback: 'Close', pick: (l10n) => l10n.commonClose),
               ),
             ),
             PopupMenuItem(

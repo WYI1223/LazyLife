@@ -35,7 +35,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workbenchHomeTitle => 'Workbench Home';
 
   @override
-  String get workbenchHomeDescription => 'Use Workbench to run Single Entry flow and diagnostics while feature UIs are landing.';
+  String get workbenchHomeDescription =>
+      'Use Workbench to run Single Entry flow and diagnostics while feature UIs are landing.';
 
   @override
   String get singleEntryTitle => 'Single Entry';
@@ -59,10 +60,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToWorkbenchButton => 'Back to Workbench';
 
   @override
-  String get settingsCapabilityAuditTitle => 'Extension capability audit (v0.2 baseline)';
+  String get settingsCapabilityAuditTitle =>
+      'Extension capability audit (v0.2 baseline)';
 
   @override
-  String get settingsCapabilityAuditDescription => 'Runtime capability checks are deny-by-default. Undeclared capabilities are rejected at invocation time.';
+  String get settingsCapabilityAuditDescription =>
+      'Runtime capability checks are deny-by-default. Undeclared capabilities are rejected at invocation time.';
 
   @override
   String get settingsRegisteredExtensions => 'Registered Extensions';
@@ -71,13 +74,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCapabilityCatalog => 'Capability Catalog';
 
   @override
-  String get settingsNoRuntimePermissionsDeclared => 'No runtime permissions declared (deny-by-default).';
+  String get settingsNoRuntimePermissionsDeclared =>
+      'No runtime permissions declared (deny-by-default).';
 
   @override
   String get settingsLanguageTitle => 'Language';
 
   @override
-  String get settingsLanguageDescription => 'Switch Workbench UI language immediately.';
+  String get settingsLanguageDescription =>
+      'Switch Workbench UI language immediately.';
 
   @override
   String get languageOptionSystem => 'System';
@@ -89,10 +94,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageOptionChineseSimplified => 'Chinese (Simplified)';
 
   @override
-  String get settingsLanguageSaveFailed => 'Failed to save language preference.';
+  String get settingsLanguageSaveFailed =>
+      'Failed to save language preference.';
 
   @override
-  String get loggingInitStatusNotAttempted => 'Logging init status: not attempted in this process.';
+  String get loggingInitStatusNotAttempted =>
+      'Logging init status: not attempted in this process.';
 
   @override
   String loggingInitStatusValue(String status) {
@@ -243,7 +250,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesSplitCreatedSimple => 'Split created.';
 
   @override
-  String get notesSplitPaneUnavailable => 'Cannot split: active pane is unavailable.';
+  String get notesSplitPaneUnavailable =>
+      'Cannot split: active pane is unavailable.';
 
   @override
   String notesSplitMaxPaneReached(int maxPaneCount) {
@@ -251,7 +259,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get notesSplitDirectionLocked => 'Cannot split: v0.2 keeps one split direction per workspace.';
+  String get notesSplitDirectionLocked =>
+      'Cannot split: v0.2 keeps one split direction per workspace.';
 
   @override
   String notesSplitMinSizeBlocked(int minPaneWidth) {
@@ -275,16 +284,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesPaneClosedSimple => 'Pane closed.';
 
   @override
-  String get notesClosePaneSingleBlocked => 'Cannot close pane: only one pane is available.';
+  String get notesClosePaneSingleBlocked =>
+      'Cannot close pane: only one pane is available.';
 
   @override
-  String get notesClosePaneUnavailable => 'Cannot close pane: active pane is unavailable.';
+  String get notesClosePaneUnavailable =>
+      'Cannot close pane: active pane is unavailable.';
 
   @override
   String get notesUnsavedContentTitle => 'Unsaved content';
 
   @override
-  String get notesSaveFailedCloseBody => 'Save failed. Retry or back up content before closing.';
+  String get notesSaveFailedCloseBody =>
+      'Save failed. Retry or back up content before closing.';
 
   @override
   String get notesKeepEditingButton => 'Keep editing';
@@ -305,7 +317,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesLoadingNotes => 'Loading notes...';
 
   @override
-  String get notesDetailUnavailableWhenListError => 'Cannot load detail while list is unavailable.';
+  String get notesDetailUnavailableWhenListError =>
+      'Cannot load detail while list is unavailable.';
 
   @override
   String get notesCreateFirstNoteHint => 'Create your first note in C2.';
@@ -435,10 +448,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notesDeleteModeDeleteAll => 'Delete all';
 
   @override
-  String get notesDeleteModeDissolveDescription => 'Keep notes, move direct children to root.';
+  String get notesDeleteModeDissolveDescription =>
+      'Keep notes, move direct children to root.';
 
   @override
-  String get notesDeleteModeDeleteAllDescription => 'Delete folder subtree references and scoped notes.';
+  String get notesDeleteModeDeleteAllDescription =>
+      'Delete folder subtree references and scoped notes.';
 
   @override
   String get notesNewChildFolderTooltip => 'New child folder';

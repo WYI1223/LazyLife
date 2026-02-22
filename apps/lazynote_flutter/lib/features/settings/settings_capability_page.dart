@@ -112,16 +112,17 @@ class SettingsCapabilityPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.workbenchSectionSettings, style: theme.textTheme.headlineSmall),
+          Text(
+            l10n.workbenchSectionSettings,
+            style: theme.textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
           Text(
             l10n.settingsCapabilityAuditTitle,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          Text(
-            l10n.settingsCapabilityAuditDescription,
-          ),
+          Text(l10n.settingsCapabilityAuditDescription),
           const SizedBox(height: 16),
           _LanguageSelectorCard(
             language: language,
@@ -142,11 +143,19 @@ class SettingsCapabilityPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          Text(l10n.settingsRegisteredExtensions, style: theme.textTheme.titleSmall),
+          Text(
+            l10n.settingsRegisteredExtensions,
+            style: theme.textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
-          ...extensions.map((extension) => _buildExtensionCard(context, extension)),
+          ...extensions.map(
+            (extension) => _buildExtensionCard(context, extension),
+          ),
           const SizedBox(height: 16),
-          Text(l10n.settingsCapabilityCatalog, style: theme.textTheme.titleSmall),
+          Text(
+            l10n.settingsCapabilityCatalog,
+            style: theme.textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
           ...runtimeCapabilityCatalog.map(
             (capability) => ListTile(
@@ -175,9 +184,7 @@ class SettingsCapabilityPage extends StatelessWidget {
       return Card(
         child: ListTile(
           title: Text(extension.extensionId),
-          subtitle: Text(
-            l10n.settingsNoRuntimePermissionsDeclared,
-          ),
+          subtitle: Text(l10n.settingsNoRuntimePermissionsDeclared),
         ),
       );
     }
