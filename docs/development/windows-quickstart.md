@@ -41,6 +41,21 @@ flutter pub get
 flutter run -d windows
 ```
 
+## Build Windows Release Bundle (Distributable)
+
+From repository root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_windows_release_bundle.ps1
+```
+
+Expected outputs:
+
+- `apps/lazynote_flutter/build/windows/x64/runner/Release/lazynote_flutter.exe`
+- `apps/lazynote_flutter/build/windows/x64/runner/Release/lazynote_ffi.dll`
+- `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip`
+- `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip.sha256.txt`
+
 ## Related Smoke Guide
 
 - `docs/development/windows-pr0007-search-smoke.md`

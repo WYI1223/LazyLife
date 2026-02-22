@@ -19,6 +19,12 @@ flutter analyze
 flutter test
 ```
 
+Windows distributable packaging (S1):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_windows_release_bundle.ps1
+```
+
 Minimum manual smoke (Windows):
 
 1. Explorer create/rename/move/delete basic flow.
@@ -81,6 +87,9 @@ Release note should include:
    - `PR-0201` -> `PR-0311`
    - `PR-0212` -> `PR-0306A`
 3. Link to replay evidence in `PR-0208`.
+4. Artifact + hash:
+   - `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip`
+   - `apps/lazynote_flutter/build/artifacts/lazynote_flutter-windows-x64.zip.sha256.txt`
 
 ## Execution Order
 

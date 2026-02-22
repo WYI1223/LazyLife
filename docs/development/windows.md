@@ -72,6 +72,8 @@ Docker：仅用于 Rust 工具链/CI（可选）
 - `scripts/gen_bindings.ps1` will auto-detect either command.
 - 默认配置在仓库根目录 `.flutter_rust_bridge.yaml`，脚本优先使用该配置。
 - Flutter 启动时会优先探测 workspace 动态库路径：
+  - executable directory (packaged release): `./lazynote_ffi.dll`
+  - current working directory: `./lazynote_ffi.dll`
   - `../../crates/target/release/`
   - `../../crates/lazynote_ffi/target/release/` (backward compatible)
 - 本地运行时文件统一落到 `%APPDATA%\\LazyLife\\`：
