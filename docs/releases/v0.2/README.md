@@ -166,7 +166,7 @@ Recommended order:
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en` (completed: M1/M2/M3 landed)
    - `PR-0210-debug-viewer-readability-upgrade` (completed: readability parser/rendering hardening + regressions)
-   - `PR-0210C-diagnostics-session-single-file-log-policy` (planned: startup-scoped single-file logs + retention)
+   - `PR-0210C-diagnostics-session-single-file-log-policy` (completed: startup-scoped single-file logs + retention cleanup)
    - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (follow-up FFI contract/codegen)
    - `PR-0210B-diagnostics-log-dart-event-integration` (follow-up Dart integration/safety)
    - `PR-0211-docs-language-policy-and-index`
@@ -287,11 +287,12 @@ Recommended order:
     - [x] land dense row readability hierarchy and row-level raw-copy action
     - [x] keep refresh/coalescing pipeline unchanged
     - [x] replay `flutter analyze` + targeted/full tests and close PR status/docs sync
-14. `PR-0210C` diagnostics session single-file log policy (planned)
-    - [ ] freeze one-startup-one-file naming + retention thresholds
-    - [ ] land Rust logging policy switch from rolling to session-single-file
-    - [ ] keep diagnostics viewer on single-file tail read path
-    - [ ] replay `cargo test` + `flutter analyze/test` and close docs/status sync
+14. `PR-0210C` diagnostics session single-file log policy (completed)
+    - [x] freeze one-startup-one-file naming + retention thresholds
+    - [x] land Rust logging policy switch from rolling to session-single-file
+    - [x] keep diagnostics viewer on single-file tail read path
+    - [x] replay `cargo test` + `flutter analyze/test` and close docs/status sync
+    - [x] retention thresholds frozen: `max_age_days=7`, `max_files=20`, `max_total_bytes=50MB`
 
 ## Quality Gates
 
