@@ -161,7 +161,7 @@ Recommended order:
    - `PR-0207C-explorer-ordering-and-backfill-implementation` (completed: no-reorder policy + title-only rows + legacy note_ref backfill)
    - `PR-0207D-explorer-ordering-closure` (completed: docs/status sync + verification replay + QA closure)
 4. Support lane (parallel after shell baseline is stable):
-   - `PR-0209-ui-localization-cn-en`
+   - `PR-0209-ui-localization-cn-en` (in progress: M1 contract freeze completed)
    - `PR-0210-debug-viewer-readability-upgrade` (optional: add log_dart_event FFI)
    - `PR-0211-docs-language-policy-and-index`
    - `PR-0212-links-index-open-v1`
@@ -266,6 +266,15 @@ Recommended order:
    - [x] M2 partial: stale detail-response guard regression (`notes_controller_tabs_test.dart`)
    - [x] complete M2 runtime hardening sweep from PR-0208 plan (notes/workspace core async + recovery paths)
    - [x] complete M3 docs closure and full replay evidence capture
+12. `PR-0209` localization baseline (completed)
+   - [x] freeze locale contract (`en`, `zh-CN`, `system`) and fallback order
+   - [x] freeze startup policy (critical locale read pre-`runApp`)
+   - [x] freeze boundary (`Flutter-only`, no FFI/error-code shape delta)
+   - [x] M2: add `l10n` scaffold + `ui.language` persistence + app/runtime switch wiring
+   - [x] M2: migrate Workbench/Settings/Diagnostics/Notes baseline strings
+   - [x] M3 partial: replay `flutter analyze` + full `flutter test` after Notes migration
+   - [x] M3: add dedicated startup locale-resolution and runtime-switch regression tests
+   - [x] M3: final release/doc closure and mark PR completed
 
 ## Quality Gates
 
