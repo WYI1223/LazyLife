@@ -12,12 +12,12 @@
    - plan: `docs/releases/v0.1.5/README.md`
    - gate: v0.1 (PR-0017A) must close before v0.1.5 begins
 2. v0.2 (workspace foundation)
-   - scope: tree model, workspace provider, explorer recursion, split v1, extension kernel contracts (command/parser/provider/ui slot/capability), API lifecycle/deprecation policy baseline, CN/EN i18n, debug viewer phase-2 readability hardening, docs language policy, links v1
-   - focus PRs: `PR-0201` to `PR-0218`
+   - scope: tree model, workspace provider, explorer recursion, split v1, extension kernel contracts (command/parser/provider/ui slot/capability), API lifecycle/deprecation policy baseline, CN/EN i18n, debug viewer phase-2 readability hardening, docs language policy
+   - focus PRs: `PR-0202` to `PR-0221` (deferred from v0.2: `PR-0201`, `PR-0212`)
    - plan: `docs/releases/v0.2/README.md`
 3. v0.3 (IDE-grade recursive workspace)
-   - scope: recursive split, drag-to-split, cross-pane coherence, perf gate, workspace launcher experience, local task-calendar projection, Google Calendar provider pluginization
-   - focus PRs: `PR-0301` to `PR-0310`
+   - scope: recursive split, drag-to-split, cross-pane coherence, perf gate, links/index/open foundation, workspace launcher experience, local task-calendar projection, Google Calendar provider pluginization, Windows global hotkey quick-entry
+   - focus PRs: `PR-0301` to `PR-0311` (plus `PR-0306A`)
    - plan: `docs/releases/v0.3/README.md`
 4. v1.0 (production hardening)
    - scope: reliability, recovery, security, release readiness, cross-platform launcher policy parity, plugin sandbox/distribution/compatibility gates
