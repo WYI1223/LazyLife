@@ -23,8 +23,35 @@ Out of scope:
 - recommendation or priority ranking output
 - refactor implementation
 
+## Tooling Prerequisites (Pinned Baseline)
+
+Install commands (Windows PowerShell):
+
+```powershell
+cargo install cargo-modules --version 0.25.0 --locked
+cargo install cargo-bloat --version 0.12.1 --locked
+dart pub global activate lakos 2.0.6
+```
+
+PATH requirement:
+
+- ensure `%LOCALAPPDATA%\Pub\Cache\bin` is in `PATH`
+- if `lakos` is not resolved in shell, run fallback path directly:
+  - `& "$env:LOCALAPPDATA\\Pub\\Cache\\bin\\lakos.bat" ...`
+
+Version verification:
+
+```powershell
+cargo modules --version   # expected: cargo-modules 0.25.0
+cargo bloat --version     # expected: 0.12.1
+dart pub global list      # expected contains: lakos 2.0.6
+```
+
 ## Planned Implementation
 
+0. Lock tooling baseline:
+   - pin versions and install commands in this PR doc
+   - enforce PATH/fallback guidance for `lakos`
 1. Add analysis output root:
    - `docs/reports/v0.2.5/architecture-baseline/`
 2. Add tooling scripts:
