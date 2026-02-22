@@ -10,7 +10,33 @@
 **LazyNote** is a local-first personal productivity app (Windows-first MVP).
 Stack: **Flutter UI → Flutter-Rust Bridge (FRB) FFI → Rust Core → SQLite**.
 
-Current status: **Post-v0.1.5 (PR-0012 complete).** Notes + tags are functional. Tasks views (Inbox/Today/Upcoming) with status update are functional. Calendar minimal (weekly view + create/edit) is functional. Sync is planned but not yet implemented.
+Current status: **Post-v0.2 baseline.** Notes + tags are functional. Tasks views (Inbox/Today/Upcoming) with status update are functional. Calendar (weekly view + create/edit) is functional. Workspace tree (hierarchical folders + note references) is functional. Extension kernel and sync provider SPI are declaration-only (contracts defined, no runtime loading). Localization supports English and Chinese. Reminders (local notifications) are integrated.
+
+---
+
+## Monorepo Layout
+
+```
+LazyLife/                              # Repository root
+├── apps/
+│   └── lazynote_flutter/              # Flutter client (Windows-first, multi-platform target)
+├── crates/
+│   ├── lazynote_core/                 # All business logic (Rust)
+│   ├── lazynote_ffi/                  # FFI boundary (thin wrappers, no logic)
+│   └── lazynote_cli/                  # CLI linkage probe (minimal)
+├── docs/                              # Architecture, API contracts, release plans, reports
+├── scripts/                           # Developer scripts (PowerShell)
+├── tools/                             # CI helpers, analysis, codegen, Docker
+├── server/
+│   └── relay/                         # Planned sync relay (stub)
+├── .github/                           # CI workflows, issue/PR templates
+├── CLAUDE.md                          # This file — AI agent guidance
+├── CHANGELOG.md                       # Version history
+├── VERSIONING.md                      # SemVer policy
+├── CONTRIBUTING.md                    # Contribution guidelines
+├── LICENSE                            # MIT
+└── .flutter_rust_bridge.yaml          # FRB codegen config
+```
 
 ---
 
@@ -18,21 +44,25 @@ Current status: **Post-v0.1.5 (PR-0012 complete).** Notes + tags are functional.
 
 ### `crates/lazynote_core` — All Business Logic
 
-The single source of truth for domain rules, data models, persistence, and search.
+The single source of truth for domain rules, data models, persistence, indexing, and sync mappings.
 
 **Boundary rule:** Rust Core owns invariants, validation, persistence, indexing, and sync mappings. Flutter may contain interaction parsing (e.g., command syntax) and display-derived state (e.g., UI-only sort order) — these are *interaction logic*, not domain invariants.
 
 | Module | Path | Responsibility |
 |--------|------|----------------|
-| `model` | `src/model/atom.rs` | Canonical `Atom` entity; `AtomType`, `TaskStatus` enums; validation invariants |
-| `db` | `src/db/` | SQLite connection bootstrap, migration executor (`PRAGMA user_version`-tracked) |
-| `repo` | `src/repo/atom_repo.rs` | `AtomRepository` trait + `SqliteAtomRepository` CRUD impl |
-| `repo` | `src/repo/note_repo.rs` | Note-specific CRUD, tag normalization, `NoteRecord` DTO |
-| `service` | `src/service/atom_service.rs` | `AtomService<R>` — high-level atom creation façade |
-| `service` | `src/service/note_service.rs` | `NoteService` — note create/update/list, markdown preview derivation |
-| `service` | `src/service/task_service.rs` | `TaskService` — section queries (inbox/today/upcoming), status update |
-| `search` | `src/search/fts.rs` | FTS5 `search_all(query, conn)` returning `Vec<SearchHit>` |
-| `logging` | `src/logging.rs` | `flexi_logger` rolling-file logger; call `init_logging()` once at startup |
+| `model` | `src/model/atom.rs` | Canonical `Atom` entity; `AtomType`, `TaskStatus` enums; `AtomValidationError`; validation invariants |
+| `db` | `src/db/` | SQLite connection bootstrap (`open_db`, `open_db_in_memory`), WAL mode, migration executor (`PRAGMA user_version`-tracked) |
+| `repo` | `src/repo/atom_repo.rs` | `AtomRepository` trait + `SqliteAtomRepository`: atom CRUD, section queries (inbox/today/upcoming), status update, time-range fetch |
+| `repo` | `src/repo/note_repo.rs` | `NoteRepository` trait + `SqliteNoteRepository`: note CRUD, tag normalization, `NoteRecord` DTO, tag listing |
+| `repo` | `src/repo/tree_repo.rs` | `TreeRepository` trait + `SqliteTreeRepository`: workspace folder/note-ref CRUD, move, rename, delete |
+| `service` | `src/service/atom_service.rs` | `AtomService<R>` — atom creation façade (note, task, event scheduling) |
+| `service` | `src/service/note_service.rs` | `NoteService<R>` — note create/update/list, markdown preview derivation, tag management |
+| `service` | `src/service/task_service.rs` | `TaskService` — section queries (inbox/today/upcoming), status update, time-range queries, event time update |
+| `service` | `src/service/tree_service.rs` | `TreeService<R>` — workspace tree operations with cycle detection, folder delete modes (dissolve/delete-all) |
+| `search` | `src/search/fts.rs` | FTS5 `search_all(conn, query)` returning `Vec<SearchHit>` with snippet extraction |
+| `logging` | `src/logging.rs` | `flexi_logger` rolling-file logger with 7-day retention; `init_logging()` idempotent via `OnceCell`; `log_dart_event()` for Dart-side structured events |
+| `extension` | `src/extension/` | Declaration-only: `ExtensionManifest` validation, `ExtensionRegistry` trait, `RuntimeCapability` enum, `FirstPartyExtensionAdapter` (no runtime loading yet) |
+| `sync` | `src/sync/` | Declaration-only: `ProviderSpi` trait (auth/pull/push/conflict-map), `ProviderRegistry`, provider types and error envelopes (no implementations yet) |
 
 ### `crates/lazynote_ffi` — FFI Boundary Only
 
@@ -43,28 +73,38 @@ Exposes Rust functions to Dart via Flutter-Rust Bridge. Contains **no business l
 | `src/api.rs` | **Edit here** to add/change exported FFI functions |
 | `src/frb_generated.rs` | **Do not edit.** Auto-generated by FRB codegen. Regenerate via `scripts/gen_bindings.ps1` |
 
-### `crates/lazynote_cli` — Debug/Import/Export (Stub)
+### `crates/lazynote_cli` — Linkage Probe
 
-Currently a skeleton. Planned for CLI data inspection and migration tools. No business logic duplication.
+Currently a minimal binary that calls `lazynote_core::ping()` and `core_version()`. Used to validate Core crate linkage independently of FFI/Flutter.
 
 ### `apps/lazynote_flutter` — UI Only
 
-Flutter app. All data operations go through FFI calls. No state is stored outside of `lib/core/` provider infrastructure.
+Flutter app. All data operations go through FFI calls. No domain state is stored outside of the core/provider infrastructure.
 
 | Path | Responsibility |
 |------|----------------|
-| `lib/app/` | Routes (`AppRoutes`) + root `MaterialApp` shell |
-| `lib/core/rust_bridge.dart` | `RustBridge` façade: FFI init, logging bootstrap, DB path config |
+| `lib/main.dart` | App entry: tiered bootstrap (critical settings → background runtime → runApp) |
+| `lib/app/app.dart` | Root `MaterialApp` shell: theme, locale, routes |
+| `lib/app/routes.dart` | `AppRoutes` named constants (all map to `EntryShellPage` with different sections) |
+| `lib/app/app_locale_controller.dart` | `ChangeNotifier` for language switching (en/zh) |
+| `lib/app/ui_slots/` | UI extension slot system: registry, host, models, first-party slots |
+| `lib/core/rust_bridge.dart` | `RustBridge` façade: FRB init, logging bootstrap, DB path config (3-stage dedup) |
 | `lib/core/bindings/` | **Auto-generated** Dart FFI wrappers — do not edit |
 | `lib/core/local_paths.dart` | Platform-specific `%APPDATA%/LazyLife/` resolution |
-| `lib/core/settings/` | `LocalSettingsStore` — persists log level, DB path |
-| `lib/features/entry/` | Single-entry search/command panel + `CommandParser` + `CommandRouter` |
-| `lib/features/notes/` | Note list, tab manager, editor, tag filter UI |
+| `lib/core/settings/` | `LocalSettingsStore` — JSON persistence with atomic writes + recovery |
+| `lib/core/debug/` | `LogReader` — reads rolling log files |
+| `lib/core/diagnostics/` | `DartEventLogger` — Dart-side structured event logging |
+| `lib/features/entry/` | Single-entry search/command panel, `CommandParser`, `CommandRouter`, `CommandRegistry`, workbench shell layout |
+| `lib/features/notes/` | Note list, tab manager, editor, explorer tree (drag-and-drop, context menu), workspace integration |
 | `lib/features/tags/` | `TagFilter` widget |
 | `lib/features/search/` | Search results view |
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
 | `lib/features/calendar/` | Weekly calendar: mini month sidebar, week grid, event blocks, create/edit dialog |
+| `lib/features/workspace/` | `WorkspaceProvider` (global tree state), `WorkspaceModels` (TreeNode, etc.) |
+| `lib/features/reminders/` | `ReminderScheduler` + `ReminderService` — local notifications via `flutter_local_notifications` |
+| `lib/features/settings/` | Settings capability page (extension permissions UI) |
 | `lib/features/diagnostics/` | Rust health panel + live log viewer |
+| `lib/l10n/` | Localization: `AppLocalizations` base + `_en.dart` + `_zh.dart` |
 
 ---
 
@@ -75,7 +115,7 @@ Flutter app. All data operations go through FFI calls. No state is stored outsid
 ```bash
 cargo fmt --all -- --check          # format check
 cargo clippy --all -- -D warnings   # lint (warnings are errors)
-cargo test --all                    # all tests
+cargo test --all                    # all tests (8 integration test files + unit tests)
 cargo test -p lazynote_core         # single crate
 cargo test -p lazynote_core -- <test_name>  # single test
 ```
@@ -86,7 +126,7 @@ cargo test -p lazynote_core -- <test_name>  # single test
 flutter pub get
 dart format --output=none --set-exit-if-changed .   # format check
 flutter analyze                                      # lint
-flutter test                                         # unit + widget tests
+flutter test                                         # unit + widget tests (47 test files)
 flutter build windows --debug                        # Windows build
 ```
 
@@ -97,14 +137,24 @@ flutter build windows --debug                        # Windows build
 | `scripts/doctor.ps1` | Verify Rust + Flutter + Windows SDK toolchain |
 | `scripts/gen_bindings.ps1` | Regenerate FRB Dart + Rust bindings after editing `api.rs` |
 | `scripts/format.ps1` | Format all code (Rust + Dart) |
+| `scripts/build_windows_release_bundle.ps1` | Build Windows release bundle |
+| `scripts/run_windows_smoke.bat` | Run Windows smoke tests |
+
+### Tools (from repo root)
+
+| Tool | Purpose |
+|------|---------|
+| `tools/ci/rust_checks.ps1` | CI: cargo fmt + clippy + test |
+| `tools/ci/flutter_windows_build.ps1` | CI: Flutter Windows build |
+| `tools/analysis/run_architecture_baseline.ps1` | Run architecture baseline analysis |
+| `tools/analysis/run_backend_baseline.ps1` | Rust cargo-modules dependency graph |
+| `tools/analysis/run_frontend_baseline.ps1` | Dart dependency + bundle size analysis |
 
 ---
 
 ## Architecture Rules (Mandatory — from `docs/architecture/engineering-standards.md`)
 
-These are the v0.1 baseline constraints. **Changing any Rule A–F requires an ADR** (Architecture Decision Record) filed in `docs/architecture/decisions/`.
-
-These are hard constraints enforced across the codebase:
+These are the baseline constraints. **Changing any Rule A–F requires an ADR** (Architecture Decision Record) filed in `docs/architecture/adr/`.
 
 | Rule | Constraint |
 |------|-----------|
@@ -126,12 +176,12 @@ pub struct Atom {
     pub uuid: AtomId,                        // UUIDv4, stable, never reused
     pub kind: AtomType,                      // Note | Task | Event — rendering hint only
     pub content: String,                     // Markdown body
-    pub preview_text: Option<String>,        // Derived from content (first non-empty text)
+    pub preview_text: Option<String>,        // Derived from content (first non-empty text, max 100 chars)
     pub preview_image: Option<String>,       // First markdown image path
     pub task_status: Option<TaskStatus>,     // Todo | InProgress | Done | Cancelled; NULL = no status
-    pub start_at: Option<i64>,              // Epoch ms (added in Migration 6)
-    pub end_at: Option<i64>,                // Epoch ms; end_at >= start_at when both set (Migration 6)
-    pub recurrence_rule: Option<String>,    // Reserved: RFC 5545 RRULE string; NULL until v0.2+
+    pub start_at: Option<i64>,              // Epoch ms
+    pub end_at: Option<i64>,                // Epoch ms; end_at >= start_at when both set
+    pub recurrence_rule: Option<String>,    // Reserved: RFC 5545 RRULE string; NULL until implemented
     pub hlc_timestamp: Option<String>,       // Reserved for CRDT (not yet used)
     pub is_deleted: bool,                    // Authoritative soft-delete flag
 }
@@ -146,31 +196,49 @@ pub struct Atom {
 | Value | NULL | Ongoing task (started = start_at) | Today if started, else Upcoming |
 | Value | Value | Timed event / time block | Today if overlaps today, else Upcoming |
 
-`kind` determines rendering shape (checkbox / text / time bar). `task_status IN ('done','cancelled')` hides the atom from all sections.
+`kind` determines rendering shape (checkbox / text / time bar). `task_status IN ('done','cancelled')` hides the atom from active sections.
 
-**Invariants** (enforced by `Atom::validate()`):
+**Workspace Tree** (`crates/lazynote_core/src/repo/tree_repo.rs`):
+
+```rust
+pub struct WorkspaceNode {
+    pub node_uuid: WorkspaceNodeId,          // UUIDv4
+    pub kind: WorkspaceNodeKind,             // Folder | NoteRef
+    pub parent_uuid: Option<WorkspaceNodeId>,// NULL = root level
+    pub atom_uuid: Option<AtomId>,           // Set for NoteRef, NULL for Folder
+    pub display_name: String,
+    pub sort_order: i64,
+    pub is_deleted: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+```
+
+**Invariants** (enforced by `Atom::validate()` and repo layer):
 - `uuid` is never nil
 - `end_at >= start_at` when both are set
 - All default queries filter `WHERE is_deleted = 0`
-
-Full section SQL is in `docs/architecture/data-model.md`.
+- Workspace tree move operations detect cycles
 
 ---
 
 ## Database Schema
 
-6 migrations tracked via `PRAGMA user_version` in `crates/lazynote_core/src/db/migrations/`.
+9 migrations tracked via `PRAGMA user_version` in `crates/lazynote_core/src/db/migrations/`.
 
-| Version | File | Table(s) Added |
-|---------|------|----------------|
-| 1 | `0001_init.sql` | `atoms` (UUID, type, content, timestamps, soft-delete) |
+| Version | File | Description |
+|---------|------|-------------|
+| 1 | `0001_init.sql` | `atoms` table (UUID, type, content, timestamps, soft-delete) |
 | 2 | `0002_tags.sql` | `tags` (id, name), `atom_tags` junction |
 | 3 | `0003_external_mappings.sql` | `external_mappings` (provider, external_id, atom_uuid) |
 | 4 | `0004_fts.sql` | `atoms_fts` FTS5 virtual table + sync triggers |
 | 5 | `0005_note_preview.sql` | `preview_text`, `preview_image` columns on `atoms` |
-| 6 | `0006_time_matrix.sql` | Rename `event_start`→`start_at`, `event_end`→`end_at`; add `recurrence_rule TEXT` (reserved) |
+| 6 | `0006_time_matrix.sql` | Rename `event_start`→`start_at`, `event_end`→`end_at`; add `recurrence_rule TEXT` |
+| 7 | `0007_workspace_tree.sql` | `workspace_nodes` + `workspace_tree` tables |
+| 8 | `0008_workspace_tree_delete_policy.sql` | Cascade delete policy for workspace trees |
+| 9 | `0009_workspace_note_ref_backfill.sql` | Backfill workspace note references |
 
-**Never** modify existing migrations after they are applied to any user database. Add a new numbered SQL file for schema changes. (Pre-v1.0 squash is allowed with documented process — see Adding a Database Migration.)
+**Never** modify existing migrations after they are applied. Add a new numbered SQL file for schema changes.
 
 ---
 
@@ -180,51 +248,22 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 ### Response Envelopes
 
-```rust
-// Used by single-item operations
-pub struct EntryActionResponse {
-    pub ok: bool,
-    pub atom_id: Option<String>,
-    pub message: String,
-}
-
-// Used by list operations
-pub struct EntryListResponse {
-    pub ok: bool,
-    pub error_code: Option<String>,
-    pub items: Vec<EntryListItem>,       // Each: { atom_id, content, preview_text, tags, updated_at }
-    pub message: String,
-    pub total_count: Option<u32>,
-}
-
-// Used by section list queries (tasks views)
-pub struct AtomListResponse {
-    pub ok: bool,
-    pub error_code: Option<String>,
-    pub items: Vec<AtomListItem>,       // Each: { atom_id, kind, content, preview_text, tags, start_at, end_at, task_status, updated_at }
-    pub message: String,
-    pub applied_limit: u32,
-}
-
-// Used by search
-pub struct EntrySearchResponse {
-    pub ok: bool,
-    pub error_code: Option<String>,
-    pub items: Vec<EntrySearchItem>,    // Each: { atom_id, kind, snippet, rank }
-    pub message: String,
-    pub applied_limit: u32,
-}
-```
-
-**Error codes** (from `docs/api/error-codes.md`):
-`invalid_note_id`, `invalid_tag`, `note_not_found`, `db_error`, `invalid_argument`, `internal_error`,
-`invalid_atom_id`, `atom_not_found`, `invalid_status`, `invalid_time_range`
-
-> **Stability note:** In v0.x, error codes and FFI contracts may change with documented rationale in the PR. Stability guarantees begin at v1.0.
+| Struct | Used by |
+|--------|---------|
+| `EntryActionResponse` | Single-item mutations (create, update, delete, status change) |
+| `NoteResponse` | Single note operations (create, update, get, set_tags) |
+| `NotesListResponse` | Note list queries |
+| `TagsListResponse` | Tag listing |
+| `AtomListResponse` | Section list queries (tasks views, calendar range) |
+| `EntrySearchResponse` | FTS5 search results |
+| `WorkspaceNodeResponse` | Single workspace node operations |
+| `WorkspaceListChildrenResponse` | Workspace tree listing |
+| `WorkspaceActionResponse` | Workspace mutations (move, delete) |
+| `LogDartEventResponse` | Dart event logging acknowledgment |
 
 ### Exported Functions
 
-**Bootstrap (synchronous, safe to call on UI thread):**
+**Bootstrap (synchronous):**
 
 | Function | Returns | Notes |
 |----------|---------|-------|
@@ -232,6 +271,7 @@ pub struct EntrySearchResponse {
 | `core_version()` | `String` | Version string |
 | `init_logging(level, log_dir)` | `String` | Empty string = success; error message on failure |
 | `configure_entry_db_path(db_path)` | `String` | Empty string = success |
+| `log_dart_event(level, event_name, module, message)` | `LogDartEventResponse` | Structured Dart-side event logging |
 
 **Entry (async):**
 
@@ -240,43 +280,49 @@ pub struct EntrySearchResponse {
 | `entry_search(text, limit?)` | `EntrySearchResponse` |
 | `entry_create_note(content)` | `EntryActionResponse` |
 | `entry_create_task(content)` | `EntryActionResponse` |
-| `entry_schedule(title, start, end?)` | `EntryActionResponse` | Creates timed event atom |
+| `entry_schedule(title, start, end?)` | `EntryActionResponse` |
 
 **Notes & Tags (async):**
 
 | Function | Returns |
 |----------|---------|
-| `note_create(content)` | `EntryActionResponse` |
-| `note_update(atom_id, content)` | `EntryActionResponse` |
-| `note_get(atom_id)` | `EntryActionResponse` |
-| `notes_list(tag?, limit?, offset?)` | `EntryListResponse` |
-| `note_set_tags(atom_id, tags[])` | `EntryActionResponse` |
-| `tags_list()` | `EntryListResponse` |
+| `note_create(content)` | `NoteResponse` |
+| `note_update(atom_id, content)` | `NoteResponse` |
+| `note_get(atom_id)` | `NoteResponse` |
+| `notes_list(tag?, limit?, offset)` | `NotesListResponse` |
+| `note_set_tags(atom_id, tags[])` | `NoteResponse` |
+| `tags_list()` | `TagsListResponse` |
 
-**Pagination defaults:** `limit = 10`, `max = 50`.
-**Tag normalization:** Tags are lowercased and deduplicated. Single-tag filter only in v0.1.
-
-**Tasks & Status (async, v0.1.5):**
+**Tasks & Status (async):**
 
 | Function | Returns |
 |----------|---------|
-| `tasks_list_inbox(limit?, offset?)` | `AtomListResponse` |
-| `tasks_list_today(bod_ms, eod_ms, limit?, offset?)` | `AtomListResponse` |
-| `tasks_list_upcoming(eod_ms, limit?, offset?)` | `AtomListResponse` |
+| `tasks_list_inbox(limit?, offset)` | `AtomListResponse` |
+| `tasks_list_today(bod_ms, eod_ms, limit?, offset)` | `AtomListResponse` |
+| `tasks_list_upcoming(eod_ms, limit?, offset)` | `AtomListResponse` |
 | `atom_update_status(atom_id, status?)` | `EntryActionResponse` |
 
-**Section query defaults:** `limit = 50`. Time parameters (BOD/EOD) are epoch ms computed by Flutter.
-**Status values:** `"todo"`, `"in_progress"`, `"done"`, `"cancelled"`, `null` (clears status).
-
-**Calendar (async, PR-0012):**
+**Calendar (async):**
 
 | Function | Returns |
 |----------|---------|
-| `calendar_list_by_range(start_ms, end_ms, limit?, offset?)` | `AtomListResponse` |
+| `calendar_list_by_range(start_ms, end_ms, limit?, offset)` | `AtomListResponse` |
 | `calendar_update_event(atom_id, start_ms, end_ms)` | `EntryActionResponse` |
 
-**Calendar range query:** Returns atoms with both `start_at` and `end_at` set that overlap the given range. Includes all statuses. Default limit: `50`.
-**Event time update:** Validates `end_ms >= start_ms`. Returns `invalid_time_range` on failure.
+**Workspace Tree (async):**
+
+| Function | Returns |
+|----------|---------|
+| `workspace_create_folder(parent_node_id?, display_name)` | `WorkspaceNodeResponse` |
+| `workspace_create_note_ref(parent_node_id?, atom_id, display_name?)` | `WorkspaceNodeResponse` |
+| `workspace_list_children(parent_node_id?)` | `WorkspaceListChildrenResponse` |
+| `workspace_rename_node(node_id, new_name)` | `WorkspaceNodeResponse` |
+| `workspace_move_node(node_id, new_parent_node_id?)` | `WorkspaceActionResponse` |
+| `workspace_delete_node(node_id, recursive)` | `WorkspaceActionResponse` |
+
+**Pagination defaults:** Notes: `limit = 10`, `max = 50`. Tasks/calendar: `limit = 50`.
+**Tag normalization:** Tags are lowercased and deduplicated. Single-tag filter only.
+**Status values:** `"todo"`, `"in_progress"`, `"done"`, `"cancelled"`, `null` (clears status).
 
 ---
 
@@ -288,16 +334,36 @@ pub struct EntrySearchResponse {
 4. Add a Rust doc comment (`///`) to the function.
 5. Add core logic to `crates/lazynote_core` if needed (service or repo layer), never in `lazynote_ffi`.
 6. Update `docs/api/ffi-contracts.md` and `docs/governance/API_COMPATIBILITY.md`.
-7. Write tests in `crates/lazynote_core/src/` (unit) and optionally Flutter widget tests.
+7. Write tests in `crates/lazynote_core/` (unit/integration) and optionally Flutter widget tests.
 
 ---
 
 ## Adding a Database Migration
 
-1. Create `crates/lazynote_core/src/db/migrations/000N_description.sql` (next sequential number).
+1. Create `crates/lazynote_core/src/db/migrations/000N_description.sql` (next sequential number, currently next = 10).
 2. Register it in `crates/lazynote_core/src/db/migrations/mod.rs` in the `MIGRATIONS` constant array.
-3. **Never modify existing migration files** after they have been applied to any user database — only add new ones. Exception: before v1.0 release, squashing migrations (merging into a new baseline) is allowed with a documented process and explicit team sign-off; after v1.0, this rule is absolute.
+3. **Never modify existing migration files** — only add new ones. Pre-v1.0 squash is allowed with documented process.
 4. Update `docs/architecture/data-model.md` to reflect schema changes.
+
+---
+
+## Flutter State Management
+
+All feature controllers extend `ChangeNotifier` and use `AnimatedBuilder` for reactive UI updates:
+
+| Controller | Feature |
+|------------|---------|
+| `SingleEntryController` | Search/command input, debounced search, command routing |
+| `NotesController` | Note list, tabs, workspace tree, autosave with debounce |
+| `TasksController` | Inbox/Today/Upcoming sections, inline create |
+| `CalendarController` | Week navigation, event loading |
+| `AppLocaleController` | Language preference (en/zh) |
+
+**Key patterns:**
+- All FFI invokers are injectable for testability
+- Request deduplication via sequence IDs (prevents stale response overwrite)
+- `RustBridge` uses 3-stage initialization with deduplication (FRB runtime → DB path → logging)
+- Settings loaded synchronously before first frame; non-critical bootstrap runs in background
 
 ---
 
@@ -307,10 +373,10 @@ pub struct EntrySearchResponse {
 %APPDATA%\LazyLife\        (Windows)
 <app_support>/LazyLife/    (macOS / iOS)
 
-  settings.json            — App settings (log level, DB path, etc.)
-  logs/                    — Rolling log files from flexi_logger
+  settings.json            — App settings (log level, DB path, UI language, etc.)
+  logs/                    — Rolling log files from flexi_logger (7-day retention)
   data/
-    lazynote.db            — SQLite main database
+    lazynote_entry.sqlite3 — SQLite main database
 ```
 
 All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
@@ -332,32 +398,40 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 
 | Document | Path | Contents |
 |----------|------|----------|
-| Architecture rules | `docs/architecture/engineering-standards.md` | 6 mandatory rules |
-| Data model spec | `docs/architecture/data-model.md` | Atom invariants, schema tables |
-| FFI contract | `docs/api/ffi-contract-v0.1.md` | All exported function specs |
-| FFI contracts (notes/tags) | `docs/api/ffi-contracts.md` | Consolidated notes/tags API |
+| Docs index | `docs/index.md` | Canonical docs entrypoint and navigation |
+| Architecture rules | `docs/architecture/engineering-standards.md` | 6 mandatory rules (A-F) |
+| Architecture overview | `docs/architecture/overview.md` | System architecture basics |
+| Data model spec | `docs/architecture/data-model.md` | Atom invariants, time-matrix, schema |
+| Extension kernel | `docs/architecture/extension-kernel.md` | Plugin architecture contracts |
+| Provider SPI | `docs/architecture/provider-spi.md` | Sync provider interface |
+| UI extension slots | `docs/architecture/ui-extension-slots.md` | UI extensibility system |
+| FFI contracts | `docs/api/ffi-contracts.md` | Consolidated FFI API specs |
 | Error codes | `docs/api/error-codes.md` | Stable error code registry |
-| API compatibility | `docs/governance/API_COMPATIBILITY.md` | What counts as breaking |
-| v0.1 release plan | `docs/releases/v0.1/README.md` | PR roadmap & current status |
-| v0.1.5 release plan | `docs/releases/v0.1.5/README.md` | Time-matrix + tasks spec |
-| Calendar spec | `docs/releases/v0.1/prs/PR-0012-calendar-minimal.md` | Calendar minimal 4-sub-PR spec |
+| API compatibility | `docs/governance/API_COMPATIBILITY.md` | Breaking change policy |
 | Windows quickstart | `docs/development/windows-quickstart.md` | Minimal dev setup |
 | Logging design | `docs/architecture/logging.md` | Structured log schema |
 | Settings config | `docs/architecture/settings-config.md` | App root, settings lifecycle |
+| Product vision | `docs/product/vision.md` | Long-term product direction |
+| Product roadmap | `docs/product/roadmap.md` | Phase-based roadmap |
 
 ---
 
 ## Common Pitfalls for AI Agents
 
 - **Never edit `frb_generated.rs`** — it is always overwritten by codegen.
-- **Never edit `lib/core/bindings/api.dart`** — also auto-generated.
+- **Never edit `lib/core/bindings/*.dart`** — also auto-generated.
 - **Do not add business logic to `lazynote_ffi`** — only thin FFI wrappers belong there.
-- **Do not add domain invariants or persistence logic to Flutter** — validation rules and all storage go in `lazynote_core`. Interaction parsing and display-derived state in Flutter are acceptable (see Rule A boundary definition).
+- **Do not add domain invariants or persistence logic to Flutter** — validation rules and all storage go in `lazynote_core`. Interaction parsing and display-derived state in Flutter are acceptable (see Rule A).
 - **Soft delete in business paths** — never issue `DELETE FROM atoms` in feature code. Set `is_deleted = 1`. Hard-delete is only permitted in maintenance/purge tooling, with an ADR.
-- **Atom fields are currently public** — this is a known tech debt (v0.2 will privatize them). Do not rely on direct field mutation as a stable pattern.
+- **Atom fields are currently public** — this is known tech debt. Do not rely on direct field mutation as a stable pattern.
 - **FRB bindings must be regenerated** after any change to `api.rs`. Do not skip `gen_bindings.ps1`.
-- **Tags are lowercased** by the repo layer; pass normalized lowercase tags from the service layer too.
-- **`notes_list` sort order**: `updated_at DESC, uuid ASC` — do not change this without updating the contract doc.
-- **Single-entry input parsing** lives in `lib/features/entry/command_parser.dart` (Flutter), not in Rust Core. This is intentional for v0.1 UX iteration speed.
-- **`event_start`/`event_end` are renamed** to `start_at`/`end_at` in Migration 6 (v0.1.5). Do not reference the old column names in new code.
-- **Section classification uses time fields, not `AtomType`**. `kind`/`type` is a rendering hint only. See `docs/architecture/data-model.md` for section SQL.
+- **Tags are lowercased** by the repo layer; pass normalized lowercase tags from the service layer.
+- **`notes_list` sort order**: `updated_at DESC, uuid ASC` — do not change without updating the contract doc.
+- **Single-entry input parsing** lives in `lib/features/entry/command_parser.dart` (Flutter), not in Rust Core. This is intentional for UX iteration speed.
+- **`event_start`/`event_end` are renamed** to `start_at`/`end_at` in Migration 6. Do not reference the old column names.
+- **Section classification uses time fields, not `AtomType`**. `kind`/`type` is a rendering hint only.
+- **9 migrations exist** (not 5 or 6). Migrations 7-9 add workspace tree support.
+- **Extension and sync modules are declaration-only** — contracts/types are defined but no runtime loading or sync execution exists yet.
+- **Navigation is in-place section switching** — all routes map to `EntryShellPage` with different `initialSection` values, not separate page widgets.
+- **Settings loaded before first frame** — `LocalSettingsStore.ensureInitialized()` is synchronous and blocks app start to prevent locale/theme janking.
+- **Flutter tests mock FFI calls** — controllers accept injectable invokers; never call real FFI in widget tests.
