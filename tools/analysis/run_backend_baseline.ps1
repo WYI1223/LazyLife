@@ -53,6 +53,14 @@ function Invoke-CapturedCommand {
     return $proc.ExitCode
 }
 
+function Resolve-DotExecutable {
+    $dotCommand = Get-Command dot -ErrorAction SilentlyContinue
+    if ($null -ne $dotCommand) {
+        return $dotCommand.Source
+    }
+    return $null
+}
+
 function Test-CargoSubcommand {
     param(
         [string]$CargoPath,
@@ -96,6 +104,7 @@ function Test-CargoSubcommand {
 $resolvedRepoRoot = Resolve-RepoRootPath -RootHint $RepoRoot
 $resolvedOutputDir = Resolve-PathFromRoot -RootPath $resolvedRepoRoot -PathValue $OutputDir
 $resolvedWorkspaceDir = Resolve-PathFromRoot -RootPath $resolvedRepoRoot -PathValue $CargoWorkspaceDir
+$workspaceManifestPath = Join-Path $resolvedWorkspaceDir "Cargo.toml"
 
 $modulesDir = Join-Path $resolvedOutputDir "cargo-modules"
 $bloatDir = Join-Path $resolvedOutputDir "cargo-bloat"
@@ -104,6 +113,9 @@ Ensure-Directory -PathValue $resolvedOutputDir
 Ensure-Directory -PathValue $modulesDir
 Ensure-Directory -PathValue $bloatDir
 Ensure-Directory -PathValue $probeDir
+
+# Clean stale files from previous command shapes to avoid report confusion.
+Get-ChildItem -Path $modulesDir -File -Filter "*-tree.*" -ErrorAction SilentlyContinue | Remove-Item -Force
 
 $summary = [ordered]@{
     generated_at       = (Get-Date).ToString("o")
@@ -145,31 +157,71 @@ $modulesStatus = [ordered]@{
     available    = $modulesProbe.available
     success      = $false
     probe        = $modulesProbe
+    dot_available = $false
     package_runs = @()
     note         = ""
 }
 
 if ($modulesProbe.available) {
+    $dotExecutable = Resolve-DotExecutable
+    $modulesStatus.dot_available = ($null -ne $dotExecutable)
     $allPackagesSucceeded = $true
     foreach ($package in $packages) {
-        $stdoutPath = Join-Path $modulesDir "$package-tree.stdout.txt"
-        $stderrPath = Join-Path $modulesDir "$package-tree.stderr.txt"
-        $exitCode = Invoke-CapturedCommand `
+        $structureStdoutPath = Join-Path $modulesDir "$package-structure.stdout.txt"
+        $structureStderrPath = Join-Path $modulesDir "$package-structure.stderr.txt"
+        $structureExitCode = Invoke-CapturedCommand `
             -FilePath $cargoCommand.Source `
-            -ArgumentList @("modules", "generate", "tree", "--package", $package) `
+            -ArgumentList @("modules", "structure", "--package", $package, "--manifest-path", $workspaceManifestPath) `
             -WorkingDirectory $resolvedWorkspaceDir `
-            -StdoutPath $stdoutPath `
-            -StderrPath $stderrPath
-        $isSuccess = ($exitCode -eq 0)
+            -StdoutPath $structureStdoutPath `
+            -StderrPath $structureStderrPath
+
+        $dependenciesDotPath = Join-Path $modulesDir "$package-dependencies.dot"
+        $dependenciesStderrPath = Join-Path $modulesDir "$package-dependencies.stderr.txt"
+        $dependenciesExitCode = Invoke-CapturedCommand `
+            -FilePath $cargoCommand.Source `
+            -ArgumentList @("modules", "dependencies", "--package", $package, "--manifest-path", $workspaceManifestPath) `
+            -WorkingDirectory $resolvedWorkspaceDir `
+            -StdoutPath $dependenciesDotPath `
+            -StderrPath $dependenciesStderrPath
+
+        $renderSvgPath = Join-Path $modulesDir "$package-dependencies.svg"
+        $renderStdoutPath = Join-Path $modulesDir "$package-render.stdout.txt"
+        $renderStderrPath = Join-Path $modulesDir "$package-render.stderr.txt"
+        $renderExitCode = $null
+        $renderSuccess = $false
+        if (($dependenciesExitCode -eq 0) -and $modulesStatus.dot_available) {
+            $renderExitCode = Invoke-CapturedCommand `
+                -FilePath $dotExecutable `
+                -ArgumentList @("-Tsvg", $dependenciesDotPath, "-o", $renderSvgPath) `
+                -WorkingDirectory $resolvedWorkspaceDir `
+                -StdoutPath $renderStdoutPath `
+                -StderrPath $renderStderrPath
+            $renderSuccess = ($renderExitCode -eq 0)
+        }
+
+        $isSuccess = ($structureExitCode -eq 0) -and ($dependenciesExitCode -eq 0)
+        if ($modulesStatus.dot_available) {
+            $isSuccess = $isSuccess -and $renderSuccess
+        }
         if (-not $isSuccess) {
             $allPackagesSucceeded = $false
         }
+
         $modulesStatus.package_runs += [ordered]@{
-            package     = $package
-            exit_code   = $exitCode
-            success     = $isSuccess
-            stdout_file = $stdoutPath
-            stderr_file = $stderrPath
+            package                   = $package
+            success                   = $isSuccess
+            structure_exit_code       = $structureExitCode
+            structure_stdout_file     = $structureStdoutPath
+            structure_stderr_file     = $structureStderrPath
+            dependencies_exit_code    = $dependenciesExitCode
+            dependencies_dot_file     = $dependenciesDotPath
+            dependencies_stderr_file  = $dependenciesStderrPath
+            render_exit_code          = $renderExitCode
+            render_success            = $renderSuccess
+            render_svg_file           = $renderSvgPath
+            render_stdout_file        = $renderStdoutPath
+            render_stderr_file        = $renderStderrPath
         }
     }
     $modulesStatus.success = $allPackagesSucceeded
