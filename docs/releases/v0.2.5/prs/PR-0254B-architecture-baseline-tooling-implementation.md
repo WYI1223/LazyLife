@@ -1,7 +1,7 @@
 # PR-0254B-architecture-baseline-tooling-implementation
 
 - Proposed title: `build(analysis): implement reproducible architecture baseline tooling`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -82,7 +82,7 @@ dart pub global list      # expected contains: lakos 2.0.6
 
 ## Acceptance Criteria
 
-- [ ] One command can run the full baseline collection.
-- [ ] Expected artifacts are generated with deterministic paths.
-- [ ] Script prerequisites and failure modes are documented.
-- [ ] `PR-0254C` can index outputs without manual patchwork.
+- [x] One command can run the full baseline collection.
+- [x] Expected artifacts are generated with deterministic paths.
+- [x] Script prerequisites and failure modes are documented.
+- [x] `PR-0254C` can index outputs without manual patchwork.

@@ -15,6 +15,12 @@ Theme:
 This release is intended to reduce v0.3 planning risk, not to add major
 user-facing features.
 
+## Release Status
+
+- Status: **In Progress**
+- Baseline sub-lane (`PR-0254A/B/C`): **Completed**
+- Current active item: `PR-0255A-frontend-code-health-report`
+
 ## Lane Strategy
 
 v0.2.5 uses a strict three-stage lane:

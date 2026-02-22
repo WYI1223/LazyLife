@@ -1,7 +1,7 @@
 # PR-0255A-frontend-code-health-report
 
 - Proposed title: `docs(frontend): code health report with risk-ranked module inventory`
-- Status: Planned
+- Status: In Progress (M1 baseline input lock)
 
 ## Goal
 
