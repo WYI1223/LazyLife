@@ -69,6 +69,14 @@ function Resolve-LakosExecutable {
     return $null
 }
 
+function Resolve-DotExecutable {
+    $dotCommand = Get-Command dot -ErrorAction SilentlyContinue
+    if ($null -ne $dotCommand) {
+        return $dotCommand.Source
+    }
+    return $null
+}
+
 $resolvedRepoRoot = Resolve-RepoRootPath -RootHint $RepoRoot
 $resolvedOutputDir = Resolve-PathFromRoot -RootPath $resolvedRepoRoot -PathValue $OutputDir
 $resolvedFlutterAppDir = Resolve-PathFromRoot -RootPath $resolvedRepoRoot -PathValue $FlutterAppDir
@@ -93,6 +101,10 @@ $lakosStdout = Join-Path $lakosDir "lakos.stdout.txt"
 $lakosStderr = Join-Path $lakosDir "lakos.stderr.txt"
 $lakosHelpStdout = Join-Path $lakosDir "lakos-help.stdout.txt"
 $lakosHelpStderr = Join-Path $lakosDir "lakos-help.stderr.txt"
+$lakosDotFile = Join-Path $lakosDir "lakos.dot"
+$lakosSvgFile = Join-Path $lakosDir "lakos.svg"
+$lakosRenderStdout = Join-Path $lakosDir "lakos-render.stdout.txt"
+$lakosRenderStderr = Join-Path $lakosDir "lakos-render.stderr.txt"
 $lakosStatus = [ordered]@{
     tool          = "lakos"
     available     = $false
@@ -105,6 +117,12 @@ $lakosStatus = [ordered]@{
     stderr_file   = $lakosStderr
     help_stdout   = $lakosHelpStdout
     help_stderr   = $lakosHelpStderr
+    dot_file      = $lakosDotFile
+    svg_file      = $lakosSvgFile
+    dot_available = $false
+    render_exit_code = $null
+    render_stdout = $lakosRenderStdout
+    render_stderr = $lakosRenderStderr
     note          = ""
 }
 
@@ -136,6 +154,26 @@ if ($null -eq $lakosExecutable) {
 $summary.tools.lakos = $lakosStatus
 if ($StrictTools -and -not $lakosStatus.success) {
     $hardFailures.Add("lakos")
+}
+
+if ($lakosStatus.success) {
+    Copy-Item -Path $lakosStdout -Destination $lakosDotFile -Force
+    $dotExecutable = Resolve-DotExecutable
+    if ($null -ne $dotExecutable) {
+        $lakosStatus.dot_available = $true
+        $renderExitCode = Invoke-CapturedCommand `
+            -FilePath $dotExecutable `
+            -ArgumentList @("-Tsvg", $lakosDotFile, "-o", $lakosSvgFile) `
+            -WorkingDirectory $resolvedRepoRoot `
+            -StdoutPath $lakosRenderStdout `
+            -StderrPath $lakosRenderStderr
+        $lakosStatus.render_exit_code = $renderExitCode
+        if ($renderExitCode -ne 0 -and [string]::IsNullOrWhiteSpace($lakosStatus.note)) {
+            $lakosStatus.note = "lakos graph render failed; inspect render stderr."
+        }
+    } else {
+        $lakosStatus.note = "dot executable not found; lakos DOT kept for manual rendering."
+    }
 }
 
 # flutter analyze-size artifacts
