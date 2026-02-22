@@ -10,6 +10,7 @@ import 'package:lazynote_flutter/features/notes/explorer_tree_state.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/features/tags/tag_filter.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Folder node model reserved for hierarchical explorer expansion.
 class ExplorerFolderNode {
@@ -160,6 +161,14 @@ class _NoteExplorerState extends State<NoteExplorer> {
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
 
+  String _l10nText({
+    required String fallback,
+    required String Function(AppLocalizations l10n) pick,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    return l10n == null ? fallback : pick(l10n);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -291,7 +300,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
                 children: [
                   Expanded(
                     child: Text(
-                      'My Workspace',
+                      _l10nText(
+                        fallback: 'My Workspace',
+                        pick: (l10n) => l10n.notesWorkspaceTitle,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -302,7 +314,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
                   ),
                   IconButton(
                     key: const Key('notes_create_folder_button'),
-                    tooltip: 'New folder',
+                    tooltip: _l10nText(
+                      fallback: 'New folder',
+                      pick: (l10n) => l10n.notesNewFolderTooltip,
+                    ),
                     onPressed: widget.onCreateFolderRequested == null
                         ? null
                         : widget.controller.workspaceCreateFolderInFlight
@@ -321,7 +336,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Reload',
+                    tooltip: _l10nText(
+                      fallback: 'Reload',
+                      pick: (l10n) => l10n.refreshButton,
+                    ),
                     onPressed:
                         widget.controller.creatingNote ||
                             widget.controller.createTagApplyInFlight
@@ -382,9 +400,14 @@ class _NoteExplorerState extends State<NoteExplorer> {
                       ),
                     )
                   : const Icon(Icons.add, size: 16),
-              label: const Align(
+              label: Align(
                 alignment: Alignment.centerLeft,
-                child: Text('New Page'),
+                child: Text(
+                  _l10nText(
+                    fallback: 'New Page',
+                    pick: (l10n) => l10n.notesNewPageButton,
+                  ),
+                ),
               ),
               style: TextButton.styleFrom(
                 foregroundColor: kNotesSecondaryText,
@@ -412,7 +435,11 @@ class _NoteExplorerState extends State<NoteExplorer> {
         );
       case NotesListPhase.error:
         final message =
-            widget.controller.listErrorMessage ?? 'Failed to load notes.';
+            widget.controller.listErrorMessage ??
+            _l10nText(
+              fallback: 'Failed to load notes.',
+              pick: (l10n) => l10n.notesListLoadFailed,
+            );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -437,7 +464,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
                     visualDensity: VisualDensity.compact,
                   ),
                   onPressed: widget.controller.retryLoad,
-                  child: const Text('Retry'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Retry',
+                      pick: (l10n) => l10n.retryButton,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -446,7 +478,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
       case NotesListPhase.empty:
         return Center(
           child: Text(
-            'No notes yet.',
+            _l10nText(
+              fallback: 'No notes yet.',
+              pick: (l10n) => l10n.notesListEmpty,
+            ),
             key: const Key('notes_list_empty'),
             style: Theme.of(
               context,
@@ -514,7 +549,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
                     onPressed: () {
                       unawaited(_treeState.retryParent(null));
                     },
-                    child: const Text('Retry tree'),
+                    child: Text(
+                      _l10nText(
+                        fallback: 'Retry tree',
+                        pick: (l10n) => l10n.notesRetryTreeButton,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -528,12 +568,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
             const <rust_api.WorkspaceNodeItem>[];
         if (rootItems.isEmpty) {
           rows.add(
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
               child: Text(
-                'Workspace tree is empty.',
-                key: Key('notes_tree_root_empty'),
-                style: TextStyle(color: kNotesSecondaryText),
+                _l10nText(
+                  fallback: 'Workspace tree is empty.',
+                  pick: (l10n) => l10n.notesWorkspaceTreeEmpty,
+                ),
+                key: const Key('notes_tree_root_empty'),
+                style: const TextStyle(color: kNotesSecondaryText),
               ),
             ),
           );
@@ -736,7 +779,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
               ),
             ),
             child: Text(
-              'Drop here to move to root',
+              _l10nText(
+                fallback: 'Drop here to move to root',
+                pick: (l10n) => l10n.notesDropToRootLabel,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -935,10 +981,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Moved.'),
+          SnackBar(
+            content: Text(
+              _l10nText(
+                fallback: 'Moved.',
+                pick: (l10n) => l10n.notesMovedToast,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       return;
@@ -1247,7 +1298,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
                     onPressed: () {
                       unawaited(_treeState.retryParent(item.nodeId));
                     },
-                    child: const Text('Retry'),
+                    child: Text(
+                      _l10nText(
+                        fallback: 'Retry',
+                        pick: (l10n) => l10n.retryButton,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1264,7 +1320,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
               key: Key('notes_tree_empty_${item.nodeId}'),
               padding: EdgeInsets.fromLTRB(30 + depth * 12, 2, 10, 6),
               child: Text(
-                'No items',
+                _l10nText(
+                  fallback: 'No items',
+                  pick: (l10n) => l10n.notesNoItemsLabel,
+                ),
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
@@ -1344,14 +1403,31 @@ class _NoteExplorerState extends State<NoteExplorer> {
     // binding note rows from existing list source.
     final noteIds = widget.controller.items.map((item) => item.atomId).toList();
     return <ExplorerFolderNode>[
-      ExplorerFolderNode(id: 'projects', label: 'Projects', deletable: false),
+      ExplorerFolderNode(
+        id: 'projects',
+        label: _l10nText(
+          fallback: 'Projects',
+          pick: (l10n) => l10n.notesLegacyFolderProjects,
+        ),
+        deletable: false,
+      ),
       ExplorerFolderNode(
         id: 'notes',
-        label: 'Notes',
+        label: _l10nText(
+          fallback: 'Notes',
+          pick: (l10n) => l10n.workbenchSectionNotes,
+        ),
         deletable: false,
         noteIds: noteIds,
       ),
-      ExplorerFolderNode(id: 'personal', label: 'Personal', deletable: false),
+      ExplorerFolderNode(
+        id: 'personal',
+        label: _l10nText(
+          fallback: 'Personal',
+          pick: (l10n) => l10n.notesLegacyFolderPersonal,
+        ),
+        deletable: false,
+      ),
     ];
   }
 
@@ -1394,7 +1470,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
             if (canCreateChild)
               IconButton(
                 key: Key('notes_folder_create_button_${node.id}'),
-                tooltip: 'New child folder',
+                tooltip: _l10nText(
+                  fallback: 'New child folder',
+                  pick: (l10n) => l10n.notesNewChildFolderTooltip,
+                ),
                 onPressed: widget.controller.workspaceCreateFolderInFlight
                     ? null
                     : () => _showCreateFolderDialog(
@@ -1425,7 +1504,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
             if (canDelete)
               IconButton(
                 key: Key('notes_folder_delete_button_${node.id}'),
-                tooltip: 'Delete folder',
+                tooltip: _l10nText(
+                  fallback: 'Delete folder',
+                  pick: (l10n) => l10n.notesDeleteFolderTooltip,
+                ),
                 onPressed: widget.controller.workspaceDeleteInFlight
                     ? null
                     : () => _showDeleteFolderDialog(context, node),
@@ -1506,11 +1588,21 @@ class _NoteExplorerState extends State<NoteExplorer> {
             final canSubmit = draftName.trim().isNotEmpty;
             return AlertDialog(
               key: const Key('notes_create_folder_dialog'),
-              title: const Text('Create folder'),
+              title: Text(
+                _l10nText(
+                  fallback: 'Create folder',
+                  pick: (l10n) => l10n.notesCreateFolderDialogTitle,
+                ),
+              ),
               content: TextField(
                 key: const Key('notes_create_folder_name_input'),
                 autofocus: true,
-                decoration: const InputDecoration(hintText: 'Folder name'),
+                decoration: InputDecoration(
+                  hintText: _l10nText(
+                    fallback: 'Folder name',
+                    pick: (l10n) => l10n.notesFolderNameHint,
+                  ),
+                ),
                 onChanged: (value) {
                   draftName = value;
                   setState(() {});
@@ -1526,7 +1618,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
                   onPressed: () {
                     Navigator.of(dialogContext).pop();
                   },
-                  child: const Text('Cancel'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Cancel',
+                      pick: (l10n) => l10n.commonCancel,
+                    ),
+                  ),
                 ),
                 FilledButton.tonal(
                   key: const Key('notes_create_folder_confirm_button'),
@@ -1535,7 +1632,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
                           Navigator.of(dialogContext).pop(draftName.trim());
                         }
                       : null,
-                  child: const Text('Create'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Create',
+                      pick: (l10n) => l10n.commonCreate,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -1569,10 +1671,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Folder created.'),
+          SnackBar(
+            content: Text(
+              _l10nText(
+                fallback: 'Folder created.',
+                pick: (l10n) => l10n.notesFolderCreatedToast,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       return;
@@ -1605,7 +1712,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Delete folder'),
+              title: Text(
+                _l10nText(
+                  fallback: 'Delete folder',
+                  pick: (l10n) => l10n.notesDeleteFolderDialogTitle,
+                ),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1626,7 +1738,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
                             key: Key(
                               'notes_folder_delete_mode_${entry.wireValue}',
                             ),
-                            label: Text(entry.label),
+                            label: Text(entry.label(context)),
                             selected: mode == entry,
                             onSelected: (_) {
                               setState(() {
@@ -1639,7 +1751,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    mode.description,
+                    mode.description(context),
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
@@ -1651,14 +1763,24 @@ class _NoteExplorerState extends State<NoteExplorer> {
                   onPressed: () {
                     Navigator.of(dialogContext).pop();
                   },
-                  child: const Text('Cancel'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Cancel',
+                      pick: (l10n) => l10n.commonCancel,
+                    ),
+                  ),
                 ),
                 FilledButton.tonal(
                   key: const Key('notes_folder_delete_confirm_button'),
                   onPressed: () {
                     Navigator.of(dialogContext).pop(mode);
                   },
-                  child: const Text('Confirm'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Confirm',
+                      pick: (l10n) => l10n.commonConfirm,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -1693,7 +1815,14 @@ class _NoteExplorerState extends State<NoteExplorer> {
         ?..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Folder deleted with ${selectedMode.wireValue}.'),
+            content: Text(
+              _l10nText(
+                fallback: 'Folder deleted with ${selectedMode.wireValue}.',
+                pick: (l10n) => l10n.notesFolderDeletedWithMode(
+                  selectedMode.wireValue,
+                ),
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
           ),
@@ -1743,10 +1872,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Note created.'),
+          SnackBar(
+            content: Text(
+              _l10nText(
+                fallback: 'Note created.',
+                pick: (l10n) => l10n.notesNoteCreatedToast,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       return;
@@ -1788,7 +1922,12 @@ class _NoteExplorerState extends State<NoteExplorer> {
                 draftName.trim() != node.displayName.trim();
             return AlertDialog(
               key: const Key('notes_rename_node_dialog'),
-              title: const Text('Rename'),
+              title: Text(
+                _l10nText(
+                  fallback: 'Rename',
+                  pick: (l10n) => l10n.notesRenameDialogTitle,
+                ),
+              ),
               content: TextFormField(
                 key: const Key('notes_rename_node_input'),
                 autofocus: true,
@@ -1806,14 +1945,24 @@ class _NoteExplorerState extends State<NoteExplorer> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Cancel',
+                      pick: (l10n) => l10n.commonCancel,
+                    ),
+                  ),
                 ),
                 FilledButton.tonal(
                   key: const Key('notes_rename_node_confirm_button'),
                   onPressed: canSubmit
                       ? () => Navigator.of(dialogContext).pop(draftName.trim())
                       : null,
-                  child: const Text('Rename'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Rename',
+                      pick: (l10n) => l10n.notesRenameAction,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -1846,10 +1995,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Renamed.'),
+          SnackBar(
+            content: Text(
+              _l10nText(
+                fallback: 'Renamed.',
+                pick: (l10n) => l10n.notesRenamedToast,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       return;
@@ -1885,10 +2039,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('No available move targets.'),
+          SnackBar(
+            content: Text(
+              _l10nText(
+                fallback: 'No available move targets.',
+                pick: (l10n) => l10n.notesNoMoveTargetsToast,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       return;
@@ -1909,12 +2068,22 @@ class _NoteExplorerState extends State<NoteExplorer> {
           builder: (context, setState) {
             return AlertDialog(
               key: const Key('notes_move_node_dialog'),
-              title: const Text('Move node'),
+              title: Text(
+                _l10nText(
+                  fallback: 'Move node',
+                  pick: (l10n) => l10n.notesMoveNodeDialogTitle,
+                ),
+              ),
               content: DropdownButtonFormField<String>(
                 key: const Key('notes_move_node_target_dropdown'),
                 initialValue: selectedTargetId,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Target folder'),
+                decoration: InputDecoration(
+                  labelText: _l10nText(
+                    fallback: 'Target folder',
+                    pick: (l10n) => l10n.notesMoveTargetFolderLabel,
+                  ),
+                ),
                 items: options
                     .map(
                       (option) => DropdownMenuItem<String>(
@@ -1935,13 +2104,23 @@ class _NoteExplorerState extends State<NoteExplorer> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Cancel',
+                      pick: (l10n) => l10n.commonCancel,
+                    ),
+                  ),
                 ),
                 FilledButton.tonal(
                   key: const Key('notes_move_node_confirm_button'),
                   onPressed: () =>
                       Navigator.of(dialogContext).pop(selectedTargetId),
-                  child: const Text('Move'),
+                  child: Text(
+                    _l10nText(
+                      fallback: 'Move',
+                      pick: (l10n) => l10n.notesMoveAction,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -1976,10 +2155,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       messenger
         ?..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Moved.'),
+          SnackBar(
+            content: Text(
+              _l10nText(
+                fallback: 'Moved.',
+                pick: (l10n) => l10n.notesMovedToast,
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       return;
@@ -1999,7 +2183,13 @@ class _NoteExplorerState extends State<NoteExplorer> {
     required rust_api.WorkspaceNodeItem node,
   }) async {
     final options = <_MoveTargetOption>[
-      const _MoveTargetOption(nodeId: _rootTargetNodeId, label: 'Root'),
+      _MoveTargetOption(
+        nodeId: _rootTargetNodeId,
+        label: _l10nText(
+          fallback: 'Root',
+          pick: (l10n) => l10n.notesMoveTargetRootLabel,
+        ),
+      ),
     ];
     final visitedFolders = <String>{};
     final pendingParents = <String?>[null];
@@ -2073,14 +2263,19 @@ extension on _FolderDeleteMode {
     _FolderDeleteMode.deleteAll => 'delete_all',
   };
 
-  String get label => switch (this) {
-    _FolderDeleteMode.dissolve => 'Dissolve',
-    _FolderDeleteMode.deleteAll => 'Delete all',
+  String label(BuildContext context) => switch (this) {
+    _FolderDeleteMode.dissolve =>
+      AppLocalizations.of(context)?.notesDeleteModeDissolve ?? 'Dissolve',
+    _FolderDeleteMode.deleteAll =>
+      AppLocalizations.of(context)?.notesDeleteModeDeleteAll ?? 'Delete all',
   };
 
-  String get description => switch (this) {
-    _FolderDeleteMode.dissolve => 'Keep notes, move direct children to root.',
+  String description(BuildContext context) => switch (this) {
+    _FolderDeleteMode.dissolve =>
+      AppLocalizations.of(context)?.notesDeleteModeDissolveDescription ??
+      'Keep notes, move direct children to root.',
     _FolderDeleteMode.deleteAll =>
+      AppLocalizations.of(context)?.notesDeleteModeDeleteAllDescription ??
       'Delete folder subtree references and scoped notes.',
   };
 }

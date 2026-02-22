@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:lazynote_flutter/core/local_paths.dart';
+import 'package:lazynote_flutter/core/settings/ui_language.dart';
 
 /// Ensures local settings file exists at a stable path.
 class LocalSettingsStore {
@@ -11,6 +12,7 @@ class LocalSettingsStore {
   static Future<void>? _initFuture;
   static EntryUiTuning _entryUiTuning = const EntryUiTuning.defaults();
   static String? _loggingLevelOverride;
+  static UiLanguage _uiLanguage = UiLanguage.system;
 
   @visibleForTesting
   static Future<String> Function() settingsFilePathResolver =
@@ -35,13 +37,14 @@ class LocalSettingsStore {
   /// IMPORTANT: any new static field added to this class MUST be reset here.
   /// Current fields:
   /// _initialized, _initFuture, _entryUiTuning, _loggingLevelOverride,
-  /// settingsFilePathResolver, logger.
+  /// _uiLanguage, settingsFilePathResolver, logger.
   @visibleForTesting
   static void resetForTesting() {
     _initialized = false;
     _initFuture = null;
     _entryUiTuning = const EntryUiTuning.defaults();
     _loggingLevelOverride = null;
+    _uiLanguage = UiLanguage.system;
     settingsFilePathResolver = LocalPaths.resolveSettingsFilePath;
     logger =
         ({required String message, Object? error, StackTrace? stackTrace}) {
@@ -63,6 +66,65 @@ class LocalSettingsStore {
   /// - This value is persisted and validated.
   /// - Runtime logging behavior is not changed by this field yet.
   static String? get loggingLevelOverride => _loggingLevelOverride;
+
+  /// Effective UI language preference loaded from local settings.
+  static UiLanguage get uiLanguage => _uiLanguage;
+
+  /// Persists UI language preference to local settings.
+  ///
+  /// Contract:
+  /// - Returns `true` on successful persistence.
+  /// - Returns `false` when write fails or settings schema is newer/unsupported.
+  /// - Never throws.
+  static Future<bool> saveUiLanguage(UiLanguage language) async {
+    await ensureInitialized();
+
+    try {
+      final settingsPath = await settingsFilePathResolver();
+      final file = File(settingsPath);
+      await _recoverFromTempFileIfNeeded(file);
+      if (!await file.exists()) {
+        await _writeFileWithTempReplace(file, _defaultSettingsJson);
+      }
+
+      final raw = await file.readAsString();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        logger(
+          message:
+              'Failed to persist ui.language: settings payload is not a JSON object.',
+        );
+        return false;
+      }
+
+      final schemaVersion = decoded['schema_version'];
+      if (schemaVersion is int && schemaVersion > 1) {
+        logger(
+          message:
+              'Skipped persisting ui.language for future schema_version=$schemaVersion.',
+        );
+        return false;
+      }
+
+      if (decoded['ui'] is! Map<String, dynamic>) {
+        decoded['ui'] = <String, dynamic>{};
+      }
+      final uiRoot = decoded['ui'] as Map<String, dynamic>;
+      uiRoot['language'] = language.storageValue;
+
+      const encoder = JsonEncoder.withIndent('  ');
+      await _writeFileWithTempReplace(file, '${encoder.convert(decoded)}\n');
+      _uiLanguage = language;
+      return true;
+    } catch (error, stackTrace) {
+      logger(
+        message: 'Failed to persist ui.language in settings.json.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
 
   /// Creates `settings.json` with defaults when missing.
   ///
@@ -147,6 +209,7 @@ Future<void> _loadRuntimeSettings(File file) async {
       // TODO(v0.2): implement forward-migration when schema_version increases.
       LocalSettingsStore._entryUiTuning = const EntryUiTuning.defaults();
       LocalSettingsStore._loggingLevelOverride = null;
+      LocalSettingsStore._uiLanguage = UiLanguage.system;
       return;
     }
 
@@ -194,6 +257,13 @@ Future<void> _loadRuntimeSettings(File file) async {
     } else {
       LocalSettingsStore._loggingLevelOverride = null;
     }
+
+    final uiRoot = decoded['ui'];
+    if (uiRoot is Map<String, dynamic>) {
+      LocalSettingsStore._uiLanguage = _readUiLanguage(uiRoot['language']);
+    } else {
+      LocalSettingsStore._uiLanguage = UiLanguage.system;
+    }
   } catch (error, stackTrace) {
     LocalSettingsStore.logger(
       message:
@@ -203,6 +273,7 @@ Future<void> _loadRuntimeSettings(File file) async {
     );
     LocalSettingsStore._entryUiTuning = const EntryUiTuning.defaults();
     LocalSettingsStore._loggingLevelOverride = null;
+    LocalSettingsStore._uiLanguage = UiLanguage.system;
   }
 }
 
@@ -277,6 +348,16 @@ Future<void> _backfillMissingDefaults(File file) async {
     final logging = decoded['logging'] as Map<String, dynamic>;
     if (!logging.containsKey('level_override')) {
       logging['level_override'] = null;
+      changed = true;
+    }
+
+    if (decoded['ui'] is! Map<String, dynamic>) {
+      decoded['ui'] = <String, dynamic>{};
+      changed = true;
+    }
+    final uiRoot = decoded['ui'] as Map<String, dynamic>;
+    if (!uiRoot.containsKey('language')) {
+      uiRoot['language'] = UiLanguage.system.storageValue;
       changed = true;
     }
 
@@ -359,6 +440,10 @@ String? _readLoggingLevelOverride(Object? value) {
   };
 }
 
+UiLanguage _readUiLanguage(Object? value) {
+  return UiLanguage.parse(value);
+}
+
 Future<void> _writeFileWithTempReplace(File target, String content) async {
   await target.parent.create(recursive: true);
   final timestamp = DateTime.now().microsecondsSinceEpoch;
@@ -429,5 +514,8 @@ const String _defaultSettingsJson =
     '  },\n'
     '  "logging": {\n'
     '    "level_override": null\n'
+    '  },\n'
+    '  "ui": {\n'
+    '    "language": "system"\n'
     '  }\n'
     '}\n';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Editable markdown text surface for active note content.
 ///
@@ -32,6 +33,14 @@ class NoteEditor extends StatefulWidget {
 class _NoteEditorState extends State<NoteEditor> {
   late final TextEditingController _textController;
   late final FocusNode _focusNode;
+
+  String _l10nText({
+    required String fallback,
+    required String Function(AppLocalizations l10n) pick,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    return l10n == null ? fallback : pick(l10n);
+  }
 
   @override
   void initState() {
@@ -88,10 +97,13 @@ class _NoteEditorState extends State<NoteEditor> {
       style: Theme.of(
         context,
       ).textTheme.bodyLarge?.copyWith(color: kNotesPrimaryText, height: 1.55),
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         border: InputBorder.none,
         isCollapsed: true,
-        hintText: 'Start writing...',
+        hintText: _l10nText(
+          fallback: 'Start writing...',
+          pick: (l10n) => l10n.notesEditorHintText,
+        ),
       ),
     );
   }

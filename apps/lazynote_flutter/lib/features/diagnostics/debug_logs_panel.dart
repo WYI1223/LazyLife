@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/core/debug/log_reader.dart';
 import 'package:lazynote_flutter/features/diagnostics/log_line_meta.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Inline live logs panel used across Workbench shell pages.
 class DebugLogsPanel extends StatefulWidget {
@@ -183,9 +184,10 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
   }
 
   Future<void> _copyVisibleLogs() async {
+    final l10n = AppLocalizations.of(context)!;
     final snapshot = _snapshot;
     if (snapshot == null || snapshot.tailText.isEmpty) {
-      _setActionMessage('No visible logs to copy.');
+      _setActionMessage(l10n.debugLogsNoVisibleLogsToCopy);
       return;
     }
 
@@ -193,10 +195,11 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
     if (!mounted) {
       return;
     }
-    _setActionMessage('Visible logs copied.');
+    _setActionMessage(l10n.debugLogsVisibleLogsCopied);
   }
 
   Future<void> _openLogFolder() async {
+    final l10n = AppLocalizations.of(context)!;
     final snapshot = _snapshot;
     if (snapshot == null) {
       return;
@@ -207,18 +210,19 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
       if (!mounted) {
         return;
       }
-      _setActionMessage('Opened log folder.');
+      _setActionMessage(l10n.debugLogsOpenedLogFolder);
     } catch (error) {
       if (!mounted) {
         return;
       }
-      _setActionMessage('Open folder failed: $error');
+      _setActionMessage(l10n.debugLogsOpenFolderFailed(error.toString()));
     }
   }
 
   String _formatRefreshTime(DateTime? value) {
+    final l10n = AppLocalizations.of(context)!;
     if (value == null) {
-      return 'never';
+      return l10n.commonNever;
     }
 
     final hh = value.hour.toString().padLeft(2, '0');
@@ -232,12 +236,14 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return SelectableText('Failed to load logs: $_error');
+      final l10n = AppLocalizations.of(context)!;
+      return SelectableText(l10n.debugLogsLoadFailed(_error.toString()));
     }
 
     final snapshot = _snapshot;
     if (snapshot == null || snapshot.tailText.isEmpty) {
-      return const SelectableText('No log content available yet.');
+      final l10n = AppLocalizations.of(context)!;
+      return SelectableText(l10n.debugLogsNoContentYet);
     }
 
     final lines = const LineSplitter().convert(snapshot.tailText);
@@ -256,6 +262,7 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final snapshot = _snapshot;
 
     return Card(
@@ -268,16 +275,20 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
 
             final headerChildren = <Widget>[
               Text(
-                'Debug Logs (Live)',
+                l10n.debugLogsPanelTitle,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               Text(
-                'Auto refresh: every ${_refreshInterval.inSeconds}s',
+                l10n.debugLogsAutoRefreshEverySeconds(
+                  _refreshInterval.inSeconds,
+                ),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               Text(
-                'Last refresh: ${_formatRefreshTime(_lastRefreshAt)}',
+                l10n.debugLogsLastRefreshValue(
+                  _formatRefreshTime(_lastRefreshAt),
+                ),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ];
@@ -286,11 +297,13 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
               headerChildren.addAll([
                 const SizedBox(height: 8),
                 Text(
-                  'Directory: ${snapshot.logDir}',
+                  l10n.debugLogsDirectoryValue(snapshot.logDir),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 Text(
-                  'Active file: ${snapshot.activeFile?.name ?? 'N/A'}',
+                  l10n.debugLogsActiveFileValue(
+                    snapshot.activeFile?.name ?? 'N/A',
+                  ),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ]);
@@ -304,15 +317,15 @@ class _DebugLogsPanelState extends State<DebugLogsPanel>
                 children: [
                   OutlinedButton(
                     onPressed: () => _refreshLogs(showLoading: true),
-                    child: const Text('Refresh'),
+                    child: Text(l10n.refreshButton),
                   ),
                   OutlinedButton(
                     onPressed: _copyVisibleLogs,
-                    child: const Text('Copy Visible Logs'),
+                    child: Text(l10n.debugLogsCopyVisibleButton),
                   ),
                   OutlinedButton(
                     onPressed: _openLogFolder,
-                    child: const Text('Open Log Folder'),
+                    child: Text(l10n.debugLogsOpenLogFolderButton),
                   ),
                 ],
               ),

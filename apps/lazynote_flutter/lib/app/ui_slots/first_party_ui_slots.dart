@@ -4,6 +4,7 @@ import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Canonical workbench section ids for slot contexts.
 abstract final class WorkbenchSectionIds {
@@ -39,17 +40,23 @@ void _registerWorkbenchHomeSlots(UiSlotRegistry registry) {
       layer: UiSlotLayer.contentBlock,
       priority: 200,
       builder: (context, slotContext) {
+        final l10n = AppLocalizations.of(context);
         final openDiagnostics = slotContext.require<VoidCallback>(
           UiSlotContextKeys.onOpenDiagnostics,
         );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Diagnostics', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n?.workbenchDiagnosticsTitle ?? 'Diagnostics',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: openDiagnostics,
-              child: const Text('Rust Diagnostics'),
+              child: Text(
+                l10n?.workbenchSectionRustDiagnostics ?? 'Rust Diagnostics',
+              ),
             ),
           ],
         );
@@ -67,9 +74,10 @@ void _registerWorkbenchHomeSlots(UiSlotRegistry registry) {
         final openSection = slotContext.require<WorkbenchOpenSectionCallback>(
           UiSlotContextKeys.onOpenSection,
         );
+        final l10n = AppLocalizations.of(context);
         return OutlinedButton(
           onPressed: () => openSection(WorkbenchSectionIds.notes),
-          child: const Text('Notes'),
+          child: Text(l10n?.workbenchSectionNotes ?? 'Notes'),
         );
       },
     ),
@@ -84,9 +92,10 @@ void _registerWorkbenchHomeSlots(UiSlotRegistry registry) {
         final openSection = slotContext.require<WorkbenchOpenSectionCallback>(
           UiSlotContextKeys.onOpenSection,
         );
+        final l10n = AppLocalizations.of(context);
         return OutlinedButton(
           onPressed: () => openSection(WorkbenchSectionIds.tasks),
-          child: const Text('Tasks'),
+          child: Text(l10n?.workbenchSectionTasks ?? 'Tasks'),
         );
       },
     ),
@@ -101,9 +110,10 @@ void _registerWorkbenchHomeSlots(UiSlotRegistry registry) {
         final openSection = slotContext.require<WorkbenchOpenSectionCallback>(
           UiSlotContextKeys.onOpenSection,
         );
+        final l10n = AppLocalizations.of(context);
         return OutlinedButton(
           onPressed: () => openSection(WorkbenchSectionIds.calendar),
-          child: const Text('Calendar'),
+          child: Text(l10n?.workbenchSectionCalendar ?? 'Calendar'),
         );
       },
     ),
@@ -118,9 +128,10 @@ void _registerWorkbenchHomeSlots(UiSlotRegistry registry) {
         final openSection = slotContext.require<WorkbenchOpenSectionCallback>(
           UiSlotContextKeys.onOpenSection,
         );
+        final l10n = AppLocalizations.of(context);
         return OutlinedButton(
           onPressed: () => openSection(WorkbenchSectionIds.settings),
-          child: const Text('Settings'),
+          child: Text(l10n?.workbenchSectionSettings ?? 'Settings'),
         );
       },
     ),

@@ -14,6 +14,7 @@ import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
+import 'package:lazynote_flutter/l10n/app_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Notes feature page mounted in Workbench left pane (PR-0010C foundation).
@@ -57,6 +58,14 @@ class _NotesPageState extends State<NotesPage>
   bool _preventCloseActive = false;
   bool _handlingWindowClose = false;
   bool _forceClosing = false;
+
+  String _l10nText({
+    required String fallback,
+    required String Function(AppLocalizations l10n) pick,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    return l10n == null ? fallback : pick(l10n);
+  }
 
   @override
   void initState() {
@@ -215,22 +224,41 @@ class _NotesPageState extends State<NotesPage>
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Unsaved content'),
-            content: const Text(
-              'Save failed. Retry or back up content before closing.',
+            title: Text(
+              _l10nText(
+                fallback: 'Unsaved content',
+                pick: (l10n) => l10n.notesUnsavedContentTitle,
+              ),
+            ),
+            content: Text(
+              _l10nText(
+                fallback:
+                    'Save failed. Retry or back up content before closing.',
+                pick: (l10n) => l10n.notesSaveFailedCloseBody,
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop(_CloseDialogAction.cancel);
                 },
-                child: const Text('Keep editing'),
+                child: Text(
+                  _l10nText(
+                    fallback: 'Keep editing',
+                    pick: (l10n) => l10n.notesKeepEditingButton,
+                  ),
+                ),
               ),
               FilledButton.tonal(
                 onPressed: () {
                   Navigator.of(context).pop(_CloseDialogAction.retry);
                 },
-                child: const Text('Retry save'),
+                child: Text(
+                  _l10nText(
+                    fallback: 'Retry save',
+                    pick: (l10n) => l10n.notesRetrySaveButton,
+                  ),
+                ),
               ),
             ],
           );
@@ -280,20 +308,41 @@ class _NotesPageState extends State<NotesPage>
     if (result == WorkspaceSplitResult.ok) {
       final workspace = _controller.workspaceProvider;
       final paneCount = workspace.layoutState.paneOrder.length;
-      _showSplitFeedback('Split created. $paneCount panes ready.');
+      _showSplitFeedback(
+        _l10nText(
+          fallback: 'Split created. $paneCount panes ready.',
+          pick: (l10n) => l10n.notesSplitCreatedWithCount(paneCount),
+        ),
+      );
       return;
     }
 
     final message = switch (result) {
-      WorkspaceSplitResult.paneNotFound =>
-        'Cannot split: active pane is unavailable.',
-      WorkspaceSplitResult.maxPanesReached =>
-        'Cannot split: maximum pane count (${WorkspaceProvider.maxPaneCount}) reached.',
-      WorkspaceSplitResult.directionLocked =>
-        'Cannot split: v0.2 keeps one split direction per workspace.',
-      WorkspaceSplitResult.minSizeBlocked =>
-        'Cannot split: each pane must stay at least ${WorkspaceProvider.minPaneExtent.toInt()}px.',
-      WorkspaceSplitResult.ok => 'Split created.',
+      WorkspaceSplitResult.paneNotFound => _l10nText(
+        fallback: 'Cannot split: active pane is unavailable.',
+        pick: (l10n) => l10n.notesSplitPaneUnavailable,
+      ),
+      WorkspaceSplitResult.maxPanesReached => _l10nText(
+        fallback:
+            'Cannot split: maximum pane count (${WorkspaceProvider.maxPaneCount}) reached.',
+        pick: (l10n) =>
+            l10n.notesSplitMaxPaneReached(WorkspaceProvider.maxPaneCount),
+      ),
+      WorkspaceSplitResult.directionLocked => _l10nText(
+        fallback: 'Cannot split: v0.2 keeps one split direction per workspace.',
+        pick: (l10n) => l10n.notesSplitDirectionLocked,
+      ),
+      WorkspaceSplitResult.minSizeBlocked => _l10nText(
+        fallback:
+            'Cannot split: each pane must stay at least ${WorkspaceProvider.minPaneExtent.toInt()}px.',
+        pick: (l10n) => l10n.notesSplitMinSizeBlocked(
+          WorkspaceProvider.minPaneExtent.toInt(),
+        ),
+      ),
+      WorkspaceSplitResult.ok => _l10nText(
+        fallback: 'Split created.',
+        pick: (l10n) => l10n.notesSplitCreatedSimple,
+      ),
     };
     _showSplitFeedback(message, isError: true);
   }
@@ -301,7 +350,12 @@ class _NotesPageState extends State<NotesPage>
   void _handleActivateNextPane() {
     final workspace = _controller.workspaceProvider;
     if (workspace.layoutState.paneOrder.length <= 1) {
-      _showSplitFeedback('Only one pane is available.');
+      _showSplitFeedback(
+        _l10nText(
+          fallback: 'Only one pane is available.',
+          pick: (l10n) => l10n.notesOnlyOnePaneAvailable,
+        ),
+      );
       return;
     }
     _controller.activateNextPane();
@@ -309,7 +363,12 @@ class _NotesPageState extends State<NotesPage>
       workspace.activePaneId,
     );
     final paneOrdinal = activeIndex < 0 ? '?' : '${activeIndex + 1}';
-    _showSplitFeedback('Switched to pane $paneOrdinal.');
+    _showSplitFeedback(
+      _l10nText(
+        fallback: 'Switched to pane $paneOrdinal.',
+        pick: (l10n) => l10n.notesSwitchedToPane(paneOrdinal),
+      ),
+    );
   }
 
   void _handleCloseActivePane() {
@@ -317,17 +376,28 @@ class _NotesPageState extends State<NotesPage>
     if (result == WorkspaceMergeResult.ok) {
       final paneCount =
           _controller.workspaceProvider.layoutState.paneOrder.length;
-      final paneLabel = paneCount == 1 ? 'pane' : 'panes';
-      _showSplitFeedback('Pane closed. $paneCount $paneLabel remaining.');
+      _showSplitFeedback(
+        _l10nText(
+          fallback: 'Pane closed. $paneCount remaining.',
+          pick: (l10n) => l10n.notesPaneClosedWithCount(paneCount),
+        ),
+      );
       return;
     }
 
     final message = switch (result) {
-      WorkspaceMergeResult.singlePaneBlocked =>
-        'Cannot close pane: only one pane is available.',
-      WorkspaceMergeResult.paneNotFound =>
-        'Cannot close pane: active pane is unavailable.',
-      WorkspaceMergeResult.ok => 'Pane closed.',
+      WorkspaceMergeResult.singlePaneBlocked => _l10nText(
+        fallback: 'Cannot close pane: only one pane is available.',
+        pick: (l10n) => l10n.notesClosePaneSingleBlocked,
+      ),
+      WorkspaceMergeResult.paneNotFound => _l10nText(
+        fallback: 'Cannot close pane: active pane is unavailable.',
+        pick: (l10n) => l10n.notesClosePaneUnavailable,
+      ),
+      WorkspaceMergeResult.ok => _l10nText(
+        fallback: 'Pane closed.',
+        pick: (l10n) => l10n.notesPaneClosedSimple,
+      ),
     };
     _showSplitFeedback(message, isError: true);
   }
@@ -418,7 +488,16 @@ class _NotesPageState extends State<NotesPage>
                             onPressed: widget.onBackToWorkbench,
                             icon: const Icon(Icons.arrow_back, size: 18),
                             label: Text(
-                              compactHeader ? 'Back' : 'Back to Workbench',
+                              compactHeader
+                                  ? _l10nText(
+                                      fallback: 'Back',
+                                      pick: (l10n) => l10n.notesBackShort,
+                                    )
+                                  : _l10nText(
+                                      fallback: 'Back to Workbench',
+                                      pick: (l10n) =>
+                                          l10n.backToWorkbenchButton,
+                                    ),
                             ),
                             style: TextButton.styleFrom(
                               foregroundColor: headerTextColor,
@@ -428,7 +507,10 @@ class _NotesPageState extends State<NotesPage>
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Notes Shell',
+                              _l10nText(
+                                fallback: 'Notes Shell',
+                                pick: (l10n) => l10n.notesShellTitle,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.headlineSmall
@@ -452,14 +534,23 @@ class _NotesPageState extends State<NotesPage>
                             child: Text(
                               compactHeader
                                   ? 'P $paneOrdinal/$paneCount'
-                                  : 'Pane $paneOrdinal/$paneCount',
+                                  : _l10nText(
+                                      fallback: 'Pane $paneOrdinal/$paneCount',
+                                      pick: (l10n) => l10n.notesPaneIndicator(
+                                        paneOrdinal,
+                                        paneCount,
+                                      ),
+                                    ),
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: secondaryTextColor),
                             ),
                           ),
                           IconButton(
                             key: const Key('notes_split_horizontal_button'),
-                            tooltip: 'Split right',
+                            tooltip: _l10nText(
+                              fallback: 'Split right',
+                              pick: (l10n) => l10n.notesSplitRightTooltip,
+                            ),
                             onPressed: () {
                               _handleSplitCommand(
                                 direction: WorkspaceSplitDirection.horizontal,
@@ -474,7 +565,10 @@ class _NotesPageState extends State<NotesPage>
                           ),
                           IconButton(
                             key: const Key('notes_split_vertical_button'),
-                            tooltip: 'Split down',
+                            tooltip: _l10nText(
+                              fallback: 'Split down',
+                              pick: (l10n) => l10n.notesSplitDownTooltip,
+                            ),
                             onPressed: () {
                               _handleSplitCommand(
                                 direction: WorkspaceSplitDirection.vertical,
@@ -489,7 +583,10 @@ class _NotesPageState extends State<NotesPage>
                           ),
                           IconButton(
                             key: const Key('notes_next_pane_button'),
-                            tooltip: 'Next pane',
+                            tooltip: _l10nText(
+                              fallback: 'Next pane',
+                              pick: (l10n) => l10n.notesNextPaneTooltip,
+                            ),
                             onPressed: _handleActivateNextPane,
                             icon: Icon(
                               Icons.switch_right_outlined,
@@ -498,7 +595,10 @@ class _NotesPageState extends State<NotesPage>
                           ),
                           IconButton(
                             key: const Key('notes_close_pane_button'),
-                            tooltip: 'Close pane',
+                            tooltip: _l10nText(
+                              fallback: 'Close pane',
+                              pick: (l10n) => l10n.notesClosePaneTooltip,
+                            ),
                             onPressed: _handleCloseActivePane,
                             icon: Icon(
                               Icons.vertical_split_outlined,
@@ -507,7 +607,10 @@ class _NotesPageState extends State<NotesPage>
                           ),
                           IconButton(
                             key: const Key('notes_reload_button'),
-                            tooltip: 'Reload notes',
+                            tooltip: _l10nText(
+                              fallback: 'Reload notes',
+                              pick: (l10n) => l10n.notesReloadTooltip,
+                            ),
                             onPressed:
                                 (_controller.creatingNote ||
                                     _controller.createTagApplyInFlight)

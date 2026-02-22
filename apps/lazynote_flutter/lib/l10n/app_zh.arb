@@ -1,0 +1,294 @@
+﻿{
+  "@@locale": "zh",
+  "lazyNoteWorkbenchTitle": "LazyNote 工作台",
+  "workbenchSectionNotes": "笔记",
+  "workbenchSectionNotesWithCount": "笔记（{count}）",
+  "@workbenchSectionNotesWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workbenchSectionTasks": "任务",
+  "workbenchSectionCalendar": "日历",
+  "workbenchSectionSettings": "设置",
+  "workbenchSectionRustDiagnostics": "Rust 诊断",
+  "workbenchHomeTitle": "工作台主页",
+  "workbenchHomeDescription": "在功能页面逐步落地期间，可在工作台中运行 Single Entry 流程与诊断能力。",
+  "singleEntryTitle": "Single Entry",
+  "openSingleEntryButton": "打开 Single Entry",
+  "focusSingleEntryButton": "聚焦 Single Entry",
+  "hideSingleEntryButton": "隐藏 Single Entry",
+  "workbenchDiagnosticsTitle": "诊断",
+  "placeholderRoutesTitle": "占位入口",
+  "backToWorkbenchButton": "返回工作台",
+  "settingsCapabilityAuditTitle": "扩展能力审计（v0.2 基线）",
+  "settingsCapabilityAuditDescription": "运行时能力检查默认为拒绝。未声明的能力会在调用时被拒绝。",
+  "settingsRegisteredExtensions": "已注册扩展",
+  "settingsCapabilityCatalog": "能力目录",
+  "settingsNoRuntimePermissionsDeclared": "未声明运行时权限（默认拒绝）。",
+  "settingsLanguageTitle": "语言",
+  "settingsLanguageDescription": "立即切换工作台界面语言。",
+  "languageOptionSystem": "跟随系统",
+  "languageOptionEnglish": "English",
+  "languageOptionChineseSimplified": "简体中文",
+  "settingsLanguageSaveFailed": "保存语言偏好失败。",
+  "loggingInitStatusNotAttempted": "日志初始化状态：当前进程未尝试。",
+  "loggingInitStatusValue": "logging_init 状态：{status}",
+  "@loggingInitStatusValue": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "loggingInitLevelValue": "级别：{level}",
+  "@loggingInitLevelValue": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "loggingInitLogDirValue": "日志目录：{logDir}",
+  "@loggingInitLogDirValue": {
+    "placeholders": {
+      "logDir": {
+        "type": "String"
+      }
+    }
+  },
+  "loggingInitErrorValue": "错误：{error}",
+  "@loggingInitErrorValue": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "rustDiagnosticsInitializing": "正在初始化 Rust 桥接...",
+  "rustDiagnosticsInitFailed": "Rust 桥接初始化失败",
+  "retryButton": "重试",
+  "rustDiagnosticsConnected": "Rust 桥接已连接",
+  "rustDiagnosticsPingValue": "ping：{ping}",
+  "@rustDiagnosticsPingValue": {
+    "placeholders": {
+      "ping": {
+        "type": "String"
+      }
+    }
+  },
+  "rustDiagnosticsCoreVersionValue": "核心版本：{version}",
+  "@rustDiagnosticsCoreVersionValue": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshButton": "刷新",
+  "debugLogsNoVisibleLogsToCopy": "没有可复制的可见日志。",
+  "debugLogsVisibleLogsCopied": "已复制可见日志。",
+  "debugLogsOpenedLogFolder": "已打开日志目录。",
+  "debugLogsOpenFolderFailed": "打开目录失败：{error}",
+  "@debugLogsOpenFolderFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "commonNever": "从未",
+  "debugLogsLoadFailed": "加载日志失败：{error}",
+  "@debugLogsLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsNoContentYet": "暂无日志内容。",
+  "debugLogsPanelTitle": "调试日志（实时）",
+  "debugLogsAutoRefreshEverySeconds": "自动刷新：每 {seconds} 秒",
+  "@debugLogsAutoRefreshEverySeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "debugLogsLastRefreshValue": "最近刷新：{time}",
+  "@debugLogsLastRefreshValue": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsDirectoryValue": "目录：{directory}",
+  "@debugLogsDirectoryValue": {
+    "placeholders": {
+      "directory": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsActiveFileValue": "当前文件：{file}",
+  "@debugLogsActiveFileValue": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "debugLogsCopyVisibleButton": "复制可见日志",
+  "debugLogsOpenLogFolderButton": "打开日志目录",
+  "commonCancel": "取消",
+  "commonClose": "关闭",
+  "commonConfirm": "确认",
+  "commonCreate": "创建",
+  "notesBackShort": "返回",
+  "notesShellTitle": "笔记工作区",
+  "notesWorkspaceTitle": "我的工作区",
+  "notesPaneIndicator": "窗格 {paneOrdinal}/{paneCount}",
+  "@notesPaneIndicator": {
+    "placeholders": {
+      "paneOrdinal": {
+        "type": "String"
+      },
+      "paneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSplitRightTooltip": "向右分屏",
+  "notesSplitDownTooltip": "向下分屏",
+  "notesNextPaneTooltip": "下一个窗格",
+  "notesClosePaneTooltip": "关闭窗格",
+  "notesReloadTooltip": "重新加载笔记",
+  "notesSplitCreatedWithCount": "已创建分屏，当前 {paneCount} 个窗格。",
+  "@notesSplitCreatedWithCount": {
+    "placeholders": {
+      "paneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSplitCreatedSimple": "已创建分屏。",
+  "notesSplitPaneUnavailable": "无法分屏：当前活动窗格不可用。",
+  "notesSplitMaxPaneReached": "无法分屏：已达到最大窗格数（{maxPaneCount}）。",
+  "@notesSplitMaxPaneReached": {
+    "placeholders": {
+      "maxPaneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesSplitDirectionLocked": "无法分屏：v0.2 每个工作区仅允许一种分屏方向。",
+  "notesSplitMinSizeBlocked": "无法分屏：每个窗格至少保留 {minPaneWidth}px。",
+  "@notesSplitMinSizeBlocked": {
+    "placeholders": {
+      "minPaneWidth": {
+        "type": "int"
+      }
+    }
+  },
+  "notesOnlyOnePaneAvailable": "当前仅有一个窗格。",
+  "notesSwitchedToPane": "已切换到窗格 {paneOrdinal}。",
+  "@notesSwitchedToPane": {
+    "placeholders": {
+      "paneOrdinal": {
+        "type": "String"
+      }
+    }
+  },
+  "notesPaneClosedWithCount": "已关闭窗格，剩余 {paneCount}。",
+  "@notesPaneClosedWithCount": {
+    "placeholders": {
+      "paneCount": {
+        "type": "int"
+      }
+    }
+  },
+  "notesPaneClosedSimple": "已关闭窗格。",
+  "notesClosePaneSingleBlocked": "无法关闭窗格：当前仅有一个窗格。",
+  "notesClosePaneUnavailable": "无法关闭窗格：当前活动窗格不可用。",
+  "notesUnsavedContentTitle": "内容未保存",
+  "notesSaveFailedCloseBody": "保存失败。请重试或备份内容后再关闭。",
+  "notesKeepEditingButton": "继续编辑",
+  "notesRetrySaveButton": "重试保存",
+  "notesNoOpenNotes": "暂无打开的笔记",
+  "notesTabCloseOthers": "关闭其他",
+  "notesTabCloseRight": "关闭右侧",
+  "notesLoadingNotes": "正在加载笔记...",
+  "notesDetailUnavailableWhenListError": "列表不可用，无法加载详情。",
+  "notesCreateFirstNoteHint": "在 C2 中创建第一条笔记。",
+  "notesSelectNoteToContinue": "请选择一条笔记继续。",
+  "notesDetailNotAvailableYet": "详情数据暂不可用。",
+  "notesPathPlaceholder": "Omni-Bar / Private",
+  "notesAddIconButton": "添加图标",
+  "notesAddImageButton": "添加图片",
+  "notesAddCommentButton": "添加评论",
+  "notesUpdatedAt": "更新于 {value}",
+  "@notesUpdatedAt": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "notesRetryDetailButton": "重试详情加载",
+  "notesSaveStatusSaved": "已保存",
+  "notesSaveStatusUnsaved": "未保存",
+  "notesSaveStatusSaving": "保存中...",
+  "notesSaveStatusFailed": "保存失败",
+  "notesRefreshDetailTooltip": "刷新详情",
+  "notesShareAction": "分享",
+  "notesStarAction": "星标",
+  "notesMoreAction": "更多",
+  "notesMoreActionsTooltip": "更多操作",
+  "notesTagButton": "标签",
+  "notesAddTagDialogTitle": "添加标签",
+  "notesTagInputHint": "标签",
+  "notesAddButton": "添加",
+  "notesEditorHintText": "开始输入...",
+  "notesNewFolderTooltip": "新建文件夹",
+  "notesListLoadFailed": "加载笔记失败。",
+  "notesListEmpty": "暂无笔记。",
+  "notesWorkspaceTreeEmpty": "暂无工作区条目。",
+  "notesRetryTreeButton": "重试",
+  "notesNoItemsLabel": "暂无内容",
+  "notesDropToRootLabel": "移动到根级",
+  "notesLegacyFolderProjects": "项目",
+  "notesLegacyFolderPersonal": "个人",
+  "notesNewPageButton": "新建页面",
+  "notesCreateFolderDialogTitle": "新建文件夹",
+  "notesFolderNameHint": "文件夹名称",
+  "notesFolderCreatedToast": "文件夹已创建。",
+  "notesDeleteFolderDialogTitle": "删除文件夹",
+  "notesDeleteFolderTooltip": "删除文件夹",
+  "notesFolderDeletedWithMode": "已按“{modeLabel}”删除文件夹。",
+  "@notesFolderDeletedWithMode": {
+    "placeholders": {
+      "modeLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "notesDeleteModeDissolve": "解散",
+  "notesDeleteModeDeleteAll": "全部删除",
+  "notesDeleteModeDissolveDescription": "保留笔记，直属子项提升到根级。",
+  "notesDeleteModeDeleteAllDescription": "删除该文件夹子树引用及其范围内笔记。",
+  "notesNewChildFolderTooltip": "新建子文件夹",
+  "notesMoveAction": "移动",
+  "notesMoveNodeDialogTitle": "移动节点",
+  "notesMoveTargetFolderLabel": "目标文件夹",
+  "notesMoveTargetRootLabel": "根级",
+  "notesMovedToast": "已移动。",
+  "notesNoMoveTargetsToast": "没有可用的移动目标。",
+  "notesRenameAction": "重命名",
+  "notesRenameDialogTitle": "重命名",
+  "notesRenamedToast": "已重命名。",
+  "notesNoteCreatedToast": "笔记已创建。"
+}
