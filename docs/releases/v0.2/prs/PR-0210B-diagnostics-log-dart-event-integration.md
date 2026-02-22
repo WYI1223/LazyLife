@@ -49,6 +49,11 @@ Out of scope:
 - [edit] `docs/releases/v0.2/README.md`
 - [edit] `docs/releases/v0.2/prs/PR-0210B-diagnostics-log-dart-event-integration.md`
 
+## Dependencies
+
+- `PR-0210C-diagnostics-session-single-file-log-policy`
+- `PR-0210A-diagnostics-log-dart-event-ffi-contract`
+
 ## Verification
 
 - `cd apps/lazynote_flutter && flutter analyze`

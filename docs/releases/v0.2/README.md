@@ -86,6 +86,7 @@ In scope:
 - hardening and release closure 鈥?incl. regression verification for bridge PRs (`PR-0208`)
 - CN/EN localization baseline (`PR-0209`)
 - debug viewer readability phase-2 upgrade (readability only) (`PR-0210`)
+- diagnostics session single-file log policy (`PR-0210C`)
 - `log_dart_event` FFI contract + binding (`PR-0210A`)
 - `log_dart_event` Dart call-site integration (`PR-0210B`)
 - docs language policy and docs index baseline (`PR-0211`)
@@ -165,6 +166,7 @@ Recommended order:
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en` (completed: M1/M2/M3 landed)
    - `PR-0210-debug-viewer-readability-upgrade` (completed: readability parser/rendering hardening + regressions)
+   - `PR-0210C-diagnostics-session-single-file-log-policy` (planned: startup-scoped single-file logs + retention)
    - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (follow-up FFI contract/codegen)
    - `PR-0210B-diagnostics-log-dart-event-integration` (follow-up Dart integration/safety)
    - `PR-0211-docs-language-policy-and-index`
@@ -285,6 +287,11 @@ Recommended order:
     - [x] land dense row readability hierarchy and row-level raw-copy action
     - [x] keep refresh/coalescing pipeline unchanged
     - [x] replay `flutter analyze` + targeted/full tests and close PR status/docs sync
+14. `PR-0210C` diagnostics session single-file log policy (planned)
+    - [ ] freeze one-startup-one-file naming + retention thresholds
+    - [ ] land Rust logging policy switch from rolling to session-single-file
+    - [ ] keep diagnostics viewer on single-file tail read path
+    - [ ] replay `cargo test` + `flutter analyze/test` and close docs/status sync
 
 ## Quality Gates
 
@@ -339,6 +346,7 @@ Feature lanes:
 - `docs/releases/v0.2/prs/PR-0208-workspace-hardening-doc-closure.md`
 - `docs/releases/v0.2/prs/PR-0209-ui-localization-cn-en.md`
 - `docs/releases/v0.2/prs/PR-0210-debug-viewer-readability-upgrade.md`
+- `docs/releases/v0.2/prs/PR-0210C-diagnostics-session-single-file-log-policy.md`
 - `docs/releases/v0.2/prs/PR-0210A-diagnostics-log-dart-event-ffi-contract.md`
 - `docs/releases/v0.2/prs/PR-0210B-diagnostics-log-dart-event-integration.md`
 - `docs/releases/v0.2/prs/PR-0211-docs-language-policy-and-index.md`

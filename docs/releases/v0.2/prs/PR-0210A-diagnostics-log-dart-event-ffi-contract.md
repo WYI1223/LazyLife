@@ -5,7 +5,7 @@
 
 ## Goal
 
-Define and land a stable FFI contract so Dart-side structured events can be written into the Rust rolling log stream.
+Define and land a stable FFI contract so Dart-side structured events can be written into the Rust session log stream.
 
 ## Scope (v0.2)
 
@@ -49,6 +49,10 @@ Out of scope:
 - [edit] `apps/lazynote_flutter/lib/core/bindings/api.dart` (codegen)
 - [edit] `docs/api/ffi-contracts.md`
 - [edit] `docs/api/error-codes.md` (if new code used)
+
+## Dependencies
+
+- `PR-0210C-diagnostics-session-single-file-log-policy`
 
 ## Verification
 
