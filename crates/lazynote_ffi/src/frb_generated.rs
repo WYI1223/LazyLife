@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1852740980;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2046837960;
 
 // Section: executor
 
@@ -422,6 +422,44 @@ fn wire__crate__api__init_logging_impl(
             transform_result_sse::<_, ()>((move || {
                 let output_ok =
                     Result::<_, ()>::Ok(crate::api::init_logging(api_level, api_log_dir))?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__log_dart_event_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "log_dart_event",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_level = <String>::sse_decode(&mut deserializer);
+            let api_event_name = <String>::sse_decode(&mut deserializer);
+            let api_module = <String>::sse_decode(&mut deserializer);
+            let api_message = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(crate::api::log_dart_event(
+                    api_level,
+                    api_event_name,
+                    api_module,
+                    api_message,
+                ))?;
                 Ok(output_ok)
             })())
         },
@@ -1241,6 +1279,20 @@ impl SseDecode for Vec<crate::api::WorkspaceNodeItem> {
     }
 }
 
+impl SseDecode for crate::api::LogDartEventResponse {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorCode = <Option<String>>::sse_decode(deserializer);
+        let mut var_message = <String>::sse_decode(deserializer);
+        return crate::api::LogDartEventResponse {
+            ok: var_ok,
+            error_code: var_errorCode,
+            message: var_message,
+        };
+    }
+}
+
 impl SseDecode for crate::api::NoteItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1474,21 +1526,21 @@ fn pde_ffi_dispatcher_primary_impl(
         7 => wire__crate__api__entry_create_task_impl(port, ptr, rust_vec_len, data_len),
         8 => wire__crate__api__entry_schedule_impl(port, ptr, rust_vec_len, data_len),
         9 => wire__crate__api__entry_search_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__note_create_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__note_get_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__note_set_tags_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__note_update_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__notes_list_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__tags_list_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__tasks_list_inbox_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__tasks_list_today_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__tasks_list_upcoming_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__workspace_create_folder_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__workspace_create_note_ref_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__workspace_delete_folder_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__workspace_list_children_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__workspace_move_node_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__workspace_rename_node_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__note_create_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__note_get_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__note_set_tags_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__note_update_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__notes_list_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__tags_list_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__tasks_list_inbox_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__tasks_list_today_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__tasks_list_upcoming_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__workspace_create_folder_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__workspace_create_note_ref_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__workspace_delete_folder_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__workspace_list_children_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__workspace_move_node_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__workspace_rename_node_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1504,7 +1556,8 @@ fn pde_ffi_dispatcher_sync_impl(
         4 => wire__crate__api__configure_entry_db_path_impl(ptr, rust_vec_len, data_len),
         5 => wire__crate__api__core_version_impl(ptr, rust_vec_len, data_len),
         10 => wire__crate__api__init_logging_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__ping_impl(ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__log_dart_event_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__ping_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1618,6 +1671,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::EntrySearchResponse>
     for crate::api::EntrySearchResponse
 {
     fn into_into_dart(self) -> crate::api::EntrySearchResponse {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::LogDartEventResponse {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.error_code.into_into_dart().into_dart(),
+            self.message.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::LogDartEventResponse
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::LogDartEventResponse>
+    for crate::api::LogDartEventResponse
+{
+    fn into_into_dart(self) -> crate::api::LogDartEventResponse {
         self
     }
 }
@@ -1925,6 +2000,15 @@ impl SseEncode for Vec<crate::api::WorkspaceNodeItem> {
         for item in self {
             <crate::api::WorkspaceNodeItem>::sse_encode(item, serializer);
         }
+    }
+}
+
+impl SseEncode for crate::api::LogDartEventResponse {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <Option<String>>::sse_encode(self.error_code, serializer);
+        <String>::sse_encode(self.message, serializer);
     }
 }
 

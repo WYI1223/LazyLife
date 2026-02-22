@@ -74,6 +74,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<WorkspaceNodeItem> dco_decode_list_workspace_node_item(dynamic raw);
 
   @protected
+  LogDartEventResponse dco_decode_log_dart_event_response(dynamic raw);
+
+  @protected
   NoteItem dco_decode_note_item(dynamic raw);
 
   @protected
@@ -188,6 +191,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<WorkspaceNodeItem> sse_decode_list_workspace_node_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LogDartEventResponse sse_decode_log_dart_event_response(
     SseDeserializer deserializer,
   );
 
@@ -338,6 +346,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_workspace_node_item(
     List<WorkspaceNodeItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_log_dart_event_response(
+    LogDartEventResponse self,
     SseSerializer serializer,
   );
 
