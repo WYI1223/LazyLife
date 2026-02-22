@@ -1,7 +1,7 @@
 # PR-0210C-diagnostics-session-single-file-log-policy
 
 - Proposed title: `feat(logging): session-scoped single-file log policy for diagnostics`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -82,7 +82,23 @@ This section is the source of truth for implementation.
 
 ## Acceptance Criteria
 
-- [ ] One startup produces one session-scoped log file with timestamp+PID identity.
-- [ ] Diagnostics default read path remains single-file tail (no cross-file merge).
-- [ ] Retention cleanup runs best-effort and is covered by regression tests.
-- [ ] Release/docs status is synchronized in closure commit.
+- [x] One startup produces one session-scoped log file with timestamp+PID identity.
+- [x] Diagnostics default read path remains single-file tail (no cross-file merge).
+- [x] Retention cleanup runs best-effort and is covered by regression tests.
+- [x] Release/docs status is synchronized in closure commit.
+
+## Closure Notes
+
+- Rust logging policy switched from rolling files to session-scoped file naming:
+  - `lazynote_pid<PID>_<YYYY-MM-DD_HH-MM-SS>.log`
+- Startup-time retention cleanup is best-effort with explicit thresholds:
+  - `max_age_days=7`
+  - `max_files=20`
+  - `max_total_bytes=50MB`
+- Diagnostics reader path remains single-file tail read (`LogReader.readLatestTail`).
+- Verification replay:
+  - `cd crates && cargo fmt --all -- --check`
+  - `cd crates && cargo test -p lazynote_core logging::tests`
+  - `cd apps/lazynote_flutter && flutter analyze`
+  - `cd apps/lazynote_flutter && flutter test test/log_reader_test.dart`
+  - `cd apps/lazynote_flutter && flutter test`
