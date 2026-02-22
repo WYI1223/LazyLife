@@ -164,7 +164,7 @@ Recommended order:
    - `PR-0207D-explorer-ordering-closure` (completed: docs/status sync + verification replay + QA closure)
 4. Support lane (parallel after shell baseline is stable):
    - `PR-0209-ui-localization-cn-en` (completed: M1/M2/M3 landed)
-   - `PR-0210-debug-viewer-readability-upgrade` (readability-only track)
+   - `PR-0210-debug-viewer-readability-upgrade` (completed: readability parser/rendering hardening + regressions)
    - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (follow-up FFI contract/codegen)
    - `PR-0210B-diagnostics-log-dart-event-integration` (follow-up Dart integration/safety)
    - `PR-0211-docs-language-policy-and-index`
@@ -279,12 +279,12 @@ Recommended order:
    - [x] M3 partial: replay `flutter analyze` + full `flutter test` after Notes migration
     - [x] M3: add dedicated startup locale-resolution and runtime-switch regression tests
     - [x] M3: final release/doc closure and mark PR completed
-13. `PR-0210` debug viewer readability upgrade (in progress; readability-only scope)
+13. `PR-0210` debug viewer readability upgrade (completed; readability-only scope)
     - [x] freeze readability-only contract and defer `log_dart_event` to `PR-0210A/B`
-    - [ ] land mixed-format parser normalization (`detailed`/`ISO`/`time-only` + level alias normalization)
-    - [ ] land dense row readability hierarchy and row-level raw-copy action
-    - [ ] keep refresh/coalescing pipeline unchanged
-    - [ ] replay `flutter analyze` + targeted/full tests and close PR status/docs sync
+    - [x] land mixed-format parser normalization (`detailed`/`ISO`/`time-only` + level alias normalization)
+    - [x] land dense row readability hierarchy and row-level raw-copy action
+    - [x] keep refresh/coalescing pipeline unchanged
+    - [x] replay `flutter analyze` + targeted/full tests and close PR status/docs sync
 
 ## Quality Gates
 

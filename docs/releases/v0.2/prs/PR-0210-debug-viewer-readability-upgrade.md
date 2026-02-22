@@ -1,7 +1,7 @@
 # PR-0210-debug-viewer-readability-upgrade
 
 - Proposed title: `feat(diagnostics): debug viewer readability phase-2 (semantic normalization + dense rendering)`
-- Status: In Progress (M1 contract freeze)
+- Status: Completed
 
 ## Goal
 
@@ -44,10 +44,10 @@ This section is the source of truth for implementation.
 
 1. DOC (`PR-0210`, completed)
    - scope/contract/verification frozen and FFI explicitly deferred
-2. DEV (`PR-0210`, next commit group)
-   - implement parser + rendering readability upgrades and regressions
-3. CLOSE (`PR-0210`, final commit group)
-   - replay verification, mark status completed, sync release/docs index
+2. DEV (`PR-0210`, completed)
+   - parser + rendering readability upgrades and regressions landed
+3. CLOSE (`PR-0210`, completed)
+   - verification replay complete, status/docs index synchronized
 
 ## Step-by-Step
 
@@ -75,9 +75,15 @@ This section is the source of truth for implementation.
 - `cd apps/lazynote_flutter && flutter test test/debug_logs_panel_test.dart`
 - `cd apps/lazynote_flutter && flutter test`
 
+Replay result:
+
+- `flutter analyze`: passed
+- `flutter test test/debug_logs_panel_test.dart`: passed
+- `flutter test`: passed
+
 ## Acceptance Criteria
 
-- [ ] Parser normalization handles mixed timestamp/level raw formats.
-- [ ] Dense rows preserve readability and raw copy fidelity.
-- [ ] Existing refresh stability behavior is preserved.
-- [ ] PR status/docs index are synchronized in closure commit.
+- [x] Parser normalization handles mixed timestamp/level raw formats.
+- [x] Dense rows preserve readability and raw copy fidelity.
+- [x] Existing refresh stability behavior is preserved.
+- [x] PR status/docs index are synchronized in closure commit.
