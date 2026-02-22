@@ -1,7 +1,7 @@
 # PR-0210B-diagnostics-log-dart-event-integration
 
 - Proposed title: `feat(diagnostics): integrate log_dart_event call sites and safety policy`
-- Status: Planned
+- Status: Completed
 
 ## Goal
 
@@ -35,17 +35,42 @@ Out of scope:
    - event names/modules follow a stable naming convention
    - payload excludes user-sensitive content by default
 
+### Call-Site Allowlist (frozen)
+
+- `core.rust_bridge`
+  - `rust_bridge.logging_bootstrap.ok`
+  - `rust_bridge.logging_bootstrap.error`
+  - `rust_bridge.health_check.ok`
+  - `rust_bridge.health_check.error`
+- `diagnostics.debug_logs_panel`
+  - `diagnostics.logs.copy_visible`
+  - `diagnostics.logs.open_folder.ok`
+  - `diagnostics.logs.open_folder.error`
+- `notes.notes_controller`
+  - `workspace.node_move.ok`
+  - `workspace.node_move.error`
+  - `workspace.node_move.exception`
+
+### Runtime Safety Policy (frozen)
+
+- all call sites use centralized `DartEventLogger.tryLog(...)`
+- `DartEventLogger` is no-throw by contract
+- duplicate bursts are suppressed with dedupe window (`2s` default)
+- FFI rejection/failure is treated as diagnostics degradation only
+
 ## Execution Split (DOC -> DEV -> CLOSE)
 
 1. DOC: freeze call-site boundary and safety policy
 2. DEV: wire call sites + tests
 3. CLOSE: replay verification and docs/status closure
 
-## Planned File Changes
+## Landed File Changes
 
-- [edit] `apps/lazynote_flutter/lib/app/*` (selected lifecycle call sites)
-- [edit] `apps/lazynote_flutter/lib/features/diagnostics/*` (selected diagnostics call sites)
-- [edit] `apps/lazynote_flutter/test/*` (integration regressions)
+- [add] `apps/lazynote_flutter/lib/core/diagnostics/dart_event_logger.dart`
+- [edit] `apps/lazynote_flutter/lib/core/rust_bridge.dart`
+- [edit] `apps/lazynote_flutter/lib/features/diagnostics/debug_logs_panel.dart`
+- [add] `apps/lazynote_flutter/test/dart_event_logger_test.dart`
+- [edit] `apps/lazynote_flutter/test/rust_bridge_test.dart`
 - [edit] `docs/releases/v0.2/README.md`
 - [edit] `docs/releases/v0.2/prs/PR-0210B-diagnostics-log-dart-event-integration.md`
 
@@ -54,13 +79,19 @@ Out of scope:
 - `PR-0210C-diagnostics-session-single-file-log-policy`
 - `PR-0210A-diagnostics-log-dart-event-ffi-contract`
 
-## Verification
+## Verification Replay
 
 - `cd apps/lazynote_flutter && flutter analyze`
-- `cd apps/lazynote_flutter && flutter test`
+- `cd apps/lazynote_flutter && flutter test test/dart_event_logger_test.dart test/rust_bridge_test.dart test/debug_logs_panel_test.dart`
 
 ## Acceptance Criteria
 
-- [ ] Selected call sites emit structured Dart events through FFI.
-- [ ] Failures in logging path do not break user-facing flows.
-- [ ] Docs status and rollout boundary are synchronized.
+- [x] Selected call sites emit structured Dart events through FFI.
+- [x] Failures in logging path do not break user-facing flows.
+- [x] Docs status and rollout boundary are synchronized.
+
+## Closure Notes
+
+- Added centralized wrapper `DartEventLogger` for no-throw FFI event logging.
+- Integrated lifecycle and diagnostics call-site allowlist from this PR.
+- Locked non-blocking behavior with dedicated logger tests and RustBridge regression.

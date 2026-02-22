@@ -58,6 +58,19 @@ This file is the consolidated index for FFI contracts.
 - `invalid_message`
 - `logging_not_initialized`
 
+## Diagnostics Log Bridge Integration (Flutter-only, PR-0210B)
+
+This PR integrates selected Dart call sites and does not change FFI shape.
+
+- no Rust FFI API added/removed/renamed
+- no generated Dart binding shape change
+- no new stable error-code namespace
+- call-site boundary is first-party only (no plugin emit path in v0.2)
+- all call sites use centralized `DartEventLogger.tryLog(...)`:
+  - no-throw behavior (FFI failures are non-blocking)
+  - default dedupe window for repeated event bursts
+  - includes workspace move mutation events from controller path
+
 ## Notes/Tags APIs (PR-0010B)
 
 All APIs are use-case level and async.

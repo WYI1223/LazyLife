@@ -168,7 +168,7 @@ Recommended order:
    - `PR-0210-debug-viewer-readability-upgrade` (completed: readability parser/rendering hardening + regressions)
    - `PR-0210C-diagnostics-session-single-file-log-policy` (completed: startup-scoped single-file logs + retention cleanup)
    - `PR-0210A-diagnostics-log-dart-event-ffi-contract` (completed: sync FFI contract + binding + smoke tests)
-   - `PR-0210B-diagnostics-log-dart-event-integration` (next: Dart call-site integration/safety)
+   - `PR-0210B-diagnostics-log-dart-event-integration` (completed: allowlisted Dart call-site wiring + non-blocking guardrails)
    - `PR-0211-docs-language-policy-and-index`
    - `PR-0212-links-index-open-v1`
    - `PR-0201-global-hotkey-quick-entry`
@@ -298,6 +298,12 @@ Recommended order:
     - [x] land Rust FFI API + core bridge and regenerate FRB bindings
     - [x] add Flutter contract smoke for generated sync call path
     - [x] sync `ffi-contracts` + `error-codes` and close docs/status
+16. `PR-0210B` diagnostics `log_dart_event` Dart integration (completed)
+    - [x] freeze first-party call-site allowlist (lifecycle + diagnostics actions)
+    - [x] add centralized `DartEventLogger` (`no-throw` + dedupe guard)
+    - [x] wire selected lifecycle/diagnostics call sites to wrapper
+    - [x] add regression tests for non-blocking behavior and dedupe policy
+    - [x] sync release PR status/docs closure
 
 ## Quality Gates
 
