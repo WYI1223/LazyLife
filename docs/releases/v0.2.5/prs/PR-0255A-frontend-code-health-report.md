@@ -1,7 +1,7 @@
 # PR-0255A-frontend-code-health-report
 
 - Proposed title: `docs(frontend): code health report with risk-ranked module inventory`
-- Status: In Progress (M1 baseline input lock)
+- Status: Completed (M1–M4 closed)
 
 ## Goal
 
@@ -74,8 +74,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] baseline inputs are confirmed reproducible
-- [ ] scope is signed off by frontend TL/owner
+- [x] baseline inputs are confirmed reproducible
+- [x] scope is signed off by frontend TL/owner
 
 ### M2 - Evidence Collection
 
@@ -96,8 +96,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] every candidate module has at least one evidence anchor
-- [ ] no risk statement exists without evidence link
+- [x] every candidate module has at least one evidence anchor
+- [x] no risk statement exists without evidence link
 
 ### M3 - Risk Grading and Health Conclusion
 
@@ -117,8 +117,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] P0/P1/P2 grading is consistent and auditable
-- [ ] top risk conclusions are evidence-backed
+- [x] P0/P1/P2 grading is consistent and auditable
+- [x] top risk conclusions are evidence-backed
 
 ### M4 - TL Review and Closure
 
@@ -139,8 +139,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] report passes "no-solution-leak" boundary (`0255A` only risk diagnosis)
-- [ ] report is accepted as canonical input for `PR-0255B`
+- [x] report passes "no-solution-leak" boundary (`0255A` only risk diagnosis)
+- [x] report is accepted as canonical input for `PR-0255B`
 
 ## Planned File Changes
 
@@ -149,7 +149,13 @@ Exit Criteria:
 
 ## Acceptance Criteria
 
-- [ ] high-risk module list is explicit and evidence-backed
-- [ ] each listed risk has a concrete module/file anchor
-- [ ] risk grading is consistent and reviewable
-- [ ] milestone outputs (`M1`-`M4`) are complete and review-signed
+- [x] high-risk module list is explicit and evidence-backed
+- [x] each listed risk has a concrete module/file anchor
+- [x] risk grading is consistent and reviewable
+- [x] milestone outputs (`M1`-`M4`) are complete and review-signed
+
+## Closure Note (M4)
+
+- Final report: `docs/reports/v0.2.5/frontend-review/01-code-health-report.md`
+- Scope completed: M1 baseline lock, M2 evidence collection, M3 risk grading, M4 TL review/closure
+- Handoff: `PR-0255B` takes this report as canonical risk-diagnosis input
