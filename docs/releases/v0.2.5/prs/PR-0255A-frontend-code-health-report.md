@@ -159,3 +159,4 @@ Exit Criteria:
 - Final report: `docs/reports/v0.2.5/frontend-review/01-code-health-report.md`
 - Scope completed: M1 baseline lock, M2 evidence collection, M3 risk grading, M4 TL review/closure
 - Handoff: `PR-0255B` takes this report as canonical risk-diagnosis input
+- TL sign-off: `WYI1223` (2026-02-23)
