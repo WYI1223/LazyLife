@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-3-pr-gate-rules` |
 | PR Title | `docs(frontend): PR-0252 P0-3 lock PR gate rules` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -56,8 +56,8 @@ Out of scope:
 | D2 | `rg -n "import.*managers/" apps/lazynote_flutter/lib/features/notes/notes_page.dart apps/lazynote_flutter/lib/features/notes/note_content_area.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart` | 零匹配 |
 | D3 | 检查 manager 文件的构造函数参数 | 仅通过构造函数注入，无自行构造其他 manager |
 | D4 | 检查 manager 的 import 和构造函数 | invoker 通过构造函数注入 |
-| D5 | `rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/` | 仅 `foundation.dart` |
-| D6 | `rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/` | 零匹配 |
+| D5 | `if (Test-Path "apps/lazynote_flutter/lib/features/notes/managers") { rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/ } else { Write-Output "[skip] managers/ not created yet" }` | 目录存在时仅 `foundation.dart`；目录不存在时输出 skip |
+| D6 | `if (Test-Path "apps/lazynote_flutter/lib/features/notes/dialogs") { rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/ } else { Write-Output "[skip] dialogs/ not created yet" }` | 目录存在时零匹配；目录不存在时输出 skip |
 | D7 | `rg -n "features/workspace" apps/lazynote_flutter/lib/features/notes/` | 分阶段目标（Phase 0–1 允许残留；Phase 2 P2-3 后零匹配；Phase 3 零匹配） |
 | D8 | `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/` | 允许 tag_filter.dart（临时豁免） |
 
@@ -73,13 +73,25 @@ Out of scope:
 
 ## Planned File Changes
 
-- [add/edit] 门禁规则确认文档（可作为 PR description 或独立文档）
+- [edit] `docs/releases/v0.2.5/prs/PR-0252/P0-3-pr-gate-rules.md`
+- [edit] `docs/releases/v0.2.5/prs/PR-0252-dart-modular-refactor-and-decoupling.md`（任务看板状态同步）
+- [edit] `docs/reports/v0.2.5/frontend-review/03-phased-refactor-plan.md`（阶段/任务状态同步）
 
 ## Acceptance Criteria
 
-- [ ] 0255B D1–D8 + S1–S7 规则文档化（Section 6 落地）
-- [ ] 全部 `rg` 检查命令可在当前环境执行
+- [x] 0255B D1–D8 + S1–S7 规则文档化（Section 6 落地）
+- [x] 全部 `rg` 检查命令可在当前环境执行（含 Phase 0 目录未创建时 skip 处理）
 - [ ] TL 确认
+
+## Verification Snapshot (2026-02-24)
+
+| Rule | Baseline Result | Conclusion |
+|------|-----------------|------------|
+| D2 | `[ok] D2 zero matches` | 命令可执行，结果符合预期 |
+| D5 | `[skip] managers/ not created yet` | 命令可执行，Phase 0 合理 skip |
+| D6 | `[skip] dialogs/ not created yet` | 命令可执行，Phase 0 合理 skip |
+| D7 | `notes/` 下 4 处 `features/workspace` 匹配（`notes_page.dart` ×2，`notes_controller.dart` ×2） | Phase 0–1 允许残留，符合分阶段口径 |
+| D8 | `tag_filter.dart` 1 处匹配 `notes_style.dart` | 符合 D8 临时豁免口径 |
 
 ## CI Gates
 
