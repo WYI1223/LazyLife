@@ -14,7 +14,7 @@
 | **体检范围** | `apps/lazynote_flutter/lib/` 全部手写代码（排除自动生成） |
 | **代码基线** | branch: `main`, commit: `4144598ad2b6ce56fd1b7564317ad499acce9585` |
 | **运行环境基线** | Flutter 3.41.0 · Dart 3.11.0 · FRB 2.11.1 · Windows 11 Pro 10.0.26100 |
-| **是否可本地运行** | 是（`flutter analyze` 零警告，`flutter test` 313 pass / 0 fail） |
+| **是否可本地运行** | 是（`flutter analyze` 零警告，`flutter test` 312 pass / 1 known-fail）。已知失败项：`smoke_test.dart` "calendar route is reachable from workbench"（`CalendarPage` L67 Row 布局溢出，属测试视口约束下的渲染溢出，非逻辑错误） |
 
 ### 基线构件索引
 
@@ -540,8 +540,10 @@ No issues found! (ran in 5.0s)
 ### 7.4 `flutter test` 输出
 
 ```
-00:30 +313: All tests passed!
+00:03 +312 -1: Some tests failed.
 ```
+
+已知失败项：`smoke_test.dart` "calendar route is reachable from workbench" — `CalendarPage` L67 Row 在测试视口（800×600）下溢出。属布局约束问题，非业务逻辑错误。
 
 ### 7.5 TODO/FIXME 清单
 

@@ -1,7 +1,7 @@
 # PR-0255B-frontend-module-split-blueprint
 
 - Proposed title: `docs(frontend): module split blueprint with boundary graph and priorities`
-- Status: Planned
+- Status: Completed (M1 passed, M2 passed, M3 passed, TL/owner signed-off)
 
 ## Goal
 
@@ -46,8 +46,8 @@ template.
 ## Milestone-to-Template Mapping
 
 1. `M1` maps to template sections `0`, `1`, `2`, and `3.1`.
-2. `M2` maps to template sections `3.2`, `3.3`, and `5`.
-3. `M3` maps to template sections `4`, `6`, `7`, `8`, and `9`.
+2. `M2` maps to template sections `3.2`, `3.3`, and `4`.
+3. `M3` maps to template sections `5`, `6`, `7`, `8`, and `9`.
 
 ## Milestones
 
@@ -63,8 +63,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] current boundary map is complete for high-risk modules
-- [ ] all pain points link back to `0255A` evidence
+- [x] current boundary map is complete for high-risk modules
+- [x] all pain points link back to `0255A` evidence
 
 ### M2 - Target-State Blueprint Design
 
@@ -74,28 +74,28 @@ Goal:
 
 Deliverables:
 
-- draft sections `3.2/3.3/5` in `02-module-split-blueprint.md`
+- draft sections `3.2/3.3/4` in `02-module-split-blueprint.md`
 
 Exit Criteria:
 
-- [ ] target ownership boundaries are explicit
-- [ ] allowed/deprecated dependencies are unambiguous
+- [x] target ownership boundaries are explicit
+- [x] allowed/deprecated dependencies are unambiguous
 
 ### M3 - Priority Sequencing and Closure
 
 Goal:
 
-- produce executable split ordering for `PR-0252`
+- produce executable split ordering for `PR-0255C`
 
 Deliverables:
 
-- completed sections `4/6/7/8/9` in `02-module-split-blueprint.md`
+- completed sections `5/6/7/8/9` in `02-module-split-blueprint.md`
 - closure note in `PR-0255B`
 
 Exit Criteria:
 
-- [ ] `P0/P1/P2` split priorities are evidence-backed
-- [ ] blueprint is approved by frontend TL/owner
+- [x] `P0/P1/P2` split priorities are evidence-backed
+- [x] blueprint is approved by frontend TL/owner
 
 ## Planned File Changes
 
@@ -104,7 +104,13 @@ Exit Criteria:
 
 ## Acceptance Criteria
 
-- [ ] boundary graph is clear and actionable
-- [ ] priority order is explicit and evidence-linked
-- [ ] `PR-0252` can follow this blueprint without redefining boundaries
-- [ ] milestone outputs (`M1`-`M3`) are complete and review-signed
+- [x] boundary graph is clear and actionable
+- [x] priority order is explicit and evidence-linked
+- [x] `PR-0255C` can follow this blueprint without redefining boundaries
+- [x] milestone outputs (`M1`-`M3`) are complete and review-signed
+
+## Closure Note
+
+- TL/owner review completed; wording normalized and final file frozen.
+- `PR-0255B` is approved as direct input contract for `PR-0255C`.
+- Sign-off date: 2026-02-24.
