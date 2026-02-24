@@ -24,7 +24,7 @@
 | 用例 ID | 用例名称 | 关联模块 | 操作步骤 | 通过标准 |
 |---------|---------|---------|---------|---------|
 | REG-01 | 创建笔记并自动选中 | NotesController/Coordinator | 1. 点击创建按钮 2. 观察笔记列表 3. 观察编辑器 | 新笔记出现在列表顶部；编辑器自动聚焦；Tab 栏新增条目 |
-| REG-02 | 编辑笔记内容触发自动保存 | NoteDraftManager | 1. 选中一条笔记 2. 输入内容 3. 等待自动保存 | 保存状态依次经过 dirty -> saving -> saved；badge 短暂显示后消失 |
+| REG-02 | 编辑笔记内容触发自动保存 | NoteDraftManager | 1. 选中一条笔记 2. 输入内容 3. 等待自动保存 | 保存状态依次经过 dirty → saving → saved；badge 短暂显示后消失 |
 | REG-03 | 手动切换笔记触发保存守卫 | NoteTabManager + NoteDraftManager | 1. 编辑笔记 A 2. 切换到笔记 B 3. 观察保存状态 | 笔记 A 内容已保存后才切换到 B；B 的内容正确加载 |
 | REG-04 | 标签创建与筛选 | NoteTagManager | 1. 为笔记添加标签 2. 激活标签筛选 3. 清除筛选 | 标签正确显示；筛选后列表仅含匹配项；清除后恢复全列表 |
 | REG-05 | 工作区创建文件夹 | WorkspaceTreeManager | 1. 在 Explorer 中右键 2. 创建文件夹 3. 观察树更新 | 文件夹出现在树中正确位置；Explorer 自动刷新 |
@@ -66,4 +66,3 @@ dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
 ```
-
