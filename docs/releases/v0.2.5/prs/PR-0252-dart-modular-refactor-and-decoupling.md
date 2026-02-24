@@ -163,8 +163,8 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 
 ## Task Checklist (PR-0252 Execution Board)
 
-- [ ] `P0-1` create `workspace_port.dart`
-- [ ] `P0-2` regression checklist v1 confirmed
+- [x] `P0-1` create `workspace_port.dart`
+- [x] `P0-2` regression checklist v1 confirmed
 - [ ] `P0-3` PR gate rules confirmed
 - [ ] `P0-4` NoteSaveTracker sample extraction PR merged
 - [ ] `P0-5` sample PR TL review and regression pass
@@ -224,8 +224,8 @@ Baseline note:
 ### Structural Gate Checks (D1-D8)
 
 - `rg -n "import.*managers/" apps/lazynote_flutter/lib/features/notes/notes_page.dart apps/lazynote_flutter/lib/features/notes/note_content_area.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
-- `rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/`
-- `rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/`
+- `if (Test-Path "apps/lazynote_flutter/lib/features/notes/managers") { rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/ } else { Write-Output "[skip] managers/ not created yet" }`
+- `if (Test-Path "apps/lazynote_flutter/lib/features/notes/dialogs") { rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/ } else { Write-Output "[skip] dialogs/ not created yet" }`
 - `rg -n "features/workspace" apps/lazynote_flutter/lib/features/notes/`
 - `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/`
 
@@ -281,4 +281,3 @@ Individual task specs are in `docs/releases/v0.2.5/prs/PR-0252/`:
 - `P3-3-boundary-map-update.md`
 - `P3-4-retrospective.md`
 - `P3-5-tl-acceptance.md`
-
