@@ -19,7 +19,8 @@ user-facing features.
 
 - Status: **In Progress**
 - Baseline sub-lane (`PR-0254A/B/C`): **Completed**
-- Current active item: `PR-0255A-frontend-code-health-report`
+- Frontend review sub-lane (`PR-0255A/B`): **Completed**
+- Current active item: `PR-0255C-frontend-phased-refactor-plan`
 
 ## Lane Strategy
 
