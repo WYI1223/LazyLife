@@ -29,7 +29,7 @@
 ## Prerequisites
 
 - 无前置任务（Phase 0 起始任务）
-- Section 2.3 前置条件全部满足（0255A/B 签字、flutter analyze 零警告、测试基线 312/1）
+- Section 2.3 前置条件全部满足（0255A/B 签字、flutter analyze 零警告、测试基线 313/0）
 
 ## Scope
 
