@@ -163,8 +163,8 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 
 ## Task Checklist (PR-0252 Execution Board)
 
-- [ ] `P0-1` create `workspace_port.dart`
-- [ ] `P0-2` regression checklist v1 confirmed
+- [x] `P0-1` create `workspace_port.dart`
+- [x] `P0-2` regression checklist v1 confirmed
 - [ ] `P0-3` PR gate rules confirmed
 - [ ] `P0-4` NoteSaveTracker sample extraction PR merged
 - [ ] `P0-5` sample PR TL review and regression pass
@@ -281,4 +281,3 @@ Individual task specs are in `docs/releases/v0.2.5/prs/PR-0252/`:
 - `P3-3-boundary-map-update.md`
 - `P3-4-retrospective.md`
 - `P3-5-tl-acceptance.md`
-

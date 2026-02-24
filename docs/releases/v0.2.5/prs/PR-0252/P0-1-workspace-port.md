@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-1-workspace-port` |
 | PR Title | `refactor(frontend): PR-0252 P0-1 add workspace port abstraction` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Merged (`main` @ `a01e33c`, implementation commit `5265599`) |
 
 ## References
 
@@ -51,10 +51,10 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] 接口声明 WorkspaceTreeManager 所需的全部方法签名（约 8–10 个）
-- [ ] `flutter analyze` 零警告
-- [ ] 文件 <30 行
-- [ ] 文件内零 `features/workspace/` import
+- [x] 接口声明 WorkspaceTreeManager 所需的全部方法签名（约 8–10 个）
+- [x] `flutter analyze` 零警告
+- [x] 文件 <30 行（当前 28 行）
+- [x] 文件内零 `features/workspace/` import
 
 ## CI Gates
 
@@ -82,4 +82,3 @@ Baseline: 313 pass / 0 known-fail
 ## Rollback
 
 独立 revert 即可，无其他 PR 依赖此文件（P1-1 尚未开始）。
-
