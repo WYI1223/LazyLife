@@ -1,7 +1,7 @@
 # PR-0255C-frontend-phased-refactor-plan
 
 - Proposed title: `docs(frontend): phased refactor plan with regression and PR gates`
-- Status: Planned
+- Status: Completed (M1 passed, M2 passed, M3 passed, TL/owner signed-off)
 
 ## Goal
 
@@ -63,8 +63,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] each phase has explicit scope and "out-of-scope"
-- [ ] each phase has start/exit conditions
+- [x] each phase has explicit scope and "out-of-scope"
+- [x] each phase has start/exit conditions
 
 ### M2 - Regression and Gate Matrix
 
@@ -78,8 +78,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] regression matrix covers critical workspace/notes flows
-- [ ] PR gates are checkable and reproducible
+- [x] regression matrix covers critical workspace/notes flows
+- [x] PR gates are checkable and reproducible
 
 ### M3 - Review, Risk Fallback, and Closure
 
@@ -94,8 +94,8 @@ Deliverables:
 
 Exit Criteria:
 
-- [ ] rollback strategy is defined for each phase
-- [ ] plan is approved as direct execution input for `PR-0252`
+- [x] rollback strategy is defined for each phase
+- [x] plan is approved as direct execution input for `PR-0252`
 
 ## Planned File Changes
 
@@ -105,7 +105,13 @@ Exit Criteria:
 
 ## Acceptance Criteria
 
-- [ ] 2-4 week phased plan is explicit and executable
-- [ ] regression and PR gate requirements are unambiguous
-- [ ] `PR-0252` prerequisites point to this plan
-- [ ] milestone outputs (`M1`-`M3`) are complete and review-signed
+- [x] 2-4 week phased plan is explicit and executable
+- [x] regression and PR gate requirements are unambiguous
+- [x] `PR-0252` prerequisites point to this plan
+- [x] milestone outputs (`M1`-`M3`) are complete and review-signed
+
+## Closure Note
+
+- TL/owner review completed; wording normalized and final file frozen.
+- `PR-0255C` is approved as direct execution plan input for `PR-0252`.
+- Sign-off date: 2026-02-24.

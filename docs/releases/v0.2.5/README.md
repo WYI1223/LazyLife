@@ -19,7 +19,8 @@ user-facing features.
 
 - Status: **In Progress**
 - Baseline sub-lane (`PR-0254A/B/C`): **Completed**
-- Current active item: `PR-0255A-frontend-code-health-report`
+- Frontend review sub-lane (`PR-0255A/B/C`): **Completed**
+- Current active item: `PR-0252-dart-modular-refactor-and-decoupling`
 
 ## Lane Strategy
 
@@ -142,4 +143,5 @@ v0.2.5 is complete when:
 - `docs/releases/v0.2.5/prs/PR-0255B-frontend-module-split-blueprint.md`
 - `docs/releases/v0.2.5/prs/PR-0255C-frontend-phased-refactor-plan.md`
 - `docs/releases/v0.2.5/prs/PR-0252-dart-modular-refactor-and-decoupling.md`
+  - Execution sub-PRs: `docs/releases/v0.2.5/prs/PR-0252/` (22 task specs, P0-1 ~ P3-5)
 - `docs/releases/v0.2.5/prs/PR-0253-v0.2.5-closure-and-v0.3-handoff.md`
