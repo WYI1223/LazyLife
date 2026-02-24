@@ -150,9 +150,9 @@
 - 前置条件 P4–P6 未及时确认 → 缓解：提前 1 周沟通
 
 **阶段 DoD：**
-- [ ] `workspace_port.dart` 已合并
+- [x] `workspace_port.dart` 已合并
 - [ ] NoteSaveTracker 样板 PR 已合并，测试基线不变（313 pass / 0 known-fail）
-- [ ] 回归清单 v1 已确认
+- [x] 回归清单 v1 已确认
 - [ ] PR 门禁规则文档化
 
 **验证方式：** `flutter analyze` + `flutter test` + 回归清单 v1 手工走查
@@ -308,9 +308,9 @@
 
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
-| P0-1 | 创建 `workspace_port.dart` 抽象接口 | notes | 结构拆分 | 无 | Agent | 0.5 | PR（<30 行） | 接口声明 WorkspaceTreeManager 所需的全部方法签名（约 8–10 个）；`flutter analyze` 零警告 | 未开始 |
-| P0-2 | 编写回归清单 v1 | 仓库治理 | 回归 | 无 | Agent | 0.5 | 文档 | 覆盖笔记核心主流程 8–10 步（Section 5.2A）；TL 确认 | 未开始 |
-| P0-3 | 确认 PR 门禁规则 | 仓库治理 | 门禁/规范 | 无 | Agent | 0.5 | 文档确认 | 0255B D1–D8 + S1–S7 规则文档化（Section 6 落地）；TL 确认 | 未开始 |
+| P0-1 | 创建 `workspace_port.dart` 抽象接口 | notes | 结构拆分 | 无 | Agent | 0.5 | PR（<30 行） | 接口声明 WorkspaceTreeManager 所需的全部方法签名（约 8–10 个）；`flutter analyze` 零警告 | 已完成（2026-02-24） |
+| P0-2 | 编写回归清单 v1 | 仓库治理 | 回归 | 无 | Agent | 0.5 | 文档 | 覆盖笔记核心主流程 8–10 步（Section 5.2A）；TL 确认 | 已完成（2026-02-24） |
+| P0-3 | 确认 PR 门禁规则 | 仓库治理 | 门禁/规范 | 无 | Agent | 0.5 | 文档确认 | 0255B D1–D8 + S1–S7 规则文档化（Section 6 落地）；TL 确认 | 评审中（2026-02-24） |
 | P0-4 | 样板 PR：提取 NoteSaveTracker | notes/managers | 结构拆分 | P0-3 | Agent | 1.0 | PR | NoteSaveTracker 为独立 ChangeNotifier，<250 行，可独立实例化测试；原 controller facade 转发；CI 全绿 | 未开始 |
 | P0-5 | 样板 PR review + 合并 + 回归验证 | notes | 回归 | P0-4 | TL + Agent | 0.5 | 合并记录 | TL review 通过；回归清单 v1 走查通过；测试基线不变（313 pass / 0 known-fail） | 未开始 |
 
@@ -605,8 +605,8 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 | D2 Widget → Manager：禁止 | `rg -n "import.*managers/" apps/lazynote_flutter/lib/features/notes/notes_page.dart apps/lazynote_flutter/lib/features/notes/note_content_area.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart` | 零匹配 |
 | D3 Manager → Manager：受限允许 | 检查 manager 文件的构造函数参数 | 仅通过构造函数注入，无自行构造其他 manager |
 | D4 Manager → Invoker：允许 | 检查 manager 的 import 和构造函数 | invoker 通过构造函数注入 |
-| D5 Manager → Widget：禁止 | `rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/` | 仅允许 `package:flutter/foundation.dart`（ChangeNotifier），无 material/widgets |
-| D6 Dialog → Coordinator/Manager：禁止 | `rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/` | 零匹配；对话框仅通过回调参数通信 |
+| D5 Manager → Widget：禁止 | `if (Test-Path "apps/lazynote_flutter/lib/features/notes/managers") { rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/ } else { Write-Output "[skip] managers/ not created yet" }` | 目录存在时仅允许 `package:flutter/foundation.dart`（ChangeNotifier），无 material/widgets；目录不存在时 skip |
+| D6 Dialog → Coordinator/Manager：禁止 | `if (Test-Path "apps/lazynote_flutter/lib/features/notes/dialogs") { rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/ } else { Write-Output "[skip] dialogs/ not created yet" }` | 目录存在时零匹配；目录不存在时 skip；对话框仅通过回调参数通信 |
 | D7 跨 feature：禁止直接 import（分阶段） | `rg -n "features/workspace" apps/lazynote_flutter/lib/features/notes/` | **Phase 0–1：** 允许残留（现有 `notes_controller.dart` 中 workspace import 尚未迁移），但新增文件禁止引入新的跨 feature import；**Phase 2 P2-3 后：** 零匹配（`workspace_port.dart` 定义在 notes 内部，不 import `features/workspace/`；`WorkspaceTreeManager` 仅依赖 `WorkspacePort`）；**Phase 3 P3-1 后：** 零匹配（与 Phase 2 一致） |
 | D8 notes_style 临时豁免 | `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/` | 允许 `tag_filter.dart` → `notes_style.dart`（纯样式常量） |
 

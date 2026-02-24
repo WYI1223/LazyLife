@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-2-regression-checklist` |
 | PR Title | `docs(frontend): PR-0252 P0-2 add regression checklist v1` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged (`main` @ `428eed3`, implementation commits `a7f6758`, `3c7b49c`) |
 
 ## References
 
