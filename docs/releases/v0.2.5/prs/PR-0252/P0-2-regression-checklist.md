@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-2-regression-checklist` |
 | PR Title | `docs(frontend): PR-0252 P0-2 add regression checklist v1` |
 | Estimated Effort | 0.5 person-day |
-| Status | In Progress |
+| Status | Ready for Review |
 
 ## References
 
