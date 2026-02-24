@@ -115,9 +115,9 @@
 | P1 | 0255A + 0255B 报告已签字 | TL | ✓ 已完成 |
 | P2 | `flutter analyze` 零警告 | Agent 验证 | ✓ 已确认 |
 | P3 | 测试基线确认（312 pass / 1 known-fail） | Agent 验证 | ✓ 已确认 |
-| P4 | `lib/features/notes/` 冻结确认（PM/TPM） | PM | 待确认 |
-| P5 | TL 每周 ~4h review 带宽确认 | TL | 待确认 |
-| P6 | QA 阶段回归安排确认（Phase 1/2 结束时各 1 次） | QA/TPM | 待确认 |
+| P4 | `lib/features/notes/` 冻结确认（PM/TPM） | PM | ✓ 已确认 |
+| P5 | TL 每周 ~4h review 带宽确认 | TL | ✓ 已确认 |
+| P6 | QA 阶段回归安排确认（Phase 1/2 结束时各 1 次） | QA/TPM | ✓ 已确认 |
 
 ---
 
