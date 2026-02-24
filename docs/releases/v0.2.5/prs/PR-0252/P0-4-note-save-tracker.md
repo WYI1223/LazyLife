@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-4-note-save-tracker` |
 | PR Title | `refactor(frontend): PR-0252 P0-4 extract note save tracker` |
 | Estimated Effort | 1.0 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -48,14 +48,15 @@ Out of scope:
 
 - [add] `apps/lazynote_flutter/lib/features/notes/managers/note_save_tracker.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` (facade forwarding)
+- [add] `apps/lazynote_flutter/test/note_save_tracker_test.dart` (independent instantiation coverage)
 
 ## Acceptance Criteria
 
-- [ ] NoteSaveTracker 为独立 ChangeNotifier，<250 行
-- [ ] 可独立实例化测试
-- [ ] 原 NotesController facade 转发到 NoteSaveTracker
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] NoteSaveTracker 为独立 ChangeNotifier，<250 行（当前 94 行）
+- [x] 可独立实例化测试
+- [x] 原 NotesController facade 转发到 NoteSaveTracker
+- [x] CI 全绿（`flutter analyze` / `flutter test` / `flutter build windows --debug`）
+- [x] 测试无回归失败（main 基线 313 pass / 0 known-fail；当前 316 pass / 0 known-fail，新增 3 个 tracker 测试）
 
 ## CI Gates
 
@@ -67,7 +68,7 @@ flutter test
 flutter build windows --debug
 ```
 
-Baseline: 313 pass / 0 known-fail
+Baseline (main before this PR): 313 pass / 0 known-fail
 
 ## Dependency Rules
 
@@ -79,7 +80,7 @@ Baseline: 313 pass / 0 known-fail
 
 ## Regression
 
-- CI 自动回归（flutter test 基线不变）
+- CI 自动回归（`flutter test` 通过，无新增失败）
 - REG-02（编辑笔记触发自动保存）— 确认保存状态追踪仍正常
 - REG-09（窗口关闭保存守卫）— 确认保存守卫仍正常
 

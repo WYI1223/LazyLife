@@ -6,8 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
+import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
+
+export 'managers/note_save_tracker.dart' show NoteSaveState;
 
 /// Async list loader for Notes v0.1 UI flow.
 typedef NotesListInvoker =
@@ -110,21 +113,6 @@ enum NotesListPhase {
   error,
 }
 
-/// Save lifecycle for active note draft persistence.
-enum NoteSaveState {
-  /// Draft content matches persisted content.
-  clean,
-
-  /// Draft content has unsaved edits.
-  dirty,
-
-  /// Save call is currently in flight.
-  saving,
-
-  /// Last save attempt failed.
-  error,
-}
-
 /// Stateful controller for Notes page list/detail baseline.
 ///
 /// Contract:
@@ -195,6 +183,8 @@ class NotesController extends ChangeNotifier {
           autosaveEnabled: false,
         );
     _ownsWorkspaceProvider = workspaceProvider == null;
+    _noteSaveTracker = NoteSaveTracker(timerFactory: _debounceTimerFactory);
+    _noteSaveTracker.addListener(_handleNoteSaveTrackerChanged);
   }
 
   final NotesListInvoker _notesListInvoker;
@@ -213,6 +203,7 @@ class NotesController extends ChangeNotifier {
   final NotesPrepare _prepare;
   late final WorkspaceProvider _workspaceProvider;
   late final bool _ownsWorkspaceProvider;
+  late final NoteSaveTracker _noteSaveTracker;
 
   /// Requested list limit for C1 list baseline.
   final int listLimit;
@@ -247,11 +238,7 @@ class NotesController extends ChangeNotifier {
   String? _activeDraftAtomId;
   String _activeDraftContent = '';
   int _editorFocusRequestId = 0;
-  NoteSaveState _noteSaveState = NoteSaveState.clean;
-  String? _saveErrorMessage;
-  bool _showSavedBadge = false;
   Timer? _autosaveTimer;
-  Timer? _savedBadgeTimer;
   final Map<String, Future<bool>> _saveFutureByAtomId =
       <String, Future<bool>>{};
   final Map<String, bool> _saveQueuedByAtomId = <String, bool>{};
@@ -433,13 +420,13 @@ class NotesController extends ChangeNotifier {
   }
 
   /// Save lifecycle state for active note.
-  NoteSaveState get noteSaveState => _noteSaveState;
+  NoteSaveState get noteSaveState => _noteSaveTracker.noteSaveState;
 
   /// Last save error message for active note.
-  String? get saveErrorMessage => _saveErrorMessage;
+  String? get saveErrorMessage => _noteSaveTracker.saveErrorMessage;
 
   /// Whether success badge should be visible for active note.
-  bool get showSavedBadge => _showSavedBadge;
+  bool get showSavedBadge => _noteSaveTracker.showSavedBadge;
 
   /// Banner message shown when note switch is blocked by flush failure.
   String? get switchBlockErrorMessage => _switchBlockErrorMessage;
@@ -493,11 +480,19 @@ class NotesController extends ChangeNotifier {
     return _noteCache[atomId] ?? _findListItem(atomId);
   }
 
+  void _handleNoteSaveTrackerChanged() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _disposed = true;
     _autosaveTimer?.cancel();
-    _savedBadgeTimer?.cancel();
+    _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
+    _noteSaveTracker.dispose();
     if (_ownsWorkspaceProvider) {
       _workspaceProvider.dispose();
     }
@@ -1608,10 +1603,13 @@ class NotesController extends ChangeNotifier {
         tags: normalizedTags,
       );
       if (!response.ok) {
-        _saveErrorMessage = _envelopeError(
-          errorCode: response.errorCode,
-          message: response.message,
-          fallback: 'Failed to update note tags.',
+        _noteSaveTracker.setErrorMessage(
+          _envelopeError(
+            errorCode: response.errorCode,
+            message: response.message,
+            fallback: 'Failed to update note tags.',
+          ),
+          notify: false,
         );
         _setSaveState(NoteSaveState.error, preserveError: true);
         notifyListeners();
@@ -1619,7 +1617,10 @@ class NotesController extends ChangeNotifier {
       }
       final updated = response.note;
       if (updated == null) {
-        _saveErrorMessage = 'Tag update succeeded without note payload.';
+        _noteSaveTracker.setErrorMessage(
+          'Tag update succeeded without note payload.',
+          notify: false,
+        );
         _setSaveState(NoteSaveState.error, preserveError: true);
         notifyListeners();
         return false;
@@ -1654,7 +1655,10 @@ class NotesController extends ChangeNotifier {
       }
       return true;
     } catch (error) {
-      _saveErrorMessage = 'Tag update failed unexpectedly: $error';
+      _noteSaveTracker.setErrorMessage(
+        'Tag update failed unexpectedly: $error',
+        notify: false,
+      );
       _setSaveState(NoteSaveState.error, preserveError: true);
       notifyListeners();
       return false;
@@ -2080,10 +2084,7 @@ class NotesController extends ChangeNotifier {
     _createWarningMessage = null;
     _createTagApplyFuture = null;
     _autosaveTimer?.cancel();
-    _savedBadgeTimer?.cancel();
-    _noteSaveState = NoteSaveState.clean;
-    _saveErrorMessage = null;
-    _showSavedBadge = false;
+    _noteSaveTracker.reset(notify: false);
     _syncWorkspaceFromControllerState();
   }
 
@@ -2408,10 +2409,13 @@ class NotesController extends ChangeNotifier {
 
       if (!response.ok) {
         if (_activeNoteId == atomId) {
-          _saveErrorMessage = _envelopeError(
-            errorCode: response.errorCode,
-            message: response.message,
-            fallback: 'Failed to save note.',
+          _noteSaveTracker.setErrorMessage(
+            _envelopeError(
+              errorCode: response.errorCode,
+              message: response.message,
+              fallback: 'Failed to save note.',
+            ),
+            notify: false,
           );
           _setSaveState(NoteSaveState.error, preserveError: true);
           notifyListeners();
@@ -2425,7 +2429,10 @@ class NotesController extends ChangeNotifier {
           (current == null ? null : _withContent(current, draft));
       if (saved == null) {
         if (_activeNoteId == atomId) {
-          _saveErrorMessage = 'Save succeeded without note payload.';
+          _noteSaveTracker.setErrorMessage(
+            'Save succeeded without note payload.',
+            notify: false,
+          );
           _setSaveState(NoteSaveState.error, preserveError: true);
           notifyListeners();
         }
@@ -2455,7 +2462,10 @@ class NotesController extends ChangeNotifier {
         return false;
       }
       if (_activeNoteId == atomId) {
-        _saveErrorMessage = 'Save failed unexpectedly: $error';
+        _noteSaveTracker.setErrorMessage(
+          'Save failed unexpectedly: $error',
+          notify: false,
+        );
         _setSaveState(NoteSaveState.error, preserveError: true);
         notifyListeners();
       }
@@ -2482,30 +2492,18 @@ class NotesController extends ChangeNotifier {
     bool preserveError = false,
     bool showSavedBadge = false,
   }) {
-    _noteSaveState = nextState;
+    _noteSaveTracker.setState(
+      nextState,
+      preserveError: preserveError,
+      showSavedBadge: showSavedBadge,
+      notify: false,
+    );
     if (_activeNoteId case final activeId?) {
       _workspaceProvider.syncSaveState(
         noteId: activeId,
         saveState: _mapSaveStateToWorkspace(nextState),
       );
     }
-    if (!preserveError) {
-      _saveErrorMessage = null;
-    }
-    if (showSavedBadge) {
-      _showSavedBadge = true;
-      _savedBadgeTimer?.cancel();
-      _savedBadgeTimer = _debounceTimerFactory(const Duration(seconds: 3), () {
-        if (_noteSaveState != NoteSaveState.clean) {
-          return;
-        }
-        _showSavedBadge = false;
-        notifyListeners();
-      });
-      return;
-    }
-    _savedBadgeTimer?.cancel();
-    _showSavedBadge = false;
   }
 
   WorkspaceSaveState _mapSaveStateToWorkspace(NoteSaveState state) {
@@ -2523,7 +2521,7 @@ class NotesController extends ChangeNotifier {
 
   WorkspaceSaveState _workspaceSaveStateForNote(String atomId) {
     if (_activeNoteId == atomId) {
-      return _mapSaveStateToWorkspace(_noteSaveState);
+      return _mapSaveStateToWorkspace(_noteSaveTracker.noteSaveState);
     }
     return _isDirty(atomId)
         ? WorkspaceSaveState.dirty
