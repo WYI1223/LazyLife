@@ -85,6 +85,50 @@ Out of scope:
 - `P0-5`, `P2-3`, `P3-5`: TL review is mandatory.
 - other extraction PRs: at least one reviewer; TL review is recommended.
 
+## Trunk-Based Execution Workflow (Mandatory)
+
+This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must follow the same workflow.
+
+### Non-negotiable rules
+
+- one task ID per branch and per PR; do not mix multiple task IDs in one PR
+- branch from latest `main` only; do not branch from another feature/task branch
+- merge back to `main` quickly after review; do not keep long-lived refactor branches
+- dependency order is controlled by this file and `PR-0255C`; out-of-order merge is not allowed
+- `P2-3` and `P2-4` are coupled and must be merged/reverted together
+
+### Standard steps for each sub-PR
+
+1. sync trunk
+   - `git switch main`
+   - `git pull --ff-only`
+2. create task branch from trunk
+   - `git switch -c feat/pr-0252-<task-id>-<short-topic>`
+3. implement only the scope defined in `docs/releases/v0.2.5/prs/PR-0252/<task-spec>.md`
+4. run mandatory checks locally
+   - `cd apps/lazynote_flutter && dart format --output=none --set-exit-if-changed .`
+   - `cd apps/lazynote_flutter && flutter analyze`
+   - `cd apps/lazynote_flutter && flutter test`
+   - `cd apps/lazynote_flutter && flutter build windows --debug`
+   - run D-rule checks in "Structural Gate Checks (D1-D8)" when applicable
+5. re-sync before opening or merging PR
+   - `git fetch origin`
+   - `git rebase origin/main`
+6. open PR using the planned branch/title in this file, and include
+   - task ID, phase, dependency, risk, rollback note, verification command outputs
+7. merge only after
+   - CI green
+   - required reviewer approved (`P0-5`, `P2-3`, `P3-5` require TL)
+8. after merge, update tracking docs before starting next task
+   - `PR-0252` checklist (`Task Checklist`)
+   - `03-phased-refactor-plan.md` task status (Section 4.2)
+
+### Dependency handling in trunk mode
+
+- if a task has unmet prerequisite, keep it draft or do not open; never merge early
+- parallel lanes are allowed only where explicitly listed in this PR (`P1-4..P1-8`, `P3-3 + P3-4`)
+- if emergency fixes land on `main`, rebase active task branches before further commits
+
 ## Initial PR Batch (Phase 0-1)
 
 | Order | Task ID | Branch name | Suggested PR title | Required reviewer |
