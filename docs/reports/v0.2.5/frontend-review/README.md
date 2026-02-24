@@ -20,3 +20,4 @@
 1. `docs/reports/v0.2.5/frontend-review/01-code-health-report.md`
 2. `docs/reports/v0.2.5/frontend-review/02-module-split-blueprint.md`
 3. `docs/reports/v0.2.5/frontend-review/03-phased-refactor-plan.md`
+4. `docs/reports/v0.2.5/frontend-review/04-regression-checklist-v1.md`

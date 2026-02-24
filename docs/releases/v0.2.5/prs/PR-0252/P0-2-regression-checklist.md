@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-2-regression-checklist` |
 | PR Title | `docs(frontend): PR-0252 P0-2 add regression checklist v1` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | In Progress |
 
 ## References
 
@@ -57,12 +57,12 @@ Out of scope:
 
 ## Planned File Changes
 
-- [add] 回归清单文档（位置待定，建议 `docs/reports/v0.2.5/frontend-review/` 或 PR description 内）
+- [add] `docs/reports/v0.2.5/frontend-review/04-regression-checklist-v1.md`
 
 ## Acceptance Criteria
 
-- [ ] 覆盖笔记核心主流程 8–10 步（Section 5.2A）
-- [ ] 每个用例有明确的操作步骤和预期结果
+- [x] 覆盖笔记核心主流程 8–10 步（Section 5.2A，当前 10 步）
+- [x] 每个用例有明确的操作步骤和预期结果
 - [ ] TL 确认
 
 ## CI Gates
