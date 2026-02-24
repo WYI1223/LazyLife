@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-4-note-save-tracker` |
 | PR Title | `refactor(frontend): PR-0252 P0-4 extract note save tracker` |
 | Estimated Effort | 1.0 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
@@ -94,4 +94,3 @@ Baseline (main before this PR): 313 pass / 0 known-fail
 1. facade 转发模式是否清晰（后续 PR 将复用此模式）
 2. ChangeNotifier 初始化和 dispose 是否正确
 3. 门禁规则 D5 是否通过
-
