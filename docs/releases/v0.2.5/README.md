@@ -19,8 +19,8 @@ user-facing features.
 
 - Status: **In Progress**
 - Baseline sub-lane (`PR-0254A/B/C`): **Completed**
-- Frontend review sub-lane (`PR-0255A/B`): **Completed**
-- Current active item: `PR-0255C-frontend-phased-refactor-plan`
+- Frontend review sub-lane (`PR-0255A/B/C`): **Completed**
+- Current active item: `PR-0252-dart-modular-refactor-and-decoupling`
 
 ## Lane Strategy
 
