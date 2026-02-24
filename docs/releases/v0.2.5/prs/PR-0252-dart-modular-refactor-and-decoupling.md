@@ -166,7 +166,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P0-1` create `workspace_port.dart`
 - [x] `P0-2` regression checklist v1 confirmed
 - [x] `P0-3` PR gate rules confirmed
-- [ ] `P0-4` NoteSaveTracker sample extraction PR merged
+- [x] `P0-4` NoteSaveTracker sample extraction PR merged
 - [ ] `P0-5` sample PR TL review and regression pass
 - [ ] `P1-1` WorkspaceTreeManager extracted
 - [ ] `P1-2` NoteDraftManager extracted
