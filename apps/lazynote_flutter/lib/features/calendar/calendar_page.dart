@@ -93,11 +93,15 @@ class _CalendarPageState extends State<CalendarPage> {
             color: calendarHeaderTextColor(context),
           ),
         ),
-        Text(
-          _weekLabel(),
-          key: const Key('calendar_week_label'),
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: calendarHeaderTextColor(context),
+        Flexible(
+          child: Text(
+            _weekLabel(),
+            key: const Key('calendar_week_label'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: calendarHeaderTextColor(context),
+            ),
           ),
         ),
         IconButton(
