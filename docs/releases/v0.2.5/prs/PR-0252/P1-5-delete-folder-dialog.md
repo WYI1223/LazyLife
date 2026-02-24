@@ -1,4 +1,4 @@
-# PR-0252 P1-5 — 提取 DeleteFolderDialog
+﻿# PR-0252 P1-5 — 提取 DeleteFolderDialog
 
 | Field | Value |
 |-------|-------|
@@ -51,7 +51,7 @@ Out of scope:
 - [ ] 独立 StatefulWidget，~150 行
 - [ ] 含 dissolve/delete-all 选择
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -78,3 +78,4 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。
+

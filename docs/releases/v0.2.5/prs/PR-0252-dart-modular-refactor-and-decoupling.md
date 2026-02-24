@@ -1,4 +1,4 @@
-# PR-0252-dart-modular-refactor-and-decoupling
+﻿# PR-0252-dart-modular-refactor-and-decoupling
 
 - Proposed title: `refactor(frontend): execute phased modular refactor with behavior parity`
 - Status: In Progress (execution baseline: `PR-0255C` signed-off)
@@ -214,8 +214,12 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 
 Baseline rule:
 
-- test baseline must remain `312 pass / 1 known-fail` (`CalendarPage` layout overflow at L67).
+- test baseline must remain `313 pass / 0 known-fail`.
 - no newly introduced failures are allowed.
+
+Baseline note:
+
+- `CalendarPage` layout overflow at `calendar_page.dart:67` was fixed on `main` on 2026-02-24 before refactor execution.
 
 ### Structural Gate Checks (D1-D8)
 
@@ -237,7 +241,7 @@ Baseline rule:
 - [ ] `notes_controller.dart` is removed and replaced by `NotesCoordinator + managers`
 - [ ] EntryShellPage reaches zero cross-feature import for non-entry features
 - [ ] D1-D8 checks pass with phase-specific allowances from `PR-0255C` Section 6.4
-- [ ] regression baseline remains `312 pass / 1 known-fail` with no new failures
+- [ ] regression baseline remains `313 pass / 0 known-fail` with no new failures
 - [ ] no Rust/FFI signature drift is introduced
 
 ## Execution PR Specs
@@ -277,3 +281,4 @@ Individual task specs are in `docs/releases/v0.2.5/prs/PR-0252/`:
 - `P3-3-boundary-map-update.md`
 - `P3-4-retrospective.md`
 - `P3-5-tl-acceptance.md`
+

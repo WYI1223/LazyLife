@@ -1,4 +1,4 @@
-# PR-0252 P1-7 — 提取 MoveNodeDialog
+﻿# PR-0252 P1-7 — 提取 MoveNodeDialog
 
 | Field | Value |
 |-------|-------|
@@ -49,7 +49,7 @@ Out of scope:
 - [ ] 独立 StatefulWidget，~160 行
 - [ ] 含移动目标加载
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -76,3 +76,4 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。
+

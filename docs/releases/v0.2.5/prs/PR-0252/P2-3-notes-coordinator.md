@@ -1,4 +1,4 @@
-# PR-0252 P2-3 — 创建 NotesCoordinator + 消费者迁移
+﻿# PR-0252 P2-3 — 创建 NotesCoordinator + 消费者迁移
 
 | Field | Value |
 |-------|-------|
@@ -77,7 +77,7 @@ Out of scope:
 - [ ] 6 个消费者文件全部从 `_controller` 迁移到 `_coordinator`
 - [ ] 原 `notes_controller.dart` 删除
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）— 注意需与 P2-4 一起验证
+- [ ] 测试基线不变（313 pass / 0 known-fail）— 注意需与 P2-4 一起验证
 
 ## CI Gates
 
@@ -124,3 +124,4 @@ flutter build windows --debug
 1. **R2 createNote 编排遗漏**：92 行跨域编排迁移时可能遗漏副作用 → 按原样迁移，不重构
 2. **R1 异步时序变化**：manager 分离后 `notifyListeners()` 触发顺序可能改变 → Coordinator 内时序保持与原 controller 一致（S5 策略）
 3. **R3 测试 mock 断裂**：16 个测试文件需适配 → P2-4 单独处理
+

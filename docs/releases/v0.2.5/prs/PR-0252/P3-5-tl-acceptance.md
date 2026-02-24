@@ -1,4 +1,4 @@
-# PR-0252 P3-5 — TL 阶段验收 + 计划收口签字
+﻿# PR-0252 P3-5 — TL 阶段验收 + 计划收口签字
 
 | Field | Value |
 |-------|-------|
@@ -50,7 +50,7 @@ Out of scope:
 - [ ] `notes_controller.dart` 已删除，由 `NotesCoordinator + managers` 替代
 - [ ] EntryShellPage 零跨 feature import
 - [ ] D1–D8 检查通过
-- [ ] 测试基线 312 pass / 1 known-fail 不变
+- [ ] 测试基线 313 pass / 0 known-fail 不变
 - [ ] 无 Rust/FFI 签名变更
 
 ### Per-Phase DoD (from 03 Section 3)
@@ -102,3 +102,4 @@ flutter build windows --debug
 ## Required Reviewer
 
 - **TL — 必须签字**
+

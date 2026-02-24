@@ -1,4 +1,4 @@
-# PR-0252 P2-1 — 提取 NoteTabManager
+﻿# PR-0252 P2-1 — 提取 NoteTabManager
 
 | Field | Value |
 |-------|-------|
@@ -56,7 +56,7 @@ Out of scope:
 - [ ] 独立 ChangeNotifier，整合现有 `note_tab_manager.dart` (431行 UI) + controller Tab 逻辑
 - [ ] <400 行状态层
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -90,3 +90,4 @@ flutter build windows --debug
 ## Risk Notes
 
 Tab 逻辑跨越 UI 层和状态层，需要清晰界定哪些留在 UI、哪些下沉到 manager。关键判断：Tab 的选中/切换/关闭状态属于 manager，Tab 的视觉渲染属于 UI。
+
