@@ -1,4 +1,4 @@
-# PR-0252 P1-2 — 提取 NoteDraftManager
+﻿# PR-0252 P1-2 — 提取 NoteDraftManager
 
 | Field | Value |
 |-------|-------|
@@ -55,7 +55,7 @@ Out of scope:
 - [ ] <300 行
 - [ ] 自保存定时器隔离
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -85,3 +85,4 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。删除 `note_draft_manager.dart`，回退 `notes_controller.dart` facade 改动。
+

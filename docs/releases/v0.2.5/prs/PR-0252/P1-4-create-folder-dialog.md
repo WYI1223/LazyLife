@@ -1,4 +1,4 @@
-# PR-0252 P1-4 — 提取 CreateFolderDialog
+﻿# PR-0252 P1-4 — 提取 CreateFolderDialog
 
 | Field | Value |
 |-------|-------|
@@ -53,7 +53,7 @@ Out of scope:
 - [ ] 接收回调参数（`onConfirm`, `onCancel`）
 - [ ] 可独立 widget test
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -82,3 +82,4 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。删除 `create_folder_dialog.dart`，回退 `note_explorer.dart` 的 import 改动。
+

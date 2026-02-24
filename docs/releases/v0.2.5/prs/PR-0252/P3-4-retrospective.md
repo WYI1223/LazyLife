@@ -55,7 +55,7 @@ Out of scope:
    - D3: NotesPage / NoteContentArea 未独立拆分 — 触发条件：NotesPage 超 1000 行或 v0.3 分屏增强
    - D4: WorkspaceProvider 未独立拆分 — 触发条件：新增第 2 个 consumer（非 notes）
    - D5: P2 模块未拆分（SingleEntryController, DebugLogsPanel 等）— 触发条件：任一模块行数增长超 50%
-   - D6: `smoke_test.dart` CalendarPage L67 Row overflow known-fail — 触发条件：CalendarPage 布局重构时修复
+   - D6: [已关闭 2026-02-24] `smoke_test.dart` CalendarPage L67 Row overflow known-fail（已在主干修复，测试基线更新为 313 pass / 0 known-fail）
 4. **收益评估**：对照 G1–G8 基线→目标
 5. **下轮建议**
 

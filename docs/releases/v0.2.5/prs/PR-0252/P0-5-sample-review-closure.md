@@ -1,4 +1,4 @@
-# PR-0252 P0-5 — 样板 PR review + 合并 + 回归验证
+﻿# PR-0252 P0-5 — 样板 PR review + 合并 + 回归验证
 
 | Field | Value |
 |-------|-------|
@@ -50,7 +50,7 @@ Out of scope:
 - [ ] TL review 通过
 - [ ] P0-4 PR 已合并
 - [ ] 回归清单 v1 走查通过
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -89,3 +89,4 @@ flutter build windows --debug
 ## Required Reviewer
 
 - **TL review 必须** — 这是样板 PR，流程和质量标准将作为后续 PR 的参考。
+

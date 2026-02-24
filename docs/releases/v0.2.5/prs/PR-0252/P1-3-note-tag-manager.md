@@ -1,4 +1,4 @@
-# PR-0252 P1-3 — 提取 NoteTagManager
+﻿# PR-0252 P1-3 — 提取 NoteTagManager
 
 | Field | Value |
 |-------|-------|
@@ -57,7 +57,7 @@ Out of scope:
 - [ ] <350 行
 - [ ] 标签变更队列独立
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -90,3 +90,4 @@ flutter build windows --debug
 ## Risk Notes
 
 NoteTagManager 的 filter→list 回调桥接需在 NotesController facade 中临时保留（S4 策略）。此桥接在 P2-2（NoteListManager）+ P2-3（Coordinator）中最终清理。
+

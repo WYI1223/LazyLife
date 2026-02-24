@@ -1,4 +1,4 @@
-# PR-0252 P3-1 — 创建 SectionRegistry + 迁移 EntryShellPage
+﻿# PR-0252 P3-1 — 创建 SectionRegistry + 迁移 EntryShellPage
 
 | Field | Value |
 |-------|-------|
@@ -53,7 +53,7 @@ Out of scope:
 - [ ] EntryShellPage 零跨 feature import
 - [ ] 各 section 通过 registry builder 注册
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -84,3 +84,4 @@ flutter build windows --debug
 ## Risk Notes
 
 SectionRegistry 改变了 section 注册方式，但不改变 section 的渲染逻辑。各 feature 的测试不需要改动（注册点在 app 层，不影响 feature 内部）。
+

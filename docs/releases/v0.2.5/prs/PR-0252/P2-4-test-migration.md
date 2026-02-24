@@ -1,4 +1,4 @@
-# PR-0252 P2-4 — 测试批量迁移
+﻿# PR-0252 P2-4 — 测试批量迁移
 
 | Field | Value |
 |-------|-------|
@@ -66,7 +66,7 @@ Out of scope:
 ## Acceptance Criteria
 
 - [ ] 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`
-- [ ] 312 pass / 1 known-fail 基线不变
+- [ ] 313 pass / 0 known-fail 基线不变
 - [ ] CI 全绿
 
 ## CI Gates
@@ -81,9 +81,10 @@ flutter build windows --debug
 
 ## Regression
 
-- CI 自动回归（**关键：** 312 pass / 1 known-fail 基线必须不变）
+- CI 自动回归（**关键：** 313 pass / 0 known-fail 基线必须不变）
 - 增量专项 HF-11（测试迁移完整性）
 
 ## Rollback
 
 **耦合回滚单元：P2-3 + P2-4 必须一起 revert。** 不可单独回滚本 PR。
+

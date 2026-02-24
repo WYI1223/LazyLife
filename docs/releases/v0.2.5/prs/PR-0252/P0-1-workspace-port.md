@@ -1,4 +1,4 @@
-# PR-0252 P0-1 — 创建 workspace_port.dart 抽象接口
+﻿# PR-0252 P0-1 — 创建 workspace_port.dart 抽象接口
 
 | Field | Value |
 |-------|-------|
@@ -66,7 +66,7 @@ flutter test
 flutter build windows --debug
 ```
 
-Baseline: 312 pass / 1 known-fail (CalendarPage L67 overflow)
+Baseline: 313 pass / 0 known-fail
 
 ## Dependency Rules
 
@@ -82,3 +82,4 @@ Baseline: 312 pass / 1 known-fail (CalendarPage L67 overflow)
 ## Rollback
 
 独立 revert 即可，无其他 PR 依赖此文件（P1-1 尚未开始）。
+

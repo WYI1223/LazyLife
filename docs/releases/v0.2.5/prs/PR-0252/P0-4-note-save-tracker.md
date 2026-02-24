@@ -1,4 +1,4 @@
-# PR-0252 P0-4 — 样板 PR：提取 NoteSaveTracker
+﻿# PR-0252 P0-4 — 样板 PR：提取 NoteSaveTracker
 
 | Field | Value |
 |-------|-------|
@@ -55,7 +55,7 @@ Out of scope:
 - [ ] 可独立实例化测试
 - [ ] 原 NotesController facade 转发到 NoteSaveTracker
 - [ ] CI 全绿
-- [ ] 测试基线不变（312 pass / 1 known-fail）
+- [ ] 测试基线不变（313 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -67,7 +67,7 @@ flutter test
 flutter build windows --debug
 ```
 
-Baseline: 312 pass / 1 known-fail (CalendarPage L67 overflow)
+Baseline: 313 pass / 0 known-fail
 
 ## Dependency Rules
 
@@ -93,3 +93,4 @@ Baseline: 312 pass / 1 known-fail (CalendarPage L67 overflow)
 1. facade 转发模式是否清晰（后续 PR 将复用此模式）
 2. ChangeNotifier 初始化和 dispose 是否正确
 3. 门禁规则 D5 是否通过
+
