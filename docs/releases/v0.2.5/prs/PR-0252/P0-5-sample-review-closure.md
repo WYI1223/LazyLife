@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-5-sample-review-closure` |
 | PR Title | `docs(frontend): PR-0252 P0-5 sample PR review and regression closure` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | In Progress |
 
 ## References
 
@@ -25,14 +25,14 @@
 
 ## Prerequisites
 
-- `P0-4` NoteSaveTracker 样板 PR 已提交
+- `P0-4` NoteSaveTracker 样板 PR 已合并
 
 ## Scope
 
 In scope:
 
 - TL review P0-4 PR
-- 合并 P0-4 PR
+- 确认 P0-4 PR 合并记录
 - 执行回归清单 v1 手工走查
 - 确认测试基线不变
 
@@ -47,10 +47,10 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] TL review 通过
-- [ ] P0-4 PR 已合并
+- [x] TL review 通过
+- [x] P0-4 PR 已合并
 - [ ] 回归清单 v1 走查通过
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [ ] 测试基线不变（316 pass / 0 known-fail）
 
 ## CI Gates
 
