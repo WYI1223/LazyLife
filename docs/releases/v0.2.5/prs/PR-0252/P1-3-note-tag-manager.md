@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-3-note-tag-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-3 extract note tag manager` |
 | Estimated Effort | 1.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 

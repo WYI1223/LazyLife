@@ -170,7 +170,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P0-5` sample PR TL review and regression pass
 - [x] `P1-1` WorkspaceTreeManager extracted
 - [x] `P1-2` NoteDraftManager extracted
-- [ ] `P1-3` NoteTagManager extracted
+- [x] `P1-3` NoteTagManager extracted
 - [ ] `P1-4` CreateFolderDialog extracted
 - [ ] `P1-5` DeleteFolderDialog extracted
 - [ ] `P1-6` RenameNodeDialog extracted
