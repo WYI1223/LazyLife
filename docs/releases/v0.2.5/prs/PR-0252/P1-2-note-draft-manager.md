@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-2-note-draft-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-2 extract note draft manager` |
 | Estimated Effort | 1.0 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
