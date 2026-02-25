@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-1-workspace-tree-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-1 extract workspace tree manager` |
 | Estimated Effort | 2.0 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
@@ -90,4 +90,3 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。删除 `workspace_tree_manager.dart`，回退 `notes_controller.dart` facade 改动。
-
