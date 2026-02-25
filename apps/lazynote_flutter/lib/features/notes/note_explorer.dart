@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/dialogs/create_folder_dialog.dart';
+import 'package:lazynote_flutter/features/notes/dialogs/delete_folder_dialog.dart';
 import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
 import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_item.dart';
@@ -1653,85 +1654,16 @@ class _NoteExplorerState extends State<NoteExplorer> {
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
 
-    final selectedMode = await showDialog<_FolderDeleteMode>(
+    final selectedMode = await showDialog<FolderDeleteMode>(
       context: context,
       builder: (dialogContext) {
-        var mode = _FolderDeleteMode.dissolve;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(
-                _l10nText(
-                  fallback: 'Delete folder',
-                  pick: (l10n) => l10n.notesDeleteFolderDialogTitle,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    node.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _FolderDeleteMode.values
-                        .map(
-                          (entry) => ChoiceChip(
-                            key: Key(
-                              'notes_folder_delete_mode_${entry.wireValue}',
-                            ),
-                            label: Text(entry.label(context)),
-                            selected: mode == entry,
-                            onSelected: (_) {
-                              setState(() {
-                                mode = entry;
-                              });
-                            },
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    mode.description(context),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Cancel',
-                      pick: (l10n) => l10n.commonCancel,
-                    ),
-                  ),
-                ),
-                FilledButton.tonal(
-                  key: const Key('notes_folder_delete_confirm_button'),
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop(mode);
-                  },
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Confirm',
-                      pick: (l10n) => l10n.commonConfirm,
-                    ),
-                  ),
-                ),
-              ],
-            );
+        return DeleteFolderDialog(
+          folderLabel: node.label,
+          onConfirm: (mode) {
+            Navigator.of(dialogContext).pop(mode);
+          },
+          onCancel: () {
+            Navigator.of(dialogContext).pop();
           },
         );
       },
@@ -2200,29 +2132,4 @@ class _MoveTargetOption {
 
   final String nodeId;
   final String label;
-}
-
-enum _FolderDeleteMode { dissolve, deleteAll }
-
-extension on _FolderDeleteMode {
-  String get wireValue => switch (this) {
-    _FolderDeleteMode.dissolve => 'dissolve',
-    _FolderDeleteMode.deleteAll => 'delete_all',
-  };
-
-  String label(BuildContext context) => switch (this) {
-    _FolderDeleteMode.dissolve =>
-      AppLocalizations.of(context)?.notesDeleteModeDissolve ?? 'Dissolve',
-    _FolderDeleteMode.deleteAll =>
-      AppLocalizations.of(context)?.notesDeleteModeDeleteAll ?? 'Delete all',
-  };
-
-  String description(BuildContext context) => switch (this) {
-    _FolderDeleteMode.dissolve =>
-      AppLocalizations.of(context)?.notesDeleteModeDissolveDescription ??
-          'Keep notes, move direct children to root.',
-    _FolderDeleteMode.deleteAll =>
-      AppLocalizations.of(context)?.notesDeleteModeDeleteAllDescription ??
-          'Delete folder subtree references and scoped notes.',
-  };
 }
