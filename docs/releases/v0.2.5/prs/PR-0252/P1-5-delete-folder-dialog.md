@@ -52,7 +52,7 @@ Out of scope:
 - [x] 独立 StatefulWidget，~150 行
 - [x] 含 dissolve/delete-all 选择
 - [x] CI 全绿
-- [x] 测试基线不变（327 pass / 0 known-fail）
+- [x] 测试基线符合预期（主干 324 pass / 0 known-fail；本分支 327 pass / 0 known-fail，新增 3 个对话框测试）
 
 ## CI Gates
 
@@ -74,7 +74,7 @@ flutter build windows --debug
 
 - `flutter analyze`：通过（No issues found）
 - `flutter test test/delete_folder_dialog_test.dart test/note_explorer_tree_test.dart test/note_explorer_workspace_delete_test.dart`：通过
-- `flutter test`：通过（327 pass）
+- `flutter test`：通过（327 pass；相对主干 324 pass 增加 3 个对话框测试）
 - `flutter build windows --debug`：通过
 - D6：`rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/` 零匹配
 
