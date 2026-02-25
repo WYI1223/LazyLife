@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-5-delete-folder-dialog` |
 | PR Title | `refactor(frontend): PR-0252 P1-5 extract delete folder dialog` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -45,13 +45,14 @@ Out of scope:
 
 - [add] `apps/lazynote_flutter/lib/features/notes/dialogs/delete_folder_dialog.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
+- [add] `apps/lazynote_flutter/test/delete_folder_dialog_test.dart`
 
 ## Acceptance Criteria
 
-- [ ] 独立 StatefulWidget，~150 行
-- [ ] 含 dissolve/delete-all 选择
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] 独立 StatefulWidget，~150 行
+- [x] 含 dissolve/delete-all 选择
+- [x] CI 全绿
+- [x] 测试基线不变（327 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -69,6 +70,14 @@ flutter build windows --debug
 |------|-------|----------|
 | D6 | `rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/` | 零匹配 |
 
+## Verification Snapshot (2026-02-25)
+
+- `flutter analyze`：通过（No issues found）
+- `flutter test test/delete_folder_dialog_test.dart test/note_explorer_tree_test.dart test/note_explorer_workspace_delete_test.dart`：通过
+- `flutter test`：通过（327 pass）
+- `flutter build windows --debug`：通过
+- D6：`rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/` 零匹配
+
 ## Regression
 
 - CI 自动回归
@@ -78,4 +87,3 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。
-
