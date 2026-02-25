@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-3-note-tag-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-3 extract note tag manager` |
 | Estimated Effort | 1.5 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -49,15 +49,17 @@ Out of scope:
 ## Planned File Changes
 
 - [add] `apps/lazynote_flutter/lib/features/notes/managers/note_tag_manager.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/note_tag_manager_types.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/note_tag_mutation_queue.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` (facade forwarding)
 
 ## Acceptance Criteria
 
-- [ ] 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker
-- [ ] <350 行
-- [ ] 标签变更队列独立
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker
+- [x] <350 行（`note_tag_manager.dart` 330 行）
+- [x] 标签变更队列独立
+- [x] CI 全绿
+- [x] 测试基线不变（321 pass / 0 known-fail，新增 manager/queue 单测）
 
 ## CI Gates
 
@@ -74,7 +76,7 @@ flutter build windows --debug
 | Rule | Check | Expected |
 |------|-------|----------|
 | D4 | 检查构造函数 | invoker 通过构造函数注入 |
-| D5 | `rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/` | 仅 `foundation.dart` |
+| D5 | `rg -n "^import 'package:flutter/" apps/lazynote_flutter/lib/features/notes/managers/` | 仅 `package:flutter/foundation.dart` |
 | D8 | `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/` | 允许 tag_filter.dart（临时豁免） |
 
 ## Regression
@@ -91,3 +93,4 @@ flutter build windows --debug
 
 NoteTagManager 的 filter→list 回调桥接需在 NotesController facade 中临时保留（S4 策略）。此桥接在 P2-2（NoteListManager）+ P2-3（Coordinator）中最终清理。
 
+`_noteSetTagsInvoker` 当前由 NotesController（createNote 的 tag-apply 路径）和 NoteTagManager（标签变更路径）共同持有，属于本阶段可接受的临时双归属。该双归属在 P2-2/P2-3 中随 createNote 编排迁移一起清理。
