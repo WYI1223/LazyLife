@@ -325,7 +325,7 @@
 | P1-5 | 提取 DeleteFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~150 行；含 dissolve/delete-all 选择；CI 全绿 | 已完成（2026-02-25） |
 | P1-6 | 提取 RenameNodeDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~130 行；CI 全绿 | 已完成（2026-02-25） |
 | P1-7 | 提取 MoveNodeDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~160 行；含移动目标加载；CI 全绿 | 已完成（2026-02-25） |
-| P1-8 | 提取 ExplorerTreeBuilder | notes | 结构拆分 | P1-4~7 | Agent | 1.0 | PR | 独立辅助类，<400 行，纯输入→输出；CI 全绿 | 未开始 |
+| P1-8 | 提取 ExplorerTreeBuilder | notes | 结构拆分 | P1-4~7 | Agent | 1.0 | PR | 独立辅助类，<400 行，纯输入→输出；CI 全绿 | 评审中（2026-02-25） |
 
 #### Phase 2 任务（中等/多孔域 + Coordinator 切换）
 
@@ -923,7 +923,7 @@ Phase 3 验收通过后，输出以下收口产物：
 | 10 | DeleteFolderDialog | `note_explorer.dart` | `notes/dialogs/delete_folder_dialog.dart` | ~150 | — | 已完成（P1-5） |
 | 11 | RenameNodeDialog | `note_explorer.dart` | `notes/dialogs/rename_node_dialog.dart` | ~130 | — | 已完成（P1-6） |
 | 12 | MoveNodeDialog | `note_explorer.dart` | `notes/dialogs/move_node_dialog.dart` | ~160 | — | 已完成（P1-7） |
-| 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 待执行 |
+| 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 评审中（P1-8） |
 | 14 | SectionRegistry | `entry_shell_page.dart` | `app/section_registry.dart` | — | — | 待执行 |
 
 #### 11.2.2 未完成项与原因（收口时填写）
