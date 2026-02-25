@@ -319,7 +319,7 @@
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
 | P1-1 | 提取 WorkspaceTreeManager | notes/managers | 结构拆分 | P0-1 | Agent | 2.0 | PR | 独立 ChangeNotifier，持有 workspace ×6 invoker + WorkspacePort，<550 行（物理行 533 / 非空行 499）；原 controller facade 转发；CI 全绿 | 已完成（2026-02-25） |
-| P1-2 | 提取 NoteDraftManager | notes/managers | 结构拆分 | P0-4 | Agent | 1.0 | PR | 独立 ChangeNotifier，持有 noteUpdate invoker，<300 行；自保存定时器隔离；CI 全绿 | 未开始 |
+| P1-2 | 提取 NoteDraftManager | notes/managers | 结构拆分 | P0-4 | Agent | 1.0 | PR | 独立 ChangeNotifier，持有 noteUpdate invoker，<300 行；自保存定时器隔离；CI 全绿 | 评审中（2026-02-25） |
 | P1-3 | 提取 NoteTagManager | notes/managers | 结构拆分 | 无 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker，<350 行；标签变更队列独立；CI 全绿 | 未开始 |
 | P1-4 | 提取 CreateFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~130 行，接收回调参数；可独立 widget test；CI 全绿 | 未开始 |
 | P1-5 | 提取 DeleteFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~150 行；含 dissolve/delete-all 选择；CI 全绿 | 未开始 |
