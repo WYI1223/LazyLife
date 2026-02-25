@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/features/notes/dialogs/create_folder_dialog.dart';
 import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
 import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_item.dart';
@@ -1579,68 +1580,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
-    var draftName = '';
     final folderName = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final canSubmit = draftName.trim().isNotEmpty;
-            return AlertDialog(
-              key: const Key('notes_create_folder_dialog'),
-              title: Text(
-                _l10nText(
-                  fallback: 'Create folder',
-                  pick: (l10n) => l10n.notesCreateFolderDialogTitle,
-                ),
-              ),
-              content: TextField(
-                key: const Key('notes_create_folder_name_input'),
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: _l10nText(
-                    fallback: 'Folder name',
-                    pick: (l10n) => l10n.notesFolderNameHint,
-                  ),
-                ),
-                onChanged: (value) {
-                  draftName = value;
-                  setState(() {});
-                },
-                onSubmitted: (_) {
-                  if (canSubmit) {
-                    Navigator.of(dialogContext).pop(draftName.trim());
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Cancel',
-                      pick: (l10n) => l10n.commonCancel,
-                    ),
-                  ),
-                ),
-                FilledButton.tonal(
-                  key: const Key('notes_create_folder_confirm_button'),
-                  onPressed: canSubmit
-                      ? () {
-                          Navigator.of(dialogContext).pop(draftName.trim());
-                        }
-                      : null,
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Create',
-                      pick: (l10n) => l10n.commonCreate,
-                    ),
-                  ),
-                ),
-              ],
-            );
+        return CreateFolderDialog(
+          onConfirm: (value) {
+            Navigator.of(dialogContext).pop(value);
+          },
+          onCancel: () {
+            Navigator.of(dialogContext).pop();
           },
         );
       },
