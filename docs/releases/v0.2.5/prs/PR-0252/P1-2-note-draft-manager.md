@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-2-note-draft-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-2 extract note draft manager` |
 | Estimated Effort | 1.0 person-day |
-| Status | Planned |
+| Status | In Progress |
 
 ## References
 
@@ -55,7 +55,7 @@ Out of scope:
 - [ ] <300 行
 - [ ] 自保存定时器隔离
 - [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [ ] 测试基线不变（316 pass / 0 known-fail）
 
 ## CI Gates
 
