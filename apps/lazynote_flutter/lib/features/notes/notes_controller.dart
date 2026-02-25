@@ -151,7 +151,7 @@ class NotesController extends ChangeNotifier {
       noteUpdateInvoker: _noteUpdateInvoker,
       prepare: _prepare,
       activeNoteId: () => _activeNoteId,
-      noteById: noteById,
+      noteById: (atomId) => _noteCache[atomId],
       withContent: _withContent,
       upsertNote: _insertOrReplaceListItem,
       envelopeError: _envelopeError,
@@ -516,7 +516,6 @@ class NotesController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _autosaveTimer?.cancel();
     _noteDraftManager.removeListener(_handleNoteDraftManagerChanged);
     _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
     _workspaceTreeManager.removeListener(_handleWorkspaceTreeManagerChanged);
