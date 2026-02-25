@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-7-move-node-dialog` |
 | PR Title | `refactor(frontend): PR-0252 P1-7 extract move node dialog` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
