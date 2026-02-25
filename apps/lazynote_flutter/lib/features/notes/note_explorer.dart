@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/dialogs/create_folder_dialog.dart';
 import 'package:lazynote_flutter/features/notes/dialogs/delete_folder_dialog.dart';
+import 'package:lazynote_flutter/features/notes/dialogs/rename_node_dialog.dart';
 import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
 import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_item.dart';
@@ -1790,61 +1791,16 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
-    var draftName = node.displayName;
     final renamed = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final canSubmit =
-                draftName.trim().isNotEmpty &&
-                draftName.trim() != node.displayName.trim();
-            return AlertDialog(
-              key: const Key('notes_rename_node_dialog'),
-              title: Text(
-                _l10nText(
-                  fallback: 'Rename',
-                  pick: (l10n) => l10n.notesRenameDialogTitle,
-                ),
-              ),
-              content: TextFormField(
-                key: const Key('notes_rename_node_input'),
-                autofocus: true,
-                initialValue: node.displayName,
-                onChanged: (value) {
-                  draftName = value;
-                  setState(() {});
-                },
-                onFieldSubmitted: (_) {
-                  if (canSubmit) {
-                    Navigator.of(dialogContext).pop(draftName.trim());
-                  }
-                },
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Cancel',
-                      pick: (l10n) => l10n.commonCancel,
-                    ),
-                  ),
-                ),
-                FilledButton.tonal(
-                  key: const Key('notes_rename_node_confirm_button'),
-                  onPressed: canSubmit
-                      ? () => Navigator.of(dialogContext).pop(draftName.trim())
-                      : null,
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Rename',
-                      pick: (l10n) => l10n.notesRenameAction,
-                    ),
-                  ),
-                ),
-              ],
-            );
+        return RenameNodeDialog(
+          initialName: node.displayName,
+          onConfirm: (value) {
+            Navigator.of(dialogContext).pop(value);
+          },
+          onCancel: () {
+            Navigator.of(dialogContext).pop();
           },
         );
       },
