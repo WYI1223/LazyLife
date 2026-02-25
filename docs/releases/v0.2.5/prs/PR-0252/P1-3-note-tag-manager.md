@@ -59,7 +59,7 @@ Out of scope:
 - [x] <350 行（`note_tag_manager.dart` 330 行）
 - [x] 标签变更队列独立
 - [x] CI 全绿
-- [x] 测试基线不变（316 pass / 0 known-fail）
+- [x] 测试基线不变（321 pass / 0 known-fail，新增 manager/queue 单测）
 
 ## CI Gates
 
@@ -76,7 +76,7 @@ flutter build windows --debug
 | Rule | Check | Expected |
 |------|-------|----------|
 | D4 | 检查构造函数 | invoker 通过构造函数注入 |
-| D5 | `rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/` | 仅 `foundation.dart` |
+| D5 | `rg -n "^import 'package:flutter/" apps/lazynote_flutter/lib/features/notes/managers/` | 仅 `package:flutter/foundation.dart` |
 | D8 | `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/` | 允许 tag_filter.dart（临时豁免） |
 
 ## Regression
