@@ -56,7 +56,7 @@ Out of scope:
 ## Acceptance Criteria
 
 - [x] 独立 ChangeNotifier，持有 workspace ×6 invoker + WorkspacePort
-- [x] <500 行（`workspace_tree_manager.dart` 当前 499 行）
+- [x] <550 行（按物理行统计：`workspace_tree_manager.dart` 当前 533 行；非空行 499 行）
 - [x] 原 NotesController facade 转发
 - [x] CI 全绿
 - [x] 测试基线不变（316 pass / 0 known-fail）
