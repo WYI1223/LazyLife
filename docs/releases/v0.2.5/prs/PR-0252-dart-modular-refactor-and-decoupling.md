@@ -221,6 +221,11 @@ Baseline note:
 
 - `CalendarPage` layout overflow at `calendar_page.dart:67` was fixed on `main` on 2026-02-24 before refactor execution.
 
+Line count convention:
+
+- use physical lines (`wc -l` / IDE total lines), including blank lines and comments.
+- do not use PowerShell `Measure-Object -Line` for gate decisions (it excludes blank lines).
+
 ### Structural Gate Checks (D1-D8)
 
 - `rg -n "import.*managers/" apps/lazynote_flutter/lib/features/notes/notes_page.dart apps/lazynote_flutter/lib/features/notes/note_content_area.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
