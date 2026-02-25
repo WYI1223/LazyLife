@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_draft_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
+import 'package:lazynote_flutter/features/notes/managers/note_tag_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_manager.dart';
 import 'package:lazynote_flutter/features/notes/workspace_port.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
@@ -13,6 +13,7 @@ import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
 export 'managers/note_draft_manager.dart' show NoteDraftManager;
 export 'managers/note_save_tracker.dart' show NoteSaveState;
+export 'managers/note_tag_manager.dart' show NoteTagManager;
 export 'managers/workspace_tree_manager.dart'
     show
         WorkspaceCreateFolderInvoker,
@@ -44,16 +45,6 @@ typedef NoteUpdateInvoker =
     Future<rust_api.NoteResponse> Function({
       required String atomId,
       required String content,
-    });
-
-/// Async loader for normalized tag list snapshots.
-typedef TagsListInvoker = Future<rust_api.TagsListResponse> Function();
-
-/// Async mutator that atomically replaces tags for one note.
-typedef NoteSetTagsInvoker =
-    Future<rust_api.NoteResponse> Function({
-      required String atomId,
-      required List<String> tags,
     });
 
 /// Timer factory for autosave debounce scheduling.
@@ -121,10 +112,11 @@ class NotesController extends ChangeNotifier {
        _noteGetInvoker = noteGetInvoker ?? _defaultNoteGetInvoker,
        _noteCreateInvoker = noteCreateInvoker ?? _defaultNoteCreateInvoker,
        _noteUpdateInvoker = noteUpdateInvoker ?? _defaultNoteUpdateInvoker,
-       _tagsListInvoker = tagsListInvoker ?? _defaultTagsListInvoker,
        _noteSetTagsInvoker = noteSetTagsInvoker ?? _defaultNoteSetTagsInvoker,
        _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
        _prepare = prepare ?? _defaultPrepare {
+    final resolvedTagsListInvoker = tagsListInvoker ?? _defaultTagsListInvoker;
+    final resolvedNoteSetTagsInvoker = _noteSetTagsInvoker;
     final resolvedWorkspaceDeleteFolderInvoker =
         workspaceDeleteFolderInvoker ?? _defaultWorkspaceDeleteFolderInvoker;
     final resolvedWorkspaceCreateFolderInvoker =
@@ -167,6 +159,36 @@ class NotesController extends ChangeNotifier {
       autosaveDebounce: autosaveDebounce,
     );
     _noteDraftManager.addListener(_handleNoteDraftManagerChanged);
+    _noteTagManager = NoteTagManager(
+      tagsListInvoker: resolvedTagsListInvoker,
+      noteSetTagsInvoker: resolvedNoteSetTagsInvoker,
+      prepare: _prepare,
+      envelopeError: _envelopeError,
+      flushPendingSave: flushPendingSave,
+      reloadNotesForFilter:
+          ({required bool preserveActiveWhenFilteredOut}) async {
+            await _loadNotes(
+              resetSession: false,
+              preserveActiveWhenFilteredOut: preserveActiveWhenFilteredOut,
+              refreshTags: false,
+            );
+            return _listPhase != NotesListPhase.error;
+          },
+      activeNoteId: () => _activeNoteId,
+      noteById: (atomId) => _noteCache[atomId] ?? _selectedNote,
+      upsertNote: _insertOrReplaceListItem,
+      isDirty: _isDirty,
+      setSaveState: _setSaveState,
+      setSaveError: (message) =>
+          _noteSaveTracker.setErrorMessage(message, notify: false),
+      syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
+      onActiveNoteUpdated: ({required atomId, required note}) {
+        _selectedNote = note;
+        _activeDraftContent = _draftContentByAtomId[atomId] ?? note.content;
+        _switchBlockErrorMessage = null;
+      },
+    );
+    _noteTagManager.addListener(_handleNoteTagManagerChanged);
     _workspaceTreeManager = WorkspaceTreeManager(
       workspaceDeleteFolderInvoker: resolvedWorkspaceDeleteFolderInvoker,
       workspaceCreateFolderInvoker: resolvedWorkspaceCreateFolderInvoker,
@@ -192,7 +214,6 @@ class NotesController extends ChangeNotifier {
   final NoteGetInvoker _noteGetInvoker;
   final NoteCreateInvoker _noteCreateInvoker;
   final NoteUpdateInvoker _noteUpdateInvoker;
-  final TagsListInvoker _tagsListInvoker;
   final NoteSetTagsInvoker _noteSetTagsInvoker;
   final DebounceTimerFactory _debounceTimerFactory;
   final NotesPrepare _prepare;
@@ -200,6 +221,7 @@ class NotesController extends ChangeNotifier {
   late final bool _ownsWorkspaceProvider;
   late final NoteSaveTracker _noteSaveTracker;
   late final NoteDraftManager _noteDraftManager;
+  late final NoteTagManager _noteTagManager;
   late final WorkspaceTreeManager _workspaceTreeManager;
 
   /// Requested list limit for C1 list baseline.
@@ -211,10 +233,6 @@ class NotesController extends ChangeNotifier {
   NotesListPhase _listPhase = NotesListPhase.idle;
   List<rust_api.NoteItem> _items = const [];
   String? _listErrorMessage;
-  bool _tagsLoading = false;
-  List<String> _availableTags = const [];
-  String? _tagsErrorMessage;
-  String? _selectedTag;
 
   rust_api.NoteItem? _selectedNote;
   bool _detailLoading = false;
@@ -230,14 +248,10 @@ class NotesController extends ChangeNotifier {
   String? _activeNoteId;
   String? _previewTabId;
   int _editorFocusRequestId = 0;
-  final Set<String> _tagSaveInFlightAtomIds = <String>{};
-  final Map<String, Future<void>> _tagMutationQueueByAtomId =
-      <String, Future<void>>{};
   String? _switchBlockErrorMessage;
 
   int _listRequestId = 0;
   int _detailRequestId = 0;
-  int _tagsRequestId = 0;
   bool _disposed = false;
 
   /// Current list phase.
@@ -250,16 +264,16 @@ class NotesController extends ChangeNotifier {
   String? get listErrorMessage => _listErrorMessage;
 
   /// Whether tag catalog request is currently in flight.
-  bool get tagsLoading => _tagsLoading;
+  bool get tagsLoading => _noteTagManager.tagsLoading;
 
   /// Normalized tags sorted alphabetically for filter UI.
-  List<String> get availableTags => List.unmodifiable(_availableTags);
+  List<String> get availableTags => _noteTagManager.availableTags;
 
   /// Current tag catalog failure message.
-  String? get tagsErrorMessage => _tagsErrorMessage;
+  String? get tagsErrorMessage => _noteTagManager.tagsErrorMessage;
 
   /// Currently selected single-tag filter (`null` means unfiltered).
-  String? get selectedTag => _selectedTag;
+  String? get selectedTag => _noteTagManager.selectedTag;
 
   /// Currently selected note atom id.
   String? get selectedAtomId => _activeNoteId;
@@ -506,6 +520,13 @@ class NotesController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _handleNoteTagManagerChanged() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
   void _handleWorkspaceTreeManagerChanged() {
     if (_disposed) {
       return;
@@ -517,9 +538,11 @@ class NotesController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _noteDraftManager.removeListener(_handleNoteDraftManagerChanged);
+    _noteTagManager.removeListener(_handleNoteTagManagerChanged);
     _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
     _workspaceTreeManager.removeListener(_handleWorkspaceTreeManagerChanged);
     _noteDraftManager.dispose();
+    _noteTagManager.dispose();
     _workspaceTreeManager.dispose();
     _noteSaveTracker.dispose();
     if (_ownsWorkspaceProvider) {
@@ -544,7 +567,7 @@ class NotesController extends ChangeNotifier {
   /// - Opens first loaded note as active tab when available.
   Future<void> loadNotes() async {
     await _awaitCreateTagApply();
-    await _awaitPendingTagMutations();
+    await _noteTagManager.awaitPendingTagMutations();
     await _loadNotes(
       resetSession: true,
       preserveActiveWhenFilteredOut: false,
@@ -555,7 +578,7 @@ class NotesController extends ChangeNotifier {
   /// Retries notes list for current filter without resetting opened tabs.
   Future<void> retryLoad() async {
     await _awaitCreateTagApply();
-    await _awaitPendingTagMutations();
+    await _noteTagManager.awaitPendingTagMutations();
     await _loadNotes(
       resetSession: false,
       preserveActiveWhenFilteredOut: false,
@@ -564,58 +587,20 @@ class NotesController extends ChangeNotifier {
   }
 
   /// Retries tag catalog request for filter UI.
-  Future<void> retryTagLoad() => _refreshAvailableTags();
+  Future<void> retryTagLoad() => _noteTagManager.refreshAvailableTags();
 
   /// Applies one normalized single-tag filter.
   ///
   /// Returns `false` when input is invalid or flush guard blocks transition.
-  Future<bool> applyTagFilter(String rawTag) async {
-    final normalized = _normalizeTag(rawTag);
-    if (normalized == null) {
-      // Why: blank filter tokens are invalid but should be ignored silently
-      // to keep UX stable when user submits whitespace accidentally.
-      return false;
-    }
-    if (_selectedTag == normalized) {
-      return true;
-    }
-
-    if (_activeNoteId != null) {
-      final flushed = await flushPendingSave();
-      if (!flushed) {
-        return false;
-      }
-    }
-
-    _selectedTag = normalized;
-    await _loadNotes(
-      resetSession: false,
-      preserveActiveWhenFilteredOut: false,
-      refreshTags: false,
-    );
-    return _listPhase != NotesListPhase.error;
+  Future<bool> applyTagFilter(String rawTag) {
+    return _noteTagManager.applyTagFilter(rawTag);
   }
 
   /// Clears active single-tag filter and returns to full list.
   ///
   /// Returns `false` when flush guard blocks transition.
-  Future<bool> clearTagFilter() async {
-    if (_selectedTag == null) {
-      return true;
-    }
-    if (_activeNoteId != null) {
-      final flushed = await flushPendingSave();
-      if (!flushed) {
-        return false;
-      }
-    }
-    _selectedTag = null;
-    await _loadNotes(
-      resetSession: false,
-      preserveActiveWhenFilteredOut: false,
-      refreshTags: false,
-    );
-    return _listPhase != NotesListPhase.error;
+  Future<bool> clearTagFilter() {
+    return _noteTagManager.clearTagFilter();
   }
 
   /// Handles open-note request from explorer shell.
@@ -848,16 +833,7 @@ class NotesController extends ChangeNotifier {
     _autosaveTimer?.cancel();
 
     while (true) {
-      if (_tagMutationQueueByAtomId[atomId] case final queuedTagMutation?) {
-        try {
-          await queuedTagMutation;
-        } catch (_) {}
-        continue;
-      }
-      if (_tagSaveInFlightAtomIds.contains(atomId)) {
-        await Future<void>.delayed(const Duration(milliseconds: 12));
-        continue;
-      }
+      await _noteTagManager.waitForAtomTagMutations(atomId);
 
       final inflight = _saveFutureByAtomId[atomId];
       if (inflight != null) {
@@ -954,7 +930,7 @@ class NotesController extends ChangeNotifier {
         return false;
       }
       var createdNote = created;
-      if (_selectedTag case final activeTag?) {
+      if (selectedTag case final activeTag?) {
         final taggedFuture = _noteSetTagsInvoker(
           atomId: created.atomId,
           tags: <String>[activeTag],
@@ -1002,7 +978,7 @@ class NotesController extends ChangeNotifier {
       _syncWorkspaceFromControllerState();
       notifyListeners();
 
-      await _refreshAvailableTags(showLoading: false);
+      await _noteTagManager.refreshAvailableTags(showLoading: false);
       await _loadSelectedDetail(atomId: createdNote.atomId);
       _requestEditorFocus();
       notifyListeners();
@@ -1018,115 +994,18 @@ class NotesController extends ChangeNotifier {
   /// Replaces the active note tag set using immediate-save semantics.
   ///
   /// Returns `false` when active note is missing or mutation fails.
-  Future<bool> setActiveNoteTags(List<String> rawTags) async {
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return false;
-    }
-    final normalized = _normalizeTags(rawTags);
-    return _enqueueTagMutation(
-      atomId: atomId,
-      mutation: () => _setNoteTags(atomId: atomId, normalizedTags: normalized),
-    );
+  Future<bool> setActiveNoteTags(List<String> rawTags) {
+    return _noteTagManager.setActiveNoteTags(rawTags);
   }
 
   /// Adds one tag to active note with normalization and de-duplication.
-  Future<bool> addTagToActiveNote(String tag) async {
-    final normalized = _normalizeTag(tag);
-    if (normalized == null) {
-      return false;
-    }
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return false;
-    }
-    return _enqueueTagMutation(
-      atomId: atomId,
-      mutation: () async {
-        final current = _noteCache[atomId] ?? _selectedNote;
-        if (current == null) {
-          return false;
-        }
-        if (current.tags.contains(normalized)) {
-          return true;
-        }
-        return _setNoteTags(
-          atomId: atomId,
-          normalizedTags: _normalizeTags(<String>[...current.tags, normalized]),
-        );
-      },
-    );
+  Future<bool> addTagToActiveNote(String tag) {
+    return _noteTagManager.addTagToActiveNote(tag);
   }
 
   /// Removes one tag from active note with normalization.
-  Future<bool> removeTagFromActiveNote(String tag) async {
-    final normalized = _normalizeTag(tag);
-    if (normalized == null) {
-      return false;
-    }
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return false;
-    }
-    return _enqueueTagMutation(
-      atomId: atomId,
-      mutation: () async {
-        final current = _noteCache[atomId] ?? _selectedNote;
-        if (current == null) {
-          return false;
-        }
-        if (!current.tags.contains(normalized)) {
-          return true;
-        }
-        final next = current.tags
-            .where((entry) => entry != normalized)
-            .toList();
-        return _setNoteTags(
-          atomId: atomId,
-          normalizedTags: _normalizeTags(next),
-        );
-      },
-    );
-  }
-
-  Future<bool> _enqueueTagMutation({
-    required String atomId,
-    required Future<bool> Function() mutation,
-  }) {
-    final previous = _tagMutationQueueByAtomId[atomId] ?? Future<void>.value();
-    final completer = Completer<bool>();
-    late final Future<void> queued;
-    queued = previous
-        .catchError((_) {})
-        .then((_) async {
-          try {
-            final result = await mutation();
-            completer.complete(result);
-          } catch (error, stackTrace) {
-            completer.completeError(error, stackTrace);
-          }
-        })
-        .whenComplete(() {
-          if (identical(_tagMutationQueueByAtomId[atomId], queued)) {
-            _tagMutationQueueByAtomId.remove(atomId);
-          }
-        });
-    _tagMutationQueueByAtomId[atomId] = queued;
-    return completer.future;
-  }
-
-  Future<void> _awaitPendingTagMutations() async {
-    while (true) {
-      final snapshot = _tagMutationQueueByAtomId.values.toList();
-      if (snapshot.isEmpty) {
-        if (_tagSaveInFlightAtomIds.isEmpty) {
-          return;
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 12));
-        continue;
-      }
-      await Future.wait(snapshot.map((future) => future.catchError((_) {})));
-    }
+  Future<bool> removeTagFromActiveNote(String tag) {
+    return _noteTagManager.removeTagFromActiveNote(tag);
   }
 
   Future<void> _reconcileOpenTabsAfterWorkspaceMutation() async {
@@ -1216,8 +1095,7 @@ class NotesController extends ChangeNotifier {
     _draftVersionByAtomId.remove(atomId);
     _saveFutureByAtomId.remove(atomId);
     _saveQueuedByAtomId.remove(atomId);
-    _tagSaveInFlightAtomIds.remove(atomId);
-    _tagMutationQueueByAtomId.remove(atomId);
+    _noteTagManager.clearStateForDeletedAtom(atomId);
   }
 
   Future<void> _awaitCreateTagApply({Duration? timeout}) async {
@@ -1232,93 +1110,6 @@ class NotesController extends ChangeNotifier {
         await pending.timeout(timeout, onTimeout: () {});
       }
     } catch (_) {}
-  }
-
-  Future<bool> _setNoteTags({
-    required String atomId,
-    required List<String> normalizedTags,
-  }) async {
-    final current = _noteCache[atomId] ?? _selectedNote;
-    if (current == null) {
-      return false;
-    }
-    if (listEquals(current.tags, normalizedTags)) {
-      return true;
-    }
-
-    _tagSaveInFlightAtomIds.add(atomId);
-    _setSaveState(NoteSaveState.saving);
-    notifyListeners();
-
-    try {
-      await _prepare();
-      final response = await _noteSetTagsInvoker(
-        atomId: atomId,
-        tags: normalizedTags,
-      );
-      if (!response.ok) {
-        _noteSaveTracker.setErrorMessage(
-          _envelopeError(
-            errorCode: response.errorCode,
-            message: response.message,
-            fallback: 'Failed to update note tags.',
-          ),
-          notify: false,
-        );
-        _setSaveState(NoteSaveState.error, preserveError: true);
-        notifyListeners();
-        return false;
-      }
-      final updated = response.note;
-      if (updated == null) {
-        _noteSaveTracker.setErrorMessage(
-          'Tag update succeeded without note payload.',
-          notify: false,
-        );
-        _setSaveState(NoteSaveState.error, preserveError: true);
-        notifyListeners();
-        return false;
-      }
-
-      _insertOrReplaceListItem(updated, updatePersisted: true);
-      if (_activeNoteId == atomId) {
-        _selectedNote = _noteCache[atomId];
-        _activeDraftContent = _draftContentByAtomId[atomId] ?? updated.content;
-        _switchBlockErrorMessage = null;
-        if (_isDirty(atomId)) {
-          _setSaveState(NoteSaveState.dirty);
-        } else {
-          _setSaveState(NoteSaveState.clean, showSavedBadge: true);
-        }
-        _syncWorkspaceActiveSnapshot();
-      }
-      notifyListeners();
-
-      await _refreshAvailableTags(showLoading: false);
-
-      // Why: when active note no longer matches current filter, keep editor
-      // alive but refresh explorer list to avoid stale left-pane entries.
-      if (_selectedTag case final activeTag?) {
-        if (!updated.tags.contains(activeTag)) {
-          await _loadNotes(
-            resetSession: false,
-            preserveActiveWhenFilteredOut: true,
-            refreshTags: false,
-          );
-        }
-      }
-      return true;
-    } catch (error) {
-      _noteSaveTracker.setErrorMessage(
-        'Tag update failed unexpectedly: $error',
-        notify: false,
-      );
-      _setSaveState(NoteSaveState.error, preserveError: true);
-      notifyListeners();
-      return false;
-    } finally {
-      _tagSaveInFlightAtomIds.remove(atomId);
-    }
   }
 
   /// Selects one note and refreshes detail snapshot.
@@ -1585,7 +1376,7 @@ class NotesController extends ChangeNotifier {
   }) async {
     final requestId = ++_listRequestId;
     if (refreshTags) {
-      unawaited(_refreshAvailableTags());
+      unawaited(_noteTagManager.refreshAvailableTags());
     }
 
     if (resetSession) {
@@ -1605,7 +1396,7 @@ class NotesController extends ChangeNotifier {
       }
 
       final response = await _notesListInvoker(
-        tag: _selectedTag,
+        tag: selectedTag,
         limit: listLimit,
         offset: 0,
       );
@@ -1727,8 +1518,7 @@ class NotesController extends ChangeNotifier {
     _draftVersionByAtomId.clear();
     _saveFutureByAtomId.clear();
     _saveQueuedByAtomId.clear();
-    _tagSaveInFlightAtomIds.clear();
-    _tagMutationQueueByAtomId.clear();
+    _noteTagManager.resetMutationState();
     _activeNoteId = null;
     _previewTabId = null;
     _activeDraftAtomId = null;
@@ -1740,66 +1530,6 @@ class NotesController extends ChangeNotifier {
     _autosaveTimer?.cancel();
     _noteSaveTracker.reset(notify: false);
     _syncWorkspaceFromControllerState();
-  }
-
-  Future<void> _refreshAvailableTags({bool showLoading = true}) async {
-    final requestId = ++_tagsRequestId;
-    if (showLoading) {
-      _tagsLoading = true;
-      _tagsErrorMessage = null;
-      notifyListeners();
-    }
-
-    try {
-      await _prepare();
-      if (requestId != _tagsRequestId) {
-        return;
-      }
-
-      final response = await _tagsListInvoker();
-      if (requestId != _tagsRequestId) {
-        return;
-      }
-
-      if (!response.ok) {
-        _tagsLoading = false;
-        _tagsErrorMessage = _envelopeError(
-          errorCode: response.errorCode,
-          message: response.message,
-          fallback: 'Failed to load tags.',
-        );
-        notifyListeners();
-        return;
-      }
-
-      final normalizedTags = List<String>.unmodifiable(
-        _normalizeTags(response.tags),
-      );
-      _availableTags = normalizedTags;
-      _tagsLoading = false;
-      _tagsErrorMessage = null;
-      notifyListeners();
-
-      final staleSelectedTag = _selectedTag;
-      if (staleSelectedTag != null &&
-          !normalizedTags.contains(staleSelectedTag)) {
-        // Why: selected filter can outlive its chip after tag pruning.
-        // Auto-clear prevents hidden filter lock when no chip exists to toggle.
-        _selectedTag = null;
-        await _loadNotes(
-          resetSession: false,
-          preserveActiveWhenFilteredOut: false,
-          refreshTags: false,
-        );
-      }
-    } catch (error) {
-      if (requestId != _tagsRequestId) {
-        return;
-      }
-      _tagsLoading = false;
-      _tagsErrorMessage = 'Tags load failed unexpectedly: $error';
-      notifyListeners();
-    }
   }
 
   /// Retries loading current selected note detail.
@@ -1983,16 +1713,11 @@ class NotesController extends ChangeNotifier {
   bool _hasPendingSaveFor(String atomId) {
     return _isDirty(atomId) ||
         _saveFutureByAtomId.containsKey(atomId) ||
-        _tagSaveInFlightAtomIds.contains(atomId) ||
-        _tagMutationQueueByAtomId.containsKey(atomId);
+        _noteTagManager.hasPendingTagWorkFor(atomId);
   }
 
   bool _shouldIncludeInVisibleList(rust_api.NoteItem note) {
-    final selectedTag = _selectedTag;
-    if (selectedTag == null) {
-      return true;
-    }
-    return note.tags.contains(selectedTag);
+    return _noteTagManager.shouldIncludeInVisibleList(note);
   }
 
   void _scheduleAutosave({required String atomId, required int version}) {
@@ -2193,25 +1918,6 @@ class NotesController extends ChangeNotifier {
       return '[$errorCode] $fallback';
     }
     return '[$errorCode] $normalized';
-  }
-
-  String? _normalizeTag(String raw) {
-    final normalized = raw.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
-  }
-
-  List<String> _normalizeTags(List<String> rawTags) {
-    final set = SplayTreeSet<String>();
-    for (final tag in rawTags) {
-      final normalized = _normalizeTag(tag);
-      if (normalized != null) {
-        set.add(normalized);
-      }
-    }
-    return List<String>.unmodifiable(set);
   }
 
   String _titleFromContent(String content) {
