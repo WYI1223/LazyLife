@@ -1,0 +1,52 @@
+import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
+
+typedef TagsListInvoker = Future<rust_api.TagsListResponse> Function();
+
+typedef NoteSetTagsInvoker =
+    Future<rust_api.NoteResponse> Function({
+      required String atomId,
+      required List<String> tags,
+    });
+
+typedef TagPrepare = Future<void> Function();
+
+typedef TagEnvelopeError =
+    String Function({
+      required String? errorCode,
+      required String message,
+      required String fallback,
+    });
+
+typedef TagFlushPendingSave = Future<bool> Function();
+
+typedef TagReloadNotesForFilter =
+    Future<bool> Function({required bool preserveActiveWhenFilteredOut});
+
+typedef TagActiveNoteIdReader = String? Function();
+
+typedef TagNoteLookup = rust_api.NoteItem? Function(String atomId);
+
+typedef TagUpsertNote =
+    void Function(
+      rust_api.NoteItem note, {
+      bool insertFront,
+      bool updatePersisted,
+      bool syncVisibleList,
+    });
+
+typedef TagIsDirtyReader = bool Function(String atomId);
+
+typedef TagSetSaveState =
+    void Function(
+      NoteSaveState nextState, {
+      bool preserveError,
+      bool showSavedBadge,
+    });
+
+typedef TagSetSaveError = void Function(String? message);
+
+typedef TagSyncWorkspaceActiveSnapshot = void Function();
+
+typedef TagOnActiveNoteUpdated =
+    void Function({required String atomId, required rust_api.NoteItem note});

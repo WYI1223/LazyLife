@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-3-note-tag-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-3 extract note tag manager` |
 | Estimated Effort | 1.5 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -53,11 +53,11 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker
-- [ ] <350 行
-- [ ] 标签变更队列独立
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker
+- [x] <350 行（`note_tag_manager.dart` 330 行）
+- [x] 标签变更队列独立
+- [x] CI 全绿
+- [x] 测试基线不变（316 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -90,4 +90,3 @@ flutter build windows --debug
 ## Risk Notes
 
 NoteTagManager 的 filter→list 回调桥接需在 NotesController facade 中临时保留（S4 策略）。此桥接在 P2-2（NoteListManager）+ P2-3（Coordinator）中最终清理。
-
