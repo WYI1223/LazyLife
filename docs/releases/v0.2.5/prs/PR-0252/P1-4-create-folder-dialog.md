@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-4-create-folder-dialog` |
 | PR Title | `refactor(frontend): PR-0252 P1-4 extract create folder dialog` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
