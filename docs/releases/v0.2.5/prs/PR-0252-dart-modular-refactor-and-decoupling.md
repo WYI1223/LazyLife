@@ -167,7 +167,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P0-2` regression checklist v1 confirmed
 - [x] `P0-3` PR gate rules confirmed
 - [x] `P0-4` NoteSaveTracker sample extraction PR merged
-- [ ] `P0-5` sample PR TL review and regression pass
+- [x] `P0-5` sample PR TL review and regression pass
 - [ ] `P1-1` WorkspaceTreeManager extracted
 - [ ] `P1-2` NoteDraftManager extracted
 - [ ] `P1-3` NoteTagManager extracted
