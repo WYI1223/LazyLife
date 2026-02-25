@@ -49,6 +49,8 @@ Out of scope:
 ## Planned File Changes
 
 - [add] `apps/lazynote_flutter/lib/features/notes/managers/note_tag_manager.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/note_tag_manager_types.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/note_tag_mutation_queue.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` (facade forwarding)
 
 ## Acceptance Criteria
@@ -90,3 +92,5 @@ flutter build windows --debug
 ## Risk Notes
 
 NoteTagManager 的 filter→list 回调桥接需在 NotesController facade 中临时保留（S4 策略）。此桥接在 P2-2（NoteListManager）+ P2-3（Coordinator）中最终清理。
+
+`_noteSetTagsInvoker` 当前由 NotesController（createNote 的 tag-apply 路径）和 NoteTagManager（标签变更路径）共同持有，属于本阶段可接受的临时双归属。该双归属在 P2-2/P2-3 中随 createNote 编排迁移一起清理。
