@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-5-delete-folder-dialog` |
 | PR Title | `refactor(frontend): PR-0252 P1-5 extract delete folder dialog` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 

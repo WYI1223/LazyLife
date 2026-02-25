@@ -322,7 +322,7 @@
 | P1-2 | 提取 NoteDraftManager | notes/managers | 结构拆分 | P0-4 | Agent | 1.0 | PR | 独立 ChangeNotifier，持有 noteUpdate invoker，<300 行；自保存定时器隔离；CI 全绿 | 已完成（2026-02-25） |
 | P1-3 | 提取 NoteTagManager | notes/managers | 结构拆分 | 无 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker，<350 行；标签变更队列独立；CI 全绿 | 已完成（2026-02-25） |
 | P1-4 | 提取 CreateFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~130 行，接收回调参数；可独立 widget test；CI 全绿 | 已完成（2026-02-25） |
-| P1-5 | 提取 DeleteFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~150 行；含 dissolve/delete-all 选择；CI 全绿 | 评审中（2026-02-25） |
+| P1-5 | 提取 DeleteFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~150 行；含 dissolve/delete-all 选择；CI 全绿 | 已完成（2026-02-25） |
 | P1-6 | 提取 RenameNodeDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~130 行；CI 全绿 | 未开始 |
 | P1-7 | 提取 MoveNodeDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~160 行；含移动目标加载；CI 全绿 | 未开始 |
 | P1-8 | 提取 ExplorerTreeBuilder | notes | 结构拆分 | P1-4~7 | Agent | 1.0 | PR | 独立辅助类，<400 行，纯输入→输出；CI 全绿 | 未开始 |
@@ -919,8 +919,8 @@ Phase 3 验收通过后，输出以下收口产物：
 | 6 | NoteTabManager | `notes_controller.dart` + `note_tab_manager.dart` | `notes/managers/note_tab_manager.dart` | <400 | — | 待执行 |
 | 7 | NoteListManager | `notes_controller.dart` | `notes/managers/note_list_manager.dart` | <400 | — | 待执行 |
 | 8 | NotesCoordinator | `notes_controller.dart`（替代） | `notes/notes_coordinator.dart` | <300 | — | 待执行 |
-| 9 | CreateFolderDialog | `note_explorer.dart` | `notes/dialogs/create_folder_dialog.dart` | ~130 | — | 待执行 |
-| 10 | DeleteFolderDialog | `note_explorer.dart` | `notes/dialogs/delete_folder_dialog.dart` | ~150 | — | 待执行 |
+| 9 | CreateFolderDialog | `note_explorer.dart` | `notes/dialogs/create_folder_dialog.dart` | ~130 | — | 已完成（P1-4） |
+| 10 | DeleteFolderDialog | `note_explorer.dart` | `notes/dialogs/delete_folder_dialog.dart` | ~150 | — | 已完成（P1-5） |
 | 11 | RenameNodeDialog | `note_explorer.dart` | `notes/dialogs/rename_node_dialog.dart` | ~130 | — | 待执行 |
 | 12 | MoveNodeDialog | `note_explorer.dart` | `notes/dialogs/move_node_dialog.dart` | ~160 | — | 待执行 |
 | 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 待执行 |
