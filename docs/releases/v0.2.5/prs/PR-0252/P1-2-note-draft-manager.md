@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-2-note-draft-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-2 extract note draft manager` |
 | Estimated Effort | 1.0 person-day |
-| Status | In Progress |
+| Status | Ready for Review |
 
 ## References
 
@@ -51,11 +51,11 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] 独立 ChangeNotifier，持有 noteUpdate invoker
-- [ ] <300 行
-- [ ] 自保存定时器隔离
-- [ ] CI 全绿
-- [ ] 测试基线不变（316 pass / 0 known-fail）
+- [x] 独立 ChangeNotifier，持有 noteUpdate invoker
+- [x] <300 行
+- [x] 自保存定时器隔离
+- [x] CI 全绿
+- [x] 测试基线不变（316 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -85,4 +85,3 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。删除 `note_draft_manager.dart`，回退 `notes_controller.dart` facade 改动。
-
