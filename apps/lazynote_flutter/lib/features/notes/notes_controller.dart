@@ -4,12 +4,14 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
+import 'package:lazynote_flutter/features/notes/managers/note_draft_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_manager.dart';
 import 'package:lazynote_flutter/features/notes/workspace_port.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
+export 'managers/note_draft_manager.dart' show NoteDraftManager;
 export 'managers/note_save_tracker.dart' show NoteSaveState;
 export 'managers/workspace_tree_manager.dart'
     show
@@ -145,6 +147,26 @@ class NotesController extends ChangeNotifier {
     _ownsWorkspaceProvider = workspaceProvider == null;
     _noteSaveTracker = NoteSaveTracker(timerFactory: _debounceTimerFactory);
     _noteSaveTracker.addListener(_handleNoteSaveTrackerChanged);
+    _noteDraftManager = NoteDraftManager(
+      noteUpdateInvoker: _noteUpdateInvoker,
+      prepare: _prepare,
+      activeNoteId: () => _activeNoteId,
+      noteById: noteById,
+      withContent: _withContent,
+      upsertNote: _insertOrReplaceListItem,
+      envelopeError: _envelopeError,
+      applySaveState: _setSaveState,
+      setSaveError: (message) =>
+          _noteSaveTracker.setErrorMessage(message, notify: false),
+      syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
+      onActiveSaveSuccess: (atomId) {
+        _selectedNote = _noteCache[atomId];
+        _switchBlockErrorMessage = null;
+      },
+      timerFactory: _debounceTimerFactory,
+      autosaveDebounce: autosaveDebounce,
+    );
+    _noteDraftManager.addListener(_handleNoteDraftManagerChanged);
     _workspaceTreeManager = WorkspaceTreeManager(
       workspaceDeleteFolderInvoker: resolvedWorkspaceDeleteFolderInvoker,
       workspaceCreateFolderInvoker: resolvedWorkspaceCreateFolderInvoker,
@@ -177,6 +199,7 @@ class NotesController extends ChangeNotifier {
   late final WorkspaceProvider _workspaceProvider;
   late final bool _ownsWorkspaceProvider;
   late final NoteSaveTracker _noteSaveTracker;
+  late final NoteDraftManager _noteDraftManager;
   late final WorkspaceTreeManager _workspaceTreeManager;
 
   /// Requested list limit for C1 list baseline.
@@ -204,18 +227,9 @@ class NotesController extends ChangeNotifier {
   final List<String> _openNoteIds = <String>[];
   final Map<String, rust_api.NoteItem> _noteCache =
       <String, rust_api.NoteItem>{};
-  final Map<String, String> _draftContentByAtomId = <String, String>{};
-  final Map<String, String> _persistedContentByAtomId = <String, String>{};
-  final Map<String, int> _draftVersionByAtomId = <String, int>{};
   String? _activeNoteId;
   String? _previewTabId;
-  String? _activeDraftAtomId;
-  String _activeDraftContent = '';
   int _editorFocusRequestId = 0;
-  Timer? _autosaveTimer;
-  final Map<String, Future<bool>> _saveFutureByAtomId =
-      <String, Future<bool>>{};
-  final Map<String, bool> _saveQueuedByAtomId = <String, bool>{};
   final Set<String> _tagSaveInFlightAtomIds = <String>{};
   final Map<String, Future<void>> _tagMutationQueueByAtomId =
       <String, Future<void>>{};
@@ -451,7 +465,41 @@ class NotesController extends ChangeNotifier {
     return _noteCache[atomId] ?? _findListItem(atomId);
   }
 
+  Map<String, String> get _draftContentByAtomId =>
+      _noteDraftManager.draftContentByAtomId;
+
+  Map<String, String> get _persistedContentByAtomId =>
+      _noteDraftManager.persistedContentByAtomId;
+
+  Map<String, int> get _draftVersionByAtomId =>
+      _noteDraftManager.draftVersionByAtomId;
+
+  Map<String, Future<bool>> get _saveFutureByAtomId =>
+      _noteDraftManager.saveFutureByAtomId;
+
+  Map<String, bool> get _saveQueuedByAtomId =>
+      _noteDraftManager.saveQueuedByAtomId;
+
+  String? get _activeDraftAtomId => _noteDraftManager.activeDraftAtomId;
+  set _activeDraftAtomId(String? value) {
+    _noteDraftManager.activeDraftAtomId = value;
+  }
+
+  String get _activeDraftContent => _noteDraftManager.activeDraftContent;
+  set _activeDraftContent(String value) {
+    _noteDraftManager.activeDraftContent = value;
+  }
+
+  Timer? get _autosaveTimer => _noteDraftManager.autosaveTimer;
+
   void _handleNoteSaveTrackerChanged() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
+  void _handleNoteDraftManagerChanged() {
     if (_disposed) {
       return;
     }
@@ -469,8 +517,10 @@ class NotesController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _autosaveTimer?.cancel();
+    _noteDraftManager.removeListener(_handleNoteDraftManagerChanged);
     _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
     _workspaceTreeManager.removeListener(_handleWorkspaceTreeManagerChanged);
+    _noteDraftManager.dispose();
     _workspaceTreeManager.dispose();
     _noteSaveTracker.dispose();
     if (_ownsWorkspaceProvider) {
@@ -1917,12 +1967,7 @@ class NotesController extends ChangeNotifier {
   }
 
   bool _isDirty(String atomId) {
-    final draft = _draftContentByAtomId[atomId];
-    final persisted = _persistedContentByAtomId[atomId];
-    if (draft == null || persisted == null) {
-      return false;
-    }
-    return draft != persisted;
+    return _noteDraftManager.isDirty(atomId);
   }
 
   void _reconcilePreviewTabState() {
@@ -1952,144 +1997,15 @@ class NotesController extends ChangeNotifier {
   }
 
   void _scheduleAutosave({required String atomId, required int version}) {
-    _autosaveTimer?.cancel();
-    _autosaveTimer = _debounceTimerFactory(autosaveDebounce, () {
-      unawaited(_saveDraft(atomId: atomId, version: version));
-    });
+    _noteDraftManager.scheduleAutosave(atomId: atomId, version: version);
   }
 
   Future<bool> _saveDraft({required String atomId, required int version}) {
-    if (_saveFutureByAtomId[atomId] case final inFlight?) {
-      _saveQueuedByAtomId[atomId] = true;
-      return inFlight;
-    }
-    final future = _performSaveDraft(atomId: atomId, version: version)
-        .whenComplete(() {
-          _saveFutureByAtomId.remove(atomId);
-          final shouldQueue = _saveQueuedByAtomId.remove(atomId) ?? false;
-          // Why: retry only when a newer write arrived during in-flight save.
-          // Retrying on plain dirty state can loop forever on persistent I/O errors.
-          if (shouldQueue) {
-            final nextVersion = _draftVersionByAtomId[atomId] ?? 0;
-            unawaited(_saveDraft(atomId: atomId, version: nextVersion));
-          }
-        });
-    _saveFutureByAtomId[atomId] = future;
-    return future;
-  }
-
-  Future<bool> _performSaveDraft({
-    required String atomId,
-    required int version,
-  }) async {
-    final draft = _draftContentByAtomId[atomId];
-    if (draft == null) {
-      return false;
-    }
-    final latestVersion = _draftVersionByAtomId[atomId] ?? 0;
-    if (version != latestVersion || !_isDirty(atomId)) {
-      if (_activeNoteId == atomId) {
-        _refreshSaveStateForActive();
-        notifyListeners();
-      }
-      return false;
-    }
-
-    if (_activeNoteId == atomId) {
-      _setSaveState(NoteSaveState.saving);
-      notifyListeners();
-    }
-
-    try {
-      await _prepare();
-      final response = await _noteUpdateInvoker(atomId: atomId, content: draft);
-      final currentVersion = _draftVersionByAtomId[atomId] ?? 0;
-      if (version != currentVersion) {
-        if (_activeNoteId == atomId) {
-          _refreshSaveStateForActive();
-          notifyListeners();
-        }
-        return false;
-      }
-
-      if (!response.ok) {
-        if (_activeNoteId == atomId) {
-          _noteSaveTracker.setErrorMessage(
-            _envelopeError(
-              errorCode: response.errorCode,
-              message: response.message,
-              fallback: 'Failed to save note.',
-            ),
-            notify: false,
-          );
-          _setSaveState(NoteSaveState.error, preserveError: true);
-          notifyListeners();
-        }
-        return false;
-      }
-
-      final current = _noteCache[atomId];
-      final saved =
-          response.note ??
-          (current == null ? null : _withContent(current, draft));
-      if (saved == null) {
-        if (_activeNoteId == atomId) {
-          _noteSaveTracker.setErrorMessage(
-            'Save succeeded without note payload.',
-            notify: false,
-          );
-          _setSaveState(NoteSaveState.error, preserveError: true);
-          notifyListeners();
-        }
-        return false;
-      }
-      _insertOrReplaceListItem(saved, updatePersisted: true);
-      if (_activeNoteId == atomId) {
-        _selectedNote = _noteCache[atomId];
-        _activeDraftContent = _draftContentByAtomId[atomId] ?? draft;
-        _switchBlockErrorMessage = null;
-        if (_isDirty(atomId)) {
-          _setSaveState(NoteSaveState.dirty);
-        } else {
-          _setSaveState(NoteSaveState.clean, showSavedBadge: true);
-        }
-        _syncWorkspaceActiveSnapshot();
-        notifyListeners();
-      }
-      return true;
-    } catch (error) {
-      final currentVersion = _draftVersionByAtomId[atomId] ?? 0;
-      if (version != currentVersion) {
-        if (_activeNoteId == atomId) {
-          _refreshSaveStateForActive();
-          notifyListeners();
-        }
-        return false;
-      }
-      if (_activeNoteId == atomId) {
-        _noteSaveTracker.setErrorMessage(
-          'Save failed unexpectedly: $error',
-          notify: false,
-        );
-        _setSaveState(NoteSaveState.error, preserveError: true);
-        notifyListeners();
-      }
-      return false;
-    }
+    return _noteDraftManager.saveDraft(atomId: atomId, version: version);
   }
 
   void _refreshSaveStateForActive() {
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      _autosaveTimer?.cancel();
-      _setSaveState(NoteSaveState.clean);
-      return;
-    }
-    if (_isDirty(atomId)) {
-      _setSaveState(NoteSaveState.dirty);
-      return;
-    }
-    _setSaveState(NoteSaveState.clean);
+    _noteDraftManager.refreshSaveStateForActive(activeNoteId: _activeNoteId);
   }
 
   void _setSaveState(
