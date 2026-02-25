@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-5-sample-review-closure` |
 | PR Title | `docs(frontend): PR-0252 P0-5 sample PR review and regression closure` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
