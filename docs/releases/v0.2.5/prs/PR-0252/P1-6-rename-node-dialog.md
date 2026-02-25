@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-6-rename-node-dialog` |
 | PR Title | `refactor(frontend): PR-0252 P1-6 extract rename node dialog` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
