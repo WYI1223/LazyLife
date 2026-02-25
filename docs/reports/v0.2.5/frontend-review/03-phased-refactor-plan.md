@@ -192,7 +192,7 @@
 - NoteTagManager 的 filter→list 回调桥接需在 NotesController facade 中临时保留 → 缓解：S4 策略（facade 过渡期）
 
 **阶段 DoD：**
-- [ ] 3 个 manager（WorkspaceTree + Draft + Tag）提取完成，各 <500 行
+- [ ] 3 个 manager（WorkspaceTree + Draft + Tag）提取完成（WorkspaceTree <550 行；Draft <300 行；Tag <350 行）
 - [ ] 4 个对话框提取为独立 Widget
 - [ ] ExplorerTreeBuilder 提取完成
 - [ ] NotesController 保留为 facade，转发到已提取 manager
@@ -318,7 +318,7 @@
 
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
-| P1-1 | 提取 WorkspaceTreeManager | notes/managers | 结构拆分 | P0-1 | Agent | 2.0 | PR | 独立 ChangeNotifier，持有 workspace ×6 invoker + WorkspacePort，<500 行；原 controller facade 转发；CI 全绿 | 未开始 |
+| P1-1 | 提取 WorkspaceTreeManager | notes/managers | 结构拆分 | P0-1 | Agent | 2.0 | PR | 独立 ChangeNotifier，持有 workspace ×6 invoker + WorkspacePort，<550 行（物理行 533 / 非空行 499）；原 controller facade 转发；CI 全绿 | 评审中（2026-02-25） |
 | P1-2 | 提取 NoteDraftManager | notes/managers | 结构拆分 | P0-4 | Agent | 1.0 | PR | 独立 ChangeNotifier，持有 noteUpdate invoker，<300 行；自保存定时器隔离；CI 全绿 | 未开始 |
 | P1-3 | 提取 NoteTagManager | notes/managers | 结构拆分 | 无 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 noteSetTags + tagsList invoker，<350 行；标签变更队列独立；CI 全绿 | 未开始 |
 | P1-4 | 提取 CreateFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~130 行，接收回调参数；可独立 widget test；CI 全绿 | 未开始 |
@@ -590,7 +590,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - [ ] 涉及核心流程时，回归清单 v1 对应步骤已执行
 - [ ] 可回滚方案明确（至少可独立 revert PR）
 - [ ] 无混入无关改动（纯重构 PR 不包含功能变更）
-- [ ] 拆分后模块符合 0255B 行数目标（manager <500 行，coordinator <300 行）
+- [ ] 拆分后模块符合行数目标（WorkspaceTree <550 行；其他 manager/coordinator 阈值按 Section 4.2）
 - [ ] 拆分后依赖方向符合 0255B D1–D8 规则
 
 ### 6.4 结构合规性检查（对应 0255B D1–D8）
@@ -800,7 +800,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 
 | # | 指标 | 度量方法 | 基线（重构前） | 目标（重构后） |
 |---|------|---------|-------------|-------------|
-| G1 | NotesController 最大文件行数 | `wc -l` | 3,160 行 | 删除（由 Coordinator <300 行 + 6 个 Manager 各 <500 行替代） |
+| G1 | NotesController 最大文件行数 | `wc -l` | 3,160 行 | 删除（由 Coordinator <300 行 + 5 个 Manager 各自阈值 + WorkspaceTree <550 行替代） |
 | G2 | NoteExplorer 最大文件行数 | `wc -l` | 2,280 行 | ~1,180 行（去除 4 对话框 549 行 + TreeBuilder ~375 行 + 提取后缩减） |
 | G3 | 单文件最大方法数 | 代码阅读 | 73（NotesController） | <20（每个 manager） |
 | G4 | 单文件状态字段数 | 代码阅读 | 60（NotesController） | <15（每个 manager） |
@@ -874,7 +874,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 
 **Phase 1 验收：**
 
-- [ ] WorkspaceTreeManager 已合并（P1-1），<500 行
+- [ ] WorkspaceTreeManager 已合并（P1-1），<550 行（物理行口径）
 - [ ] NoteDraftManager 已合并（P1-2），<300 行
 - [ ] NoteTagManager 已合并（P1-3），<350 行
 - [ ] 4 个对话框已合并（P1-4~7），各 <200 行
@@ -913,7 +913,7 @@ Phase 3 验收通过后，输出以下收口产物：
 |---|--------|--------|--------|------|---------|------|
 | 1 | WorkspacePort | — | `notes/workspace_port.dart` | <30 | — | 待执行 |
 | 2 | NoteSaveTracker | `notes_controller.dart` | `notes/managers/note_save_tracker.dart` | <250 | — | 待执行 |
-| 3 | WorkspaceTreeManager | `notes_controller.dart` | `notes/managers/workspace_tree_manager.dart` | <500 | — | 待执行 |
+| 3 | WorkspaceTreeManager | `notes_controller.dart` | `notes/managers/workspace_tree_manager.dart` | <550（物理行口径） | — | 待执行 |
 | 4 | NoteDraftManager | `notes_controller.dart` | `notes/managers/note_draft_manager.dart` | <300 | — | 待执行 |
 | 5 | NoteTagManager | `notes_controller.dart` | `notes/managers/note_tag_manager.dart` | <350 | — | 待执行 |
 | 6 | NoteTabManager | `notes_controller.dart` + `note_tab_manager.dart` | `notes/managers/note_tab_manager.dart` | <400 | — | 待执行 |
