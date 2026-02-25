@@ -312,7 +312,7 @@
 | P0-2 | 编写回归清单 v1 | 仓库治理 | 回归 | 无 | Agent | 0.5 | 文档 | 覆盖笔记核心主流程 8–10 步（Section 5.2A）；TL 确认 | 已完成（2026-02-24） |
 | P0-3 | 确认 PR 门禁规则 | 仓库治理 | 门禁/规范 | 无 | Agent | 0.5 | 文档确认 | 0255B D1–D8 + S1–S7 规则文档化（Section 6 落地）；TL 确认 | 已完成（2026-02-24） |
 | P0-4 | 样板 PR：提取 NoteSaveTracker | notes/managers | 结构拆分 | P0-3 | Agent | 1.0 | PR | NoteSaveTracker 为独立 ChangeNotifier，<250 行，可独立实例化测试；原 controller facade 转发；CI 全绿 | 已完成（2026-02-24） |
-| P0-5 | 样板 PR review + 合并 + 回归验证 | notes | 回归 | P0-4 | TL + Agent | 0.5 | 合并记录 | TL review 通过；回归清单 v1 已完成（REG-04 记录为非阻塞遗留）；测试基线不变（316 pass / 0 known-fail） | 评审中（2026-02-24） |
+| P0-5 | 样板 PR review + 合并 + 回归验证 | notes | 回归 | P0-4 | TL + Agent | 0.5 | 合并记录 | TL review 通过；回归清单 v1 已完成（REG-04 记录为非阻塞遗留）；测试基线不变（316 pass / 0 known-fail） | 已完成（2026-02-24） |
 
 #### Phase 1 任务（清洁/中等缝隙提取 + Explorer 对话框）
 
@@ -865,12 +865,12 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 
 **Phase 0 验收：**
 
-- [ ] `workspace_port.dart` 已合并（P0-1）
-- [ ] NoteSaveTracker 样板 PR 已合并，测试基线不变（P0-4, P0-5）
-- [ ] 回归清单 v1 已确认（P0-2）
-- [ ] PR 门禁规则文档化（P0-3）
-- [ ] 回归清单 v1 走查通过
-- [ ] 风险台账无新增 P0 项
+- [x] `workspace_port.dart` 已合并（P0-1）
+- [x] NoteSaveTracker 样板 PR 已合并，测试基线不变（P0-4, P0-5）
+- [x] 回归清单 v1 已确认（P0-2）
+- [x] PR 门禁规则文档化（P0-3）
+- [x] 回归清单 v1 走查通过（REG-04 记为非阻塞遗留）
+- [x] 风险台账无新增 P0 项
 
 **Phase 1 验收：**
 
