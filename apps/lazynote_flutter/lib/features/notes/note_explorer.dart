@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/dialogs/create_folder_dialog.dart';
 import 'package:lazynote_flutter/features/notes/dialogs/delete_folder_dialog.dart';
+import 'package:lazynote_flutter/features/notes/dialogs/move_node_dialog.dart';
 import 'package:lazynote_flutter/features/notes/dialogs/rename_node_dialog.dart';
 import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
 import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
@@ -1899,66 +1900,14 @@ class _NoteExplorerState extends State<NoteExplorer> {
     final targetId = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              key: const Key('notes_move_node_dialog'),
-              title: Text(
-                _l10nText(
-                  fallback: 'Move node',
-                  pick: (l10n) => l10n.notesMoveNodeDialogTitle,
-                ),
-              ),
-              content: DropdownButtonFormField<String>(
-                key: const Key('notes_move_node_target_dropdown'),
-                initialValue: selectedTargetId,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: _l10nText(
-                    fallback: 'Target folder',
-                    pick: (l10n) => l10n.notesMoveTargetFolderLabel,
-                  ),
-                ),
-                items: options
-                    .map(
-                      (option) => DropdownMenuItem<String>(
-                        value: option.nodeId,
-                        child: Text(option.label),
-                      ),
-                    )
-                    .toList(growable: false),
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() {
-                    selectedTargetId = value;
-                  });
-                },
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Cancel',
-                      pick: (l10n) => l10n.commonCancel,
-                    ),
-                  ),
-                ),
-                FilledButton.tonal(
-                  key: const Key('notes_move_node_confirm_button'),
-                  onPressed: () =>
-                      Navigator.of(dialogContext).pop(selectedTargetId),
-                  child: Text(
-                    _l10nText(
-                      fallback: 'Move',
-                      pick: (l10n) => l10n.notesMoveAction,
-                    ),
-                  ),
-                ),
-              ],
-            );
+        return MoveNodeDialog(
+          options: options,
+          initialTargetId: selectedTargetId,
+          onConfirm: (value) {
+            Navigator.of(dialogContext).pop(value);
+          },
+          onCancel: () {
+            Navigator.of(dialogContext).pop();
           },
         );
       },
@@ -2014,11 +1963,11 @@ class _NoteExplorerState extends State<NoteExplorer> {
       );
   }
 
-  Future<List<_MoveTargetOption>> _loadMoveTargetOptions({
+  Future<List<MoveNodeDialogOption>> _loadMoveTargetOptions({
     required rust_api.WorkspaceNodeItem node,
   }) async {
-    final options = <_MoveTargetOption>[
-      _MoveTargetOption(
+    final options = <MoveNodeDialogOption>[
+      MoveNodeDialogOption(
         nodeId: _rootTargetNodeId,
         label: _l10nText(
           fallback: 'Root',
@@ -2051,7 +2000,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
           continue;
         }
         options.add(
-          _MoveTargetOption(
+          MoveNodeDialogOption(
             nodeId: item.nodeId,
             label: item.displayName.trim().isEmpty
                 ? item.nodeId
@@ -2081,11 +2030,4 @@ class _ExplorerContextTarget {
 
   final _ExplorerContextTargetKind kind;
   final rust_api.WorkspaceNodeItem? node;
-}
-
-class _MoveTargetOption {
-  const _MoveTargetOption({required this.nodeId, required this.label});
-
-  final String nodeId;
-  final String label;
 }
