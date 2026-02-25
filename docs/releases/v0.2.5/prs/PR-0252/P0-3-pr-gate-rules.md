@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p0-3-pr-gate-rules` |
 | PR Title | `docs(frontend): PR-0252 P0-3 lock PR gate rules` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
@@ -81,7 +81,7 @@ Out of scope:
 
 - [x] 0255B D1–D8 + S1–S7 规则文档化（Section 6 落地）
 - [x] 全部 `rg` 检查命令可在当前环境执行（含 Phase 0 目录未创建时 skip 处理）
-- [ ] TL 确认
+- [x] TL 确认
 
 ## Verification Snapshot (2026-02-24)
 
