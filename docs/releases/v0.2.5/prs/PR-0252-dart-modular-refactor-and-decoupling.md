@@ -174,7 +174,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P1-4` CreateFolderDialog extracted
 - [x] `P1-5` DeleteFolderDialog extracted
 - [x] `P1-6` RenameNodeDialog extracted
-- [ ] `P1-7` MoveNodeDialog extracted
+- [x] `P1-7` MoveNodeDialog extracted
 - [ ] `P1-8` ExplorerTreeBuilder extracted
 - [ ] `P2-1` NoteTabManager extracted
 - [ ] `P2-2` NoteListManager extracted
