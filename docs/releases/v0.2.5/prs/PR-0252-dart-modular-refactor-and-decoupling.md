@@ -214,7 +214,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 
 Baseline rule:
 
-- test baseline must remain `313 pass / 0 known-fail`.
+- test baseline must remain `316 pass / 0 known-fail`.
 - no newly introduced failures are allowed.
 
 Baseline note:
@@ -241,7 +241,7 @@ Baseline note:
 - [ ] `notes_controller.dart` is removed and replaced by `NotesCoordinator + managers`
 - [ ] EntryShellPage reaches zero cross-feature import for non-entry features
 - [ ] D1-D8 checks pass with phase-specific allowances from `PR-0255C` Section 6.4
-- [ ] regression baseline remains `313 pass / 0 known-fail` with no new failures
+- [ ] regression baseline remains `316 pass / 0 known-fail` with no new failures
 - [ ] no Rust/FFI signature drift is introduced
 
 ## Execution PR Specs
