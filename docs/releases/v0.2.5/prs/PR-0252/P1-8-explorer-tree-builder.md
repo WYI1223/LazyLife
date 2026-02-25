@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-8-explorer-tree-builder` |
 | PR Title | `refactor(frontend): PR-0252 P1-8 extract explorer tree builder` |
 | Estimated Effort | 1.0 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -45,14 +45,15 @@ Out of scope:
 ## Planned File Changes
 
 - [add] `apps/lazynote_flutter/lib/features/notes/explorer_tree_builder.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/explorer_tree_builder_types.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart` (import extracted builder)
 
 ## Acceptance Criteria
 
-- [ ] 独立辅助类，<400 行
-- [ ] 纯输入→输出
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] 独立辅助类，<400 行（`explorer_tree_builder.dart` 物理行 391）
+- [x] 纯输入→输出
+- [x] CI 全绿
+- [x] 测试基线不变（主干 333 pass / 0 known-fail；本分支 333 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -70,6 +71,15 @@ flutter build windows --debug
 - 不 import `features/workspace/` 内部文件（D7 精神）
 - 不 import coordinator/manager（非 UI 组件不应持有 controller 引用）
 
+## Verification Snapshot (2026-02-25)
+
+- `dart format apps/lazynote_flutter/lib/features/notes/explorer_tree_builder.dart apps/lazynote_flutter/lib/features/notes/explorer_tree_builder_types.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart`：通过
+- `flutter analyze`：通过（No issues found）
+- `flutter test test/note_explorer_tree_test.dart test/note_explorer_workspace_delete_test.dart test/explorer_context_actions_test.dart test/notes_page_explorer_slot_wiring_test.dart`：通过
+- `flutter test`：通过（333 pass，基线不变）
+- `flutter build windows --debug`：通过
+- 依赖边界检查：`features/workspace` 零匹配；`coordinator|manager` import 零匹配
+
 ## Regression
 
 - CI 自动回归
@@ -79,4 +89,3 @@ flutter build windows --debug
 ## Rollback
 
 独立 revert 即可。删除 `explorer_tree_builder.dart`，回退 `note_explorer.dart` 的 import 改动。
-
