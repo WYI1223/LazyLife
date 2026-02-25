@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-1-workspace-tree-manager` |
 | PR Title | `refactor(frontend): PR-0252 P1-1 extract workspace tree manager` |
 | Estimated Effort | 2.0 person-day |
-| Status | In Progress |
+| Status | Ready for Review |
 
 ## References
 
@@ -48,15 +48,18 @@ Out of scope:
 ## Planned File Changes
 
 - [add] `apps/lazynote_flutter/lib/features/notes/managers/workspace_tree_manager.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/workspace_tree_children_loader.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/workspace_tree_types.dart`
+- [add] `apps/lazynote_flutter/lib/features/notes/managers/workspace_tree_error_utils.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` (facade forwarding)
 
 ## Acceptance Criteria
 
-- [ ] 独立 ChangeNotifier，持有 workspace ×6 invoker + WorkspacePort
-- [ ] <500 行
-- [ ] 原 NotesController facade 转发
-- [ ] CI 全绿
-- [ ] 测试基线不变（316 pass / 0 known-fail）
+- [x] 独立 ChangeNotifier，持有 workspace ×6 invoker + WorkspacePort
+- [x] <500 行（`workspace_tree_manager.dart` 当前 499 行）
+- [x] 原 NotesController facade 转发
+- [x] CI 全绿
+- [x] 测试基线不变（316 pass / 0 known-fail）
 
 ## CI Gates
 
