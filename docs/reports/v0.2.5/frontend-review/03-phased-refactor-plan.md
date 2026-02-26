@@ -947,6 +947,8 @@ Phase 3 验收通过后，输出以下收口产物：
 | D4 | WorkspaceProvider 未独立拆分 | 0255B Section 6.3 | P1 | 新增第 2 个 consumer（非 notes） |
 | D5 | P2 模块未拆分（SingleEntryController, DebugLogsPanel 等） | 0255B Section 7.1 | P2 | 任一模块行数增长超过 50% |
 | D6 | [已关闭 2026-02-24] `smoke_test.dart` CalendarPage L67 Row overflow known-fail | 0255A Section 0 | Closed | 已在主干修复，测试基线更新为 333 pass / 0 known-fail |
+| D7 | 标签语义未对齐（`note` vs `note_ref`） | P2-2 合并后回归记录（2026-02-26） | P2 | 进入 post-`PR-0252` 语义 PR 时 |
+| D8 | 新建入口语义未统一（地面新建 vs 右键新建） | P2-2 合并后回归记录（2026-02-26） | P2 | 进入 post-`PR-0252` 语义 PR 时 |
 
 #### 11.2.4 收益评估（收口时填写）
 
