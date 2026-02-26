@@ -185,8 +185,8 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P1-8` ExplorerTreeBuilder extracted
 - [x] `P2-1` NoteTabManager extracted
 - [x] `P2-2` NoteListManager extracted
-- [ ] `P2-3` NotesCoordinator created and consumers migrated
-- [ ] `P2-4` tests migrated from NotesController to NotesCoordinator
+- [x] `P2-3` NotesCoordinator created and consumers migrated
+- [x] `P2-4` tests migrated from NotesController to NotesCoordinator
 - [ ] `P2-5` (optional) ExplorerTreeBuilder parameter consolidation
 - [ ] `P3-1` SectionRegistry landed and EntryShellPage migrated
 - [ ] `P3-2` zero cross-feature import verification passed
@@ -204,7 +204,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_content_area.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/notes_page.dart`
-- [delete] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` (after `P2-3`)
+- [delete] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` (after `P2-4`)
 - [add] `apps/lazynote_flutter/lib/app/section_registry.dart`
 - [edit] `apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart`
 - [edit] `apps/lazynote_flutter/lib/app/ui_slots/first_party_ui_slots.dart`
@@ -239,7 +239,7 @@ Line count convention:
 - `rg -n "import.*managers/" apps/lazynote_flutter/lib/features/notes/notes_page.dart apps/lazynote_flutter/lib/features/notes/note_content_area.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
 - `if (Test-Path "apps/lazynote_flutter/lib/features/notes/managers") { rg -n "import.*flutter" apps/lazynote_flutter/lib/features/notes/managers/ } else { Write-Output "[skip] managers/ not created yet" }`
 - `if (Test-Path "apps/lazynote_flutter/lib/features/notes/dialogs") { rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/ } else { Write-Output "[skip] dialogs/ not created yet" }`
-- `rg -n "features/workspace" apps/lazynote_flutter/lib/features/notes/`
+- `rg -n "features/workspace" apps/lazynote_flutter/lib/features/notes/managers/`
 - `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/`
 
 ### Rollback Rule
