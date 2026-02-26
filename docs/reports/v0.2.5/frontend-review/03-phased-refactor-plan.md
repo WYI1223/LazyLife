@@ -342,7 +342,7 @@
 
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
-| P3-1 | 创建 SectionRegistry + 迁移 EntryShellPage | entry/app | 结构拆分 | P2-3 | Agent | 1.0 | PR | EntryShellPage 零跨 feature import；各 section 通过 registry builder 注册；CI 全绿 | 未开始 |
+| P3-1 | 创建 SectionRegistry + 迁移 EntryShellPage | entry/app | 结构拆分 | P2-3 | Agent | 1.0 | PR | EntryShellPage 零跨 feature import；各 section 通过 registry builder 注册；CI 全绿 | 已完成（2026-02-26） |
 | P3-2 | 验证 EntryShellPage 零跨 feature import | entry | 回归 | P3-1 | Agent | 0.5 | 验证记录 | `rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart` 仅匹配 `features/entry/` 内部 import | 未开始 |
 | P3-3 | 更新 As-is → To-be 边界图 | 文档 | 文档 | P2-3 | Agent | 0.5 | 文档 PR | 0255B Section 3.1/3.2 边界图反映拆分后实际状态 | 未开始 |
 | P3-4 | 输出重构复盘文档 | 文档 | 文档 | P3-1~3 | Agent | 0.5 | 文档 | 覆盖"已完成/未完成/剩余债务/收益评估"四维度 | 未开始 |
@@ -900,7 +900,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 
 **Phase 3 验收：**
 
-- [ ] SectionRegistry 已合并（P3-1），EntryShellPage 零跨 feature import
+- [x] SectionRegistry 已合并（P3-1），EntryShellPage 零跨 feature import
 - [ ] P3-2 验证通过
 - [ ] 边界图更新完成（P3-3）
 - [ ] 复盘文档输出（P3-4）
@@ -928,7 +928,7 @@ Phase 3 验收通过后，输出以下收口产物：
 | 11 | RenameNodeDialog | `note_explorer.dart` | `notes/dialogs/rename_node_dialog.dart` | ~130 | — | 已完成（P1-6） |
 | 12 | MoveNodeDialog | `note_explorer.dart` | `notes/dialogs/move_node_dialog.dart` | ~160 | — | 已完成（P1-7） |
 | 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 已完成（P1-8） |
-| 14 | SectionRegistry | `entry_shell_page.dart` | `app/section_registry.dart` | — | — | 待执行 |
+| 14 | SectionRegistry | `entry_shell_page.dart` | `app/section_registry.dart` | — | — | 已完成（P3-1） |
 
 #### 11.2.2 未完成项与原因（收口时填写）
 
