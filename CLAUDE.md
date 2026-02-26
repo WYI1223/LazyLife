@@ -277,7 +277,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 | Function | Returns |
 |----------|---------|
-| `entry_search(text, limit?)` | `EntrySearchResponse` |
+| `entry_search(text, kind?, limit?)` | `EntrySearchResponse` |
 | `entry_create_note(content)` | `EntryActionResponse` |
 | `entry_create_task(content)` | `EntryActionResponse` |
 | `entry_schedule(title, start, end?)` | `EntryActionResponse` |
@@ -289,7 +289,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 | `note_create(content)` | `NoteResponse` |
 | `note_update(atom_id, content)` | `NoteResponse` |
 | `note_get(atom_id)` | `NoteResponse` |
-| `notes_list(tag?, limit?, offset)` | `NotesListResponse` |
+| `notes_list(tag?, limit?, offset?)` | `NotesListResponse` |
 | `note_set_tags(atom_id, tags[])` | `NoteResponse` |
 | `tags_list()` | `TagsListResponse` |
 
@@ -297,32 +297,34 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 | Function | Returns |
 |----------|---------|
-| `tasks_list_inbox(limit?, offset)` | `AtomListResponse` |
-| `tasks_list_today(bod_ms, eod_ms, limit?, offset)` | `AtomListResponse` |
-| `tasks_list_upcoming(eod_ms, limit?, offset)` | `AtomListResponse` |
+| `tasks_list_inbox(limit?, offset?)` | `AtomListResponse` |
+| `tasks_list_today(bod_ms, eod_ms, limit?, offset?)` | `AtomListResponse` |
+| `tasks_list_upcoming(eod_ms, limit?, offset?)` | `AtomListResponse` |
 | `atom_update_status(atom_id, status?)` | `EntryActionResponse` |
 
 **Calendar (async):**
 
 | Function | Returns |
 |----------|---------|
-| `calendar_list_by_range(start_ms, end_ms, limit?, offset)` | `AtomListResponse` |
+| `calendar_list_by_range(start_ms, end_ms, limit?, offset?)` | `AtomListResponse` |
 | `calendar_update_event(atom_id, start_ms, end_ms)` | `EntryActionResponse` |
 
 **Workspace Tree (async):**
 
 | Function | Returns |
 |----------|---------|
-| `workspace_create_folder(parent_node_id?, display_name)` | `WorkspaceNodeResponse` |
+| `workspace_create_folder(parent_node_id?, name)` | `WorkspaceNodeResponse` |
 | `workspace_create_note_ref(parent_node_id?, atom_id, display_name?)` | `WorkspaceNodeResponse` |
 | `workspace_list_children(parent_node_id?)` | `WorkspaceListChildrenResponse` |
 | `workspace_rename_node(node_id, new_name)` | `WorkspaceNodeResponse` |
-| `workspace_move_node(node_id, new_parent_node_id?)` | `WorkspaceActionResponse` |
-| `workspace_delete_node(node_id, recursive)` | `WorkspaceActionResponse` |
+| `workspace_move_node(node_id, new_parent_id?, target_order?)` | `WorkspaceActionResponse` |
+| `workspace_delete_folder(node_id, mode)` | `WorkspaceActionResponse` |
 
 **Pagination defaults:** Notes: `limit = 10`, `max = 50`. Tasks/calendar: `limit = 50`.
+**Search kind filter:** `entry_search` accepts optional `kind`: `"all"` (default, no filter), `"note"`, `"task"`, `"event"`.
 **Tag normalization:** Tags are lowercased and deduplicated. Single-tag filter only.
 **Status values:** `"todo"`, `"in_progress"`, `"done"`, `"cancelled"`, `null` (clears status).
+**Folder delete mode:** `workspace_delete_folder` accepts `mode`: `"dissolve"` (move children to root) or `"delete_all"` (recursive soft-delete including atoms).
 
 ---
 
