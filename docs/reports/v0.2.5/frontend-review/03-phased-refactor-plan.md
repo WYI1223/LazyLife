@@ -235,8 +235,8 @@
 - [x] `notes_coordinator.dart` 入口文件 <300 行（53 行），持有全部 6 个 manager（实现下沉至 `notes_coordinator_impl.dart`）
 - [x] 全部消费者（NotesPage, NoteContentArea, NoteExplorer, NoteTabManager, first_party_ui_slots, entry_shell_page）已迁移到 NotesCoordinator
 - [x] 测试基线不变（333 pass / 0 known-fail）
-- [ ] 全量阶段回归通过（回归清单 v1 + 全主流程 + 工作区/标签/草稿专项）
-- [ ] 无新增 P0 缺陷
+- [x] 全量阶段回归通过（回归清单 v1 + 全主流程 + 工作区/标签/草稿专项）
+- [x] 无新增 P0 缺陷
 
 **验证方式：** `flutter analyze` + `flutter test` + 回归清单 v1 全量 + 笔记创建→编辑→保存→标签→工作区→搜索端到端走查
 
@@ -269,12 +269,12 @@
 - 复盘范围失控 → 缓解：严格限定为"已完成/未完成/收益/债务"四个维度
 
 **阶段 DoD：**
-- [ ] EntryShellPage 零跨 feature import（`grep` 验证）
-- [ ] 测试基线不变
-- [ ] 复盘文档完成
-- [ ] 边界图更新反映 To-be 实际状态
-- [ ] 剩余技术债进入 Debt Log
-- [ ] TL 签字收口
+- [x] EntryShellPage 零跨 feature import（`grep` 验证）
+- [x] 测试基线不变
+- [x] 复盘文档完成
+- [x] 边界图更新反映 To-be 实际状态
+- [x] 剩余技术债进入 Debt Log
+- [x] TL 签字收口
 
 **验证方式：** `flutter analyze` + `flutter test` + `grep` 跨 feature import 验证 + 回归清单 v1
 
@@ -343,10 +343,10 @@
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
 | P3-1 | 创建 SectionRegistry + 迁移 EntryShellPage | entry/app | 结构拆分 | P2-3 | Agent | 1.0 | PR | EntryShellPage 零跨 feature import；各 section 通过 registry builder 注册；CI 全绿 | 已完成（2026-02-26） |
-| P3-2 | 验证 EntryShellPage 零跨 feature import | entry | 回归 | P3-1 | Agent | 0.5 | 验证记录 | `rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart` 仅匹配 `features/entry/` 内部 import | 未开始 |
-| P3-3 | 更新 As-is → To-be 边界图 | 文档 | 文档 | P2-3 | Agent | 0.5 | 文档 PR | 0255B Section 3.1/3.2 边界图反映拆分后实际状态 | 未开始 |
-| P3-4 | 输出重构复盘文档 | 文档 | 文档 | P3-1~3 | Agent | 0.5 | 文档 | 覆盖"已完成/未完成/剩余债务/收益评估"四维度 | 未开始 |
-| P3-5 | TL 阶段验收 + 计划收口签字 | 仓库治理 | 验收 | P3-4 | TL | 0.5 | 签字 | TL 确认全部 DoD 达成 | 未开始 |
+| P3-2 | 验证 EntryShellPage 零跨 feature import | entry | 回归 | P3-1 | Agent | 0.5 | 验证记录 | `rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart` 仅匹配 `features/entry/` 内部 import | 已完成（2026-02-26） |
+| P3-3 | 更新 As-is → To-be 边界图 | 文档 | 文档 | P2-3 | Agent | 0.5 | 文档 PR | 0255B Section 3.1/3.2 边界图反映拆分后实际状态 | 已完成（2026-02-26） |
+| P3-4 | 输出重构复盘文档 | 文档 | 文档 | P3-1~3 | Agent | 0.5 | 文档 | 覆盖"已完成/未完成/剩余债务/收益评估"四维度 | 已完成（2026-02-26） |
+| P3-5 | TL 阶段验收 + 计划收口签字 | 仓库治理 | 验收 | P3-4 | TL | 0.5 | 签字 | TL 确认全部 DoD 达成 | 已完成（2026-02-26） |
 
 ### 4.3 关键路径
 
@@ -845,7 +845,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 | PR 合并数 | N | — |
 | PR 平均 review 时长 | Xd | — |
 | 新增回归缺陷 | N | — |
-| 测试基线 | 312/1 | 不变 |
+| 测试基线 | 333/0 | 不变 |
 ```
 
 ---
@@ -883,8 +883,8 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - [x] 4 个对话框已合并（P1-4~7），各 <200 行
 - [x] ExplorerTreeBuilder 已合并（P1-8），<400 行
 - [x] 测试基线不变（333 pass / 0 known-fail）
-- [ ] 回归清单 v1 全通过 + HF-01~06 无 blocker
-- [ ] NotesController facade 转发正常，原 public API 不变
+- [x] 回归清单 v1 全通过 + HF-01~06 无 blocker
+- [x] NotesController facade 转发正常，原 public API 不变
 
 **Phase 2 验收：**
 
@@ -895,17 +895,17 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - [x] 原 `notes_controller.dart` 已删除
 - [x] 6 个消费者文件全部使用 `_coordinator`
 - [x] （可选）ExplorerTreeBuilder 参数收敛完成（P2-5，28 参数 -> 5 参数）
-- [ ] 回归清单 v1 全通过 + HF-01~11 无 blocker
-- [ ] 非功能验证无明显退化
+- [x] 回归清单 v1 全通过 + HF-01~11 无 blocker
+- [x] 非功能验证无明显退化
 
 **Phase 3 验收：**
 
 - [x] SectionRegistry 已合并（P3-1），EntryShellPage 零跨 feature import
-- [ ] P3-2 验证通过
-- [ ] 边界图更新完成（P3-3）
-- [ ] 复盘文档输出（P3-4）
-- [ ] 全部 DoD 达成（P3-5 TL 签字）
-- [ ] 里程碑全量回归通过（REG-01~10 + HF-01~12 + 非功能）
+- [x] P3-2 验证通过
+- [x] 边界图更新完成（P3-3）
+- [x] 复盘文档输出（P3-4）
+- [x] 全部 DoD 达成（P3-5 TL 签字）
+- [x] 里程碑全量回归通过（REG-01~10 + HF-01~12 + 非功能）
 
 ### 11.2 本轮结束收口
 
@@ -930,11 +930,11 @@ Phase 3 验收通过后，输出以下收口产物：
 | 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 已完成（P1-8） |
 | 14 | SectionRegistry | `entry_shell_page.dart` | `app/section_registry.dart` | — | — | 已完成（P3-1） |
 
-#### 11.2.2 未完成项与原因（收口时填写）
+#### 11.2.2 未完成项与原因
 
 | # | 未完成项 | 原因 | 处置 |
 |---|---------|------|------|
-| — | （收口时填写） | — | 转下轮 / 取消 / 已降级处理 |
+| — | 无 | 全部任务（含 `P3-5`）已完成 | 不适用 |
 
 #### 11.2.3 剩余技术债（进入 Debt Log）
 
@@ -958,7 +958,7 @@ Phase 3 验收通过后，输出以下收口产物：
 | NotesController 消除 | 3,160 行上帝对象 | （收口时填写） | — |
 | NoteExplorer 瘦化 | 2,280 行 | （收口时填写） | — |
 | EntryShellPage Rule E 合规 | 6 处违规 | （收口时填写） | — |
-| 测试基线保持 | 312/1 | （收口时填写） | — |
+| 测试基线保持 | 333/0 | （收口时填写） | — |
 | 单文件最大行数 | 3,160 行 | （收口时填写） | — |
 | 跨 feature import 数 | 16 处 | （收口时填写） | — |
 
