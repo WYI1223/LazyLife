@@ -95,26 +95,42 @@ void main() {
     },
   );
 
-  testWidgets('C1 renders empty state when notes list is empty', (
+  testWidgets('C1 empty state exits after creating first note', (
     WidgetTester tester,
   ) async {
+    final store = <String, rust_api.NoteItem>{};
     final controller = NotesController(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return const rust_api.NotesListResponse(
+        return rust_api.NotesListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          items: [],
+          items: store.values.toList(),
           appliedLimit: 50,
         );
       },
+      noteCreateInvoker: ({required content}) async {
+        final created = note(
+          atomId: 'note-1',
+          content: content,
+          previewText: '',
+          updatedAt: 1,
+        );
+        store[created.atomId] = created;
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: created,
+        );
+      },
       noteGetInvoker: ({required atomId}) async {
-        return const rust_api.NoteResponse(
-          ok: false,
-          errorCode: 'not_found',
-          message: 'not found',
-          note: null,
+        return rust_api.NoteResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+          note: store[atomId],
         );
       },
     );
@@ -127,6 +143,13 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('notes_list_empty')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('notes_create_button')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('notes_list_empty')), findsNothing);
+    expect(find.byKey(const Key('notes_list_item_note-1')), findsOneWidget);
   });
 
   testWidgets('C1 renders error and retry path can recover', (

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_draft_manager.dart';
+import 'package:lazynote_flutter/features/notes/managers/note_list_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_manager.dart';
@@ -13,6 +14,7 @@ import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
 export 'managers/note_draft_manager.dart' show NoteDraftManager;
+export 'managers/note_list_manager.dart' show NoteListManager, NotesListPhase;
 export 'managers/note_save_tracker.dart' show NoteSaveState;
 export 'managers/note_tab_manager.dart' show NoteTabStateManager;
 export 'managers/note_tag_manager.dart' show NoteTagManager;
@@ -56,24 +58,6 @@ typedef DebounceTimerFactory =
 /// Pre-load hook used to ensure bridge/db prerequisites.
 typedef NotesPrepare = Future<void> Function();
 
-/// Stable phase set for C1 list lifecycle.
-enum NotesListPhase {
-  /// No load has started yet.
-  idle,
-
-  /// List request is currently in flight.
-  loading,
-
-  /// List request succeeded with non-empty items.
-  success,
-
-  /// List request succeeded with zero items.
-  empty,
-
-  /// List request failed and carries an error message.
-  error,
-}
-
 /// Stateful controller for Notes page list/detail baseline.
 ///
 /// Contract:
@@ -110,13 +94,14 @@ class NotesController extends ChangeNotifier {
     NotesPrepare? prepare,
     this.listLimit = 50,
     this.autosaveDebounce = const Duration(milliseconds: 1500),
-  }) : _notesListInvoker = notesListInvoker ?? _defaultNotesListInvoker,
-       _noteGetInvoker = noteGetInvoker ?? _defaultNoteGetInvoker,
-       _noteCreateInvoker = noteCreateInvoker ?? _defaultNoteCreateInvoker,
+  }) : _noteCreateInvoker = noteCreateInvoker ?? _defaultNoteCreateInvoker,
        _noteUpdateInvoker = noteUpdateInvoker ?? _defaultNoteUpdateInvoker,
        _noteSetTagsInvoker = noteSetTagsInvoker ?? _defaultNoteSetTagsInvoker,
        _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
        _prepare = prepare ?? _defaultPrepare {
+    final resolvedNotesListInvoker =
+        notesListInvoker ?? _defaultNotesListInvoker;
+    final resolvedNoteGetInvoker = noteGetInvoker ?? _defaultNoteGetInvoker;
     final resolvedTagsListInvoker = tagsListInvoker ?? _defaultTagsListInvoker;
     final resolvedNoteSetTagsInvoker = _noteSetTagsInvoker;
     final resolvedWorkspaceDeleteFolderInvoker =
@@ -141,20 +126,31 @@ class NotesController extends ChangeNotifier {
     _ownsWorkspaceProvider = workspaceProvider == null;
     _noteSaveTracker = NoteSaveTracker(timerFactory: _debounceTimerFactory);
     _noteSaveTracker.addListener(_handleNoteSaveTrackerChanged);
+    _noteListManager = NoteListManager(
+      notesListInvoker: resolvedNotesListInvoker,
+      noteGetInvoker: resolvedNoteGetInvoker,
+      prepare: _prepare,
+      envelopeError: _envelopeError,
+      selectedTag: () => selectedTag,
+      shouldIncludeInVisibleList: _shouldIncludeInVisibleList,
+      isDirty: _isDirty,
+      syncPersistedSnapshot: _syncPersistedSnapshot,
+    );
+    _noteListManager.addListener(_handleNoteListManagerChanged);
     _noteDraftManager = NoteDraftManager(
       noteUpdateInvoker: _noteUpdateInvoker,
       prepare: _prepare,
       activeNoteId: () => _activeNoteId,
-      noteById: (atomId) => _noteCache[atomId],
+      noteById: _noteListManager.cachedNoteById,
       withContent: _withContent,
-      upsertNote: _insertOrReplaceListItem,
+      upsertNote: _noteListManager.upsertNote,
       envelopeError: _envelopeError,
       applySaveState: _setSaveState,
       setSaveError: (message) =>
           _noteSaveTracker.setErrorMessage(message, notify: false),
       syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
       onActiveSaveSuccess: (atomId) {
-        _selectedNote = _noteCache[atomId];
+        _selectedNote = _noteListManager.cachedNoteById(atomId);
         _switchBlockErrorMessage = null;
       },
       timerFactory: _debounceTimerFactory,
@@ -189,11 +185,11 @@ class NotesController extends ChangeNotifier {
               preserveActiveWhenFilteredOut: preserveActiveWhenFilteredOut,
               refreshTags: false,
             );
-            return _listPhase != NotesListPhase.error;
+            return _noteListManager.listPhase != NotesListPhase.error;
           },
       activeNoteId: () => _activeNoteId,
-      noteById: (atomId) => _noteCache[atomId] ?? _selectedNote,
-      upsertNote: _insertOrReplaceListItem,
+      noteById: (atomId) => _noteListManager.noteById(atomId) ?? _selectedNote,
+      upsertNote: _noteListManager.upsertNote,
       isDirty: _isDirty,
       setSaveState: _setSaveState,
       setSaveError: (message) =>
@@ -221,14 +217,12 @@ class NotesController extends ChangeNotifier {
       flushPendingSave: flushPendingSave,
       onDeleteSuccess: _handleWorkspaceDeleteSuccess,
       noteById: noteById,
-      listItems: () => _items,
+      listItems: () => _noteListManager.items,
       titleFromContent: _titleFromContent,
     );
     _workspaceTreeManager.addListener(_handleWorkspaceTreeManagerChanged);
   }
 
-  final NotesListInvoker _notesListInvoker;
-  final NoteGetInvoker _noteGetInvoker;
   final NoteCreateInvoker _noteCreateInvoker;
   final NoteUpdateInvoker _noteUpdateInvoker;
   final NoteSetTagsInvoker _noteSetTagsInvoker;
@@ -237,6 +231,7 @@ class NotesController extends ChangeNotifier {
   late final WorkspaceProvider _workspaceProvider;
   late final bool _ownsWorkspaceProvider;
   late final NoteSaveTracker _noteSaveTracker;
+  late final NoteListManager _noteListManager;
   late final NoteDraftManager _noteDraftManager;
   late final NoteTabStateManager _noteTabManager;
   late final NoteTagManager _noteTagManager;
@@ -248,10 +243,6 @@ class NotesController extends ChangeNotifier {
   /// Debounce window used by autosave pipeline.
   final Duration autosaveDebounce;
 
-  NotesListPhase _listPhase = NotesListPhase.idle;
-  List<rust_api.NoteItem> _items = const [];
-  String? _listErrorMessage;
-
   rust_api.NoteItem? _selectedNote;
   bool _detailLoading = false;
   String? _detailErrorMessage;
@@ -260,24 +251,21 @@ class NotesController extends ChangeNotifier {
   String? _createWarningMessage;
   Future<void>? _createTagApplyFuture;
 
-  final Map<String, rust_api.NoteItem> _noteCache =
-      <String, rust_api.NoteItem>{};
   String? _activeNoteId;
   int _editorFocusRequestId = 0;
   String? _switchBlockErrorMessage;
 
-  int _listRequestId = 0;
   int _detailRequestId = 0;
   bool _disposed = false;
 
   /// Current list phase.
-  NotesListPhase get listPhase => _listPhase;
+  NotesListPhase get listPhase => _noteListManager.listPhase;
 
   /// Current list items from `notes_list`.
-  List<rust_api.NoteItem> get items => List.unmodifiable(_items);
+  List<rust_api.NoteItem> get items => _noteListManager.items;
 
   /// Current list-level error message.
-  String? get listErrorMessage => _listErrorMessage;
+  String? get listErrorMessage => _noteListManager.listErrorMessage;
 
   /// Whether tag catalog request is currently in flight.
   bool get tagsLoading => _noteTagManager.tagsLoading;
@@ -492,7 +480,7 @@ class NotesController extends ChangeNotifier {
 
   /// Returns one cached/list note by id when available.
   rust_api.NoteItem? noteById(String atomId) {
-    return _noteCache[atomId] ?? _findListItem(atomId);
+    return _noteListManager.noteById(atomId);
   }
 
   Map<String, String> get _draftContentByAtomId =>
@@ -523,6 +511,13 @@ class NotesController extends ChangeNotifier {
   Timer? get _autosaveTimer => _noteDraftManager.autosaveTimer;
 
   void _handleNoteSaveTrackerChanged() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
+  void _handleNoteListManagerChanged() {
     if (_disposed) {
       return;
     }
@@ -560,11 +555,13 @@ class NotesController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _noteListManager.removeListener(_handleNoteListManagerChanged);
     _noteDraftManager.removeListener(_handleNoteDraftManagerChanged);
     _noteTabManager.removeListener(_handleNoteTabManagerChanged);
     _noteTagManager.removeListener(_handleNoteTagManagerChanged);
     _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
     _workspaceTreeManager.removeListener(_handleWorkspaceTreeManagerChanged);
+    _noteListManager.dispose();
     _noteDraftManager.dispose();
     _noteTabManager.dispose();
     _noteTagManager.dispose();
@@ -920,12 +917,12 @@ class NotesController extends ChangeNotifier {
         }
       }
 
-      _listPhase = NotesListPhase.success;
-      _insertOrReplaceListItem(
+      _noteListManager.upsertNote(
         createdNote,
         insertFront: true,
         updatePersisted: true,
       );
+      _noteListManager.markListSuccess();
       _activeNoteId = createdNote.atomId;
       _selectedNote = createdNote;
       _activeDraftAtomId = createdNote.atomId;
@@ -978,7 +975,7 @@ class NotesController extends ChangeNotifier {
     final removedAtomIds = <String>[];
     for (final atomId in openSnapshot) {
       try {
-        final response = await _noteGetInvoker(atomId: atomId);
+        final response = await _noteListManager.loadNoteDetail(atomId: atomId);
         if (!response.ok) {
           if (response.errorCode == 'note_not_found') {
             removedAtomIds.add(atomId);
@@ -986,7 +983,7 @@ class NotesController extends ChangeNotifier {
           continue;
         }
         if (response.note case final note?) {
-          _insertOrReplaceListItem(note, updatePersisted: true);
+          _noteListManager.upsertNote(note, updatePersisted: true);
         }
       } catch (_) {
         // Keep tab state unchanged when detail check fails unexpectedly.
@@ -1048,7 +1045,7 @@ class NotesController extends ChangeNotifier {
 
   void _evictNoteState(String atomId) {
     _noteTabManager.clearPreviewForDeletedAtom(atomId);
-    _noteCache.remove(atomId);
+    _noteListManager.evictNoteState(atomId);
     _draftContentByAtomId.remove(atomId);
     _persistedContentByAtomId.remove(atomId);
     _draftVersionByAtomId.remove(atomId);
@@ -1156,11 +1153,11 @@ class NotesController extends ChangeNotifier {
     _draftContentByAtomId[atomId] = content;
     final version = (_draftVersionByAtomId[atomId] ?? 0) + 1;
     _draftVersionByAtomId[atomId] = version;
-    final current = _noteCache[atomId] ?? _selectedNote;
+    final current = _noteListManager.cachedNoteById(atomId) ?? _selectedNote;
     if (current != null) {
       final updated = _withContent(current, content);
       _selectedNote = updated;
-      _insertOrReplaceListItem(updated);
+      _noteListManager.upsertNote(updated);
     }
     // Why: once user edits preview content, replacing that tab on next open
     // is surprising and risks hidden draft loss. Promote to pinned.
@@ -1182,7 +1179,6 @@ class NotesController extends ChangeNotifier {
     required bool preserveActiveWhenFilteredOut,
     required bool refreshTags,
   }) async {
-    final requestId = ++_listRequestId;
     if (refreshTags) {
       unawaited(_noteTagManager.refreshAvailableTags());
     }
@@ -1191,102 +1187,29 @@ class NotesController extends ChangeNotifier {
       _resetSessionForReload();
     }
 
-    _listPhase = NotesListPhase.loading;
-    _items = const [];
-    _listErrorMessage = null;
     _switchBlockErrorMessage = null;
-    notifyListeners();
+    final loadedItems = await _noteListManager.loadNotes(limit: listLimit);
+    if (loadedItems == null) {
+      return;
+    }
 
-    try {
-      await _prepare();
-      if (requestId != _listRequestId) {
-        return;
-      }
-
-      final response = await _notesListInvoker(
-        tag: selectedTag,
-        limit: listLimit,
-        offset: 0,
-      );
-      if (requestId != _listRequestId) {
-        return;
-      }
-
-      if (!response.ok) {
-        _listPhase = NotesListPhase.error;
-        _listErrorMessage = _envelopeError(
-          errorCode: response.errorCode,
-          message: response.message,
-          fallback: 'Failed to load notes.',
-        );
-        notifyListeners();
-        return;
-      }
-
-      final loadedItems = List<rust_api.NoteItem>.unmodifiable(response.items);
-      _items = loadedItems;
-      for (final item in loadedItems) {
-        // Why: during list fetch, `_items` already equals server-filtered
-        // results. Cache/persisted maps still need refresh, but rewriting
-        // visible list here can re-insert notes that no longer match filter.
-        _insertOrReplaceListItem(
-          item,
-          updatePersisted: true,
-          syncVisibleList: false,
-        );
-      }
-      _listPhase = loadedItems.isEmpty
-          ? NotesListPhase.empty
-          : NotesListPhase.success;
-
-      String? detailTargetId;
-      final activeId = _activeNoteId;
-      final activeInList =
-          activeId != null && _findLoadedItem(loadedItems, activeId) != null;
-      if (activeId == null) {
-        if (loadedItems.isNotEmpty) {
-          final first = loadedItems.first;
-          _activeNoteId = first.atomId;
-          _selectedNote = first;
-          _activeDraftAtomId = first.atomId;
-          _activeDraftContent =
-              _draftContentByAtomId[first.atomId] ?? first.content;
-          _noteTabManager.addOpenNoteIfAbsent(first.atomId);
-          _setSaveState(NoteSaveState.clean);
-          detailTargetId = first.atomId;
-        } else {
-          _selectedNote = null;
-          _detailLoading = false;
-          _detailErrorMessage = null;
-          _activeDraftAtomId = null;
-          _activeDraftContent = '';
-          _setSaveState(NoteSaveState.clean);
-        }
-      } else if (activeInList) {
-        _selectedNote = _findLoadedItem(loadedItems, activeId) ?? _selectedNote;
-        _activeDraftAtomId = activeId;
+    String? detailTargetId;
+    final activeId = _activeNoteId;
+    final activeInList =
+        activeId != null &&
+        _noteListManager.findLoadedItem(loadedItems, activeId) != null;
+    if (activeId == null) {
+      if (loadedItems.isNotEmpty) {
+        final first = loadedItems.first;
+        _activeNoteId = first.atomId;
+        _selectedNote = first;
+        _activeDraftAtomId = first.atomId;
         _activeDraftContent =
-            _draftContentByAtomId[activeId] ?? _selectedNote?.content ?? '';
-        _refreshSaveStateForActive();
-      } else if (preserveActiveWhenFilteredOut) {
-        _selectedNote = _noteCache[activeId] ?? _selectedNote;
-        _activeDraftAtomId = activeId;
-        _activeDraftContent =
-            _draftContentByAtomId[activeId] ?? _selectedNote?.content ?? '';
-        _refreshSaveStateForActive();
-      } else if (loadedItems.isNotEmpty) {
-        final fallback = loadedItems.first;
-        _activeNoteId = fallback.atomId;
-        _selectedNote = fallback;
-        _activeDraftAtomId = fallback.atomId;
-        _activeDraftContent =
-            _draftContentByAtomId[fallback.atomId] ?? fallback.content;
-        _noteTabManager.addOpenNoteIfAbsent(fallback.atomId);
-        _refreshSaveStateForActive();
-        _requestEditorFocus();
-        detailTargetId = fallback.atomId;
+            _draftContentByAtomId[first.atomId] ?? first.content;
+        _noteTabManager.addOpenNoteIfAbsent(first.atomId);
+        _setSaveState(NoteSaveState.clean);
+        detailTargetId = first.atomId;
       } else {
-        _activeNoteId = null;
         _selectedNote = null;
         _detailLoading = false;
         _detailErrorMessage = null;
@@ -1294,20 +1217,47 @@ class NotesController extends ChangeNotifier {
         _activeDraftContent = '';
         _setSaveState(NoteSaveState.clean);
       }
-      _noteTabManager.reconcilePreviewTabState();
-      _syncWorkspaceFromControllerState();
-      notifyListeners();
+    } else if (activeInList) {
+      _selectedNote =
+          _noteListManager.findLoadedItem(loadedItems, activeId) ??
+          _selectedNote;
+      _activeDraftAtomId = activeId;
+      _activeDraftContent =
+          _draftContentByAtomId[activeId] ?? _selectedNote?.content ?? '';
+      _refreshSaveStateForActive();
+    } else if (preserveActiveWhenFilteredOut) {
+      _selectedNote =
+          _noteListManager.cachedNoteById(activeId) ?? _selectedNote;
+      _activeDraftAtomId = activeId;
+      _activeDraftContent =
+          _draftContentByAtomId[activeId] ?? _selectedNote?.content ?? '';
+      _refreshSaveStateForActive();
+    } else if (loadedItems.isNotEmpty) {
+      final fallback = loadedItems.first;
+      _activeNoteId = fallback.atomId;
+      _selectedNote = fallback;
+      _activeDraftAtomId = fallback.atomId;
+      _activeDraftContent =
+          _draftContentByAtomId[fallback.atomId] ?? fallback.content;
+      _noteTabManager.addOpenNoteIfAbsent(fallback.atomId);
+      _refreshSaveStateForActive();
+      _requestEditorFocus();
+      detailTargetId = fallback.atomId;
+    } else {
+      _activeNoteId = null;
+      _selectedNote = null;
+      _detailLoading = false;
+      _detailErrorMessage = null;
+      _activeDraftAtomId = null;
+      _activeDraftContent = '';
+      _setSaveState(NoteSaveState.clean);
+    }
+    _noteTabManager.reconcilePreviewTabState();
+    _syncWorkspaceFromControllerState();
+    notifyListeners();
 
-      if (detailTargetId != null) {
-        await _loadSelectedDetail(atomId: detailTargetId);
-      }
-    } catch (error) {
-      if (requestId != _listRequestId) {
-        return;
-      }
-      _listPhase = NotesListPhase.error;
-      _listErrorMessage = 'Notes load failed unexpectedly: $error';
-      notifyListeners();
+    if (detailTargetId != null) {
+      await _loadSelectedDetail(atomId: detailTargetId);
     }
   }
 
@@ -1317,7 +1267,7 @@ class NotesController extends ChangeNotifier {
     _detailErrorMessage = null;
     _noteTabManager.clearOpenNotes();
     _noteTabManager.reconcilePreviewTabState();
-    _noteCache.clear();
+    _noteListManager.resetSessionState();
     _draftContentByAtomId.clear();
     _persistedContentByAtomId.clear();
     _draftVersionByAtomId.clear();
@@ -1352,7 +1302,7 @@ class NotesController extends ChangeNotifier {
     final requestId = ++_detailRequestId;
     _detailLoading = true;
     _detailErrorMessage = null;
-    _selectedNote = _findListItem(atomId) ?? _selectedNote;
+    _selectedNote = _noteListManager.findListItem(atomId) ?? _selectedNote;
     if (_disposed) {
       return;
     }
@@ -1366,7 +1316,7 @@ class NotesController extends ChangeNotifier {
         return;
       }
 
-      final response = await _noteGetInvoker(atomId: atomId);
+      final response = await _noteListManager.loadNoteDetail(atomId: atomId);
       if (_disposed ||
           requestId != _detailRequestId ||
           atomId != _activeNoteId) {
@@ -1389,7 +1339,7 @@ class NotesController extends ChangeNotifier {
 
       if (response.note case final note?) {
         _selectedNote = note;
-        _insertOrReplaceListItem(note, updatePersisted: true);
+        _noteListManager.upsertNote(note, updatePersisted: true);
         _activeDraftAtomId = note.atomId;
         _activeDraftContent =
             _draftContentByAtomId[note.atomId] ?? note.content;
@@ -1425,63 +1375,16 @@ class NotesController extends ChangeNotifier {
     }
   }
 
-  rust_api.NoteItem? _findLoadedItem(
-    List<rust_api.NoteItem> items,
-    String atomId,
-  ) {
-    for (final item in items) {
-      if (item.atomId == atomId) {
-        return item;
-      }
-    }
-    return null;
-  }
-
-  rust_api.NoteItem? _findListItem(String atomId) {
-    for (final item in _items) {
-      if (item.atomId == atomId) {
-        return item;
-      }
-    }
-    return null;
-  }
-
-  void _insertOrReplaceListItem(
-    rust_api.NoteItem note, {
-    bool insertFront = false,
-    bool updatePersisted = false,
-    bool syncVisibleList = true,
+  void _syncPersistedSnapshot({
+    required String atomId,
+    required String content,
+    required bool wasDirty,
   }) {
-    final wasDirty = _isDirty(note.atomId);
-    _noteCache[note.atomId] = note;
-    if (updatePersisted) {
-      _persistedContentByAtomId[note.atomId] = note.content;
-      _draftVersionByAtomId.putIfAbsent(note.atomId, () => 0);
-      if (!_draftContentByAtomId.containsKey(note.atomId) || !wasDirty) {
-        _draftContentByAtomId[note.atomId] = note.content;
-      }
+    _persistedContentByAtomId[atomId] = content;
+    _draftVersionByAtomId.putIfAbsent(atomId, () => 0);
+    if (!_draftContentByAtomId.containsKey(atomId) || !wasDirty) {
+      _draftContentByAtomId[atomId] = content;
     }
-    if (!syncVisibleList) {
-      return;
-    }
-
-    final includeInVisibleList = _shouldIncludeInVisibleList(note);
-    final mutable = List<rust_api.NoteItem>.from(_items);
-    final existingIndex = mutable.indexWhere(
-      (item) => item.atomId == note.atomId,
-    );
-    if (includeInVisibleList) {
-      if (existingIndex >= 0) {
-        mutable[existingIndex] = note;
-      } else if (insertFront) {
-        mutable.insert(0, note);
-      } else {
-        mutable.add(note);
-      }
-    } else if (existingIndex >= 0) {
-      mutable.removeAt(existingIndex);
-    }
-    _items = List<rust_api.NoteItem>.unmodifiable(mutable);
   }
 
   rust_api.NoteItem _withContent(rust_api.NoteItem current, String content) {
@@ -1571,7 +1474,7 @@ class NotesController extends ChangeNotifier {
     if (persisted != null) {
       return persisted;
     }
-    final cached = _noteCache[atomId];
+    final cached = _noteListManager.cachedNoteById(atomId);
     if (cached != null) {
       return cached.content;
     }
@@ -1603,7 +1506,9 @@ class NotesController extends ChangeNotifier {
         ? _selectedNote
         : null;
     final local =
-        _noteCache[paneActiveId] ?? selected ?? _findListItem(paneActiveId);
+        _noteListManager.cachedNoteById(paneActiveId) ??
+        selected ??
+        _noteListManager.findListItem(paneActiveId);
     _selectedNote = local;
     _activeDraftAtomId = paneActiveId;
     _activeDraftContent = _workspaceDraftContentFor(paneActiveId);
