@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/features/notes/note_editor.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
@@ -26,7 +26,7 @@ class NoteContentArea extends StatelessWidget {
   });
 
   /// Shared notes controller used to read list/detail snapshots.
-  final NotesController controller;
+  final NotesCoordinator controller;
   final String? activeNoteIdOverride;
   final String? activeDraftContentOverride;
   final NoteSaveState? noteSaveStateOverride;
@@ -440,7 +440,7 @@ class _SaveStatusWidget extends StatelessWidget {
     required this.noteSaveState,
   });
 
-  final NotesController controller;
+  final NotesCoordinator controller;
   final bool compact;
   final NoteSaveState noteSaveState;
 
@@ -614,7 +614,7 @@ class _TopActionCluster extends StatelessWidget {
     required this.noteSaveState,
   });
 
-  final NotesController controller;
+  final NotesCoordinator controller;
   final bool compact;
   final NoteSaveState noteSaveState;
 
