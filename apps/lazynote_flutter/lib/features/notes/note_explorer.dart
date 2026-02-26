@@ -574,57 +574,66 @@ class _NoteExplorerState extends State<NoteExplorer> {
   ExplorerTreeBuilder _createTreeBuilder(BuildContext context) {
     return ExplorerTreeBuilder(
       context: context,
-      retryLabel: _l10nText(
-        fallback: 'Retry',
-        pick: (l10n) => l10n.retryButton,
+      labels: ExplorerTreeLabels(
+        retryLabel: _l10nText(
+          fallback: 'Retry',
+          pick: (l10n) => l10n.retryButton,
+        ),
+        noItemsLabel: _l10nText(
+          fallback: 'No items',
+          pick: (l10n) => l10n.notesNoItemsLabel,
+        ),
+        newChildFolderTooltip: _l10nText(
+          fallback: 'New child folder',
+          pick: (l10n) => l10n.notesNewChildFolderTooltip,
+        ),
+        deleteFolderTooltip: _l10nText(
+          fallback: 'Delete folder',
+          pick: (l10n) => l10n.notesDeleteFolderTooltip,
+        ),
       ),
-      noItemsLabel: _l10nText(
-        fallback: 'No items',
-        pick: (l10n) => l10n.notesNoItemsLabel,
+      flags: ExplorerTreeFlags(
+        activeNoteId: widget.controller.activeNoteId,
+        workspaceCreateFolderInFlight:
+            widget.controller.workspaceCreateFolderInFlight,
+        workspaceDeleteInFlight: widget.controller.workspaceDeleteInFlight,
+        canCreateFolderAction: widget.onCreateFolderRequested != null,
+        canDeleteFolderAction: widget.onDeleteFolderRequested != null,
       ),
-      newChildFolderTooltip: _l10nText(
-        fallback: 'New child folder',
-        pick: (l10n) => l10n.notesNewChildFolderTooltip,
+      treeState: ExplorerTreeStateAccessor(
+        isExpanded: _treeState.isExpanded,
+        isLoading: _treeState.isLoading,
+        errorMessageFor: _treeState.errorMessageFor,
+        hasLoaded: _treeState.hasLoaded,
+        childrenFor: _treeState.childrenFor,
+        toggleFolder: _treeState.toggleFolder,
+        retryParent: _treeState.retryParent,
       ),
-      deleteFolderTooltip: _l10nText(
-        fallback: 'Delete folder',
-        pick: (l10n) => l10n.notesDeleteFolderTooltip,
+      callbacks: ExplorerTreeCallbacks(
+        isSyntheticRootNodeId: _isSyntheticRootNodeId,
+        looksLikeUuid: _looksLikeUuid,
+        showCreateFolderDialog: (parentNodeId) =>
+            _showCreateFolderDialog(context, parentNodeId: parentNodeId),
+        showDeleteFolderDialog: (node) =>
+            _showDeleteFolderDialog(context, node),
+        recordRowContextMenuTrigger: _recordRowContextMenuTrigger,
+        showFolderContextMenu: _showFolderContextMenu,
+        showNoteContextMenu: _showNoteContextMenu,
+        wrapWorkspaceRowWithDrag: _wrapWorkspaceRowWithDrag,
+        resolveNoteDisplayName: (noteId, item) {
+          final note = widget.controller.noteById(noteId);
+          final projectedTitle = note == null
+              ? null
+              : widget.controller.titleForTab(noteId);
+          final trimmedNodeLabel = item.displayName.trim();
+          return projectedTitle ??
+              (trimmedNodeLabel.isEmpty
+                  ? widget.controller.titleForTab(noteId)
+                  : item.displayName);
+        },
+        titleForTab: widget.controller.titleForTab,
+        onNoteTap: _handleNoteTap,
       ),
-      workspaceCreateFolderInFlight:
-          widget.controller.workspaceCreateFolderInFlight,
-      workspaceDeleteInFlight: widget.controller.workspaceDeleteInFlight,
-      canCreateFolderAction: widget.onCreateFolderRequested != null,
-      canDeleteFolderAction: widget.onDeleteFolderRequested != null,
-      activeNoteId: widget.controller.activeNoteId,
-      isExpanded: _treeState.isExpanded,
-      isLoading: _treeState.isLoading,
-      errorMessageFor: _treeState.errorMessageFor,
-      hasLoaded: _treeState.hasLoaded,
-      childrenFor: _treeState.childrenFor,
-      toggleFolder: _treeState.toggleFolder,
-      retryParent: _treeState.retryParent,
-      isSyntheticRootNodeId: _isSyntheticRootNodeId,
-      looksLikeUuid: _looksLikeUuid,
-      showCreateFolderDialog: (parentNodeId) =>
-          _showCreateFolderDialog(context, parentNodeId: parentNodeId),
-      showDeleteFolderDialog: (node) => _showDeleteFolderDialog(context, node),
-      recordRowContextMenuTrigger: _recordRowContextMenuTrigger,
-      showFolderContextMenu: _showFolderContextMenu,
-      showNoteContextMenu: _showNoteContextMenu,
-      wrapWorkspaceRowWithDrag: _wrapWorkspaceRowWithDrag,
-      resolveNoteDisplayName: (noteId, item) {
-        final note = widget.controller.noteById(noteId);
-        final projectedTitle = note == null
-            ? null
-            : widget.controller.titleForTab(noteId);
-        final trimmedNodeLabel = item.displayName.trim();
-        return projectedTitle ??
-            (trimmedNodeLabel.isEmpty
-                ? widget.controller.titleForTab(noteId)
-                : item.displayName);
-      },
-      titleForTab: widget.controller.titleForTab,
-      onNoteTap: _handleNoteTap,
     );
   }
 
