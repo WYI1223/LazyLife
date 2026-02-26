@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p3-1-section-registry` |
 | PR Title | `refactor(frontend): PR-0252 P3-1 create section registry and decouple entry shell` |
 | Estimated Effort | 1.0 person-day |
-| Status | Planned |
+| Status | Merged |
 
 ## References
 
@@ -50,10 +50,10 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] EntryShellPage 零跨 feature import
-- [ ] 各 section 通过 registry builder 注册
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] EntryShellPage 零跨 feature import
+- [x] 各 section 通过 registry builder 注册
+- [x] CI 全绿
+- [x] 测试基线不变（333 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -85,3 +85,9 @@ flutter build windows --debug
 
 SectionRegistry 改变了 section 注册方式，但不改变 section 的渲染逻辑。各 feature 的测试不需要改动（注册点在 app 层，不影响 feature 内部）。
 
+## Verification Snapshot (2026-02-26)
+
+- `flutter analyze`：通过（No issues found）
+- `flutter test`：通过（333 pass / 0 fail）
+- `flutter build windows --debug`：通过
+- Rule E 检查通过：`entry_shell_page.dart` 仅保留 `features/entry/*` import
