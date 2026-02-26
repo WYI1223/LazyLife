@@ -1,29 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/app/app_locale_controller.dart';
+import 'package:lazynote_flutter/app/section_registry.dart';
 import 'package:lazynote_flutter/app/ui_slots/first_party_ui_slots.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_host.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
-import 'package:lazynote_flutter/features/calendar/calendar_page.dart';
-import 'package:lazynote_flutter/features/diagnostics/rust_diagnostics_page.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_controller.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_panel.dart';
 import 'package:lazynote_flutter/features/entry/workbench_shell_layout.dart';
-import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
-import 'package:lazynote_flutter/features/notes/notes_page.dart';
-import 'package:lazynote_flutter/features/settings/settings_capability_page.dart';
-import 'package:lazynote_flutter/features/tasks/tasks_page.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
-
-/// Left-pane sections inside Workbench shell.
-enum WorkbenchSection {
-  home,
-  notes,
-  tasks,
-  calendar,
-  settings,
-  rustDiagnostics,
-}
 
 /// Default shell page used to validate new features before wiring final UIs.
 ///
@@ -32,13 +17,15 @@ enum WorkbenchSection {
 class EntryShellPage extends StatefulWidget {
   const EntryShellPage({
     super.key,
-    this.initialSection = WorkbenchSection.home,
+    this.initialSection = WorkbenchSectionIds.home,
+    this.sectionRegistry,
     this.uiSlotRegistry,
     this.localeController,
   });
 
   /// Initial left-pane section to render inside Workbench shell.
-  final WorkbenchSection initialSection;
+  final String initialSection;
+  final SectionRegistry? sectionRegistry;
   final UiSlotRegistry? uiSlotRegistry;
   final AppLocaleController? localeController;
 
@@ -49,53 +36,37 @@ class EntryShellPage extends StatefulWidget {
 class _EntryShellPageState extends State<EntryShellPage> {
   // Single Entry is the primary interactive path in Workbench after PR-0009C.
   final SingleEntryController _singleEntryController = SingleEntryController();
-  final NotesCoordinator _notesCoordinator = NotesCoordinator();
   late final UiSlotRegistry _uiSlotRegistry;
-  late WorkbenchSection _activeSection;
+  late String _activeSection;
   bool _showSingleEntryPanel = false;
 
   @override
   void initState() {
     super.initState();
     _uiSlotRegistry = widget.uiSlotRegistry ?? createFirstPartyUiSlotRegistry();
-    _activeSection = widget.initialSection;
+    final initial = widget.initialSection;
+    _activeSection =
+        initial == WorkbenchSectionIds.home ||
+            widget.sectionRegistry?[initial] != null
+        ? initial
+        : WorkbenchSectionIds.home;
   }
 
   @override
   void dispose() {
     _singleEntryController.dispose();
-    _notesCoordinator.dispose();
     super.dispose();
   }
 
-  void _openSection(WorkbenchSection section) {
+  void _openSection(String sectionId) {
+    final resolved =
+        sectionId == WorkbenchSectionIds.home ||
+            widget.sectionRegistry?[sectionId] != null
+        ? sectionId
+        : WorkbenchSectionIds.home;
     setState(() {
-      _activeSection = section;
+      _activeSection = resolved;
     });
-  }
-
-  void _openSectionById(String sectionId) {
-    final section = switch (sectionId) {
-      WorkbenchSectionIds.home => WorkbenchSection.home,
-      WorkbenchSectionIds.notes => WorkbenchSection.notes,
-      WorkbenchSectionIds.tasks => WorkbenchSection.tasks,
-      WorkbenchSectionIds.calendar => WorkbenchSection.calendar,
-      WorkbenchSectionIds.settings => WorkbenchSection.settings,
-      WorkbenchSectionIds.rustDiagnostics => WorkbenchSection.rustDiagnostics,
-      _ => WorkbenchSection.home,
-    };
-    _openSection(section);
-  }
-
-  String _sectionId(WorkbenchSection section) {
-    return switch (section) {
-      WorkbenchSection.home => WorkbenchSectionIds.home,
-      WorkbenchSection.notes => WorkbenchSectionIds.notes,
-      WorkbenchSection.tasks => WorkbenchSectionIds.tasks,
-      WorkbenchSection.calendar => WorkbenchSectionIds.calendar,
-      WorkbenchSection.settings => WorkbenchSectionIds.settings,
-      WorkbenchSection.rustDiagnostics => WorkbenchSectionIds.rustDiagnostics,
-    };
   }
 
   void _openOrFocusSingleEntryPanel() {
@@ -114,22 +85,15 @@ class _EntryShellPageState extends State<EntryShellPage> {
     });
   }
 
-  String _titleForSection(BuildContext context, WorkbenchSection section) {
-    final l10n = AppLocalizations.of(context)!;
-    final workspace = _notesCoordinator.workspaceProvider;
-    final openTabs =
-        workspace.openTabsByPane[workspace.activePaneId] ?? const <String>[];
-    return switch (section) {
-      WorkbenchSection.home => l10n.lazyNoteWorkbenchTitle,
-      WorkbenchSection.notes =>
-        openTabs.isEmpty
-            ? l10n.workbenchSectionNotes
-            : l10n.workbenchSectionNotesWithCount(openTabs.length),
-      WorkbenchSection.tasks => l10n.workbenchSectionTasks,
-      WorkbenchSection.calendar => l10n.workbenchSectionCalendar,
-      WorkbenchSection.settings => l10n.workbenchSectionSettings,
-      WorkbenchSection.rustDiagnostics => l10n.workbenchSectionRustDiagnostics,
-    };
+  String _titleForSection(BuildContext context) {
+    if (_activeSection == WorkbenchSectionIds.home) {
+      return AppLocalizations.of(context)!.lazyNoteWorkbenchTitle;
+    }
+    final registration = widget.sectionRegistry?[_activeSection];
+    if (registration != null) {
+      return registration.titleBuilder(context);
+    }
+    return '';
   }
 
   Widget _buildWorkbenchHome() {
@@ -189,7 +153,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
           layer: UiSlotLayer.contentBlock,
           slotContext: UiSlotContext({
             UiSlotContextKeys.onOpenDiagnostics: () {
-              _openSection(WorkbenchSection.rustDiagnostics);
+              _openSection(WorkbenchSectionIds.rustDiagnostics);
             },
           }),
           listBuilder: (context, children) {
@@ -214,7 +178,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: () =>
-                      _openSection(WorkbenchSection.rustDiagnostics),
+                      _openSection(WorkbenchSectionIds.rustDiagnostics),
                   child: Text(l10n.workbenchSectionRustDiagnostics),
                 ),
               ],
@@ -232,7 +196,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
           slotId: UiSlotIds.workbenchHomeWidgets,
           layer: UiSlotLayer.homeWidget,
           slotContext: UiSlotContext({
-            UiSlotContextKeys.onOpenSection: _openSectionById,
+            UiSlotContextKeys.onOpenSection: _openSection,
           }),
           listBuilder: (context, children) {
             return Wrap(spacing: 12, runSpacing: 12, children: children);
@@ -243,19 +207,19 @@ class _EntryShellPageState extends State<EntryShellPage> {
               runSpacing: 12,
               children: [
                 OutlinedButton(
-                  onPressed: () => _openSection(WorkbenchSection.notes),
+                  onPressed: () => _openSection(WorkbenchSectionIds.notes),
                   child: Text(l10n.workbenchSectionNotes),
                 ),
                 OutlinedButton(
-                  onPressed: () => _openSection(WorkbenchSection.tasks),
+                  onPressed: () => _openSection(WorkbenchSectionIds.tasks),
                   child: Text(l10n.workbenchSectionTasks),
                 ),
                 OutlinedButton(
-                  onPressed: () => _openSection(WorkbenchSection.calendar),
+                  onPressed: () => _openSection(WorkbenchSectionIds.calendar),
                   child: Text(l10n.workbenchSectionCalendar),
                 ),
                 OutlinedButton(
-                  onPressed: () => _openSection(WorkbenchSection.settings),
+                  onPressed: () => _openSection(WorkbenchSectionIds.settings),
                   child: Text(l10n.workbenchSectionSettings),
                 ),
               ],
@@ -266,97 +230,49 @@ class _EntryShellPageState extends State<EntryShellPage> {
     );
   }
 
-  Widget _buildRustDiagnosticsSection() {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.workbenchSectionRustDiagnostics,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 12),
-        const RustDiagnosticsContent(),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => _openSection(WorkbenchSection.home),
-          child: Text(l10n.backToWorkbenchButton),
-        ),
-      ],
-    );
-  }
-
   Widget _buildActiveLeftContent() {
     return UiSlotViewHost(
       registry: _uiSlotRegistry,
       slotId: UiSlotIds.workbenchSectionView,
       slotContext: UiSlotContext({
-        UiSlotContextKeys.activeSection: _sectionId(_activeSection),
+        UiSlotContextKeys.activeSection: _activeSection,
         UiSlotContextKeys.onBackToWorkbench: () {
-          _openSection(WorkbenchSection.home);
+          _openSection(WorkbenchSectionIds.home);
         },
       }),
       fallbackBuilder: (context) {
-        return switch (_activeSection) {
-          WorkbenchSection.home => _buildWorkbenchHome(),
-          WorkbenchSection.notes => NotesPage(
-            controller: _notesCoordinator,
-            onBackToWorkbench: () => _openSection(WorkbenchSection.home),
-            uiSlotRegistry: _uiSlotRegistry,
-          ),
-          WorkbenchSection.tasks => TasksPage(
-            onBackToWorkbench: () => _openSection(WorkbenchSection.home),
-          ),
-          WorkbenchSection.calendar => CalendarPage(
-            onBackToWorkbench: () => _openSection(WorkbenchSection.home),
-          ),
-          WorkbenchSection.settings => SettingsCapabilityPage(
-            onBackToWorkbench: () => _openSection(WorkbenchSection.home),
-            localeController: widget.localeController,
-          ),
-          WorkbenchSection.rustDiagnostics => _buildRustDiagnosticsSection(),
-        };
+        if (_activeSection == WorkbenchSectionIds.home) {
+          return _buildWorkbenchHome();
+        }
+        final registration = widget.sectionRegistry?[_activeSection];
+        if (registration != null) {
+          return registration.builder(
+            context,
+            () => _openSection(WorkbenchSectionIds.home),
+          );
+        }
+        return _buildWorkbenchHome();
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final listenable = widget.sectionRegistry?.listenable;
+    if (listenable == null) {
+      return WorkbenchShellLayout(
+        title: _titleForSection(context),
+        content: _buildActiveLeftContent(),
+      );
+    }
     return AnimatedBuilder(
-      animation: _notesCoordinator.workspaceProvider,
+      animation: listenable,
       builder: (context, _) {
         return WorkbenchShellLayout(
-          title: _titleForSection(context, _activeSection),
+          title: _titleForSection(context),
           content: _buildActiveLeftContent(),
         );
       },
     );
-  }
-}
-
-/// Compatibility wrapper for legacy direct route entries.
-class FeaturePlaceholderPage extends StatelessWidget {
-  const FeaturePlaceholderPage({
-    super.key,
-    required this.title,
-    required this.description,
-  });
-
-  /// Placeholder title used to map route into a Workbench section.
-  final String title;
-
-  /// Placeholder text shown by the mapped section.
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final section = switch (title.toLowerCase()) {
-      'notes' => WorkbenchSection.notes,
-      'tasks' => WorkbenchSection.tasks,
-      'calendar' => WorkbenchSection.calendar,
-      'settings' => WorkbenchSection.settings,
-      _ => WorkbenchSection.home,
-    };
-    return EntryShellPage(initialSection: section);
   }
 }
