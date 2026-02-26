@@ -104,7 +104,9 @@
 
 ## 3. 当前结构（As-is）与目标结构（To-be）对照
 
-### 3.1 当前结构（As-is）简图
+### 3.1 重构前基线（As-is）简图
+
+> **状态：历史快照。** 以下为 PR-0252 重构前的代码结构（commit `4144598`），保留作为基线对照。重构后实际结构见 Section 3.2。
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -179,54 +181,61 @@
 
 ---
 
-### 3.2 目标结构（To-be）边界图
+### 3.2 实际结构（Post-refactor Actual）边界图
 
-#### 3.2.1 NotesController 拆分目标
+> **状态：PR-0252 重构完成后实际代码结构（2026-02-26）。** 原 To-be 设计已全部落地，以下为实际行数和文件清单。
 
-将 3,160 行上帝对象按职责域拆分为 **6 个 focused manager** + **1 个轻量 coordinator**：
+#### 3.2.1 NotesController → NotesCoordinator + Managers（已完成）
+
+原 3,160 行上帝对象已删除，替换为 **1 个 coordinator facade** + **6 个 focused manager** + **5 个辅助类型文件**：
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    NotesCoordinator (新建)                        │
+│         NotesCoordinator（已完成，接口 53 行 + 实现 1,782 行）     │
 │  职责：组装各 manager，提供统一 public API 给 Widget 层           │
 │  持有：各 manager 实例引用（非继承）                              │
-│  规模目标：<300 行                                               │
+│  结构：notes_coordinator.dart（接口导出）                         │
+│        notes_coordinator_impl.dart（实现 + 跨域编排）             │
 │                                                                  │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
 │  │ NoteListManager  │  │ NoteTabManager   │  │ NoteDraftManager │  │
-│  │                  │  │ (已有同名文件,   │  │                  │  │
-│  │ 列表加载/筛选    │  │  需整合)         │  │ 草稿缓存/自保存  │  │
-│  │ 详情加载/缓存    │  │ open/close/switch│  │ 版本追踪/排队    │  │
-│  │                  │  │ preview→pin      │  │                  │  │
-│  │ invoker:         │  │ pane 切换/分屏   │  │ invoker:         │  │
+│  │ 227 行           │  │ 363 行           │  │ 263 行           │  │
+│  │                  │  │                  │  │                  │  │
+│  │ 列表加载/筛选    │  │ open/close/switch│  │ 草稿缓存/自保存  │  │
+│  │ 详情加载/缓存    │  │ preview→pin      │  │ 版本追踪/排队    │  │
+│  │                  │  │ pane 切换/分屏   │  │                  │  │
+│  │ invoker:         │  │                  │  │ invoker:         │  │
 │  │  notesList       │  │                  │  │  noteUpdate      │  │
-│  │  noteGet         │  │ 状态字段 ~8 个   │  │                  │  │
-│  │                  │  │ 规模目标:<400 行  │  │ 状态字段 ~10 个  │  │
-│  │ 状态字段 ~8 个   │  └────────┬────────┘  │ 规模目标:<300 行  │  │
-│  │ 规模目标:<400 行  │           │            └────────┬────────┘  │
-│  └────────┬────────┘           │                      │           │
-│           │            ┌───────▼────────┐  ┌──────────▼────────┐ │
+│  │  noteGet         │  │                  │  │                  │  │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘  │
+│           │            ┌───────▼────────┐  ┌────────▼─────────┐ │
 │  ┌────────▼────────┐   │ NoteTagManager  │  │ NoteSaveTracker   │ │
-│  │ WorkspaceTree   │   │                 │  │                   │ │
-│  │ Manager         │   │ 标签 CRUD/筛选  │  │ 保存状态枚举      │ │
+│  │ WorkspaceTree   │   │ 330 行          │  │ 95 行             │ │
+│  │ Manager         │   │                 │  │                   │ │
+│  │ 533 行          │   │ 标签 CRUD/筛选  │  │ 保存状态枚举      │ │
 │  │                 │   │ 变更排队/归一化  │  │ flush 守卫        │ │
-│  │ folder CRUD     │   │                 │  │ badge 定时器      │ │
-│  │ 树渲染辅助      │   │ invoker:        │  │                   │ │
-│  │ 工作区状态同步  │   │  noteSetTags    │  │ 状态字段 ~8 个    │ │
-│  │                 │   │  tagsList       │  │ 规模目标:<250 行   │ │
-│  │ invoker:        │   │                 │  └───────────────────┘ │
-│  │  workspace*6    │   │ 状态字段 ~8 个  │                        │
-│  │                 │   │ 规模目标:<350 行 │                        │
-│  │ 状态字段 ~10 个 │   └─────────────────┘                        │
-│  │ 规模目标:<500 行│                                              │
+│  │ folder CRUD     │   │                 │  │                   │ │
+│  │ 树渲染辅助      │   │ invoker:        │  └───────────────────┘ │
+│  │ 工作区状态同步  │   │  noteSetTags    │                        │
+│  │                 │   │  tagsList       │                        │
+│  │ invoker:        │   │                 │                        │
+│  │  workspace*6    │   └─────────────────┘                        │
 │  └─────────────────┘                                              │
 └──────────────────────────────────────────────────────────────────┘
 
+辅助文件：
+  workspace_tree_children_loader.dart  (379 行) — 异步树节点加载器
+  workspace_tree_types.dart            (54 行)  — 工作区树类型定义
+  workspace_tree_error_utils.dart      (33 行)  — 错误处理工具
+  note_tag_manager_types.dart          (52 行)  — 标签变更类型定义
+  note_tag_mutation_queue.dart         (85 行)  — 标签变更排队
+
 各 manager 均为独立 ChangeNotifier，可独立实例化和测试。
 NotesCoordinator 作为 facade 对外暴露合并 API，Widget 层不直接持有 manager。
+notes_controller.dart 已删除。
 ```
 
-**manager 间通信规则：**
+**manager 间通信规则（实际落地）：**
 
 | 调用方 | 被调用方 | 通信方式 | 说明 |
 |--------|---------|---------|------|
@@ -237,103 +246,164 @@ NotesCoordinator 作为 facade 对外暴露合并 API，Widget 层不直接持�
 | WorkspaceTreeManager | NoteTabManager | 回调/事件 | folder delete 后对账 open tabs |
 | NotesCoordinator | 所有 manager | 直接持有 | 组装 + 编排跨域操作（如 createNote） |
 
-> 笔记创建（原 `createNote()` L1276–1367）是高基数跨域操作，保留在 NotesCoordinator 中统一编排，不拆入任何单一 manager。
+> 笔记创建等高基数跨域操作保留在 NotesCoordinator 实现层统一编排，不拆入任何单一 manager。
 
-#### 3.2.2 NoteExplorer 拆分目标
+**规模对照（计划 vs 实际）：**
 
-将 2,280 行巨型 State 拆分为 **1 个瘦 State + 4 个独立对话框 Widget + 1 个树构建器**：
+| 组件 | 计划目标 | 实际行数 | 达标 |
+|------|---------|---------|------|
+| NotesCoordinator | <300 行 | 53 行（接口）+ 1,782 行（实现） | 接口达标；实现层承担了全部跨域编排，超出原设想 |
+| NoteListManager | <400 行 | 227 行 | ✓ |
+| NoteTabManager | <400 行 | 363 行 | ✓ |
+| NoteDraftManager | <300 行 | 263 行 | ✓ |
+| NoteTagManager | <350 行 | 330 行 | ✓ |
+| NoteSaveTracker | <250 行 | 95 行 | ✓ |
+| WorkspaceTreeManager | <500 行 | 533 行 | 略超 33 行（含 children loader 分离后仍 533 行，因增加了 delete 策略） |
+
+#### 3.2.2 NoteExplorer 瘦化（已完成）
+
+原 2,280 行巨型 State 拆分为 **1 个瘦化 State + 4 个独立对话框 Widget + 1 个树构建器（含类型定义）**：
 
 ```
-┌─────────────────────────────────────────────┐
-│             NoteExplorer (瘦化)               │
-│  职责：组装树 + 接收用户交互                  │
-│  规模目标：<500 行                            │
-│                                              │
-│  ┌──────────────────┐  ┌──────────────────┐  │
-│  │ ExplorerTree     │  │ ExplorerDrag     │  │
-│  │ Builder (新建)   │  │ Controller (已有) │  │
-│  │                  │  │                  │  │
-│  │ workspace rows   │  │ 拖拽生命周期     │  │
-│  │ legacy rows      │  │ 拖拽反馈构建     │  │
-│  │ 递归子节点       │  │                  │  │
-│  │ 规模目标:<400 行  │  │ (已 75 行,保留)  │  │
-│  └──────────────────┘  └──────────────────┘  │
-└──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│             NoteExplorer（已瘦化）                 │
+│  职责：组装树 + 接收用户交互                      │
+│  实际行数：1,720 行                               │
+│                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐      │
+│  │ ExplorerTree     │  │ ExplorerDrag     │      │
+│  │ Builder          │  │ Controller       │      │
+│  │ 357 行           │  │ 103 行           │      │
+│  │                  │  │                  │      │
+│  │ workspace rows   │  │ 拖拽生命周期     │      │
+│  │ legacy rows      │  │ 拖拽反馈构建     │      │
+│  │ 递归子节点       │  │                  │      │
+│  └──────────────────┘  └──────────────────┘      │
+│                                                  │
+│  ExplorerTreeBuilderTypes  127 行 — 类型定义      │
+│  ExplorerTreeItem          230 行 — 树节点组件    │
+│  ExplorerTreeState         229 行 — 树展开状态    │
+│  ExplorerContextMenu        65 行 — 右键菜单      │
+└──────────────────────────────────────────────────┘
          │
          │ showDialog() 调用
          ▼
-┌──────────────────────────────────────────────┐
-│          独立对话框 Widgets (新建)              │
-│                                              │
-│  ┌─────────────┐  ┌─────────────┐            │
-│  │CreateFolder  │  │DeleteFolder  │            │
-│  │Dialog        │  │Dialog        │            │
-│  │ ~130 行      │  │ ~150 行      │            │
-│  └─────────────┘  └─────────────┘            │
-│  ┌─────────────┐  ┌─────────────┐            │
-│  │RenameNode   │  │MoveNode     │            │
-│  │Dialog        │  │Dialog        │            │
-│  │ ~130 行      │  │ ~160 行      │            │
-│  └─────────────┘  └─────────────┘            │
-│                                              │
-│  每个对话框接收回调参数，不持有 controller    │
-│  可独立 widget test                          │
-└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│          独立对话框 Widgets（已提取）               │
+│                                                  │
+│  ┌─────────────┐  ┌─────────────┐                │
+│  │CreateFolder  │  │DeleteFolder  │                │
+│  │Dialog        │  │Dialog        │                │
+│  │ 85 行        │  │ 127 行       │                │
+│  └─────────────┘  └─────────────┘                │
+│  ┌─────────────┐  ┌─────────────┐                │
+│  │RenameNode   │  │MoveNode     │                │
+│  │Dialog        │  │Dialog        │                │
+│  │ 93 行        │  │ 105 行       │                │
+│  └─────────────┘  └─────────────┘                │
+│                                                  │
+│  每个对话框接收回调参数，不持有 controller        │
+│  D6 检查通过：零 coordinator/manager import       │
+└──────────────────────────────────────────────────┘
 ```
 
-#### 3.2.3 EntryShellPage 解耦目标
+**NoteExplorer 规模偏差说明：** 原计划瘦化到 <500 行，实际 1,720 行。对话框和树构建器已成功提取，但 NoteExplorer 本身承担了较多上下文菜单、拖拽包装、workspace 行交互等逻辑，这些属于 explorer 的固有职责。03 报告 Section 6.3 已将进一步拆分列为 D3 技术债，触发条件为 NotesPage 超过 1000 行或 v0.3 分屏增强。
 
-消除 6 处跨 feature import，引入 **section builder 注册机制**：
+#### 3.2.3 EntryShellPage 解耦（已完成）
+
+6 处跨 feature import 已全部消除，通过 SectionRegistry builder 模式实现：
 
 ```
-As-is:                                 To-be:
+重构前:                                重构后:
 ┌────────────────────┐                ┌────────────────────┐
 │ EntryShellPage     │                │ EntryShellPage     │
+│ 362 行             │                │ 278 行             │
 │                    │                │                    │
 │ import calendar    │                │ import section     │
-│ import diagnostics │    ──────►     │   _registry        │
+│ import diagnostics │    ──────►     │   _registry (app/) │
 │ import notes ×2    │                │                    │
-│ import settings    │                │ switch(section) →  │
-│ import tasks       │                │   registry.build() │
+│ import settings    │                │ registry.builder() │
+│ import tasks       │                │ registry.title()   │
 │                    │                │                    │
 │ 6 跨 feature import│                │ 0 跨 feature import│
+│ owns: Coordinator  │                │ sectionRegistry?   │
 └────────────────────┘                └────────────────────┘
 
-注册点 (main.dart 或 app 层)：
-  SectionRegistry.register('notes', (ctx) => NotesPage(...));
-  SectionRegistry.register('tasks', (ctx) => TasksPage(...));
-  SectionRegistry.register('calendar', (ctx) => CalendarPage(...));
-  ...
+注册点 (app.dart — composition root)：
+  SectionRegistry(listenable: coordinator.workspaceProvider)
+  registry.register(SectionRegistration(
+    id: WorkbenchSectionIds.notes,
+    builder: (ctx, onBack) => NotesPage(controller: coordinator, ...),
+    titleBuilder: (ctx) => l10n.workbenchSectionNotes,
+  ));
+  // tasks, calendar, settings, rustDiagnostics 同理
+
+app/section_registry.dart (51 行)：
+  SectionWidgetBuilder typedef
+  SectionTitleBuilder typedef
+  SectionRegistration class
+  SectionRegistry class (含 optional Listenable)
 ```
 
-#### 3.2.4 拆分后目标目录结构
+**关键设计决策：**
+- NotesCoordinator 生命周期从 EntryShellPage state 移到 `_LazyNoteAppState`
+- UiSlotRegistry 创建同样移到 app state，通过 section builder 闭包捕获传入 NotesPage
+- `WorkbenchSection` enum 已删除，统一使用 `WorkbenchSectionIds` string 常量
+- 未知 sectionId 在 `_openSection` 和 `initState` 中归一化为 `home`
+
+#### 3.2.4 拆分后实际目录结构
 
 ```
+lib/app/
+├── app.dart                           (201 行)  — Composition root：注册 section、创建 coordinator
+├── section_registry.dart              (51 行)   — SectionRegistry + SectionRegistration 类型定义
+├── app_locale_controller.dart                   — 语言切换 ChangeNotifier
+├── routes.dart                                  — AppRoutes 命名常量
+└── ui_slots/                                    — UI 扩展槽系统
+
+lib/features/entry/
+├── entry_shell_page.dart              (278 行)  — Workbench shell，零跨 feature import
+├── single_entry_controller.dart                 — 搜索/命令输入控制器
+├── single_entry_panel.dart                      — 搜索输入 UI
+├── workbench_shell_layout.dart                  — Workbench 布局管理
+├── command_parser.dart                          — 命令解析
+├── command_registry.dart                        — 命令注册
+├── command_router.dart                          — 命令路由
+└── entry_state.dart                             — 入口状态模型
+
 lib/features/notes/
-├── workspace_port.dart             (新建, <30 行)  — 抽象端口：notes 所需的工作区操作接口
-├── notes_coordinator.dart          (新建, <300 行) — Facade + 跨域编排
+├── workspace_port.dart                (28 行)   — 抽象端口：notes 所需的工作区操作接口
+├── notes_coordinator.dart             (53 行)   — 接口导出（barrel file）
+├── notes_coordinator_impl.dart        (1,782 行)— Facade 实现 + 跨域编排
+├── note_tab_manager.dart              (431 行)  — Widget 层 Tab UI 管理（原有文件，已整合）
 ├── managers/
-│   ├── note_list_manager.dart      (新建, <400 行) — 列表加载/筛选/详情缓存
-│   ├── note_tab_manager.dart       (改造, <400 行) — Tab open/close/switch/pane
-│   ├── note_draft_manager.dart     (新建, <300 行) — 草稿缓存/自动保存/版本
-│   ├── note_tag_manager.dart       (新建, <350 行) — 标签 CRUD/筛选/归一化
-│   ├── note_save_tracker.dart      (新建, <250 行) — 保存状态枚举/flush/badge
-│   └── workspace_tree_manager.dart (新建, <500 行) — 工作区树 CRUD + 状态同步
+│   ├── note_list_manager.dart         (227 行)  — 列表加载/筛选/详情缓存
+│   ├── note_tab_manager.dart          (363 行)  — Tab open/close/switch/pane 状态
+│   ├── note_draft_manager.dart        (263 行)  — 草稿缓存/自动保存/版本
+│   ├── note_tag_manager.dart          (330 行)  — 标签 CRUD/筛选/归一化
+│   ├── note_tag_manager_types.dart    (52 行)   — 标签变更类型定义
+│   ├── note_tag_mutation_queue.dart   (85 行)   — 标签变更排队
+│   ├── note_save_tracker.dart         (95 行)   — 保存状态枚举/flush
+│   ├── workspace_tree_manager.dart    (533 行)  — 工作区树 CRUD + 状态同步
+│   ├── workspace_tree_children_loader.dart (379 行) — 异步树节点加载
+│   ├── workspace_tree_types.dart      (54 行)   — 工作区树类型定义
+│   └── workspace_tree_error_utils.dart (33 行)  — 错误处理工具
 ├── dialogs/
-│   ├── create_folder_dialog.dart   (新建, ~130 行)
-│   ├── delete_folder_dialog.dart   (新建, ~150 行)
-│   ├── rename_node_dialog.dart     (新建, ~130 行)
-│   └── move_node_dialog.dart       (新建, ~160 行)
-├── explorer_tree_builder.dart      (新建, <400 行) — 树行构建逻辑
-├── note_explorer.dart              (瘦化, <500 行) — 组装 + 交互
-├── note_content_area.dart          (保留, 伴随受益)
-├── notes_page.dart                 (保留, 伴随受益)
-├── note_editor.dart                (保留)
-├── explorer_tree_item.dart         (保留)
-├── explorer_tree_state.dart        (保留)
-├── explorer_drag_controller.dart   (保留)
-├── explorer_context_menu.dart      (保留)
-└── notes_style.dart                (保留)
+│   ├── create_folder_dialog.dart      (85 行)   — 创建文件夹对话框
+│   ├── delete_folder_dialog.dart      (127 行)  — 删除文件夹对话框
+│   ├── rename_node_dialog.dart        (93 行)   — 重命名节点对话框
+│   └── move_node_dialog.dart          (105 行)  — 移动节点对话框
+├── explorer_tree_builder.dart         (357 行)  — 树行构建逻辑
+├── explorer_tree_builder_types.dart   (127 行)  — 树构建器类型定义（P2-5 提取）
+├── note_explorer.dart                 (1,720 行)— 树组装 + 用户交互
+├── note_content_area.dart             (879 行)  — 编辑器区域（伴随受益）
+├── notes_page.dart                    (856 行)  — 笔记页面 shell（伴随受益）
+├── note_editor.dart                   (110 行)  — 编辑器 widget
+├── explorer_tree_item.dart            (230 行)  — 树节点 widget
+├── explorer_tree_state.dart           (229 行)  — 树展开状态
+├── explorer_drag_controller.dart      (103 行)  — 拖拽控制器
+├── explorer_context_menu.dart         (65 行)   — 右键菜单
+└── notes_style.dart                   (71 行)   — 共享样式常量
 ```
 
 ### 3.3 依赖方向规则

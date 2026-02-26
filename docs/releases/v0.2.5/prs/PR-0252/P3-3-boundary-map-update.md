@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p3-3-boundary-map-update` |
 | PR Title | `docs(frontend): PR-0252 P3-3 update boundary map to reflect post-refactor state` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Merged |
 
 ## References
 
@@ -44,8 +44,8 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] 0255B Section 3.1/3.2 边界图反映拆分后实际状态
-- [ ] 边界图与代码一致
+- [x] 0255B Section 3.1/3.2 边界图反映拆分后实际状态
+- [x] 边界图与代码一致
 
 ## CI Gates
 
@@ -58,3 +58,14 @@ Out of scope:
 ## Rollback
 
 直接 revert 即可。
+
+## Verification Snapshot (2026-02-26)
+
+更新内容：
+
+- Section 3.1：标注为历史基线（重构前快照），保留原始数据
+- Section 3.2：标题改为「实际结构（Post-refactor Actual）」，更新全部行数为 `wc -l` 实测值
+- 3.2.1：NotesCoordinator 实际为接口 53 行 + 实现 1,782 行；6 个 manager 实际行数；新增 5 个辅助类型文件；新增计划 vs 实际对照表
+- 3.2.2：NoteExplorer 实际 1,720 行（含偏差说明）；4 个对话框实际行数；D6 检查结果
+- 3.2.3：EntryShellPage 实际 278 行；SectionRegistry 51 行；关键设计决策记录
+- 3.2.4：完整目录结构含全部文件实际行数（`wc -l` 口径）
