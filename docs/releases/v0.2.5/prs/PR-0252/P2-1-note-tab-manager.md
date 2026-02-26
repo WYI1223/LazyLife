@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-1-note-tab-manager` |
 | PR Title | `refactor(frontend): PR-0252 P2-1 extract note tab manager` |
 | Estimated Effort | 1.5 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -53,10 +53,10 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] 独立 ChangeNotifier，整合现有 `note_tab_manager.dart` (431行 UI) + controller Tab 逻辑
-- [ ] <400 行状态层
-- [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] 独立 ChangeNotifier，整合现有 `note_tab_manager.dart` (431行 UI) + controller Tab 逻辑
+- [x] <400 行状态层（`managers/note_tab_manager.dart` 360 行）
+- [x] CI 全绿
+- [x] 测试基线不变（333 pass / 0 known-fail）
 
 ## CI Gates
 
@@ -91,3 +91,10 @@ flutter build windows --debug
 
 Tab 逻辑跨越 UI 层和状态层，需要清晰界定哪些留在 UI、哪些下沉到 manager。关键判断：Tab 的选中/切换/关闭状态属于 manager，Tab 的视觉渲染属于 UI。
 
+## Verification Snapshot (2026-02-26)
+
+- `dart format lib/features/notes/managers/note_tab_manager.dart lib/features/notes/notes_controller.dart`：通过
+- `flutter analyze`：通过（No issues found）
+- `flutter test test/notes_page_c3_test.dart test/note_explorer_tree_test.dart test/note_explorer_workspace_delete_test.dart`：通过
+- `flutter test`：通过（333 pass）
+- `flutter build windows --debug`：通过

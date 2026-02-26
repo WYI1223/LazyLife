@@ -5,6 +5,7 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_draft_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
+import 'package:lazynote_flutter/features/notes/managers/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_manager.dart';
 import 'package:lazynote_flutter/features/notes/workspace_port.dart';
@@ -13,6 +14,7 @@ import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
 export 'managers/note_draft_manager.dart' show NoteDraftManager;
 export 'managers/note_save_tracker.dart' show NoteSaveState;
+export 'managers/note_tab_manager.dart' show NoteTabStateManager;
 export 'managers/note_tag_manager.dart' show NoteTagManager;
 export 'managers/workspace_tree_manager.dart'
     show
@@ -159,6 +161,21 @@ class NotesController extends ChangeNotifier {
       autosaveDebounce: autosaveDebounce,
     );
     _noteDraftManager.addListener(_handleNoteDraftManagerChanged);
+    _noteTabManager = NoteTabStateManager(
+      canReuseSelection: _canReuseSelection,
+      activeNoteId: () => _activeNoteId,
+      activateSelection: _activateSelection,
+      clearSelection: _clearSelection,
+      loadSelectedDetail: (atomId) => _loadSelectedDetail(atomId: atomId),
+      flushPendingSave: flushPendingSave,
+      hasPendingSaveFor: _hasPendingSaveFor,
+      syncWorkspaceState: _syncWorkspaceFromControllerState,
+      syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
+      evictNoteState: _evictNoteState,
+      scopedOpenNoteIds: () => openNoteIds,
+      scopedActiveNoteId: () => activeNoteId,
+    );
+    _noteTabManager.addListener(_handleNoteTabManagerChanged);
     _noteTagManager = NoteTagManager(
       tagsListInvoker: resolvedTagsListInvoker,
       noteSetTagsInvoker: resolvedNoteSetTagsInvoker,
@@ -221,6 +238,7 @@ class NotesController extends ChangeNotifier {
   late final bool _ownsWorkspaceProvider;
   late final NoteSaveTracker _noteSaveTracker;
   late final NoteDraftManager _noteDraftManager;
+  late final NoteTabStateManager _noteTabManager;
   late final NoteTagManager _noteTagManager;
   late final WorkspaceTreeManager _workspaceTreeManager;
 
@@ -242,11 +260,9 @@ class NotesController extends ChangeNotifier {
   String? _createWarningMessage;
   Future<void>? _createTagApplyFuture;
 
-  final List<String> _openNoteIds = <String>[];
   final Map<String, rust_api.NoteItem> _noteCache =
       <String, rust_api.NoteItem>{};
   String? _activeNoteId;
-  String? _previewTabId;
   int _editorFocusRequestId = 0;
   String? _switchBlockErrorMessage;
 
@@ -287,7 +303,7 @@ class NotesController extends ChangeNotifier {
   }
 
   /// Current preview tab id (replaced by next explorer-open unless pinned).
-  String? get previewTabId => _previewTabId;
+  String? get previewTabId => _noteTabManager.previewTabId;
 
   /// Currently opened tab ids in order.
   List<String> get openNoteIds {
@@ -298,13 +314,13 @@ class NotesController extends ChangeNotifier {
       return List.unmodifiable(workspaceTabs);
     }
     if (workspaceTabs.isEmpty) {
-      return List.unmodifiable(_openNoteIds);
+      return _noteTabManager.openNoteIds;
     }
     return List.unmodifiable(workspaceTabs);
   }
 
   /// Whether one tab is currently marked as preview.
-  bool isPreviewTab(String atomId) => _previewTabId == atomId;
+  bool isPreviewTab(String atomId) => _noteTabManager.isPreviewTab(atomId);
 
   /// Selected note detail payload used by right pane.
   rust_api.NoteItem? get selectedNote => _selectedNote;
@@ -442,7 +458,7 @@ class NotesController extends ChangeNotifier {
         return true;
       }
     }
-    for (final atomId in _openNoteIds) {
+    for (final atomId in _noteTabManager.openNoteIds) {
       if (_hasPendingSaveFor(atomId)) {
         return true;
       }
@@ -520,6 +536,13 @@ class NotesController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _handleNoteTabManagerChanged() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
   void _handleNoteTagManagerChanged() {
     if (_disposed) {
       return;
@@ -538,10 +561,12 @@ class NotesController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _noteDraftManager.removeListener(_handleNoteDraftManagerChanged);
+    _noteTabManager.removeListener(_handleNoteTabManagerChanged);
     _noteTagManager.removeListener(_handleNoteTagManagerChanged);
     _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
     _workspaceTreeManager.removeListener(_handleWorkspaceTreeManagerChanged);
     _noteDraftManager.dispose();
+    _noteTabManager.dispose();
     _noteTagManager.dispose();
     _workspaceTreeManager.dispose();
     _noteSaveTracker.dispose();
@@ -603,114 +628,52 @@ class NotesController extends ChangeNotifier {
     return _noteTagManager.clearTagFilter();
   }
 
-  /// Handles open-note request from explorer shell.
-  ///
-  /// Explorer emits open intent only. Preview/pinned semantics are owned by
-  /// tab model: explorer-open marks target as preview and may replace previous
-  /// clean preview tab.
-  Future<bool> openNoteFromExplorer(String atomId) async {
-    final alreadyOpened = _openNoteIds.contains(atomId);
-    String? replacePreviewId;
-    if (!alreadyOpened) {
-      final previousPreviewId = _previewTabId;
-      if (previousPreviewId != null && previousPreviewId != atomId) {
-        if (_hasPendingSaveFor(previousPreviewId)) {
-          // Why: dirty/in-flight preview must be preserved to avoid silent
-          // draft loss. Promote it to pinned and open new preview separately.
-          _previewTabId = null;
-        } else {
-          replacePreviewId = previousPreviewId;
-        }
-      }
-    }
-
-    if (replacePreviewId != null) {
-      return _selectFromExplorerByReplacingPreview(
-        atomId: atomId,
-        previewId: replacePreviewId,
-      );
-    }
-
-    if (!alreadyOpened) {
-      _previewTabId = atomId;
-    }
-    final switched = await selectNote(atomId);
-    if (!switched) {
-      if (!alreadyOpened && _previewTabId == atomId) {
-        _previewTabId = null;
-      }
-      return false;
-    }
-    return true;
+  bool _canReuseSelection(String atomId) {
+    return _activeNoteId == atomId &&
+        _selectedNote != null &&
+        !_detailLoading &&
+        _detailErrorMessage == null;
   }
 
-  /// Handles explicit pinned-open request from explorer double-click.
-  Future<bool> openNoteFromExplorerPinned(String atomId) async {
-    if (_activeNoteId == atomId) {
-      pinPreviewTab(atomId);
-      return true;
-    }
-    if (_openNoteIds.contains(atomId)) {
-      final switched = await selectNote(atomId);
-      if (!switched) {
-        return false;
-      }
-      pinPreviewTab(atomId);
-      return true;
-    }
-    final opened = await openNoteFromExplorer(atomId);
-    if (!opened) {
-      return false;
-    }
-    pinPreviewTab(atomId);
-    return true;
-  }
-
-  /// Pins one preview tab so it is not replaced by next explorer-open.
-  void pinPreviewTab(String atomId) {
-    if (_previewTabId != atomId) {
-      return;
-    }
-    _previewTabId = null;
-    notifyListeners();
-  }
-
-  Future<bool> _selectFromExplorerByReplacingPreview({
-    required String atomId,
-    required String previewId,
-  }) async {
-    final previewIndex = _openNoteIds.indexOf(previewId);
-    if (previewIndex < 0) {
-      _previewTabId = atomId;
-      return selectNote(atomId);
-    }
-    if (_activeNoteId != null && _activeNoteId != atomId) {
-      final flushed = await flushPendingSave();
-      if (!flushed) {
-        return false;
-      }
-    }
-
-    // Why: replace preview tab in place to avoid transient tab-count jitter.
-    _openNoteIds[previewIndex] = atomId;
-    _evictNoteState(previewId);
+  void _activateSelection(String atomId) {
     _activeNoteId = atomId;
-    _selectedNote = _findListItem(atomId);
+    _selectedNote = noteById(atomId);
     _activeDraftAtomId = atomId;
     _activeDraftContent =
         _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
     _refreshSaveStateForActive();
     _requestEditorFocus();
     _switchBlockErrorMessage = null;
-    _previewTabId = atomId;
-    _syncWorkspaceFromControllerState();
-    // Why: preview-replace can target a note currently owned by another pane;
-    // enforce active-pane snapshot before async detail result returns.
-    _syncWorkspaceActiveSnapshot();
-    notifyListeners();
+  }
 
-    await _loadSelectedDetail(atomId: atomId);
-    return true;
+  void _clearSelection() {
+    _activeNoteId = null;
+    _selectedNote = null;
+    _detailLoading = false;
+    _detailErrorMessage = null;
+    _activeDraftAtomId = null;
+    _activeDraftContent = '';
+    _autosaveTimer?.cancel();
+    _setSaveState(NoteSaveState.clean);
+  }
+
+  /// Handles open-note request from explorer shell.
+  ///
+  /// Explorer emits open intent only. Preview/pinned semantics are owned by
+  /// tab model: explorer-open marks target as preview and may replace previous
+  /// clean preview tab.
+  Future<bool> openNoteFromExplorer(String atomId) async {
+    return _noteTabManager.openNoteFromExplorer(atomId);
+  }
+
+  /// Handles explicit pinned-open request from explorer double-click.
+  Future<bool> openNoteFromExplorerPinned(String atomId) async {
+    return _noteTabManager.openNoteFromExplorerPinned(atomId);
+  }
+
+  /// Pins one preview tab so it is not replaced by next explorer-open.
+  void pinPreviewTab(String atomId) {
+    _noteTabManager.pinPreviewTab(atomId);
   }
 
   /// Creates one workspace folder under root or one parent folder.
@@ -968,9 +931,7 @@ class NotesController extends ChangeNotifier {
       _activeDraftAtomId = createdNote.atomId;
       _activeDraftContent = _draftContentByAtomId[createdNote.atomId] ?? '';
       _detailErrorMessage = null;
-      if (!_openNoteIds.contains(createdNote.atomId)) {
-        _openNoteIds.add(createdNote.atomId);
-      }
+      _noteTabManager.addOpenNoteIfAbsent(createdNote.atomId);
       _creatingNote = false;
       _autosaveTimer?.cancel();
       _setSaveState(NoteSaveState.clean);
@@ -1009,11 +970,11 @@ class NotesController extends ChangeNotifier {
   }
 
   Future<void> _reconcileOpenTabsAfterWorkspaceMutation() async {
-    if (_openNoteIds.isEmpty) {
+    if (_noteTabManager.openNoteIds.isEmpty) {
       return;
     }
 
-    final openSnapshot = List<String>.from(_openNoteIds);
+    final openSnapshot = _noteTabManager.snapshotOpenNoteIds();
     final removedAtomIds = <String>[];
     for (final atomId in openSnapshot) {
       try {
@@ -1043,13 +1004,13 @@ class NotesController extends ChangeNotifier {
     final activeRemoved =
         previousActiveId != null && removedAtomIds.contains(previousActiveId);
 
-    _openNoteIds.removeWhere(removedAtomIds.contains);
+    _noteTabManager.removeOpenNotesWhere(removedAtomIds.contains);
     for (final atomId in removedAtomIds) {
       _evictNoteState(atomId);
     }
-    _reconcilePreviewTabState();
+    _noteTabManager.reconcilePreviewTabState();
 
-    if (_openNoteIds.isEmpty) {
+    if (_noteTabManager.openNoteIds.isEmpty) {
       _activeNoteId = null;
       _selectedNote = null;
       _detailLoading = false;
@@ -1071,8 +1032,8 @@ class NotesController extends ChangeNotifier {
 
     final fallbackIndex = previousActiveIndex <= 0
         ? 0
-        : (previousActiveIndex - 1).clamp(0, _openNoteIds.length - 1);
-    final fallbackId = _openNoteIds[fallbackIndex];
+        : (previousActiveIndex - 1).clamp(0, _noteTabManager.openNoteCount - 1);
+    final fallbackId = _noteTabManager.openNoteIdAt(fallbackIndex);
     _activeNoteId = fallbackId;
     _selectedNote = noteById(fallbackId);
     _activeDraftAtomId = fallbackId;
@@ -1086,9 +1047,7 @@ class NotesController extends ChangeNotifier {
   }
 
   void _evictNoteState(String atomId) {
-    if (_previewTabId == atomId) {
-      _previewTabId = null;
-    }
+    _noteTabManager.clearPreviewForDeletedAtom(atomId);
     _noteCache.remove(atomId);
     _draftContentByAtomId.remove(atomId);
     _persistedContentByAtomId.remove(atomId);
@@ -1123,85 +1082,28 @@ class NotesController extends ChangeNotifier {
   /// - `true` when switch succeeds.
   /// - `false` when switch is blocked by flush failure.
   Future<bool> selectNote(String atomId) async {
-    if (_activeNoteId == atomId &&
-        _selectedNote != null &&
-        !_detailLoading &&
-        _detailErrorMessage == null) {
-      return true;
-    }
-
-    if (_activeNoteId != null && _activeNoteId != atomId) {
-      final flushed = await flushPendingSave();
-      if (!flushed) {
-        return false;
-      }
-    }
-
-    _activeNoteId = atomId;
-    if (!_openNoteIds.contains(atomId)) {
-      _openNoteIds.add(atomId);
-    }
-    _selectedNote = _findListItem(atomId);
-    _activeDraftAtomId = atomId;
-    _activeDraftContent =
-        _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
-    _refreshSaveStateForActive();
-    _requestEditorFocus();
-    _switchBlockErrorMessage = null;
-    _syncWorkspaceFromControllerState();
-    // Why: keep split-mode active pane projection aligned even when detail
-    // request fails. Prevents controller/workspace active-note divergence.
-    _syncWorkspaceActiveSnapshot();
-    notifyListeners();
-
-    await _loadSelectedDetail(atomId: atomId);
-    return true;
+    return _noteTabManager.selectNote(atomId);
   }
 
   /// Activates an already opened note tab and refreshes its detail.
   ///
   /// Returns `false` when switch guard blocks the activation.
   Future<bool> activateOpenNote(String atomId) async {
-    if (!_openNoteIds.contains(atomId)) {
-      return selectNote(atomId);
-    }
-    return selectNote(atomId);
+    return _noteTabManager.activateOpenNote(atomId);
   }
 
   /// Moves active tab forward (Ctrl+Tab behavior).
   ///
   /// Split mode cycles inside active-pane tabs only.
   Future<void> activateNextOpenNote() async {
-    final scopedOpenNoteIds = openNoteIds;
-    final scopedActiveNoteId = activeNoteId;
-    if (scopedOpenNoteIds.length <= 1 || scopedActiveNoteId == null) {
-      return;
-    }
-    final currentIndex = scopedOpenNoteIds.indexOf(scopedActiveNoteId);
-    if (currentIndex < 0) {
-      return;
-    }
-    final nextIndex = (currentIndex + 1) % scopedOpenNoteIds.length;
-    await activateOpenNote(scopedOpenNoteIds[nextIndex]);
+    await _noteTabManager.activateNextOpenNote();
   }
 
   /// Moves active tab backward (Ctrl+Shift+Tab behavior).
   ///
   /// Split mode cycles inside active-pane tabs only.
   Future<void> activatePreviousOpenNote() async {
-    final scopedOpenNoteIds = openNoteIds;
-    final scopedActiveNoteId = activeNoteId;
-    if (scopedOpenNoteIds.length <= 1 || scopedActiveNoteId == null) {
-      return;
-    }
-    final currentIndex = scopedOpenNoteIds.indexOf(scopedActiveNoteId);
-    if (currentIndex < 0) {
-      return;
-    }
-    final prevIndex =
-        (currentIndex - 1 + scopedOpenNoteIds.length) %
-        scopedOpenNoteIds.length;
-    await activateOpenNote(scopedOpenNoteIds[prevIndex]);
+    await _noteTabManager.activatePreviousOpenNote();
   }
 
   /// Closes one opened tab.
@@ -1213,72 +1115,14 @@ class NotesController extends ChangeNotifier {
   ///
   /// Returns `false` when close is blocked by flush failure.
   Future<bool> closeOpenNote(String atomId) async {
-    final closedIndex = _openNoteIds.indexOf(atomId);
-    if (closedIndex < 0) {
-      return false;
-    }
-    if (_activeNoteId == atomId) {
-      final flushed = await flushPendingSave();
-      if (!flushed) {
-        return false;
-      }
-    }
-
-    _openNoteIds.removeAt(closedIndex);
-    _reconcilePreviewTabState();
-    if (_activeNoteId != atomId) {
-      _syncWorkspaceFromControllerState();
-      notifyListeners();
-      return true;
-    }
-
-    if (_openNoteIds.isEmpty) {
-      _activeNoteId = null;
-      _selectedNote = null;
-      _detailLoading = false;
-      _detailErrorMessage = null;
-      _activeDraftAtomId = null;
-      _activeDraftContent = '';
-      _autosaveTimer?.cancel();
-      _setSaveState(NoteSaveState.clean);
-      _syncWorkspaceFromControllerState();
-      notifyListeners();
-      return true;
-    }
-
-    final fallbackIndex = (closedIndex - 1).clamp(0, _openNoteIds.length - 1);
-    final fallbackId = _openNoteIds[fallbackIndex];
-    _activeNoteId = fallbackId;
-    _selectedNote = noteById(fallbackId);
-    _activeDraftAtomId = fallbackId;
-    _activeDraftContent =
-        _draftContentByAtomId[fallbackId] ?? _selectedNote?.content ?? '';
-    _refreshSaveStateForActive();
-    _requestEditorFocus();
-    _syncWorkspaceFromControllerState();
-    notifyListeners();
-    await _loadSelectedDetail(atomId: fallbackId);
-    return true;
+    return _noteTabManager.closeOpenNote(atomId);
   }
 
   /// Closes all tabs except [atomId], then activates [atomId].
   ///
   /// Returns `false` when switch/close is blocked by flush failure.
   Future<bool> closeOtherOpenNotes(String atomId) async {
-    if (!_openNoteIds.contains(atomId)) {
-      return false;
-    }
-    final switched = await activateOpenNote(atomId);
-    if (!switched) {
-      return false;
-    }
-    _openNoteIds
-      ..clear()
-      ..add(atomId);
-    _reconcilePreviewTabState();
-    _syncWorkspaceFromControllerState();
-    notifyListeners();
-    return true;
+    return _noteTabManager.closeOtherOpenNotes(atomId);
   }
 
   /// Closes tabs to the right of [atomId].
@@ -1289,41 +1133,7 @@ class NotesController extends ChangeNotifier {
   ///
   /// Returns `false` when close is blocked by flush failure.
   Future<bool> closeOpenNotesToRight(String atomId) async {
-    final index = _openNoteIds.indexOf(atomId);
-    if (index < 0) {
-      return false;
-    }
-    if (index == _openNoteIds.length - 1) {
-      return true;
-    }
-
-    final activeId = _activeNoteId;
-    final willPruneActive =
-        activeId != null && _openNoteIds.indexOf(activeId) > index;
-    if (willPruneActive) {
-      final flushed = await flushPendingSave();
-      if (!flushed) {
-        return false;
-      }
-    }
-    _openNoteIds.removeRange(index + 1, _openNoteIds.length);
-    _reconcilePreviewTabState();
-    if (!_openNoteIds.contains(_activeNoteId)) {
-      _activeNoteId = atomId;
-      _selectedNote = noteById(atomId);
-      _activeDraftAtomId = atomId;
-      _activeDraftContent =
-          _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
-      _refreshSaveStateForActive();
-      _requestEditorFocus();
-      _syncWorkspaceFromControllerState();
-      notifyListeners();
-      await _loadSelectedDetail(atomId: atomId);
-      return true;
-    }
-    _syncWorkspaceFromControllerState();
-    notifyListeners();
-    return true;
+    return _noteTabManager.closeOpenNotesToRight(atomId);
   }
 
   /// Updates active note draft content in-memory.
@@ -1352,11 +1162,9 @@ class NotesController extends ChangeNotifier {
       _selectedNote = updated;
       _insertOrReplaceListItem(updated);
     }
-    if (_previewTabId == atomId) {
-      // Why: once user edits preview content, replacing that tab on next open
-      // is surprising and risks hidden draft loss. Promote to pinned.
-      _previewTabId = null;
-    }
+    // Why: once user edits preview content, replacing that tab on next open
+    // is surprising and risks hidden draft loss. Promote to pinned.
+    _noteTabManager.onDraftEdited(atomId);
 
     if (_isDirty(atomId)) {
       _setSaveState(NoteSaveState.dirty);
@@ -1443,9 +1251,7 @@ class NotesController extends ChangeNotifier {
           _activeDraftAtomId = first.atomId;
           _activeDraftContent =
               _draftContentByAtomId[first.atomId] ?? first.content;
-          if (!_openNoteIds.contains(first.atomId)) {
-            _openNoteIds.add(first.atomId);
-          }
+          _noteTabManager.addOpenNoteIfAbsent(first.atomId);
           _setSaveState(NoteSaveState.clean);
           detailTargetId = first.atomId;
         } else {
@@ -1475,9 +1281,7 @@ class NotesController extends ChangeNotifier {
         _activeDraftAtomId = fallback.atomId;
         _activeDraftContent =
             _draftContentByAtomId[fallback.atomId] ?? fallback.content;
-        if (!_openNoteIds.contains(fallback.atomId)) {
-          _openNoteIds.add(fallback.atomId);
-        }
+        _noteTabManager.addOpenNoteIfAbsent(fallback.atomId);
         _refreshSaveStateForActive();
         _requestEditorFocus();
         detailTargetId = fallback.atomId;
@@ -1490,7 +1294,7 @@ class NotesController extends ChangeNotifier {
         _activeDraftContent = '';
         _setSaveState(NoteSaveState.clean);
       }
-      _reconcilePreviewTabState();
+      _noteTabManager.reconcilePreviewTabState();
       _syncWorkspaceFromControllerState();
       notifyListeners();
 
@@ -1511,7 +1315,8 @@ class NotesController extends ChangeNotifier {
     _selectedNote = null;
     _detailLoading = false;
     _detailErrorMessage = null;
-    _openNoteIds.clear();
+    _noteTabManager.clearOpenNotes();
+    _noteTabManager.reconcilePreviewTabState();
     _noteCache.clear();
     _draftContentByAtomId.clear();
     _persistedContentByAtomId.clear();
@@ -1520,7 +1325,6 @@ class NotesController extends ChangeNotifier {
     _saveQueuedByAtomId.clear();
     _noteTagManager.resetMutationState();
     _activeNoteId = null;
-    _previewTabId = null;
     _activeDraftAtomId = null;
     _activeDraftContent = '';
     _creatingNote = false;
@@ -1699,17 +1503,6 @@ class NotesController extends ChangeNotifier {
     return _noteDraftManager.isDirty(atomId);
   }
 
-  void _reconcilePreviewTabState() {
-    final previewId = _previewTabId;
-    if (previewId == null) {
-      return;
-    }
-    if (_openNoteIds.contains(previewId)) {
-      return;
-    }
-    _previewTabId = null;
-  }
-
   bool _hasPendingSaveFor(String atomId) {
     return _isDirty(atomId) ||
         _saveFutureByAtomId.containsKey(atomId) ||
@@ -1855,7 +1648,8 @@ class NotesController extends ChangeNotifier {
       for (final paneId in paneOrder) {
         final paneTabs = paneTabsBeforeReset[paneId] ?? const <String>[];
         for (final atomId in paneTabs) {
-          if (!_openNoteIds.contains(atomId) && _activeNoteId != atomId) {
+          if (!_noteTabManager.containsOpenNote(atomId) &&
+              _activeNoteId != atomId) {
             continue;
           }
           _workspaceProvider.syncExternalNote(
@@ -1870,11 +1664,11 @@ class NotesController extends ChangeNotifier {
         }
       }
 
-      if (_openNoteIds.isEmpty && _activeNoteId == null) {
+      if (_noteTabManager.openNoteIds.isEmpty && _activeNoteId == null) {
         return;
       }
 
-      for (final atomId in _openNoteIds) {
+      for (final atomId in _noteTabManager.openNoteIds) {
         if (restoredNoteIds.contains(atomId)) {
           continue;
         }
