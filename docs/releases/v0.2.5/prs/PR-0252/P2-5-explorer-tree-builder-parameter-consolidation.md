@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-5-explorer-tree-builder-params` |
 | PR Title | `refactor(frontend): PR-0252 P2-5 consolidate explorer tree builder params` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned (Optional, Non-blocking) |
+| Status | Merged (Optional, Non-blocking) |
 
 ## References
 
@@ -52,11 +52,11 @@ Out of scope:
 
 ## Acceptance Criteria
 
-- [ ] `ExplorerTreeBuilder` no longer exposes a 28-parameter constructor.
-- [ ] Existing behavior is unchanged.
-- [ ] CI is green.
-- [ ] Test baseline remains `333 pass / 0 known-fail`.
-- [ ] D6 remains green (`dialogs/` has no `coordinator|manager` import).
+- [x] `ExplorerTreeBuilder` no longer exposes a 28-parameter constructor.
+- [x] Existing behavior is unchanged.
+- [x] CI is green.
+- [x] Test baseline remains `333 pass / 0 known-fail`.
+- [x] D6 remains green (`dialogs/` has no `coordinator|manager` import).
 
 ## CI Gates
 
@@ -77,3 +77,10 @@ flutter build windows --debug
 ## Rollback
 
 Can be reverted independently. Does not block `P2-1..P2-4` critical path.
+
+## Verification Snapshot (2026-02-26)
+
+- Constructor surface migrated from 28 direct params to 5 grouped inputs (`context` + 4 config objects).
+- `flutter analyze` passed with zero warnings.
+- `flutter test` passed with baseline preserved (`333 pass / 0 fail`).
+- `dialogs/` directory was not touched in this task.
