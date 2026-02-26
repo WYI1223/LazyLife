@@ -1,6 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
@@ -16,7 +16,7 @@ class NoteTabManager extends StatefulWidget {
   });
 
   /// Shared notes controller that owns open-tab and active-tab state.
-  final NotesController controller;
+  final NotesCoordinator controller;
   final List<String>? openNoteIdsOverride;
   final String? activeNoteIdOverride;
 

@@ -3,7 +3,7 @@ import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 /// Canonical workbench section ids for slot contexts.
@@ -146,7 +146,7 @@ void _registerNotesSlots(UiSlotRegistry registry) {
       layer: UiSlotLayer.sidePanel,
       priority: 500,
       builder: (context, slotContext) {
-        final controller = slotContext.require<NotesController>(
+        final controller = slotContext.require<NotesCoordinator>(
           UiSlotContextKeys.notesController,
         );
         final onOpenNoteRequested = slotContext.require<ValueChanged<String>>(
