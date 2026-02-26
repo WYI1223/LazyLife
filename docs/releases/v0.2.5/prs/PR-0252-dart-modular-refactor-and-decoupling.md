@@ -190,7 +190,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P2-5` (optional) ExplorerTreeBuilder parameter consolidation
 - [x] `P3-1` SectionRegistry landed and EntryShellPage migrated
 - [x] `P3-2` zero cross-feature import verification passed
-- [ ] `P3-3` boundary map updated
+- [x] `P3-3` boundary map updated
 - [ ] `P3-4` retrospective doc delivered
 - [ ] `P3-5` TL stage acceptance and closure sign-off
 
