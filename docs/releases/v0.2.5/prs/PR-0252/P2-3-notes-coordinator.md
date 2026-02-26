@@ -52,6 +52,7 @@ In scope:
 - 删除 `notes_controller.dart`
 - 实现 WorkspacePortAdapter（implements WorkspacePort，内部持有 WorkspaceProvider），在 app 层注入 Coordinator
 - `createNote` 现有 92 行编排逻辑按原样迁移到 Coordinator，不重构内部流程
+- 承接 `P2-1` review 的低优先级清理：简化 `NoteTabStateManager.activateOpenNote()` 的冗余分支（行为不变）
 
 Out of scope:
 
@@ -67,6 +68,7 @@ Out of scope:
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_content_area.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_explorer.dart`
 - [edit] `apps/lazynote_flutter/lib/features/notes/note_tab_manager.dart`
+- [edit] `apps/lazynote_flutter/lib/features/notes/managers/note_tab_manager.dart`（清理 `activateOpenNote()` 冗余分支）
 - [edit] `apps/lazynote_flutter/lib/app/ui_slots/first_party_ui_slots.dart`
 - [edit] `apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart`
 
@@ -77,7 +79,8 @@ Out of scope:
 - [ ] 6 个消费者文件全部从 `_controller` 迁移到 `_coordinator`
 - [ ] 原 `notes_controller.dart` 删除
 - [ ] CI 全绿
-- [ ] 测试基线不变（313 pass / 0 known-fail）— 注意需与 P2-4 一起验证
+- [ ] 测试基线不变（333 pass / 0 known-fail）— 注意需与 P2-4 一起验证
+- [ ] `NoteTabStateManager.activateOpenNote()` 冗余分支已清理（无行为变更）
 
 ## CI Gates
 
@@ -124,4 +127,3 @@ flutter build windows --debug
 1. **R2 createNote 编排遗漏**：92 行跨域编排迁移时可能遗漏副作用 → 按原样迁移，不重构
 2. **R1 异步时序变化**：manager 分离后 `notifyListeners()` 触发顺序可能改变 → Coordinator 内时序保持与原 controller 一致（S5 策略）
 3. **R3 测试 mock 断裂**：16 个测试文件需适配 → P2-4 单独处理
-
