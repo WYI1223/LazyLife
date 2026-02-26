@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-4-test-migration` |
 | PR Title | `refactor(frontend): PR-0252 P2-4 migrate tests from NotesController to NotesCoordinator` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Ready for Review |
 
 ## References
 
@@ -34,6 +34,7 @@ In scope:
 - 迁移 16 个测试文件中的 `NotesController` → `NotesCoordinator` 引用
 - 59 处匹配需逐文件适配
 - mock 对象需从 MockNotesController 迁移为 MockNotesCoordinator
+- 删除 `apps/lazynote_flutter/lib/features/notes/notes_controller.dart` deprecated typedef 兼容层
 
 Out of scope:
 
@@ -62,12 +63,15 @@ Out of scope:
 ## Planned File Changes
 
 - [edit] 上述 16 个测试文件中的 `NotesController` 引用 → `NotesCoordinator`
+- [delete] `apps/lazynote_flutter/lib/features/notes/notes_controller.dart`
+- [edit] `apps/lazynote_flutter/lib/features/workspace/workspace_provider.dart`（注释中的 `NotesController` → `NotesCoordinator`）
 
 ## Acceptance Criteria
 
-- [ ] 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`
-- [ ] 313 pass / 0 known-fail 基线不变
-- [ ] CI 全绿
+- [x] 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`
+- [x] 333 pass / 0 known-fail 基线不变
+- [x] CI 全绿
+- [x] `notes_controller.dart` 兼容层已删除
 
 ## CI Gates
 
@@ -81,10 +85,9 @@ flutter build windows --debug
 
 ## Regression
 
-- CI 自动回归（**关键：** 313 pass / 0 known-fail 基线必须不变）
+- CI 自动回归（**关键：** 333 pass / 0 known-fail 基线必须不变）
 - 增量专项 HF-11（测试迁移完整性）
 
 ## Rollback
 
 **耦合回滚单元：P2-3 + P2-4 必须一起 revert。** 不可单独回滚本 PR。
-

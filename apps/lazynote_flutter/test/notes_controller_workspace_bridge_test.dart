@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 
 rust_api.NoteItem _note({
@@ -18,7 +18,7 @@ rust_api.NoteItem _note({
   );
 }
 
-NotesController _buildController({
+NotesCoordinator _buildController({
   required Map<String, rust_api.NoteItem> store,
   Future<rust_api.NoteResponse> Function({required String atomId})?
   noteGetInvoker,
@@ -28,7 +28,7 @@ NotesController _buildController({
   })?
   noteUpdateInvoker,
 }) {
-  return NotesController(
+  return NotesCoordinator(
     prepare: () async {},
     autosaveDebounce: const Duration(seconds: 30),
     notesListInvoker: ({tag, limit, offset}) async {
@@ -86,7 +86,7 @@ NotesController _buildController({
   );
 }
 
-List<String> _workspaceTabs(NotesController controller) {
+List<String> _workspaceTabs(NotesCoordinator controller) {
   return controller.workspaceProvider.openTabsByPane[controller
           .workspaceProvider
           .activePaneId] ??

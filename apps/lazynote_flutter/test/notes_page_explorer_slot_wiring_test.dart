@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
 void main() {
@@ -39,7 +39,7 @@ void main() {
         'note-1': note(atomId: 'note-1', content: '# Seed', updatedAt: 1),
       };
 
-      final controller = NotesController(
+      final controller = NotesCoordinator(
         prepare: () async {},
         notesListInvoker: ({tag, limit, offset}) async {
           return rust_api.NotesListResponse(

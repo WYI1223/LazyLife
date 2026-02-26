@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
 rust_api.NoteItem _note({
   required String atomId,
@@ -19,8 +19,8 @@ rust_api.NoteItem _note({
   );
 }
 
-NotesController _buildController(Map<String, rust_api.NoteItem> store) {
-  return NotesController(
+NotesCoordinator _buildController(Map<String, rust_api.NoteItem> store) {
+  return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
       return rust_api.NotesListResponse(

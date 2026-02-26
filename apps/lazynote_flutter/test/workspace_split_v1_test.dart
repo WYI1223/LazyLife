@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
@@ -21,7 +21,7 @@ rust_api.NoteItem _note({
   );
 }
 
-NotesController _buildController({
+NotesCoordinator _buildController({
   required WorkspaceProvider workspaceProvider,
 }) {
   final store = <String, rust_api.NoteItem>{
@@ -29,7 +29,7 @@ NotesController _buildController({
     'note-2': _note(atomId: 'note-2', content: '# two', updatedAt: 1),
     'note-3': _note(atomId: 'note-3', content: '# three', updatedAt: 0),
   };
-  return NotesController(
+  return NotesCoordinator(
     workspaceProvider: workspaceProvider,
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
