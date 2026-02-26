@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-2-note-list-manager` |
 | PR Title | `refactor(frontend): PR-0252 P2-2 extract note list manager` |
 | Estimated Effort | 1.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 

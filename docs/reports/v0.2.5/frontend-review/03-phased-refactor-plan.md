@@ -333,7 +333,7 @@
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
 | P2-1 | 提取 NoteTabManager | notes/managers | 结构拆分 | P0-4 + P1-2 | Agent | 1.5 | PR | 独立 ChangeNotifier，整合现有 `note_tab_manager.dart` (431行 UI) + controller Tab 逻辑，<400 行状态层；CI 全绿 | 已完成（2026-02-26） |
-| P2-2 | 提取 NoteListManager | notes/managers | 结构拆分 | P1-3 + P2-1 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 notesList + noteGet invoker，<400 行；CI 全绿 | 评审中（2026-02-26） |
+| P2-2 | 提取 NoteListManager | notes/managers | 结构拆分 | P1-3 + P2-1 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 notesList + noteGet invoker，<400 行；CI 全绿 | 已完成（2026-02-26） |
 | P2-3 | 创建 NotesCoordinator + 消费者迁移 | notes | 结构拆分 | P2-1 + P2-2 | Agent | 1.5 | PR | Coordinator <300 行；6 个消费者文件（NotesPage, NoteContentArea, NoteExplorer, NoteTabManager, first_party_ui_slots, entry_shell_page）全部从 `_controller` 迁移到 `_coordinator`；原 `notes_controller.dart` 删除；CI 全绿 | 未开始 |
 | P2-4 | 测试批量迁移 | notes | 测试 | P2-3 | Agent | 0.5 | PR | 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`；333 pass / 0 known-fail 基线不变 | 未开始 |
 | P2-5 | ExplorerTreeBuilder 参数收敛（可选） | notes | 结构优化 | P2-3 | Agent | 0.5 | PR | `ExplorerTreeBuilder` 构造参数从 28 收敛为配置对象（如 `ExplorerTreeBuilderConfig`），行为不变；CI 全绿 | 未开始（可选，非阻塞） |
@@ -889,7 +889,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 **Phase 2 验收：**
 
 - [x] NoteTabManager 已合并（P2-1），<400 行
-- [ ] NoteListManager 已合并（P2-2），<400 行
+- [x] NoteListManager 已合并（P2-2），<400 行
 - [ ] NotesCoordinator 已合并（P2-3），<300 行
 - [ ] 测试批量迁移完成（P2-4），333 pass / 0 known-fail
 - [ ] 原 `notes_controller.dart` 已删除
@@ -920,7 +920,7 @@ Phase 3 验收通过后，输出以下收口产物：
 | 4 | NoteDraftManager | `notes_controller.dart` | `notes/managers/note_draft_manager.dart` | <300 | — | 已完成（P1-2） |
 | 5 | NoteTagManager | `notes_controller.dart` | `notes/managers/note_tag_manager.dart` | <350 | — | 已完成（P1-3） |
 | 6 | NoteTabManager | `notes_controller.dart` + `note_tab_manager.dart` | `notes/managers/note_tab_manager.dart` | <400 | — | 已完成（P2-1） |
-| 7 | NoteListManager | `notes_controller.dart` | `notes/managers/note_list_manager.dart` | <400 | — | 待执行 |
+| 7 | NoteListManager | `notes_controller.dart` | `notes/managers/note_list_manager.dart` | <400 | — | 已完成（P2-2） |
 | 8 | NotesCoordinator | `notes_controller.dart`（替代） | `notes/notes_coordinator.dart` | <300 | — | 待执行 |
 | 9 | CreateFolderDialog | `note_explorer.dart` | `notes/dialogs/create_folder_dialog.dart` | ~130 | — | 已完成（P1-4） |
 | 10 | DeleteFolderDialog | `note_explorer.dart` | `notes/dialogs/delete_folder_dialog.dart` | ~150 | — | 已完成（P1-5） |
@@ -947,6 +947,8 @@ Phase 3 验收通过后，输出以下收口产物：
 | D4 | WorkspaceProvider 未独立拆分 | 0255B Section 6.3 | P1 | 新增第 2 个 consumer（非 notes） |
 | D5 | P2 模块未拆分（SingleEntryController, DebugLogsPanel 等） | 0255B Section 7.1 | P2 | 任一模块行数增长超过 50% |
 | D6 | [已关闭 2026-02-24] `smoke_test.dart` CalendarPage L67 Row overflow known-fail | 0255A Section 0 | Closed | 已在主干修复，测试基线更新为 333 pass / 0 known-fail |
+| D7 | 标签语义未对齐（`note` vs `note_ref`） | P2-2 合并后回归记录（2026-02-26） | P2 | 进入 post-`PR-0252` 语义 PR 时 |
+| D8 | 新建入口语义未统一（地面新建 vs 右键新建） | P2-2 合并后回归记录（2026-02-26） | P2 | 进入 post-`PR-0252` 语义 PR 时 |
 
 #### 11.2.4 收益评估（收口时填写）
 
