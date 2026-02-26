@@ -247,6 +247,16 @@ Line count convention:
 - any single extraction PR must be independently revertable.
 - `P2-3` and `P2-4` are a coupled rollback unit and must be reverted together if needed.
 
+## Deferred Semantic Issues (Out of Scope for PR-0252)
+
+The following issues were confirmed after `P2-2` merge and regression, and are
+explicitly deferred to dedicated follow-up PRs (not handled inside `PR-0252`):
+
+| ID | Issue | Current behavior | Disposition |
+|----|-------|------------------|-------------|
+| SD-01 | Tag semantic mismatch (`note` vs `note_ref`) | Current tag flow applies to `note` and is not aligned to `note_ref` semantics | Deferred; track in post-`PR-0252` semantic PR |
+| SD-02 | New-note entry semantic mismatch (surface create vs explorer context-menu create) | Ground-level create and right-click create do not follow one unified semantic contract | Deferred; define contract in post-`PR-0252` semantic PR |
+
 ## Acceptance Criteria
 
 - [ ] all tasks `P0-1..P3-5` are completed, or explicitly scope-cut with TL approval record
