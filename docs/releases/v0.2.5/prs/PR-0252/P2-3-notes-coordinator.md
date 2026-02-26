@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-3-notes-coordinator` |
 | PR Title | `refactor(frontend): PR-0252 P2-3 create notes coordinator and migrate consumers` |
 | Estimated Effort | 1.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
@@ -79,7 +79,7 @@ Out of scope:
 - [x] Coordinator 入口文件 <300 行（`notes_coordinator.dart` 53 行）；实现按原样迁移至 `notes_coordinator_impl.dart`
 - [x] 持有全部 6 个 manager
 - [x] 6 个消费者文件全部从 `_controller` 迁移到 `_coordinator`
-- [x] `notes_controller.dart` 转为 deprecated typedef 兼容层（将在 P2-4 移除）
+- [x] `notes_controller.dart` 转为 deprecated typedef 兼容层（已在 P2-4 移除）
 - [x] CI 全绿
 - [x] 测试基线不变（333 pass / 0 known-fail）— 本分支已验证，P2-4 再次复核
 - [x] `NoteTabStateManager.activateOpenNote()` 冗余分支已清理（无行为变更）
