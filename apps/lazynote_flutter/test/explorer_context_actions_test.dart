@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
 rust_api.NoteItem _note({
   required String atomId,
@@ -49,11 +49,11 @@ rust_api.WorkspaceListChildrenResponse _ok(
   );
 }
 
-NotesController _controller({
+NotesCoordinator _controller({
   required Map<String, rust_api.NoteItem> store,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
 }) {
-  return NotesController(
+  return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
       return rust_api.NotesListResponse(
@@ -77,7 +77,7 @@ NotesController _controller({
 }
 
 Widget _harness({
-  required NotesController controller,
+  required NotesCoordinator controller,
   ExplorerFolderCreateInvoker? onCreateFolderRequested,
   ExplorerNoteCreateInFolderInvoker? onCreateNoteInFolderRequested,
   ExplorerNodeRenameInvoker? onRenameNodeRequested,

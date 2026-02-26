@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 
@@ -25,12 +25,12 @@ void main() {
     );
   }
 
-  NotesController buildController() {
+  NotesCoordinator buildController() {
     final store = <String, rust_api.NoteItem>{
       'note-1': note(atomId: 'note-1', content: '# First', updatedAt: 10),
       'note-2': note(atomId: 'note-2', content: '# Second', updatedAt: 8),
     };
-    return NotesController(
+    return NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.NotesListResponse(

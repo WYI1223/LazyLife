@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
 void main() {
@@ -35,7 +35,7 @@ void main() {
       final listCompleter = Completer<rust_api.NotesListResponse>();
       final detailCalls = <String>[];
 
-      final controller = NotesController(
+      final controller = NotesCoordinator(
         prepare: () async {},
         notesListInvoker: ({tag, limit, offset}) => listCompleter.future,
         noteGetInvoker: ({required atomId}) async {
@@ -99,7 +99,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final store = <String, rust_api.NoteItem>{};
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.NotesListResponse(
@@ -157,7 +157,7 @@ void main() {
   ) async {
     var listCallCount = 0;
     final detailCalls = <String>[];
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         listCallCount += 1;
@@ -224,7 +224,7 @@ void main() {
   testWidgets('Notes side_panel renders all slot contributions', (
     WidgetTester tester,
   ) async {
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return const rust_api.NotesListResponse(
