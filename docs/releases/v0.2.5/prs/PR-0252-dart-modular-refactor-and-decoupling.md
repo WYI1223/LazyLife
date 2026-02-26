@@ -46,7 +46,7 @@ Out of scope:
 |------|--------|----------|-----------------|------------|
 | Phase 0 | Week 1 first half | `P0-1..P0-5` | `workspace_port.dart`, regression checklist v1, gate rules, NoteSaveTracker sample PR | establish gate before bulk extraction |
 | Phase 1 | Week 1 second half ~ Week 2 | `P1-1..P1-8` | WorkspaceTree/Draft/Tag managers + 4 dialogs + ExplorerTreeBuilder | manager lane and dialog lane may run in parallel |
-| Phase 2 | Week 3 | `P2-1..P2-4` | NoteTabManager, NoteListManager, NotesCoordinator, test migration | `P2-3` is the only breaking point; `P2-3` and `P2-4` must be merged together |
+| Phase 2 | Week 3 | `P2-1..P2-4` (+ optional `P2-5`) | NoteTabManager, NoteListManager, NotesCoordinator, test migration | `P2-3` is the only breaking point; `P2-3` and `P2-4` must be merged together; `P2-5` is non-blocking optimization |
 | Phase 3 | Week 4 first half | `P3-1..P3-5` | SectionRegistry, zero cross-feature import verification, boundary update, retrospective, TL sign-off | closure and handoff to release lane |
 
 ### Critical Path (must keep order)
@@ -59,6 +59,7 @@ Out of scope:
 
 - `P1-4..P1-8` (Explorer dialog/builder lane) can run parallel with manager lane.
 - `P3-3 + P3-4` can run parallel after `P2-3`.
+- optional `P2-5` (ExplorerTreeBuilder parameter consolidation) can run after `P2-3` and does not block Phase 2/3 DoD.
 
 ## Branching and PR Opening Conventions
 
@@ -126,7 +127,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 ### Dependency handling in trunk mode
 
 - if a task has unmet prerequisite, keep it draft or do not open; never merge early
-- parallel lanes are allowed only where explicitly listed in this PR (`P1-4..P1-8`, `P3-3 + P3-4`)
+- parallel lanes are allowed only where explicitly listed in this PR (`P1-4..P1-8`, optional `P2-5`, `P3-3 + P3-4`)
 - if emergency fixes land on `main`, rebase active task branches before further commits
 
 ## Initial PR Batch (Phase 0-1)
@@ -161,6 +162,12 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 | 21 | `P3-4` | `feat/pr-0252-p3-4-retrospective` | `docs(frontend): PR-0252 P3-4 deliver refactor retrospective` | 1 reviewer |
 | 22 | `P3-5` | `feat/pr-0252-p3-5-tl-acceptance` | `docs(frontend): PR-0252 P3-5 TL stage acceptance and closure sign-off` | TL mandatory |
 
+## Optional Optimization Batch (Non-blocking)
+
+| Order | Task ID | Branch name | Suggested PR title | Required reviewer |
+|------|---------|-------------|--------------------|-------------------|
+| O1 | `P2-5` | `feat/pr-0252-p2-5-explorer-tree-builder-params` | `refactor(frontend): PR-0252 P2-5 consolidate explorer tree builder params` | 1 reviewer |
+
 ## Task Checklist (PR-0252 Execution Board)
 
 - [x] `P0-1` create `workspace_port.dart`
@@ -175,11 +182,12 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P1-5` DeleteFolderDialog extracted
 - [x] `P1-6` RenameNodeDialog extracted
 - [x] `P1-7` MoveNodeDialog extracted
-- [ ] `P1-8` ExplorerTreeBuilder extracted
+- [x] `P1-8` ExplorerTreeBuilder extracted
 - [ ] `P2-1` NoteTabManager extracted
 - [ ] `P2-2` NoteListManager extracted
 - [ ] `P2-3` NotesCoordinator created and consumers migrated
 - [ ] `P2-4` tests migrated from NotesController to NotesCoordinator
+- [ ] `P2-5` (optional) ExplorerTreeBuilder parameter consolidation
 - [ ] `P3-1` SectionRegistry landed and EntryShellPage migrated
 - [ ] `P3-2` zero cross-feature import verification passed
 - [ ] `P3-3` boundary map updated
@@ -214,7 +222,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 
 Baseline rule:
 
-- test baseline must remain `316 pass / 0 known-fail`.
+- test baseline must remain `333 pass / 0 known-fail`.
 - no newly introduced failures are allowed.
 
 Baseline note:
@@ -246,7 +254,7 @@ Line count convention:
 - [ ] `notes_controller.dart` is removed and replaced by `NotesCoordinator + managers`
 - [ ] EntryShellPage reaches zero cross-feature import for non-entry features
 - [ ] D1-D8 checks pass with phase-specific allowances from `PR-0255C` Section 6.4
-- [ ] regression baseline remains `316 pass / 0 known-fail` with no new failures
+- [ ] regression baseline remains `333 pass / 0 known-fail` with no new failures
 - [ ] no Rust/FFI signature drift is introduced
 
 ## Execution PR Specs
@@ -278,6 +286,7 @@ Individual task specs are in `docs/releases/v0.2.5/prs/PR-0252/`:
 - `P2-2-note-list-manager.md`
 - `P2-3-notes-coordinator.md`
 - `P2-4-test-migration.md`
+- `P2-5-explorer-tree-builder-parameter-consolidation.md` (optional, non-blocking)
 
 ### Phase 3
 

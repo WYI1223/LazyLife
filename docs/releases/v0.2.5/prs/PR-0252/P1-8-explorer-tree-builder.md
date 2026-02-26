@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p1-8-explorer-tree-builder` |
 | PR Title | `refactor(frontend): PR-0252 P1-8 extract explorer tree builder` |
 | Estimated Effort | 1.0 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
