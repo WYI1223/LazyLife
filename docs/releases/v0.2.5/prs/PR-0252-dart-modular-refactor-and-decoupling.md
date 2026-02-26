@@ -1,7 +1,7 @@
 ﻿# PR-0252-dart-modular-refactor-and-decoupling
 
 - Proposed title: `refactor(frontend): execute phased modular refactor with behavior parity`
-- Status: In Progress (execution baseline: `PR-0255C` signed-off)
+- Status: Completed (all required tasks `P0-1..P3-5` closed; TL stage acceptance completed on `2026-02-26`)
 
 ## Goal
 
@@ -192,7 +192,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P3-2` zero cross-feature import verification passed
 - [x] `P3-3` boundary map updated
 - [x] `P3-4` retrospective doc delivered
-- [ ] `P3-5` TL stage acceptance and closure sign-off
+- [x] `P3-5` TL stage acceptance and closure sign-off
 
 ## Planned File Changes
 
@@ -259,13 +259,13 @@ explicitly deferred to dedicated follow-up PRs (not handled inside `PR-0252`):
 
 ## Acceptance Criteria
 
-- [ ] all tasks `P0-1..P3-5` are completed, or explicitly scope-cut with TL approval record
-- [ ] phase DoD in `PR-0255C` Section 3/11 is satisfied and traceable
-- [ ] `notes_controller.dart` is removed and replaced by `NotesCoordinator + managers`
-- [ ] EntryShellPage reaches zero cross-feature import for non-entry features
-- [ ] D1-D8 checks pass with phase-specific allowances from `PR-0255C` Section 6.4
-- [ ] regression baseline remains `333 pass / 0 known-fail` with no new failures
-- [ ] no Rust/FFI signature drift is introduced
+- [x] all tasks `P0-1..P3-5` are completed, or explicitly scope-cut with TL approval record
+- [x] phase DoD in `PR-0255C` Section 3/11 is satisfied and traceable
+- [x] `notes_controller.dart` is removed and replaced by `NotesCoordinator + managers`
+- [x] EntryShellPage reaches zero cross-feature import for non-entry features
+- [x] D1-D8 checks pass with phase-specific allowances from `PR-0255C` Section 6.4
+- [x] regression baseline remains `333 pass / 0 known-fail` with no new failures
+- [x] no Rust/FFI signature drift is introduced
 
 ## Execution PR Specs
 

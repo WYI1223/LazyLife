@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p3-5-tl-acceptance` |
 | PR Title | `docs(frontend): PR-0252 P3-5 TL stage acceptance and closure sign-off` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Merged |
 
 ## References
 
@@ -46,40 +46,40 @@ Out of scope:
 
 ### PR-0252 Level
 
-- [ ] 全部任务 `P0-1..P3-5` 完成或有明确 scope-cut
-- [ ] `notes_controller.dart` 已删除，由 `NotesCoordinator + managers` 替代
-- [ ] EntryShellPage 零跨 feature import
-- [ ] D1–D8 检查通过
-- [ ] 测试基线 313 pass / 0 known-fail 不变
-- [ ] 无 Rust/FFI 签名变更
+- [x] 全部任务 `P0-1..P3-5` 完成或有明确 scope-cut
+- [x] `notes_controller.dart` 已删除，由 `NotesCoordinator + managers` 替代
+- [x] EntryShellPage 零跨 feature import
+- [x] D1–D8 检查通过
+- [x] 测试基线 333 pass / 0 known-fail 不变
+- [x] 无 Rust/FFI 签名变更
 
 ### Per-Phase DoD (from 03 Section 3)
 
 **Phase 0 DoD:**
-- [ ] `workspace_port.dart` 已合并
-- [ ] NoteSaveTracker 样板 PR 已合并
-- [ ] 回归清单 v1 已确认
-- [ ] PR 门禁规则文档化
+- [x] `workspace_port.dart` 已合并
+- [x] NoteSaveTracker 样板 PR 已合并
+- [x] 回归清单 v1 已确认
+- [x] PR 门禁规则文档化
 
 **Phase 1 DoD:**
-- [ ] WorkspaceTreeManager 已合并（P1-1），<500 行
-- [ ] NoteDraftManager 已合并（P1-2），<300 行
-- [ ] NoteTagManager 已合并（P1-3），<350 行
-- [ ] 4 个对话框已合并（P1-4~7），各 <200 行
-- [ ] ExplorerTreeBuilder 已合并（P1-8），<400 行
-- [ ] NotesController 保留为 facade，原 public API 不变
+- [x] WorkspaceTreeManager 已合并（P1-1），<550 行
+- [x] NoteDraftManager 已合并（P1-2），<300 行
+- [x] NoteTagManager 已合并（P1-3），<350 行
+- [x] 4 个对话框已合并（P1-4~7），各 <200 行
+- [x] ExplorerTreeBuilder 已合并（P1-8），<400 行
+- [x] NotesController 保留为 facade，原 public API 不变
 
 **Phase 2 DoD:**
-- [ ] 原 `notes_controller.dart` 删除
-- [ ] `notes_coordinator.dart` <300 行
-- [ ] 全部消费者已迁移
-- [ ] 无新增 P0 缺陷
+- [x] 原 `notes_controller.dart` 删除
+- [x] `notes_coordinator.dart` <300 行
+- [x] 全部消费者已迁移
+- [x] 无新增 P0 缺陷
 
 **Phase 3 DoD:**
-- [ ] EntryShellPage 零跨 feature import
-- [ ] 复盘文档完成
-- [ ] 边界图更新反映 To-be 实际状态
-- [ ] 剩余技术债进入 Debt Log
+- [x] EntryShellPage 零跨 feature import
+- [x] 复盘文档完成
+- [x] 边界图更新反映 To-be 实际状态
+- [x] 剩余技术债进入 Debt Log
 
 ## CI Gates
 
@@ -99,7 +99,28 @@ flutter build windows --debug
 - 非功能验证（启动速度、页面切换、异常日志、内存泄漏观察）
 - 端到端走查
 
+## Verification Snapshot (2026-02-26)
+
+### Structural Gates
+
+- `rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart`：仅 3 条 `features/entry/` 内部 import，零跨 feature import
+- `rg -n "import.*managers/" apps/lazynote_flutter/lib/features/notes/notes_page.dart apps/lazynote_flutter/lib/features/notes/note_content_area.dart apps/lazynote_flutter/lib/features/notes/note_explorer.dart`：无匹配
+- `rg -n "import.*(coordinator|manager)" apps/lazynote_flutter/lib/features/notes/dialogs/`：无匹配
+- `rg -n "features/workspace" apps/lazynote_flutter/lib/features/notes/managers/`：无匹配
+- `rg -n "notes_style" apps/lazynote_flutter/lib/features/tags/`：仅 `tag_filter.dart` 命中（D8 豁免）
+- `notes_controller.dart`：已删除
+
+### CI Gates
+
+- `dart format --output=none --set-exit-if-changed .`：通过（134 files, 0 changed）
+- `flutter analyze`：通过（No issues found）
+- `flutter test`：通过（333 pass / 0 fail）
+- `flutter build windows --debug`：通过
+
+### FFI Drift Check
+
+- `git diff --name-only 4144598..HEAD -- crates/lazynote_ffi/src/api.rs`：无输出（无 Rust/FFI 签名变更）
+
 ## Required Reviewer
 
 - **TL — 必须签字**
-
