@@ -7,69 +7,27 @@ import 'package:lazynote_flutter/features/notes/explorer_tree_item.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 
 export 'package:lazynote_flutter/features/notes/explorer_tree_builder_types.dart'
-    show ExplorerFolderNode;
+    show
+        ExplorerFolderNode,
+        ExplorerTreeCallbacks,
+        ExplorerTreeFlags,
+        ExplorerTreeLabels,
+        ExplorerTreeStateAccessor;
 
 class ExplorerTreeBuilder {
   const ExplorerTreeBuilder({
     required this.context,
-    required this.retryLabel,
-    required this.noItemsLabel,
-    required this.newChildFolderTooltip,
-    required this.deleteFolderTooltip,
-    required this.workspaceCreateFolderInFlight,
-    required this.workspaceDeleteInFlight,
-    required this.canCreateFolderAction,
-    required this.canDeleteFolderAction,
-    required this.activeNoteId,
-    required this.isExpanded,
-    required this.isLoading,
-    required this.errorMessageFor,
-    required this.hasLoaded,
-    required this.childrenFor,
-    required this.toggleFolder,
-    required this.retryParent,
-    required this.isSyntheticRootNodeId,
-    required this.looksLikeUuid,
-    required this.showCreateFolderDialog,
-    required this.showDeleteFolderDialog,
-    required this.recordRowContextMenuTrigger,
-    required this.showFolderContextMenu,
-    required this.showNoteContextMenu,
-    required this.wrapWorkspaceRowWithDrag,
-    required this.resolveNoteDisplayName,
-    required this.titleForTab,
-    required this.onNoteTap,
+    required this.labels,
+    required this.flags,
+    required this.treeState,
+    required this.callbacks,
   });
 
   final BuildContext context;
-  final String retryLabel;
-  final String noItemsLabel;
-  final String newChildFolderTooltip;
-  final String deleteFolderTooltip;
-  final bool workspaceCreateFolderInFlight;
-  final bool workspaceDeleteInFlight;
-  final bool canCreateFolderAction;
-  final bool canDeleteFolderAction;
-  final String? activeNoteId;
-  final bool Function(String nodeId) isExpanded;
-  final bool Function(String nodeId) isLoading;
-  final String? Function(String nodeId) errorMessageFor;
-  final bool Function(String nodeId) hasLoaded;
-  final List<rust_api.WorkspaceNodeItem>? Function(String nodeId) childrenFor;
-  final Future<void> Function(String nodeId) toggleFolder;
-  final Future<void> Function(String? parentNodeId) retryParent;
-  final bool Function(String nodeId) isSyntheticRootNodeId;
-  final bool Function(String value) looksLikeUuid;
-  final Future<void> Function(String? parentNodeId) showCreateFolderDialog;
-  final Future<void> Function(ExplorerFolderNode node) showDeleteFolderDialog;
-  final void Function(Offset globalPosition) recordRowContextMenuTrigger;
-  final ExplorerWorkspaceFolderContextMenuInvoker showFolderContextMenu;
-  final ExplorerWorkspaceNoteContextMenuInvoker showNoteContextMenu;
-  final ExplorerWorkspaceDragWrapper wrapWorkspaceRowWithDrag;
-  final String Function(String noteId, rust_api.WorkspaceNodeItem node)
-  resolveNoteDisplayName;
-  final String Function(String noteId) titleForTab;
-  final void Function(String noteId) onNoteTap;
+  final ExplorerTreeLabels labels;
+  final ExplorerTreeFlags flags;
+  final ExplorerTreeStateAccessor treeState;
+  final ExplorerTreeCallbacks callbacks;
 
   static List<ExplorerFolderNode> buildDefaultFolderTree({
     required List<String> noteIds,
@@ -104,14 +62,15 @@ class ExplorerTreeBuilder {
   }) {
     for (final item in items) {
       if (item.kind == 'folder') {
-        final expanded = isExpanded(item.nodeId);
-        final loading = isLoading(item.nodeId);
-        final error = errorMessageFor(item.nodeId);
-        final isSyntheticRoot = isSyntheticRootNodeId(item.nodeId);
+        final expanded = treeState.isExpanded(item.nodeId);
+        final loading = treeState.isLoading(item.nodeId);
+        final error = treeState.errorMessageFor(item.nodeId);
+        final isSyntheticRoot = callbacks.isSyntheticRootNodeId(item.nodeId);
         final canCreateChild =
-            canCreateFolderAction &&
-            (looksLikeUuid(item.nodeId) || isSyntheticRoot);
-        final canDelete = canDeleteFolderAction && looksLikeUuid(item.nodeId);
+            flags.canCreateFolderAction &&
+            (callbacks.looksLikeUuid(item.nodeId) || isSyntheticRoot);
+        final canDelete =
+            flags.canDeleteFolderAction && callbacks.looksLikeUuid(item.nodeId);
         final folderRow = ExplorerTreeItem.folder(
           key: Key('notes_tree_folder_row_${item.nodeId}'),
           node: item,
@@ -121,16 +80,18 @@ class ExplorerTreeBuilder {
           canCreateChild: canCreateChild,
           canDelete: canDelete,
           onTap: () {
-            unawaited(toggleFolder(item.nodeId));
+            unawaited(treeState.toggleFolder(item.nodeId));
           },
           onCreateChildFolder: canCreateChild
-              ? workspaceCreateFolderInFlight
+              ? flags.workspaceCreateFolderInFlight
                     ? null
-                    : () => unawaited(showCreateFolderDialog(item.nodeId))
+                    : () => unawaited(
+                        callbacks.showCreateFolderDialog(item.nodeId),
+                      )
               : null,
           onDeleteFolder: canDelete
               ? () => unawaited(
-                  showDeleteFolderDialog(
+                  callbacks.showDeleteFolderDialog(
                     ExplorerFolderNode(
                       id: item.nodeId,
                       label: item.displayName,
@@ -141,9 +102,9 @@ class ExplorerTreeBuilder {
                 )
               : null,
           onSecondaryTapDown: (details) {
-            recordRowContextMenuTrigger(details.globalPosition);
+            callbacks.recordRowContextMenuTrigger(details.globalPosition);
             unawaited(
-              showFolderContextMenu(
+              callbacks.showFolderContextMenu(
                 context: context,
                 folderNode: item,
                 globalPosition: details.globalPosition,
@@ -152,7 +113,7 @@ class ExplorerTreeBuilder {
           },
         );
         rows.add(
-          wrapWorkspaceRowWithDrag(
+          callbacks.wrapWorkspaceRowWithDrag(
             context: context,
             node: item,
             depth: depth,
@@ -163,7 +124,7 @@ class ExplorerTreeBuilder {
         if (!expanded) {
           continue;
         }
-        if (loading && !hasLoaded(item.nodeId)) {
+        if (loading && !treeState.hasLoaded(item.nodeId)) {
           rows.add(
             Padding(
               key: Key('notes_tree_loading_${item.nodeId}'),
@@ -198,9 +159,9 @@ class ExplorerTreeBuilder {
                   TextButton(
                     key: Key('notes_tree_retry_${item.nodeId}'),
                     onPressed: () {
-                      unawaited(retryParent(item.nodeId));
+                      unawaited(treeState.retryParent(item.nodeId));
                     },
-                    child: Text(retryLabel),
+                    child: Text(labels.retryLabel),
                   ),
                 ],
               ),
@@ -209,14 +170,15 @@ class ExplorerTreeBuilder {
           continue;
         }
         final children =
-            childrenFor(item.nodeId) ?? const <rust_api.WorkspaceNodeItem>[];
+            treeState.childrenFor(item.nodeId) ??
+            const <rust_api.WorkspaceNodeItem>[];
         if (children.isEmpty) {
           rows.add(
             Padding(
               key: Key('notes_tree_empty_${item.nodeId}'),
               padding: EdgeInsets.fromLTRB(30 + depth * 12, 2, 10, 6),
               child: Text(
-                noItemsLabel,
+                labels.noItemsLabel,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
@@ -236,7 +198,7 @@ class ExplorerTreeBuilder {
       if (noteId == null || noteId.isEmpty) {
         continue;
       }
-      final displayName = resolveNoteDisplayName(noteId, item);
+      final displayName = callbacks.resolveNoteDisplayName(noteId, item);
       final noteRow = ExplorerTreeItem.note(
         key: Key('notes_tree_note_row_${item.nodeId}'),
         node: rust_api.WorkspaceNodeItem(
@@ -248,12 +210,12 @@ class ExplorerTreeBuilder {
           sortOrder: item.sortOrder,
         ),
         depth: depth + 1,
-        selected: noteId == activeNoteId,
-        onTap: () => onNoteTap(noteId),
+        selected: noteId == flags.activeNoteId,
+        onTap: () => callbacks.onNoteTap(noteId),
         onSecondaryTapDown: (details) {
-          recordRowContextMenuTrigger(details.globalPosition);
+          callbacks.recordRowContextMenuTrigger(details.globalPosition);
           unawaited(
-            showNoteContextMenu(
+            callbacks.showNoteContextMenu(
               context: context,
               noteNode: item,
               globalPosition: details.globalPosition,
@@ -262,7 +224,7 @@ class ExplorerTreeBuilder {
         },
       );
       rows.add(
-        wrapWorkspaceRowWithDrag(
+        callbacks.wrapWorkspaceRowWithDrag(
           context: context,
           node: item,
           depth: depth + 1,
@@ -278,8 +240,11 @@ class ExplorerTreeBuilder {
     required int depth,
   }) {
     final canDelete =
-        canDeleteFolderAction && node.deletable && looksLikeUuid(node.id);
-    final canCreateChild = canCreateFolderAction && looksLikeUuid(node.id);
+        flags.canDeleteFolderAction &&
+        node.deletable &&
+        callbacks.looksLikeUuid(node.id);
+    final canCreateChild =
+        flags.canCreateFolderAction && callbacks.looksLikeUuid(node.id);
     rows.add(
       Padding(
         padding: EdgeInsets.fromLTRB(12 + depth * 12, 8, 10, 2),
@@ -307,17 +272,18 @@ class ExplorerTreeBuilder {
             if (canCreateChild)
               IconButton(
                 key: Key('notes_folder_create_button_${node.id}'),
-                tooltip: newChildFolderTooltip,
-                onPressed: workspaceCreateFolderInFlight
+                tooltip: labels.newChildFolderTooltip,
+                onPressed: flags.workspaceCreateFolderInFlight
                     ? null
-                    : () => unawaited(showCreateFolderDialog(node.id)),
+                    : () =>
+                          unawaited(callbacks.showCreateFolderDialog(node.id)),
                 constraints: const BoxConstraints.tightFor(
                   width: 22,
                   height: 22,
                 ),
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
-                icon: workspaceCreateFolderInFlight
+                icon: flags.workspaceCreateFolderInFlight
                     ? const SizedBox(
                         width: 12,
                         height: 12,
@@ -335,17 +301,17 @@ class ExplorerTreeBuilder {
             if (canDelete)
               IconButton(
                 key: Key('notes_folder_delete_button_${node.id}'),
-                tooltip: deleteFolderTooltip,
-                onPressed: workspaceDeleteInFlight
+                tooltip: labels.deleteFolderTooltip,
+                onPressed: flags.workspaceDeleteInFlight
                     ? null
-                    : () => unawaited(showDeleteFolderDialog(node)),
+                    : () => unawaited(callbacks.showDeleteFolderDialog(node)),
                 constraints: const BoxConstraints.tightFor(
                   width: 22,
                   height: 22,
                 ),
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
-                icon: workspaceDeleteInFlight
+                icon: flags.workspaceDeleteInFlight
                     ? const SizedBox(
                         width: 12,
                         height: 12,
@@ -378,12 +344,12 @@ class ExplorerTreeBuilder {
             kind: 'note_ref',
             parentNodeId: node.id,
             atomId: noteId,
-            displayName: titleForTab(noteId),
+            displayName: callbacks.titleForTab(noteId),
             sortOrder: 0,
           ),
-          selected: noteId == activeNoteId,
+          selected: noteId == flags.activeNoteId,
           depth: depth + 1,
-          onTap: () => onNoteTap(noteId),
+          onTap: () => callbacks.onNoteTap(noteId),
         ),
       );
     }
