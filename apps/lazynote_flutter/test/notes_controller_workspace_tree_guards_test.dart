@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
 rust_api.NoteItem _note({
   required String atomId,
@@ -20,7 +20,7 @@ rust_api.NoteItem _note({
   );
 }
 
-NotesController _buildController({
+NotesCoordinator _buildController({
   required Map<String, rust_api.NoteItem> store,
   NoteCreateInvoker? noteCreateInvoker,
   WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
@@ -30,7 +30,7 @@ NotesController _buildController({
   WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
 }) {
-  return NotesController(
+  return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
       return rust_api.NotesListResponse(

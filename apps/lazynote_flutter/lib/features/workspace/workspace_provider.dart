@@ -365,7 +365,7 @@ class WorkspaceProvider extends ChangeNotifier {
     _markChanged();
   }
 
-  /// Sync one note snapshot from external owner (e.g. NotesController).
+  /// Sync one note snapshot from external owner (e.g. NotesCoordinator).
   void syncExternalNote({
     required String noteId,
     required String persistedContent,

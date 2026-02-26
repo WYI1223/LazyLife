@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
 Widget _wrap(Widget child) {
@@ -15,7 +15,7 @@ void main() {
     'cross-lane smoke: slot capability gate enables workspace folder op',
     (WidgetTester tester) async {
       final deleteCalls = <String>[];
-      final controller = NotesController(
+      final controller = NotesCoordinator(
         prepare: () async {},
         notesListInvoker: ({tag, limit, offset}) async {
           return const rust_api.NotesListResponse(
