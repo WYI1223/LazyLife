@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p3-2-entry-shell-verification` |
 | PR Title | `docs(frontend): PR-0252 P3-2 verify entry shell zero cross-feature import` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Merged |
 
 ## References
 
@@ -45,8 +45,8 @@ rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart
 
 ## Acceptance Criteria
 
-- [ ] `rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart` 仅匹配 `features/entry/` 内部 import
-- [ ] 验证结果已记录
+- [x] `rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart` 仅匹配 `features/entry/` 内部 import
+- [x] 验证结果已记录
 
 ## CI Gates
 
@@ -65,3 +65,23 @@ flutter test
 ## Rollback
 
 纯验证任务，无需回滚。
+
+## Verification Snapshot (2026-02-26)
+
+### Rule E Check
+
+```
+$ rg -n "features/" apps/lazynote_flutter/lib/features/entry/entry_shell_page.dart
+8:import 'package:lazynote_flutter/features/entry/single_entry_controller.dart';
+9:import 'package:lazynote_flutter/features/entry/single_entry_panel.dart';
+10:import 'package:lazynote_flutter/features/entry/workbench_shell_layout.dart';
+```
+
+Result: 3 matches, all `features/entry/` internal imports. Zero cross-feature imports from `notes/`, `tasks/`, `calendar/`, `search/`, `settings/`, `diagnostics/`.
+
+### CI Gates
+
+- `dart format --output=none --set-exit-if-changed .`：通过（134 files, 0 changed）
+- `flutter analyze`：通过（No issues found）
+- `flutter test`：通过（333 pass / 0 fail）
+- `flutter build windows --debug`：通过
