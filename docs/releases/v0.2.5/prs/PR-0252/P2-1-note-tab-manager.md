@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-1-note-tab-manager` |
 | PR Title | `refactor(frontend): PR-0252 P2-1 extract note tab manager` |
 | Estimated Effort | 1.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
