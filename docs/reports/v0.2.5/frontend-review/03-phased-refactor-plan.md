@@ -336,7 +336,7 @@
 | P2-2 | 提取 NoteListManager | notes/managers | 结构拆分 | P1-3 + P2-1 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 notesList + noteGet invoker，<400 行；CI 全绿 | 已完成（2026-02-26） |
 | P2-3 | 创建 NotesCoordinator + 消费者迁移 | notes | 结构拆分 | P2-1 + P2-2 | Agent | 1.5 | PR | `notes_coordinator.dart` 入口 <300 行（53 行）+ `notes_coordinator_impl.dart` 按原样迁移；6 个消费者文件（NotesPage, NoteContentArea, NoteExplorer, NoteTabManager, first_party_ui_slots, entry_shell_page）全部从 `_controller` 迁移到 `_coordinator`；CI 全绿 | 已完成（2026-02-26） |
 | P2-4 | 测试批量迁移 | notes | 测试 | P2-3 | Agent | 0.5 | PR | 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`；`notes_controller.dart` 兼容层删除；333 pass / 0 known-fail 基线不变 | 已完成（2026-02-26） |
-| P2-5 | ExplorerTreeBuilder 参数收敛（可选） | notes | 结构优化 | P2-3 | Agent | 0.5 | PR | `ExplorerTreeBuilder` 构造参数从 28 收敛为配置对象（如 `ExplorerTreeBuilderConfig`），行为不变；CI 全绿 | 未开始（可选，非阻塞） |
+| P2-5 | ExplorerTreeBuilder 参数收敛（可选） | notes | 结构优化 | P2-3 | Agent | 0.5 | PR | `ExplorerTreeBuilder` 构造参数从 28 收敛为配置对象（如 `ExplorerTreeBuilderConfig`），行为不变；CI 全绿 | 已完成（2026-02-25，可选，非阻塞） |
 
 #### Phase 3 任务（收口固化 + EntryShellPage 解耦）
 
@@ -894,6 +894,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - [x] 测试批量迁移完成（P2-4），333 pass / 0 known-fail
 - [x] 原 `notes_controller.dart` 已删除
 - [x] 6 个消费者文件全部使用 `_coordinator`
+- [x] （可选）ExplorerTreeBuilder 参数收敛完成（P2-5，28 参数 -> 5 参数）
 - [ ] 回归清单 v1 全通过 + HF-01~11 无 blocker
 - [ ] 非功能验证无明显退化
 

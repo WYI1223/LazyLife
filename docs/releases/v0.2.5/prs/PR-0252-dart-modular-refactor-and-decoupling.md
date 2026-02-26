@@ -187,7 +187,7 @@ This PR follows trunk-based development. Every task PR (`P0-1` .. `P3-5`) must f
 - [x] `P2-2` NoteListManager extracted
 - [x] `P2-3` NotesCoordinator created and consumers migrated
 - [x] `P2-4` tests migrated from NotesController to NotesCoordinator
-- [ ] `P2-5` (optional) ExplorerTreeBuilder parameter consolidation
+- [x] `P2-5` (optional) ExplorerTreeBuilder parameter consolidation
 - [ ] `P3-1` SectionRegistry landed and EntryShellPage migrated
 - [ ] `P3-2` zero cross-feature import verification passed
 - [ ] `P3-3` boundary map updated
