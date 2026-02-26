@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p2-4-test-migration` |
 | PR Title | `refactor(frontend): PR-0252 P2-4 migrate tests from NotesController to NotesCoordinator` |
 | Estimated Effort | 0.5 person-day |
-| Status | Ready for Review |
+| Status | Merged |
 
 ## References
 
