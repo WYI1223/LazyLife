@@ -10,7 +10,7 @@ import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
 import 'package:lazynote_flutter/features/notes/note_content_area.dart';
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
@@ -28,7 +28,7 @@ class NotesPage extends StatefulWidget {
   });
 
   /// Optional external controller for tests.
-  final NotesController? controller;
+  final NotesCoordinator? controller;
 
   /// Optional callback that returns to Workbench home section.
   final VoidCallback? onBackToWorkbench;
@@ -51,7 +51,7 @@ enum _CloseDialogAction { cancel, retry }
 
 class _NotesPageState extends State<NotesPage>
     with WidgetsBindingObserver, WindowListener {
-  late final NotesController _controller;
+  late final NotesCoordinator _coordinator;
   late final bool _ownsController;
   late final UiSlotRegistry _uiSlotRegistry;
   bool _windowCloseGuardEnabled = false;
@@ -71,14 +71,14 @@ class _NotesPageState extends State<NotesPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _controller = widget.controller ?? NotesController();
+    _coordinator = widget.controller ?? NotesCoordinator();
     _ownsController = widget.controller == null;
     _uiSlotRegistry = widget.uiSlotRegistry ?? createFirstPartyUiSlotRegistry();
-    _controller.addListener(_onControllerChanged);
+    _coordinator.addListener(_onControllerChanged);
     unawaited(_setupWindowCloseGuard());
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_controller.listPhase == NotesListPhase.idle) {
-        _controller.loadNotes();
+      if (_coordinator.listPhase == NotesListPhase.idle) {
+        _coordinator.loadNotes();
       }
     });
   }
@@ -86,12 +86,12 @@ class _NotesPageState extends State<NotesPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller.removeListener(_onControllerChanged);
+    _coordinator.removeListener(_onControllerChanged);
     if (_windowCloseGuardEnabled) {
       unawaited(_teardownWindowCloseGuard());
     }
     if (_ownsController) {
-      _controller.dispose();
+      _coordinator.dispose();
     }
     super.dispose();
   }
@@ -150,7 +150,7 @@ class _NotesPageState extends State<NotesPage>
     }
     // Why: always-on close interception adds visible close latency even when
     // nothing is dirty. We only intercept while save work is pending.
-    final shouldPrevent = _controller.hasPendingSaveWork;
+    final shouldPrevent = _coordinator.hasPendingSaveWork;
     if (!force && shouldPrevent == _preventCloseActive) {
       return;
     }
@@ -186,7 +186,7 @@ class _NotesPageState extends State<NotesPage>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      unawaited(_controller.flushPendingSave());
+      unawaited(_coordinator.flushPendingSave());
     }
   }
 
@@ -201,12 +201,12 @@ class _NotesPageState extends State<NotesPage>
 
   Future<void> _handleWindowCloseRequest() async {
     try {
-      if (!_controller.hasPendingSaveWork) {
+      if (!_coordinator.hasPendingSaveWork) {
         await _closeWindowNow();
         return;
       }
 
-      final flushed = await _controller.flushPendingSave().timeout(
+      final flushed = await _coordinator.flushPendingSave().timeout(
         // Why: close flow should be best-effort and responsive. Do not block
         // desktop shutdown on long I/O stalls.
         const Duration(milliseconds: 450),
@@ -266,7 +266,7 @@ class _NotesPageState extends State<NotesPage>
       );
 
       if (action == _CloseDialogAction.retry) {
-        final retried = await _controller.retrySaveCurrentDraft();
+        final retried = await _coordinator.retrySaveCurrentDraft();
         if (retried && mounted) {
           await _closeWindowNow();
         }
@@ -301,12 +301,12 @@ class _NotesPageState extends State<NotesPage>
     final containerExtent = direction == WorkspaceSplitDirection.horizontal
         ? editorWidthExtent
         : editorHeightExtent;
-    final result = _controller.splitActivePane(
+    final result = _coordinator.splitActivePane(
       direction: direction,
       containerExtent: containerExtent,
     );
     if (result == WorkspaceSplitResult.ok) {
-      final workspace = _controller.workspaceProvider;
+      final workspace = _coordinator.workspaceProvider;
       final paneCount = workspace.layoutState.paneOrder.length;
       _showSplitFeedback(
         _l10nText(
@@ -348,7 +348,7 @@ class _NotesPageState extends State<NotesPage>
   }
 
   void _handleActivateNextPane() {
-    final workspace = _controller.workspaceProvider;
+    final workspace = _coordinator.workspaceProvider;
     if (workspace.layoutState.paneOrder.length <= 1) {
       _showSplitFeedback(
         _l10nText(
@@ -358,7 +358,7 @@ class _NotesPageState extends State<NotesPage>
       );
       return;
     }
-    _controller.activateNextPane();
+    _coordinator.activateNextPane();
     final activeIndex = workspace.layoutState.paneOrder.indexOf(
       workspace.activePaneId,
     );
@@ -372,10 +372,10 @@ class _NotesPageState extends State<NotesPage>
   }
 
   void _handleCloseActivePane() {
-    final result = _controller.closeActivePane();
+    final result = _coordinator.closeActivePane();
     if (result == WorkspaceMergeResult.ok) {
       final paneCount =
-          _controller.workspaceProvider.layoutState.paneOrder.length;
+          _coordinator.workspaceProvider.layoutState.paneOrder.length;
       _showSplitFeedback(
         _l10nText(
           fallback: 'Pane closed. $paneCount remaining.',
@@ -405,8 +405,8 @@ class _NotesPageState extends State<NotesPage>
   @override
   Widget build(BuildContext context) {
     final mergedListenable = Listenable.merge([
-      _controller,
-      _controller.workspaceProvider,
+      _coordinator,
+      _coordinator.workspaceProvider,
     ]);
     return Shortcuts(
       shortcuts: const {
@@ -419,13 +419,13 @@ class _NotesPageState extends State<NotesPage>
         actions: {
           _NextTabIntent: CallbackAction<_NextTabIntent>(
             onInvoke: (_) {
-              _controller.activateNextOpenNote();
+              _coordinator.activateNextOpenNote();
               return null;
             },
           ),
           _PreviousTabIntent: CallbackAction<_PreviousTabIntent>(
             onInvoke: (_) {
-              _controller.activatePreviousOpenNote();
+              _coordinator.activatePreviousOpenNote();
               return null;
             },
           ),
@@ -435,7 +435,7 @@ class _NotesPageState extends State<NotesPage>
           child: AnimatedBuilder(
             animation: mergedListenable,
             builder: (context, _) {
-              final workspace = _controller.workspaceProvider;
+              final workspace = _coordinator.workspaceProvider;
               final workspaceOpenTabs =
                   workspace.openTabsByPane[workspace.activePaneId] ??
                   const <String>[];
@@ -612,10 +612,10 @@ class _NotesPageState extends State<NotesPage>
                               pick: (l10n) => l10n.notesReloadTooltip,
                             ),
                             onPressed:
-                                (_controller.creatingNote ||
-                                    _controller.createTagApplyInFlight)
+                                (_coordinator.creatingNote ||
+                                    _coordinator.createTagApplyInFlight)
                                 ? null
-                                : _controller.loadNotes,
+                                : _coordinator.loadNotes,
                             icon: Icon(Icons.refresh, color: headerTextColor),
                           ),
                         ],
@@ -685,17 +685,17 @@ class _NotesPageState extends State<NotesPage>
       layer: UiSlotLayer.sidePanel,
       slotContext: UiSlotContext({
         UiSlotContextKeys.runtimeCapabilities: widget.runtimeCapabilities,
-        UiSlotContextKeys.notesController: _controller,
+        UiSlotContextKeys.notesController: _coordinator,
         UiSlotContextKeys.notesOnOpenNoteRequested:
-            _controller.openNoteFromExplorer,
+            _coordinator.openNoteFromExplorer,
         UiSlotContextKeys.notesOnOpenNotePinnedRequested:
-            _controller.openNoteFromExplorerPinned,
+            _coordinator.openNoteFromExplorerPinned,
         UiSlotContextKeys.notesOnCreateNoteRequested: () async {
-          await _controller.createNote();
+          await _coordinator.createNote();
           if (!context.mounted) {
             return;
           }
-          final warning = _controller.takeCreateWarningMessage();
+          final warning = _coordinator.takeCreateWarningMessage();
           if (warning == null) {
             return;
           }
@@ -711,34 +711,34 @@ class _NotesPageState extends State<NotesPage>
         },
         UiSlotContextKeys.notesOnDeleteFolderRequested:
             (String folderId, String mode) {
-              return _controller.deleteWorkspaceFolder(
+              return _coordinator.deleteWorkspaceFolder(
                 folderId: folderId,
                 mode: mode,
               );
             },
         UiSlotContextKeys.notesOnCreateFolderRequested:
             (String name, String? parentNodeId) {
-              return _controller.createWorkspaceFolder(
+              return _coordinator.createWorkspaceFolder(
                 name: name,
                 parentNodeId: parentNodeId,
               );
             },
         UiSlotContextKeys.notesOnCreateNoteInFolderRequested:
             (String? parentNodeId) {
-              return _controller.createWorkspaceNoteInFolder(
+              return _coordinator.createWorkspaceNoteInFolder(
                 parentNodeId: parentNodeId,
               );
             },
         UiSlotContextKeys.notesOnRenameNodeRequested:
             (String nodeId, String newName) {
-              return _controller.renameWorkspaceNode(
+              return _coordinator.renameWorkspaceNode(
                 nodeId: nodeId,
                 newName: newName,
               );
             },
         UiSlotContextKeys.notesOnMoveNodeRequested:
             (String nodeId, String? newParentNodeId, {int? targetOrder}) {
-              return _controller.moveWorkspaceNode(
+              return _coordinator.moveWorkspaceNode(
                 nodeId: nodeId,
                 newParentNodeId: newParentNodeId,
                 targetOrder: targetOrder,
@@ -757,15 +757,15 @@ class _NotesPageState extends State<NotesPage>
       },
       fallbackBuilder: (context) {
         return NoteExplorer(
-          controller: _controller,
-          onOpenNoteRequested: _controller.openNoteFromExplorer,
-          onOpenNotePinnedRequested: _controller.openNoteFromExplorerPinned,
+          controller: _coordinator,
+          onOpenNoteRequested: _coordinator.openNoteFromExplorer,
+          onOpenNotePinnedRequested: _coordinator.openNoteFromExplorerPinned,
           onCreateNoteRequested: () async {
-            await _controller.createNote();
+            await _coordinator.createNote();
             if (!context.mounted) {
               return;
             }
-            final warning = _controller.takeCreateWarningMessage();
+            final warning = _coordinator.takeCreateWarningMessage();
             if (warning == null) {
               return;
             }
@@ -780,30 +780,30 @@ class _NotesPageState extends State<NotesPage>
               );
           },
           onDeleteFolderRequested: (folderId, mode) {
-            return _controller.deleteWorkspaceFolder(
+            return _coordinator.deleteWorkspaceFolder(
               folderId: folderId,
               mode: mode,
             );
           },
           onCreateFolderRequested: (name, parentNodeId) {
-            return _controller.createWorkspaceFolder(
+            return _coordinator.createWorkspaceFolder(
               name: name,
               parentNodeId: parentNodeId,
             );
           },
           onCreateNoteInFolderRequested: (parentNodeId) {
-            return _controller.createWorkspaceNoteInFolder(
+            return _coordinator.createWorkspaceNoteInFolder(
               parentNodeId: parentNodeId,
             );
           },
           onRenameNodeRequested: (nodeId, newName) {
-            return _controller.renameWorkspaceNode(
+            return _coordinator.renameWorkspaceNode(
               nodeId: nodeId,
               newName: newName,
             );
           },
           onMoveNodeRequested: (nodeId, newParentNodeId, {targetOrder}) {
-            return _controller.moveWorkspaceNode(
+            return _coordinator.moveWorkspaceNode(
               nodeId: nodeId,
               newParentNodeId: newParentNodeId,
               targetOrder: targetOrder,
@@ -823,13 +823,13 @@ class _NotesPageState extends State<NotesPage>
     return Column(
       children: [
         NoteTabManager(
-          controller: _controller,
+          controller: _coordinator,
           openNoteIdsOverride: openTabOverride,
           activeNoteIdOverride: activeNoteIdOverride,
         ),
         Expanded(
           child: NoteContentArea(
-            controller: _controller,
+            controller: _coordinator,
             activeNoteIdOverride: activeNoteIdOverride,
             activeDraftContentOverride: draftOverride,
             noteSaveStateOverride: noteSaveStateOverride,

@@ -9,7 +9,7 @@ import 'package:lazynote_flutter/features/diagnostics/rust_diagnostics_page.dart
 import 'package:lazynote_flutter/features/entry/single_entry_controller.dart';
 import 'package:lazynote_flutter/features/entry/single_entry_panel.dart';
 import 'package:lazynote_flutter/features/entry/workbench_shell_layout.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 import 'package:lazynote_flutter/features/settings/settings_capability_page.dart';
 import 'package:lazynote_flutter/features/tasks/tasks_page.dart';
@@ -49,7 +49,7 @@ class EntryShellPage extends StatefulWidget {
 class _EntryShellPageState extends State<EntryShellPage> {
   // Single Entry is the primary interactive path in Workbench after PR-0009C.
   final SingleEntryController _singleEntryController = SingleEntryController();
-  final NotesController _notesController = NotesController();
+  final NotesCoordinator _notesCoordinator = NotesCoordinator();
   late final UiSlotRegistry _uiSlotRegistry;
   late WorkbenchSection _activeSection;
   bool _showSingleEntryPanel = false;
@@ -64,7 +64,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
   @override
   void dispose() {
     _singleEntryController.dispose();
-    _notesController.dispose();
+    _notesCoordinator.dispose();
     super.dispose();
   }
 
@@ -116,7 +116,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
 
   String _titleForSection(BuildContext context, WorkbenchSection section) {
     final l10n = AppLocalizations.of(context)!;
-    final workspace = _notesController.workspaceProvider;
+    final workspace = _notesCoordinator.workspaceProvider;
     final openTabs =
         workspace.openTabsByPane[workspace.activePaneId] ?? const <String>[];
     return switch (section) {
@@ -300,7 +300,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
         return switch (_activeSection) {
           WorkbenchSection.home => _buildWorkbenchHome(),
           WorkbenchSection.notes => NotesPage(
-            controller: _notesController,
+            controller: _notesCoordinator,
             onBackToWorkbench: () => _openSection(WorkbenchSection.home),
             uiSlotRegistry: _uiSlotRegistry,
           ),
@@ -323,7 +323,7 @@ class _EntryShellPageState extends State<EntryShellPage> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _notesController.workspaceProvider,
+      animation: _notesCoordinator.workspaceProvider,
       builder: (context, _) {
         return WorkbenchShellLayout(
           title: _titleForSection(context, _activeSection),

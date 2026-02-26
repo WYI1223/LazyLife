@@ -11,7 +11,7 @@ import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
 import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_builder.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_state.dart';
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/features/tags/tag_filter.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
@@ -54,7 +54,7 @@ typedef ExplorerNodeMoveInvoker =
 
 /// Optional tree builder hook for tests/future workspace integration.
 typedef ExplorerFolderTreeBuilder =
-    List<ExplorerFolderNode> Function(NotesController controller);
+    List<ExplorerFolderNode> Function(NotesCoordinator controller);
 
 /// Left explorer panel for notes navigation.
 class NoteExplorer extends StatefulWidget {
@@ -74,7 +74,7 @@ class NoteExplorer extends StatefulWidget {
   });
 
   /// Source controller that provides list/tree state snapshots.
-  final NotesController controller;
+  final NotesCoordinator controller;
 
   /// Callback emitted when user requests opening one note.
   final ValueChanged<String> onOpenNoteRequested;
