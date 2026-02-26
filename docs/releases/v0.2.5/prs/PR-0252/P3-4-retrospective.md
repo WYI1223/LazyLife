@@ -9,7 +9,7 @@
 | Branch | `feat/pr-0252-p3-4-retrospective` |
 | PR Title | `docs(frontend): PR-0252 P3-4 deliver refactor retrospective` |
 | Estimated Effort | 0.5 person-day |
-| Status | Planned |
+| Status | Merged |
 
 ## References
 
@@ -61,12 +61,12 @@ Out of scope:
 
 ## Planned File Changes
 
-- [add] 复盘文档（位置建议 `docs/reports/v0.2.5/frontend-review/04-refactor-retrospective.md`）
+- [add] `docs/reports/v0.2.5/frontend-review/05-refactor-retrospective.md`（编号 05 因 04 已被 regression-checklist 占用）
 
 ## Acceptance Criteria
 
-- [ ] 覆盖"已完成/未完成/剩余债务/收益评估"四维度
-- [ ] 对照 03 报告 Section 11.2 格式
+- [x] 覆盖"已完成/未完成/剩余债务/收益评估"四维度
+- [x] 对照 03 报告 Section 11.2 格式
 
 ## CI Gates
 
@@ -79,3 +79,12 @@ Out of scope:
 ## Rollback
 
 纯文档，直接 revert 即可。
+
+## Verification Snapshot
+
+- 输出文件：`docs/reports/v0.2.5/frontend-review/05-refactor-retrospective.md`
+- 覆盖 6 个 Section：已完成项表、未完成项、剩余技术债（D1–D10）、收益评估（G1–G8）、执行观察、下轮建议
+- 已完成项：22/23 任务完成（仅 P3-5 TL sign-off 待执行）
+- 14 项代码提取全部完成，附实际行数
+- 技术债：原 D1–D8 逐项核对 + 新增 D9（coordinator impl 规模）、D10（reminders 跨 feature import）
+- 收益评估：5/8 完全达标、2/8 部分达标、1/8 未达标
