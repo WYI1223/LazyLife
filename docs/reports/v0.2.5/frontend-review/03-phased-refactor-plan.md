@@ -333,7 +333,7 @@
 | 任务 ID | 任务名称 | 模块 | 类型 | 前置依赖 | 负责人 | 预计人日 | 输出物 | 验收标准 | 状态 |
 |---------|---------|------|------|---------|--------|---------|--------|---------|------|
 | P2-1 | 提取 NoteTabManager | notes/managers | 结构拆分 | P0-4 + P1-2 | Agent | 1.5 | PR | 独立 ChangeNotifier，整合现有 `note_tab_manager.dart` (431行 UI) + controller Tab 逻辑，<400 行状态层；CI 全绿 | 已完成（2026-02-26） |
-| P2-2 | 提取 NoteListManager | notes/managers | 结构拆分 | P1-3 + P2-1 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 notesList + noteGet invoker，<400 行；CI 全绿 | 未开始 |
+| P2-2 | 提取 NoteListManager | notes/managers | 结构拆分 | P1-3 + P2-1 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 notesList + noteGet invoker，<400 行；CI 全绿 | 评审中（2026-02-26） |
 | P2-3 | 创建 NotesCoordinator + 消费者迁移 | notes | 结构拆分 | P2-1 + P2-2 | Agent | 1.5 | PR | Coordinator <300 行；6 个消费者文件（NotesPage, NoteContentArea, NoteExplorer, NoteTabManager, first_party_ui_slots, entry_shell_page）全部从 `_controller` 迁移到 `_coordinator`；原 `notes_controller.dart` 删除；CI 全绿 | 未开始 |
 | P2-4 | 测试批量迁移 | notes | 测试 | P2-3 | Agent | 0.5 | PR | 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`；333 pass / 0 known-fail 基线不变 | 未开始 |
 | P2-5 | ExplorerTreeBuilder 参数收敛（可选） | notes | 结构优化 | P2-3 | Agent | 0.5 | PR | `ExplorerTreeBuilder` 构造参数从 28 收敛为配置对象（如 `ExplorerTreeBuilderConfig`），行为不变；CI 全绿 | 未开始（可选，非阻塞） |
