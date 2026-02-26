@@ -9,42 +9,15 @@ import 'package:lazynote_flutter/features/notes/dialogs/move_node_dialog.dart';
 import 'package:lazynote_flutter/features/notes/dialogs/rename_node_dialog.dart';
 import 'package:lazynote_flutter/features/notes/explorer_context_menu.dart';
 import 'package:lazynote_flutter/features/notes/explorer_drag_controller.dart';
-import 'package:lazynote_flutter/features/notes/explorer_tree_item.dart';
+import 'package:lazynote_flutter/features/notes/explorer_tree_builder.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_state.dart';
 import 'package:lazynote_flutter/features/notes/notes_controller.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/features/tags/tag_filter.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
-/// Folder node model reserved for hierarchical explorer expansion.
-class ExplorerFolderNode {
-  const ExplorerFolderNode({
-    required this.id,
-    required this.label,
-    this.parentId,
-    this.children = const <ExplorerFolderNode>[],
-    this.noteIds = const <String>[],
-    this.deletable = true,
-  });
-
-  /// Stable node id used by future tree operations.
-  final String id;
-
-  /// Display label rendered in explorer tree.
-  final String label;
-
-  /// Parent node id when sourced from workspace tree (nullable for root).
-  final String? parentId;
-
-  /// Recursive child folders (v0.1 currently one-level usage).
-  final List<ExplorerFolderNode> children;
-
-  /// Note ids attached to this folder node.
-  final List<String> noteIds;
-
-  /// Whether this folder should expose delete action in explorer UI.
-  final bool deletable;
-}
+export 'package:lazynote_flutter/features/notes/explorer_tree_builder.dart'
+    show ExplorerFolderNode;
 
 /// Async folder-delete callback from explorer to controller layer.
 typedef ExplorerFolderDeleteInvoker =
@@ -504,9 +477,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
   Widget _buildSuccessTree(BuildContext context) {
     if (widget.folderTreeBuilder != null) {
       final rows = <Widget>[_buildTagFilter()];
+      final treeBuilder = _createTreeBuilder(context);
       final tree = _buildFolderTree();
       for (final node in tree) {
-        _appendLegacyFolderRows(context, rows: rows, node: node, depth: 0);
+        treeBuilder.appendLegacyFolderRows(rows: rows, node: node, depth: 0);
       }
       return _buildScrollableRows(rows);
     }
@@ -514,6 +488,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
     return AnimatedBuilder(
       animation: Listenable.merge([_treeState, widget.controller]),
       builder: (context, _) {
+        final treeBuilder = _createTreeBuilder(context);
         final rows = <Widget>[_buildTagFilter()];
         if (_treeState.isLoading(null) && !_treeState.hasLoaded(null)) {
           rows.add(
@@ -590,9 +565,66 @@ class _NoteExplorerState extends State<NoteExplorer> {
         if (_dragInProgress && widget.onMoveNodeRequested != null) {
           rows.add(_buildRootDropLane(context));
         }
-        _appendWorkspaceRows(context, rows: rows, items: rootItems, depth: 0);
+        treeBuilder.appendWorkspaceRows(rows: rows, items: rootItems, depth: 0);
         return _buildScrollableRows(rows);
       },
+    );
+  }
+
+  ExplorerTreeBuilder _createTreeBuilder(BuildContext context) {
+    return ExplorerTreeBuilder(
+      context: context,
+      retryLabel: _l10nText(
+        fallback: 'Retry',
+        pick: (l10n) => l10n.retryButton,
+      ),
+      noItemsLabel: _l10nText(
+        fallback: 'No items',
+        pick: (l10n) => l10n.notesNoItemsLabel,
+      ),
+      newChildFolderTooltip: _l10nText(
+        fallback: 'New child folder',
+        pick: (l10n) => l10n.notesNewChildFolderTooltip,
+      ),
+      deleteFolderTooltip: _l10nText(
+        fallback: 'Delete folder',
+        pick: (l10n) => l10n.notesDeleteFolderTooltip,
+      ),
+      workspaceCreateFolderInFlight:
+          widget.controller.workspaceCreateFolderInFlight,
+      workspaceDeleteInFlight: widget.controller.workspaceDeleteInFlight,
+      canCreateFolderAction: widget.onCreateFolderRequested != null,
+      canDeleteFolderAction: widget.onDeleteFolderRequested != null,
+      activeNoteId: widget.controller.activeNoteId,
+      isExpanded: _treeState.isExpanded,
+      isLoading: _treeState.isLoading,
+      errorMessageFor: _treeState.errorMessageFor,
+      hasLoaded: _treeState.hasLoaded,
+      childrenFor: _treeState.childrenFor,
+      toggleFolder: _treeState.toggleFolder,
+      retryParent: _treeState.retryParent,
+      isSyntheticRootNodeId: _isSyntheticRootNodeId,
+      looksLikeUuid: _looksLikeUuid,
+      showCreateFolderDialog: (parentNodeId) =>
+          _showCreateFolderDialog(context, parentNodeId: parentNodeId),
+      showDeleteFolderDialog: (node) => _showDeleteFolderDialog(context, node),
+      recordRowContextMenuTrigger: _recordRowContextMenuTrigger,
+      showFolderContextMenu: _showFolderContextMenu,
+      showNoteContextMenu: _showNoteContextMenu,
+      wrapWorkspaceRowWithDrag: _wrapWorkspaceRowWithDrag,
+      resolveNoteDisplayName: (noteId, item) {
+        final note = widget.controller.noteById(noteId);
+        final projectedTitle = note == null
+            ? null
+            : widget.controller.titleForTab(noteId);
+        final trimmedNodeLabel = item.displayName.trim();
+        return projectedTitle ??
+            (trimmedNodeLabel.isEmpty
+                ? widget.controller.titleForTab(noteId)
+                : item.displayName);
+      },
+      titleForTab: widget.controller.titleForTab,
+      onNoteTap: _handleNoteTap,
     );
   }
 
@@ -1194,380 +1226,26 @@ class _NoteExplorerState extends State<NoteExplorer> {
     }
   }
 
-  void _appendWorkspaceRows(
-    BuildContext context, {
-    required List<Widget> rows,
-    required List<rust_api.WorkspaceNodeItem> items,
-    required int depth,
-  }) {
-    for (final item in items) {
-      if (item.kind == 'folder') {
-        final expanded = _treeState.isExpanded(item.nodeId);
-        final loading = _treeState.isLoading(item.nodeId);
-        final error = _treeState.errorMessageFor(item.nodeId);
-        final isSyntheticRoot = _isSyntheticRootNodeId(item.nodeId);
-        final canCreateChild =
-            widget.onCreateFolderRequested != null &&
-            (_looksLikeUuid(item.nodeId) || isSyntheticRoot);
-        final canDelete =
-            widget.onDeleteFolderRequested != null &&
-            _looksLikeUuid(item.nodeId);
-        final folderRow = ExplorerTreeItem.folder(
-          key: Key('notes_tree_folder_row_${item.nodeId}'),
-          node: item,
-          depth: depth,
-          selected: false,
-          expanded: expanded,
-          canCreateChild: canCreateChild,
-          canDelete: canDelete,
-          onTap: () {
-            unawaited(_treeState.toggleFolder(item.nodeId));
-          },
-          onCreateChildFolder: canCreateChild
-              ? widget.controller.workspaceCreateFolderInFlight
-                    ? null
-                    : () => _showCreateFolderDialog(
-                        context,
-                        parentNodeId: item.nodeId,
-                      )
-              : null,
-          onDeleteFolder: canDelete
-              ? () => _showDeleteFolderDialog(
-                  context,
-                  ExplorerFolderNode(
-                    id: item.nodeId,
-                    label: item.displayName,
-                    parentId: item.parentNodeId,
-                    deletable: true,
-                  ),
-                )
-              : null,
-          onSecondaryTapDown: (details) {
-            _recordRowContextMenuTrigger(details.globalPosition);
-            unawaited(
-              _showFolderContextMenu(
-                context: context,
-                folderNode: item,
-                globalPosition: details.globalPosition,
-              ),
-            );
-          },
-        );
-        rows.add(
-          _wrapWorkspaceRowWithDrag(
-            context: context,
-            node: item,
-            depth: depth,
-            child: folderRow,
-          ),
-        );
-
-        if (!expanded) {
-          continue;
-        }
-        if (loading && !_treeState.hasLoaded(item.nodeId)) {
-          rows.add(
-            Padding(
-              key: Key('notes_tree_loading_${item.nodeId}'),
-              padding: EdgeInsets.fromLTRB(30 + depth * 12, 2, 10, 4),
-              child: const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 1.8),
-              ),
-            ),
-          );
-          continue;
-        }
-        if (error != null) {
-          rows.add(
-            Padding(
-              key: Key('notes_tree_error_${item.nodeId}'),
-              padding: EdgeInsets.fromLTRB(30 + depth * 12, 2, 10, 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      error,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    key: Key('notes_tree_retry_${item.nodeId}'),
-                    onPressed: () {
-                      unawaited(_treeState.retryParent(item.nodeId));
-                    },
-                    child: Text(
-                      _l10nText(
-                        fallback: 'Retry',
-                        pick: (l10n) => l10n.retryButton,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-          continue;
-        }
-        final children =
-            _treeState.childrenFor(item.nodeId) ??
-            const <rust_api.WorkspaceNodeItem>[];
-        if (children.isEmpty) {
-          rows.add(
-            Padding(
-              key: Key('notes_tree_empty_${item.nodeId}'),
-              padding: EdgeInsets.fromLTRB(30 + depth * 12, 2, 10, 6),
-              child: Text(
-                _l10nText(
-                  fallback: 'No items',
-                  pick: (l10n) => l10n.notesNoItemsLabel,
-                ),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: kNotesSecondaryText),
-              ),
-            ),
-          );
-          continue;
-        }
-        _appendWorkspaceRows(
-          context,
-          rows: rows,
-          items: children,
-          depth: depth + 1,
-        );
-        continue;
-      }
-
-      if (item.kind != 'note_ref') {
-        continue;
-      }
-      final noteId = item.atomId;
-      if (noteId == null || noteId.isEmpty) {
-        continue;
-      }
-      final note = widget.controller.noteById(noteId);
-      // Keep note-row title projection unified across folders/uncategorized.
-      // Fallback to node label only when note snapshot is unavailable.
-      final projectedTitle = note == null
-          ? null
-          : widget.controller.titleForTab(noteId);
-      final trimmedNodeLabel = item.displayName.trim();
-      final displayName =
-          projectedTitle ??
-          (trimmedNodeLabel.isEmpty
-              ? widget.controller.titleForTab(noteId)
-              : item.displayName);
-      final noteRow = ExplorerTreeItem.note(
-        key: Key('notes_tree_note_row_${item.nodeId}'),
-        node: rust_api.WorkspaceNodeItem(
-          nodeId: item.nodeId,
-          kind: item.kind,
-          parentNodeId: item.parentNodeId,
-          atomId: item.atomId,
-          displayName: displayName,
-          sortOrder: item.sortOrder,
-        ),
-        depth: depth + 1,
-        selected: noteId == widget.controller.activeNoteId,
-        onTap: () => _handleNoteTap(noteId),
-        onSecondaryTapDown: (details) {
-          _recordRowContextMenuTrigger(details.globalPosition);
-          unawaited(
-            _showNoteContextMenu(
-              context: context,
-              noteNode: item,
-              globalPosition: details.globalPosition,
-            ),
-          );
-        },
-      );
-      rows.add(
-        _wrapWorkspaceRowWithDrag(
-          context: context,
-          node: item,
-          depth: depth + 1,
-          child: noteRow,
-        ),
-      );
-    }
-  }
-
   List<ExplorerFolderNode> _buildFolderTree() {
     if (widget.folderTreeBuilder case final builder?) {
       return builder(widget.controller);
     }
-    // v0.2A visual baseline: show workspace-like top folders while still
-    // binding note rows from existing list source.
     final noteIds = widget.controller.items.map((item) => item.atomId).toList();
-    return <ExplorerFolderNode>[
-      ExplorerFolderNode(
-        id: 'projects',
-        label: _l10nText(
-          fallback: 'Projects',
-          pick: (l10n) => l10n.notesLegacyFolderProjects,
-        ),
-        deletable: false,
+    return ExplorerTreeBuilder.buildDefaultFolderTree(
+      noteIds: noteIds,
+      projectsLabel: _l10nText(
+        fallback: 'Projects',
+        pick: (l10n) => l10n.notesLegacyFolderProjects,
       ),
-      ExplorerFolderNode(
-        id: 'notes',
-        label: _l10nText(
-          fallback: 'Notes',
-          pick: (l10n) => l10n.workbenchSectionNotes,
-        ),
-        deletable: false,
-        noteIds: noteIds,
+      notesLabel: _l10nText(
+        fallback: 'Notes',
+        pick: (l10n) => l10n.workbenchSectionNotes,
       ),
-      ExplorerFolderNode(
-        id: 'personal',
-        label: _l10nText(
-          fallback: 'Personal',
-          pick: (l10n) => l10n.notesLegacyFolderPersonal,
-        ),
-        deletable: false,
-      ),
-    ];
-  }
-
-  void _appendLegacyFolderRows(
-    BuildContext context, {
-    required List<Widget> rows,
-    required ExplorerFolderNode node,
-    required int depth,
-  }) {
-    final canDelete =
-        widget.onDeleteFolderRequested != null &&
-        node.deletable &&
-        _looksLikeUuid(node.id);
-    final canCreateChild =
-        widget.onCreateFolderRequested != null && _looksLikeUuid(node.id);
-    rows.add(
-      Padding(
-        padding: EdgeInsets.fromLTRB(12 + depth * 12, 8, 10, 2),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.chevron_right,
-              size: 14,
-              color: kNotesSecondaryText,
-            ),
-            const SizedBox(width: 2),
-            Icon(Icons.folder_outlined, size: 16, color: kNotesSecondaryText),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                node.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: kNotesSecondaryText,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (canCreateChild)
-              IconButton(
-                key: Key('notes_folder_create_button_${node.id}'),
-                tooltip: _l10nText(
-                  fallback: 'New child folder',
-                  pick: (l10n) => l10n.notesNewChildFolderTooltip,
-                ),
-                onPressed: widget.controller.workspaceCreateFolderInFlight
-                    ? null
-                    : () => _showCreateFolderDialog(
-                        context,
-                        parentNodeId: node.id,
-                      ),
-                constraints: const BoxConstraints.tightFor(
-                  width: 22,
-                  height: 22,
-                ),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                icon: widget.controller.workspaceCreateFolderInFlight
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.4,
-                          color: kNotesSecondaryText,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.create_new_folder_outlined,
-                        size: 14,
-                        color: kNotesSecondaryText,
-                      ),
-              ),
-            if (canDelete)
-              IconButton(
-                key: Key('notes_folder_delete_button_${node.id}'),
-                tooltip: _l10nText(
-                  fallback: 'Delete folder',
-                  pick: (l10n) => l10n.notesDeleteFolderTooltip,
-                ),
-                onPressed: widget.controller.workspaceDeleteInFlight
-                    ? null
-                    : () => _showDeleteFolderDialog(context, node),
-                constraints: const BoxConstraints.tightFor(
-                  width: 22,
-                  height: 22,
-                ),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-                icon: widget.controller.workspaceDeleteInFlight
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.4,
-                          color: kNotesSecondaryText,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.delete_outline,
-                        size: 14,
-                        color: kNotesSecondaryText,
-                      ),
-              ),
-          ],
-        ),
+      personalLabel: _l10nText(
+        fallback: 'Personal',
+        pick: (l10n) => l10n.notesLegacyFolderPersonal,
       ),
     );
-
-    for (final child in node.children) {
-      _appendLegacyFolderRows(
-        context,
-        rows: rows,
-        node: child,
-        depth: depth + 1,
-      );
-    }
-
-    for (final noteId in node.noteIds) {
-      rows.add(
-        ExplorerTreeItem.note(
-          key: Key('notes_tree_legacy_note_row_$noteId'),
-          node: rust_api.WorkspaceNodeItem(
-            nodeId: 'legacy_note_$noteId',
-            kind: 'note_ref',
-            parentNodeId: node.id,
-            atomId: noteId,
-            displayName: widget.controller.titleForTab(noteId),
-            sortOrder: 0,
-          ),
-          selected: noteId == widget.controller.activeNoteId,
-          depth: depth + 1,
-          onTap: () => _handleNoteTap(noteId),
-        ),
-      );
-    }
   }
 
   bool _looksLikeUuid(String value) {
