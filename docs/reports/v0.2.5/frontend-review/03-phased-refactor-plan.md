@@ -32,7 +32,7 @@
 | **功能并行** | v0.3 高级布局/拖拽分屏功能处于设计阶段，执行期不会进入本轮冻结模块 |
 | **人员约束** | 前端 Owner 空缺（AI Agent 主导），TL review 带宽有限（每周 ~4h） |
 | **技术约束** | 保持 ChangeNotifier + AnimatedBuilder；不换框架；不改 Rust FFI 接口签名 |
-| **测试基线** | 313 pass / 0 known-fail，`flutter analyze` 零警告 |
+| **测试基线** | 333 pass / 0 known-fail，`flutter analyze` 零警告 |
 
 ---
 
@@ -48,7 +48,7 @@
 |------|---------|------|----------------|
 | Phase 0 | Week 1 前半（3 天） | 止血与执行基线 | 前置准备（A1 + A3 样板） |
 | Phase 1 | Week 1 后半 ~ Week 2（7 天） | 清洁/中等缝隙 manager 提取 + Explorer 对话框 | A2 + A4 + B1 + D |
-| Phase 2 | Week 3（5 天） | 剩余 manager + Coordinator 切换 | B2 + C |
+| Phase 2 | Week 3（5 天） | 剩余 manager + Coordinator 切换（含 1 项非阻塞优化） | B2 + C |
 | Phase 3 | Week 4 前半（3 天） | 收口固化 + EntryShellPage 解耦 | E + 收口 |
 
 ### Top 5 关键路径任务
@@ -66,7 +66,7 @@
 | Coordinator 切换引入回归 | 全笔记主流程 | S4 测试分两阶段迁移（0255B Section 8.2） |
 | NoteListManager 多孔域耦合 | 列表/Tab/筛选联动 | 等所有下游 manager 就位后再提取 |
 | TL review 带宽不足 | PR 合并阻塞 | Phase 1 低风险 PR 可由 AI Agent 预审 |
-| 测试基线新增失败 | 回归判定模糊 | 基线为 313 pass / 0 known-fail，门槛为"不引入新失败" |
+| 测试基线新增失败 | 回归判定模糊 | 基线为 333 pass / 0 known-fail，门槛为"不引入新失败" |
 
 ### 功能冻结
 
@@ -114,7 +114,7 @@
 |---|---------|--------|------|
 | P1 | 0255A + 0255B 报告已签字 | TL | ✓ 已完成 |
 | P2 | `flutter analyze` 零警告 | Agent 验证 | ✓ 已确认 |
-| P3 | 测试基线确认（313 pass / 0 known-fail） | Agent 验证 | ✓ 已确认 |
+| P3 | 测试基线确认（333 pass / 0 known-fail） | Agent 验证 | ✓ 已确认 |
 | P4 | `lib/features/notes/` 冻结确认（PM/TPM） | PM | ✓ 已确认 |
 | P5 | TL 每周 ~4h review 带宽确认 | TL | ✓ 已确认 |
 | P6 | QA 阶段回归安排确认（Phase 1/2 结束时各 1 次） | QA/TPM | ✓ 已确认 |
@@ -192,12 +192,12 @@
 - NoteTagManager 的 filter→list 回调桥接需在 NotesController facade 中临时保留 → 缓解：S4 策略（facade 过渡期）
 
 **阶段 DoD：**
-- [ ] 3 个 manager（WorkspaceTree + Draft + Tag）提取完成（WorkspaceTree <550 行；Draft <300 行；Tag <350 行）
-- [ ] 4 个对话框提取为独立 Widget
-- [ ] ExplorerTreeBuilder 提取完成
-- [ ] NotesController 保留为 facade，转发到已提取 manager
-- [ ] 测试基线不变（313 pass / 0 known-fail）
-- [ ] 阶段回归通过（回归清单 v1 + 工作区树专项）
+- [x] 3 个 manager（WorkspaceTree + Draft + Tag）提取完成（WorkspaceTree <550 行；Draft <300 行；Tag <350 行）
+- [x] 4 个对话框提取为独立 Widget
+- [x] ExplorerTreeBuilder 提取完成
+- [x] NotesController 保留为 facade，转发到已提取 manager
+- [x] 测试基线不变（333 pass / 0 known-fail）
+- [x] 阶段回归通过（回归清单 v1 + 工作区树专项）
 
 **验证方式：** `flutter analyze` + `flutter test` + 回归清单 v1 + 工作区树 CRUD 专项走查 + 对话框交互验证
 
@@ -223,6 +223,7 @@
 | P2-2 | 提取 NoteListManager（L1923–2148, L521–543） | C1 | 1.5d | P1-3 + P2-1 |
 | P2-3 | 创建 NotesCoordinator + 消费者迁移（`_controller` → `_coordinator`） | C2 | 1.5d | P2-1 + P2-2 |
 | P2-4 | 测试批量迁移（NotesController 引用 → NotesCoordinator） | — | 0.5d | P2-3 |
+| P2-5 | ExplorerTreeBuilder 参数收敛（28 参数 → 配置对象）*可选* | 优化项 | 0.5d | P2-3 |
 
 **阶段风险（本轮最高风险阶段）：**
 - **R2 createNote 编排遗漏**：高基数跨域操作迁移到 coordinator 时可能遗漏副作用 → 缓解：`createNote` 现有 92 行逻辑按原样迁移，不重构内部流程
@@ -233,7 +234,7 @@
 - [ ] 原 `notes_controller.dart` 文件删除
 - [ ] `notes_coordinator.dart` <300 行，持有全部 6 个 manager
 - [ ] 全部消费者（NotesPage, NoteContentArea, NoteExplorer, NoteTabManager, first_party_ui_slots, entry_shell_page）已迁移到 NotesCoordinator
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [ ] 测试基线不变（333 pass / 0 known-fail）
 - [ ] 全量阶段回归通过（回归清单 v1 + 全主流程 + 工作区/标签/草稿专项）
 - [ ] 无新增 P0 缺陷
 
@@ -325,7 +326,7 @@
 | P1-5 | 提取 DeleteFolderDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~150 行；含 dissolve/delete-all 选择；CI 全绿 | 已完成（2026-02-25） |
 | P1-6 | 提取 RenameNodeDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~130 行；CI 全绿 | 已完成（2026-02-25） |
 | P1-7 | 提取 MoveNodeDialog | notes/dialogs | 结构拆分 | 无 | Agent | 0.5 | PR | 独立 StatefulWidget，~160 行；含移动目标加载；CI 全绿 | 已完成（2026-02-25） |
-| P1-8 | 提取 ExplorerTreeBuilder | notes | 结构拆分 | P1-4~7 | Agent | 1.0 | PR | 独立辅助类，<400 行，纯输入→输出；CI 全绿 | 评审中（2026-02-25） |
+| P1-8 | 提取 ExplorerTreeBuilder | notes | 结构拆分 | P1-4~7 | Agent | 1.0 | PR | 独立辅助类，<400 行，纯输入→输出；CI 全绿 | 已完成（2026-02-25） |
 
 #### Phase 2 任务（中等/多孔域 + Coordinator 切换）
 
@@ -334,7 +335,8 @@
 | P2-1 | 提取 NoteTabManager | notes/managers | 结构拆分 | P0-4 + P1-2 | Agent | 1.5 | PR | 独立 ChangeNotifier，整合现有 `note_tab_manager.dart` (431行 UI) + controller Tab 逻辑，<400 行状态层；CI 全绿 | 未开始 |
 | P2-2 | 提取 NoteListManager | notes/managers | 结构拆分 | P1-3 + P2-1 | Agent | 1.5 | PR | 独立 ChangeNotifier，持有 notesList + noteGet invoker，<400 行；CI 全绿 | 未开始 |
 | P2-3 | 创建 NotesCoordinator + 消费者迁移 | notes | 结构拆分 | P2-1 + P2-2 | Agent | 1.5 | PR | Coordinator <300 行；6 个消费者文件（NotesPage, NoteContentArea, NoteExplorer, NoteTabManager, first_party_ui_slots, entry_shell_page）全部从 `_controller` 迁移到 `_coordinator`；原 `notes_controller.dart` 删除；CI 全绿 | 未开始 |
-| P2-4 | 测试批量迁移 | notes | 测试 | P2-3 | Agent | 0.5 | PR | 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`；313 pass / 0 known-fail 基线不变 | 未开始 |
+| P2-4 | 测试批量迁移 | notes | 测试 | P2-3 | Agent | 0.5 | PR | 16 个测试文件中的 `NotesController` 引用全部适配为 `NotesCoordinator`；333 pass / 0 known-fail 基线不变 | 未开始 |
+| P2-5 | ExplorerTreeBuilder 参数收敛（可选） | notes | 结构优化 | P2-3 | Agent | 0.5 | PR | `ExplorerTreeBuilder` 构造参数从 28 收敛为配置对象（如 `ExplorerTreeBuilderConfig`），行为不变；CI 全绿 | 未开始（可选，非阻塞） |
 
 #### Phase 3 任务（收口固化 + EntryShellPage 解耦）
 
@@ -379,6 +381,7 @@ P1-3 NoteTagManager (无前置，1.5d)
 |--------|------|--------|------|
 | NoteExplorer 对话框 | P1-4 → P1-5 → P1-6 → P1-7 → P1-8 | 3.0d | 无（可从 Phase 0 第一天开始） |
 | NoteTagManager | P1-3 | 1.5d | 无 |
+| TreeBuilder 参数优化（可选） | P2-5 | 0.5d | P2-3 完成后 |
 | 文档收口 | P3-3 + P3-4 | 1.0d | P2-3 完成后 |
 
 #### 4.3.3 关键路径延误影响
@@ -457,7 +460,7 @@ P1-3 NoteTagManager (无前置，1.5d)
 | HF-08 | NoteListManager 独立后列表筛选联动 | P2-2 | 1. 加载列表 2. 标签筛选 3. 清除筛选 4. 列表分页 | 列表加载正确；筛选后项目正确；详情缓存命中 |
 | HF-09 | Coordinator createNote 全编排 | P2-3 | 1. 创建笔记 2. 观察列表+Tab+草稿+标签+工作区+焦点 | 与原 NotesController.createNote() 行为完全一致（触达全部 8 个域） |
 | HF-10 | Coordinator 切换后分屏操作 | P2-3 | 1. 分屏 2. 切换 pane 3. 各 pane 独立操作 4. 合并 pane | 分屏/合并操作正确；pane 间状态隔离 |
-| HF-11 | 测试迁移后全量测试基线 | P2-4 | `flutter test` | 313 pass / 0 known-fail（不变） |
+| HF-11 | 测试迁移后全量测试基线 | P2-4 | `flutter test` | 333 pass / 0 known-fail（不变） |
 
 ##### Phase 3 完成后增加
 
@@ -478,7 +481,7 @@ P1-3 NoteTagManager (无前置，1.5d)
 
 | 方式 | 说明 | 执行时机 |
 |------|------|---------|
-| **自动化回归（CI）** | `flutter analyze`（零警告）+ `flutter test`（313 pass / 0 known-fail）+ `dart format`（零 diff） | **每个 PR** 合并前自动执行 |
+| **自动化回归（CI）** | `flutter analyze`（零警告）+ `flutter test`（333 pass / 0 known-fail）+ `dart format`（零 diff） | **每个 PR** 合并前自动执行 |
 | **手工回归（回归清单 v1）** | REG-01~10 步骤走查 | **每阶段结束**（Phase 0/1/2/3 各 1 次） |
 | **高风险专项（增量）** | HF-XX 对应阶段的新增验证项 | 阶段结束时叠加到手工回归 |
 | **非功能观察** | Section C 检查项 | 每阶段结束 + 收口前 |
@@ -521,7 +524,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - **阶段二（Phase 2 P2-3 + P2-4）：** coordinator 替换 controller 后批量迁移。
   - 所有测试的 mock 模式统一（构造函数注入 lambda），可通过文本替换 + 少量手工适配完成。
   - 预计 3 类改动：① `import` 路径替换 ② 构造函数名替换 ③ 少量 getter 名适配。
-  - 迁移完成后立即 `flutter test` 验证 313 pass / 0 known-fail。
+  - 迁移完成后立即 `flutter test` 验证 333 pass / 0 known-fail。
 
 **不受影响的测试文件**（无 `NotesController` 引用，无需迁移）：
 
@@ -566,7 +569,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 |--------|------|---------|
 | 代码格式 | `dart format --output=none --set-exit-if-changed .` | 零 diff |
 | 静态分析 | `flutter analyze` | 零警告 |
-| 单元/Widget 测试 | `flutter test` | 不引入新失败（基线 313 pass / 0 known-fail） |
+| 单元/Widget 测试 | `flutter test` | 不引入新失败（基线 333 pass / 0 known-fail） |
 | Windows 构建 | `flutter build windows --debug` | 构建成功 |
 
 > 如 PR 涉及 `crates/lazynote_ffi/src/api.rs` 变更（本轮不预期），`api_contract_docs_guard` job 和 `rust_ubuntu` job 也需通过。
@@ -788,12 +791,12 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 | # | 指标 | 数据来源 | 观察频率 | 基线 / 目标 |
 |---|------|---------|---------|------------|
 | M1 | 阶段任务完成率 | Section 4.2 任务清单状态列 | 每阶段结束 | 100%（每阶段全部任务完成或有明确处置） |
-| M2 | 重构任务完成数 | Section 4.2 任务清单状态列 | 每周 | Phase 0: 5, Phase 1: 8, Phase 2: 4, Phase 3: 5 = 总计 22（含代码 PR、文档确认、验收签字等全部任务类型） |
+| M2 | 重构任务完成数 | Section 4.2 任务清单状态列 | 每周 | Phase 0: 5, Phase 1: 8, Phase 2: 4, Phase 3: 5 = 总计 22（必选任务）；可选优化 `P2-5` 单独统计 |
 | M3 | 重构 PR 平均 review 时长 | PR 创建到合并时间 | 每周 | 目标 ≤2 个工作日（低风险）/ ≤3 个工作日（高风险） |
 | M4 | CI 通过率 | CI workflow 记录 | 每个 PR | 100%（所有合并的 PR 必须 CI 全绿） |
 | M5 | 回归通过率（阶段级） | 回归清单执行记录 | 每阶段结束 | REG-01~10 全通过 + 阶段专项无 blocker |
 | M6 | 新增回归缺陷数（重构相关） | 回归执行发现的问题 | 每阶段结束 | 目标 0 个 P0/P1；≥1 个 P0 触发暂停 |
-| M7 | 测试基线变化 | `flutter test` 输出 | 每个 PR | 313 pass / 0 known-fail（不变） |
+| M7 | 测试基线变化 | `flutter test` 输出 | 每个 PR | 333 pass / 0 known-fail（不变） |
 | M8 | 冻结模块违规改动次数 | `rg` 检查 + PR review | 每周 | 目标 0 次；≥2 次触发冻结策略复审 |
 
 ### 10.2 结构治理效果指标（本轮结束时度量）
@@ -807,7 +810,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 | G5 | `notifyListeners()` 最大调用数 | `rg -c "notifyListeners"` | 62（NotesController） | <10（每个 manager，按域精准通知） |
 | G6 | 跨 feature import 数 | `rg -c "features/" entry_shell_page.dart` | 6（EntryShellPage） | 0（SectionRegistry 完成后） |
 | G7 | Rule E 违规总数 | Lakos 依赖图分析 | 16 处 | ≤2 处（仅 notes_style D8 豁免 + search_results_view 保留） |
-| G8 | 测试基线 | `flutter test` | 313 pass / 0 known-fail | 不变（313 pass / 0 known-fail） |
+| G8 | 测试基线 | `flutter test` | 333 pass / 0 known-fail | 不变（333 pass / 0 known-fail） |
 
 ### 10.3 周报模板
 
@@ -877,9 +880,9 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - [x] WorkspaceTreeManager 已合并（P1-1），<550 行（物理行口径）
 - [x] NoteDraftManager 已合并（P1-2），<300 行
 - [x] NoteTagManager 已合并（P1-3），<350 行
-- [ ] 4 个对话框已合并（P1-4~7），各 <200 行
-- [ ] ExplorerTreeBuilder 已合并（P1-8），<400 行
-- [ ] 测试基线不变（313 pass / 0 known-fail）
+- [x] 4 个对话框已合并（P1-4~7），各 <200 行
+- [x] ExplorerTreeBuilder 已合并（P1-8），<400 行
+- [x] 测试基线不变（333 pass / 0 known-fail）
 - [ ] 回归清单 v1 全通过 + HF-01~06 无 blocker
 - [ ] NotesController facade 转发正常，原 public API 不变
 
@@ -888,7 +891,7 @@ Coordinator 切换（P2-3 + P2-4）是测试影响最大的变更点。以下为
 - [ ] NoteTabManager 已合并（P2-1），<400 行
 - [ ] NoteListManager 已合并（P2-2），<400 行
 - [ ] NotesCoordinator 已合并（P2-3），<300 行
-- [ ] 测试批量迁移完成（P2-4），313 pass / 0 known-fail
+- [ ] 测试批量迁移完成（P2-4），333 pass / 0 known-fail
 - [ ] 原 `notes_controller.dart` 已删除
 - [ ] 6 个消费者文件全部使用 `_coordinator`
 - [ ] 回归清单 v1 全通过 + HF-01~11 无 blocker
@@ -923,7 +926,7 @@ Phase 3 验收通过后，输出以下收口产物：
 | 10 | DeleteFolderDialog | `note_explorer.dart` | `notes/dialogs/delete_folder_dialog.dart` | ~150 | — | 已完成（P1-5） |
 | 11 | RenameNodeDialog | `note_explorer.dart` | `notes/dialogs/rename_node_dialog.dart` | ~130 | — | 已完成（P1-6） |
 | 12 | MoveNodeDialog | `note_explorer.dart` | `notes/dialogs/move_node_dialog.dart` | ~160 | — | 已完成（P1-7） |
-| 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 评审中（P1-8） |
+| 13 | ExplorerTreeBuilder | `note_explorer.dart` | `notes/explorer_tree_builder.dart` | <400 | — | 已完成（P1-8） |
 | 14 | SectionRegistry | `entry_shell_page.dart` | `app/section_registry.dart` | — | — | 待执行 |
 
 #### 11.2.2 未完成项与原因（收口时填写）
@@ -943,7 +946,7 @@ Phase 3 验收通过后，输出以下收口产物：
 | D3 | NotesPage / NoteContentArea 未独立拆分 | 0255B Section 6.3 | P1 | NotesPage 超过 1000 行或 v0.3 分屏增强 |
 | D4 | WorkspaceProvider 未独立拆分 | 0255B Section 6.3 | P1 | 新增第 2 个 consumer（非 notes） |
 | D5 | P2 模块未拆分（SingleEntryController, DebugLogsPanel 等） | 0255B Section 7.1 | P2 | 任一模块行数增长超过 50% |
-| D6 | [已关闭 2026-02-24] `smoke_test.dart` CalendarPage L67 Row overflow known-fail | 0255A Section 0 | Closed | 已在主干修复，测试基线更新为 313 pass / 0 known-fail |
+| D6 | [已关闭 2026-02-24] `smoke_test.dart` CalendarPage L67 Row overflow known-fail | 0255A Section 0 | Closed | 已在主干修复，测试基线更新为 333 pass / 0 known-fail |
 
 #### 11.2.4 收益评估（收口时填写）
 
