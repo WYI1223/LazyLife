@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
 void main() {
@@ -35,7 +35,7 @@ void main() {
     final saveCompleter = Completer<rust_api.NoteResponse>();
     final saveCalls = <String>[];
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 50),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -99,7 +99,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final base = note(atomId: 'note-1', content: '# Seed', updatedAt: 1000);
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 30),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -158,7 +158,7 @@ void main() {
     });
 
     final base = note(atomId: 'note-1', content: '# Seed', updatedAt: 1000);
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.NotesListResponse(
@@ -209,7 +209,7 @@ void main() {
     });
 
     final base = note(atomId: 'note-1', content: '# Seed', updatedAt: 1000);
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.NotesListResponse(
@@ -257,7 +257,7 @@ void main() {
       'note-2': note(atomId: 'note-2', content: '# Two', updatedAt: 1000),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -318,7 +318,7 @@ void main() {
       'note-1': note(atomId: 'note-1', content: '# One', updatedAt: 2000),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -381,7 +381,7 @@ void main() {
       'note-2': note(atomId: 'note-2', content: '# Two', updatedAt: 1000),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -450,7 +450,7 @@ void main() {
     final updateCalls = <String>[];
     var callCount = 0;
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 30),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -540,7 +540,7 @@ void main() {
       'note-1': note(atomId: 'note-1', content: '# base', updatedAt: 1000),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 20),
       notesListInvoker: ({tag, limit, offset}) async {
@@ -625,7 +625,7 @@ void main() {
     };
     final updateCalls = <String>[];
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 5),
       notesListInvoker: ({tag, limit, offset}) async {

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/notes_controller.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
 void main() {
@@ -45,7 +45,7 @@ void main() {
       ),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -125,7 +125,7 @@ void main() {
     };
     const tags = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -206,7 +206,7 @@ void main() {
         ),
       };
 
-      final controller = NotesController(
+      final controller = NotesCoordinator(
         prepare: () async {},
         tagsListInvoker: () async {
           return const rust_api.TagsListResponse(
@@ -286,7 +286,7 @@ void main() {
     };
     final setTagCalls = <List<String>>[];
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -383,7 +383,7 @@ void main() {
       ),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -462,7 +462,7 @@ void main() {
       ),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -552,7 +552,7 @@ void main() {
       return tags;
     }
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return rust_api.TagsListResponse(
@@ -636,7 +636,7 @@ void main() {
       ),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         tagCalls += 1;
@@ -711,7 +711,7 @@ void main() {
     };
     var filteredCalls = 0;
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -788,7 +788,7 @@ void main() {
       ),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -882,7 +882,7 @@ void main() {
       ),
     };
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -987,7 +987,7 @@ void main() {
         return tags;
       }
 
-      final controller = NotesController(
+      final controller = NotesCoordinator(
         prepare: () async {},
         tagsListInvoker: () async {
           return rust_api.TagsListResponse(
@@ -1075,7 +1075,7 @@ void main() {
     final firstSaveGate = Completer<void>();
     var saveCallCount = 0;
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -1158,7 +1158,7 @@ void main() {
     final firstSaveGate = Completer<void>();
     var saveCallCount = 0;
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -1240,7 +1240,7 @@ void main() {
     };
     final createTagApplyGate = Completer<void>();
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -1334,7 +1334,7 @@ void main() {
     };
     final createTagApplyGate = Completer<void>();
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -1435,7 +1435,7 @@ void main() {
     };
     final createTagApplyGate = Completer<void>();
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
@@ -1536,7 +1536,7 @@ void main() {
     };
     final createTagApplyGate = Completer<void>();
 
-    final controller = NotesController(
+    final controller = NotesCoordinator(
       prepare: () async {},
       tagsListInvoker: () async {
         return const rust_api.TagsListResponse(
