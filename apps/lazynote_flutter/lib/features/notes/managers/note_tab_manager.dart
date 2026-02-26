@@ -215,9 +215,6 @@ class NoteTabStateManager extends ChangeNotifier {
   }
 
   Future<bool> activateOpenNote(String atomId) async {
-    if (!_openNoteIds.contains(atomId)) {
-      return selectNote(atomId);
-    }
     return selectNote(atomId);
   }
 
