@@ -16,8 +16,6 @@ NoteTabStateManager _buildManager({
     loadSelectedDetail: (_) async {},
     flushPendingSave: () async => true,
     hasPendingSaveFor: (_) => false,
-    syncWorkspaceState: () {},
-    syncWorkspaceActiveSnapshot: () {},
     evictNoteState: (_) {},
     scopedOpenNoteIds: () => <String>[],
     scopedActiveNoteId: () => currentActiveNoteId,
@@ -166,36 +164,40 @@ void main() {
       expect(m.openNoteIdsForPane('pane-2'), ['note-b']);
     });
 
-    test('allOpenNoteIds deduplicates across panes preserving first-seen order',
-        () {
-      final m = _buildManager();
-      m.addOpenNoteIfAbsent('note-a');
-      m.addOpenNoteIfAbsent('note-b');
+    test(
+      'allOpenNoteIds deduplicates across panes preserving first-seen order',
+      () {
+        final m = _buildManager();
+        m.addOpenNoteIfAbsent('note-a');
+        m.addOpenNoteIfAbsent('note-b');
 
-      m.addPane('pane-2');
-      m.addNoteToPane('pane-2', 'note-b'); // duplicate
-      m.addNoteToPane('pane-2', 'note-c');
+        m.addPane('pane-2');
+        m.addNoteToPane('pane-2', 'note-b'); // duplicate
+        m.addNoteToPane('pane-2', 'note-c');
 
-      final all = m.allOpenNoteIds;
-      expect(all, ['note-a', 'note-b', 'note-c']);
-      // note-b appears only once, in pane-1 order position
-    });
+        final all = m.allOpenNoteIds;
+        expect(all, ['note-a', 'note-b', 'note-c']);
+        // note-b appears only once, in pane-1 order position
+      },
+    );
 
-    test('removeOpenNotesWhereAllPanes removes matching notes from every pane',
-        () {
-      final m = _buildManager();
-      m.addOpenNoteIfAbsent('note-a');
-      m.addOpenNoteIfAbsent('note-b');
+    test(
+      'removeOpenNotesWhereAllPanes removes matching notes from every pane',
+      () {
+        final m = _buildManager();
+        m.addOpenNoteIfAbsent('note-a');
+        m.addOpenNoteIfAbsent('note-b');
 
-      m.addPane('pane-2');
-      m.addNoteToPane('pane-2', 'note-b');
-      m.addNoteToPane('pane-2', 'note-c');
+        m.addPane('pane-2');
+        m.addNoteToPane('pane-2', 'note-b');
+        m.addNoteToPane('pane-2', 'note-c');
 
-      m.removeOpenNotesWhereAllPanes((id) => id == 'note-b');
+        m.removeOpenNotesWhereAllPanes((id) => id == 'note-b');
 
-      expect(m.openNoteIdsForPane('pane-1'), ['note-a']);
-      expect(m.openNoteIdsForPane('pane-2'), ['note-c']);
-      expect(m.containsOpenNote('note-b'), isFalse);
-    });
+        expect(m.openNoteIdsForPane('pane-1'), ['note-a']);
+        expect(m.openNoteIdsForPane('pane-2'), ['note-c']);
+        expect(m.containsOpenNote('note-b'), isFalse);
+      },
+    );
   });
 }

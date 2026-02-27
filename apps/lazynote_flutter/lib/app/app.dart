@@ -54,9 +54,7 @@ class _LazyNoteAppState extends State<LazyNoteApp> {
   }
 
   SectionRegistry _buildSectionRegistry() {
-    final registry = SectionRegistry(
-      listenable: _notesCoordinator.workspaceProvider,
-    );
+    final registry = SectionRegistry(listenable: _notesCoordinator);
 
     registry.register(
       SectionRegistration(
@@ -68,13 +66,10 @@ class _LazyNoteAppState extends State<LazyNoteApp> {
         ),
         titleBuilder: (context) {
           final l10n = AppLocalizations.of(context)!;
-          final workspace = _notesCoordinator.workspaceProvider;
-          final openTabs =
-              workspace.openTabsByPane[workspace.activePaneId] ??
-              const <String>[];
-          return openTabs.isEmpty
+          final openCount = _notesCoordinator.openNoteIds.length;
+          return openCount == 0
               ? l10n.workbenchSectionNotes
-              : l10n.workbenchSectionNotesWithCount(openTabs.length);
+              : l10n.workbenchSectionNotesWithCount(openCount);
         },
       ),
     );

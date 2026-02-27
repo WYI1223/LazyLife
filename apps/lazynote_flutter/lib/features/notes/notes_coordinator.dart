@@ -9,7 +9,7 @@ import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart'
 import 'package:lazynote_flutter/features/notes/managers/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_manager.dart';
-import 'package:lazynote_flutter/features/notes/workspace_port.dart';
+import 'package:lazynote_flutter/features/notes/notes_coordinator_types.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
@@ -27,6 +27,7 @@ export 'managers/workspace_tree_manager.dart'
         WorkspaceMoveNodeInvoker,
         WorkspaceRenameNodeInvoker,
         WorkspaceTreeManager;
+export 'notes_coordinator_types.dart';
 
 part 'notes_coordinator_impl.dart';
 
