@@ -1,0 +1,14 @@
+# Rule E cross-feature import allowlist.
+#
+# Each entry permits a one-directional feature import pair.
+# Format: "source → target" using the directory names under lib/features/.
+#
+# All exemptions must have a tracking reason and target removal version.
+
+exemptions:
+  - pair: "notes → workspace"
+    reason: "Pane layout API dependency — eliminated in v0.3 Phase 2"
+  - pair: "entry → search"
+    reason: "SearchResultsView shared UI — moved to shared/ in v0.3"
+  - pair: "entry → diagnostics"
+    reason: "Debug panel embedded in workbench — low impact, v0.3"
