@@ -130,6 +130,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     );
     _noteDraftManager.addListener(_handleNoteDraftManagerChanged);
     _noteTabManager = NoteTabStateManager(
+      initialPaneId: _workspaceProvider.activePaneId,
       canReuseSelection: _canReuseSelection,
       activeNoteId: () => _activeNoteId,
       activateSelection: _activateSelection,
@@ -265,18 +266,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   /// Current preview tab id (replaced by next explorer-open unless pinned).
   String? get previewTabId => _noteTabManager.previewTabId;
 
-  /// Currently opened tab ids in order.
+  /// Currently opened tab ids in order (reads from NoteTabStateManager).
   List<String> get openNoteIds {
-    final workspaceTabs =
-        _workspaceProvider.openTabsByPane[_workspaceProvider.activePaneId] ??
-        const <String>[];
-    if (_workspaceProvider.layoutState.paneOrder.length > 1) {
-      return List.unmodifiable(workspaceTabs);
-    }
-    if (workspaceTabs.isEmpty) {
-      return _noteTabManager.openNoteIds;
-    }
-    return List.unmodifiable(workspaceTabs);
+    return _noteTabManager.openNoteIdsForPane(_workspaceProvider.activePaneId);
   }
 
   /// Whether one tab is currently marked as preview.
@@ -345,6 +337,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     if (result != WorkspaceSplitResult.ok) {
       return result;
     }
+    final newPaneId = _workspaceProvider.activePaneId;
+    _noteTabManager.addPane(newPaneId);
+    _noteTabManager.switchPane(newPaneId);
     _syncWorkspaceFromControllerState();
     _adoptWorkspaceActivePaneState(loadDetail: false);
     notifyListeners();
@@ -353,10 +348,14 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   /// Closes active pane and merges it into adjacent pane.
   WorkspaceMergeResult closeActivePane() {
+    final closingPaneId = _workspaceProvider.activePaneId;
     final result = _workspaceProvider.closeActivePane();
     if (result != WorkspaceMergeResult.ok) {
       return result;
     }
+    final targetPaneId = _workspaceProvider.activePaneId;
+    _noteTabManager.removePane(closingPaneId, mergeToPaneId: targetPaneId);
+    _noteTabManager.switchPane(targetPaneId);
     _syncWorkspaceFromControllerState();
     _adoptWorkspaceActivePaneState(loadDetail: false);
     notifyListeners();
@@ -369,6 +368,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       return false;
     }
     _workspaceProvider.switchActivePane(paneId);
+    _noteTabManager.switchPane(paneId);
     _adoptWorkspaceActivePaneState();
     return true;
   }
@@ -418,7 +418,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         return true;
       }
     }
-    for (final atomId in _noteTabManager.openNoteIds) {
+    for (final atomId in _noteTabManager.allOpenNoteIds) {
       if (_hasPendingSaveFor(atomId)) {
         return true;
       }
@@ -939,13 +939,14 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   }
 
   Future<void> _reconcileOpenTabsAfterWorkspaceMutation() async {
-    if (_noteTabManager.openNoteIds.isEmpty) {
+    final allOpenIds = _noteTabManager.allOpenNoteIds;
+    if (allOpenIds.isEmpty) {
       return;
     }
 
-    final openSnapshot = _noteTabManager.snapshotOpenNoteIds();
+    final activePaneSnapshot = _noteTabManager.snapshotOpenNoteIds();
     final removedAtomIds = <String>[];
-    for (final atomId in openSnapshot) {
+    for (final atomId in allOpenIds) {
       try {
         final response = await _noteListManager.loadNoteDetail(atomId: atomId);
         if (!response.ok) {
@@ -969,11 +970,11 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     final previousActiveId = _activeNoteId;
     final previousActiveIndex = previousActiveId == null
         ? -1
-        : openSnapshot.indexOf(previousActiveId);
+        : activePaneSnapshot.indexOf(previousActiveId);
     final activeRemoved =
         previousActiveId != null && removedAtomIds.contains(previousActiveId);
 
-    _noteTabManager.removeOpenNotesWhere(removedAtomIds.contains);
+    _noteTabManager.removeOpenNotesWhereAllPanes(removedAtomIds.contains);
     for (final atomId in removedAtomIds) {
       _evictNoteState(atomId);
     }
