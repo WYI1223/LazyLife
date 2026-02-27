@@ -81,3 +81,26 @@ This registry is declaration-only in v0.2 and does not execute entrypoints.
   - duplicate extension id
 
 These are internal core enums; no FFI contract exposure in PR-0213.
+
+## First-Party vs Third-Party Boundary (S5 Ruling, v0.2.5)
+
+**First-party commands are NOT registered through ExtensionManifest/ExtensionRegistry.**
+
+The Extension Kernel is positioned as a **third-party contract layer**. First-party features
+(SingleEntry CommandParser/CommandRouter/CommandRegistry) use direct in-process registration
+and do not go through manifest validation or capability guards.
+
+Rationale:
+
+- First-party and third-party differ fundamentally in trust, registration, and security models.
+- v0.2.5 has no third-party plugins; forcing first-party through Extension Kernel would sacrifice
+  iteration speed for architectural purity that has no current consumer.
+- The Extension Kernel's declaration-only state is correct — manifest validation and capability
+  guards are tested (see `crates/lazynote_core/tests/extension_*` test modules) and ready for third-party activation.
+
+Activation timeline:
+
+- **v0.2.5**: Extension Kernel remains declaration-only. First-party commands use direct registration.
+- **v0.3 (PR-0310)**: Evaluate first-party migration to Extension Kernel if third-party demand materializes.
+
+See: `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S5.

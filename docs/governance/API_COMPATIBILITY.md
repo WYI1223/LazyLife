@@ -66,7 +66,7 @@ to the full breaking-change process above, including migration guidance and rele
 
 ## Planned Type Migrations
 
-### `AtomListResponse` / `AtomListItem` (v0.1.5 → v0.2)
+### `AtomListResponse` / `AtomListItem` (v0.1.5 → v0.3)
 
 v0.1.5 introduces `AtomListItem` and `AtomListResponse` for tasks section queries. These types
 carry full atom metadata (`kind`, `start_at`, `end_at`, `task_status`) that the existing
@@ -77,13 +77,13 @@ carry full atom metadata (`kind`, `start_at`, `end_at`, `task_status`) that the 
 - Existing notes APIs continue to use `NoteItem` / `NotesListResponse`.
 - Both type families are available simultaneously.
 
-**Migration plan (v0.2):**
+**Migration plan (v0.3) — updated per S8 ruling (v0.2.5):**
 - `notes_list` migrates from `NotesListResponse` to `AtomListResponse`.
 - `tags_list` response is evaluated for unification.
 - Old types are deprecated but not removed until v1.0.
-- Migration rationale: unified list views in workspace UI need consistent item shape.
+- Migration rationale: `NoteItem` actively discards time/status fields at FFI boundary; unified `AtomListItem` gives all consumers the full Atom projection. See `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S8.
 
-This is a **non-breaking additive change** in v0.1.5 (new types only). The v0.2 migration
+This is a **non-breaking additive change** in v0.1.5 (new types only). The v0.3 migration
 of existing endpoints will be documented as a breaking change with migration guidance.
 
 ### Calendar APIs (PR-0012A)

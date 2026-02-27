@@ -31,6 +31,7 @@
 
 - `features/<name>` 之间禁止直接依赖对方内部实现。
 - 共享能力只能通过 `shared/` 或 Core API 访问。
+- **`lib/core/` 豁免**（S7 裁决，v0.2.5）：`lib/core/` 是平台基础设施层，所有 feature 均可直接导入。`lib/core/` 下的模块（如 RustBridge、LocalSettingsStore、Reminders）不受 Rule E 约束。详见 `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S7。
 
 ### Rule F: Local runtime files must use unified app root
 
