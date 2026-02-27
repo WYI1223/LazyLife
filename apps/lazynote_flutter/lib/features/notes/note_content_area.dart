@@ -17,19 +17,10 @@ String _notesL10nText({
 
 /// Center editor/content area for active note.
 class NoteContentArea extends StatelessWidget {
-  const NoteContentArea({
-    super.key,
-    required this.controller,
-    this.activeNoteIdOverride,
-    this.activeDraftContentOverride,
-    this.noteSaveStateOverride,
-  });
+  const NoteContentArea({super.key, required this.controller});
 
   /// Shared notes controller used to read list/detail snapshots.
   final NotesCoordinator controller;
-  final String? activeNoteIdOverride;
-  final String? activeDraftContentOverride;
-  final NoteSaveState? noteSaveStateOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +47,9 @@ class NoteContentArea extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    final atomId = activeNoteIdOverride ?? controller.activeNoteId;
-    final noteSaveState = noteSaveStateOverride ?? controller.noteSaveState;
-    final activeDraftContent =
-        activeDraftContentOverride ?? controller.activeDraftContent;
+    final atomId = controller.activeNoteId;
+    final noteSaveState = controller.noteSaveState;
+    final activeDraftContent = controller.activeDraftContent;
     switch (controller.listPhase) {
       case NotesListPhase.idle:
       case NotesListPhase.loading:

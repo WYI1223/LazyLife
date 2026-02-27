@@ -89,7 +89,7 @@ void main() {
         setSaveState:
             (nextState, {preserveError = false, showSavedBadge = false}) {},
         setSaveError: (_) {},
-        syncWorkspaceActiveSnapshot: () {},
+
         onActiveNoteUpdated: ({required atomId, required note}) {
           store[atomId] = note;
         },
@@ -189,7 +189,7 @@ void main() {
         setSaveError: (message) {
           saveErrors.add(message);
         },
-        syncWorkspaceActiveSnapshot: () {},
+
         onActiveNoteUpdated: ({required atomId, required note}) {
           store[atomId] = note;
         },

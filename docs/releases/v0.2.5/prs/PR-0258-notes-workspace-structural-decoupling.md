@@ -1,7 +1,7 @@
 # PR-0258-notes-workspace-structural-decoupling
 
 - Proposed title: `refactor(frontend): PR-0258 eliminate notes-workspace dual state system`
-- Status: Planned
+- Status: Ready for Review
 
 ## Goal
 
@@ -90,11 +90,11 @@ T2 can run in parallel with T1. T11 runs after T7. T14 and T15 can run after T9.
 
 | File | Before | After | Delta |
 |------|--------|-------|-------|
-| `notes_coordinator_impl.dart` | 1,782 | ~1,400 | -382 (delete sync/bridge ~260 + extract types ~150 + simplify ~50, add back imports ~78) |
-| `workspace_provider.dart` | 664 | ~200 | -464 |
+| `notes_coordinator_impl.dart` | 1,782 | 1,514 | -268 |
+| `workspace_provider.dart` | 664 | 166 | -498 |
 | `workspace_port.dart` | 28 | 0 | -28 (deleted) |
-| `notes_coordinator_types.dart` | 0 | ~150 | +150 (new) |
-| **Production code net** | | | **~-724 lines** |
+| `notes_coordinator_types.dart` | 0 | 33 | +33 (new) |
+| **Production code net** | | | **-761 lines** |
 
 ## WP State Deletion Map
 
@@ -110,8 +110,8 @@ T2 can run in parallel with T1. T11 runs after T7. T14 and T15 can run after T9.
 
 ## Test Baseline
 
-Entry: ~338 pass / 0 fail (PR-0257 exit)
-Exit: ~338 - 16 deleted = **~322 pass / 0 fail**
+Entry: 349 pass / 0 fail (PR-0257 exit)
+Exit: **333 pass / 0 fail** (full local run on this branch)
 
 > Count method: by `test(` call count within files (consistent with 08c 3.1.1 test table).
 
@@ -121,21 +121,21 @@ Test reduction details:
 
 ## Task Checklist
 
-- [ ] `T1` migrate `notes_page.dart` consumers
-- [ ] `T2` migrate `app.dart` titleBuilder
-- [ ] `T3` delete `_syncWorkspaceActiveSnapshot()`
-- [ ] `T4` delete `_syncWorkspaceFromControllerState()`
-- [ ] `T5` remove sync call-sites
-- [ ] `T6` delete `_WorkspaceProviderPort`
-- [ ] `T7` delete `workspace_port.dart`
-- [ ] `T8` delete helper mapping methods
-- [ ] `T9` slim WorkspaceProvider
-- [ ] `T10` update coordinator constructor
-- [ ] `T11` remove workspace_port import
-- [ ] `T12` extract typedefs to `notes_coordinator_types.dart`
-- [ ] `T13` evaluate getter proxy simplification
-- [ ] `T14` delete bridge test file
-- [ ] `T15` trim WP test file
+- [x] `T1` migrate `notes_page.dart` consumers
+- [x] `T2` migrate `app.dart` titleBuilder
+- [x] `T3` delete `_syncWorkspaceActiveSnapshot()`
+- [x] `T4` delete `_syncWorkspaceFromControllerState()`
+- [x] `T5` remove sync call-sites
+- [x] `T6` delete `_WorkspaceProviderPort`
+- [x] `T7` delete `workspace_port.dart`
+- [x] `T8` delete helper mapping methods
+- [x] `T9` slim WorkspaceProvider
+- [x] `T10` update coordinator constructor
+- [x] `T11` remove workspace_port import
+- [x] `T12` extract typedefs to `notes_coordinator_types.dart`
+- [x] `T13` evaluate getter proxy simplification
+- [x] `T14` delete bridge test file
+- [x] `T15` trim WP test file
 
 ## Verification
 
@@ -184,16 +184,16 @@ Single branch, can revert entirely. No coupled rollback units.
 
 ## Acceptance Criteria
 
-- [ ] `notes_page.dart` reads tab/save state from coordinator, no longer from WP.
-- [ ] `app.dart` titleBuilder reads from coordinator, no longer from WP.
-- [ ] `_syncWorkspaceActiveSnapshot` and `_syncWorkspaceFromControllerState` deleted from coordinator_impl.
-- [ ] `_WorkspaceProviderPort` class deleted.
-- [ ] `workspace_port.dart` deleted.
-- [ ] Helper mapping methods deleted.
-- [ ] WorkspaceProvider reduced to pane-layout-only (no tab/save/buffer state).
-- [ ] Typedefs and default invokers extracted to `notes_coordinator_types.dart`.
-- [ ] `notes_controller_workspace_bridge_test.dart` deleted.
-- [ ] `workspace_provider_test.dart` retains only pane layout tests.
-- [ ] `notes_coordinator_impl.dart` < 1,500 lines.
-- [ ] `workspace_provider.dart` < 250 lines.
-- [ ] CI green (format + analyze + test + build).
+- [x] `notes_page.dart` reads tab/save state from coordinator, no longer from WP.
+- [x] `app.dart` titleBuilder reads from coordinator, no longer from WP.
+- [x] `_syncWorkspaceActiveSnapshot` and `_syncWorkspaceFromControllerState` deleted from coordinator_impl.
+- [x] `_WorkspaceProviderPort` class deleted.
+- [x] `workspace_port.dart` deleted.
+- [x] Helper mapping methods deleted.
+- [x] WorkspaceProvider reduced to pane-layout-only (no tab/save/buffer state).
+- [x] Typedefs and default invokers extracted to `notes_coordinator_types.dart`.
+- [x] `notes_controller_workspace_bridge_test.dart` deleted.
+- [x] `workspace_provider_test.dart` retains only pane layout tests.
+- [x] `notes_coordinator_impl.dart` <= 1,550 lines (actual: 1,514).
+- [x] `workspace_provider.dart` < 250 lines (actual: 166).
+- [x] CI green (format + analyze + test + build).

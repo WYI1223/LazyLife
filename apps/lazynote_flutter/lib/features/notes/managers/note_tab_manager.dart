@@ -7,8 +7,6 @@ typedef TabClearSelection = void Function();
 typedef TabLoadSelectedDetail = Future<void> Function(String atomId);
 typedef TabFlushPendingSave = Future<bool> Function();
 typedef TabHasPendingSaveFor = bool Function(String atomId);
-typedef TabSyncWorkspaceState = void Function();
-typedef TabSyncWorkspaceActiveSnapshot = void Function();
 typedef TabEvictNoteState = void Function(String atomId);
 typedef TabScopedOpenNoteIdsReader = List<String> Function();
 typedef TabScopedActiveNoteIdReader = String? Function();
@@ -23,8 +21,6 @@ class NoteTabStateManager extends ChangeNotifier {
     required TabLoadSelectedDetail loadSelectedDetail,
     required TabFlushPendingSave flushPendingSave,
     required TabHasPendingSaveFor hasPendingSaveFor,
-    required TabSyncWorkspaceState syncWorkspaceState,
-    required TabSyncWorkspaceActiveSnapshot syncWorkspaceActiveSnapshot,
     required TabEvictNoteState evictNoteState,
     required TabScopedOpenNoteIdsReader scopedOpenNoteIds,
     required TabScopedActiveNoteIdReader scopedActiveNoteId,
@@ -37,8 +33,6 @@ class NoteTabStateManager extends ChangeNotifier {
        _loadSelectedDetail = loadSelectedDetail,
        _flushPendingSave = flushPendingSave,
        _hasPendingSaveFor = hasPendingSaveFor,
-       _syncWorkspaceState = syncWorkspaceState,
-       _syncWorkspaceActiveSnapshot = syncWorkspaceActiveSnapshot,
        _evictNoteState = evictNoteState,
        _scopedOpenNoteIds = scopedOpenNoteIds,
        _scopedActiveNoteId = scopedActiveNoteId;
@@ -50,8 +44,6 @@ class NoteTabStateManager extends ChangeNotifier {
   final TabLoadSelectedDetail _loadSelectedDetail;
   final TabFlushPendingSave _flushPendingSave;
   final TabHasPendingSaveFor _hasPendingSaveFor;
-  final TabSyncWorkspaceState _syncWorkspaceState;
-  final TabSyncWorkspaceActiveSnapshot _syncWorkspaceActiveSnapshot;
   final TabEvictNoteState _evictNoteState;
   final TabScopedOpenNoteIdsReader _scopedOpenNoteIds;
   final TabScopedActiveNoteIdReader _scopedActiveNoteId;
@@ -298,8 +290,6 @@ class NoteTabStateManager extends ChangeNotifier {
       _activeOpenNoteIds.add(atomId);
     }
     _activateSelection(atomId);
-    _syncWorkspaceState();
-    _syncWorkspaceActiveSnapshot();
     notifyListeners();
 
     await _loadSelectedDetail(atomId);
@@ -355,14 +345,12 @@ class NoteTabStateManager extends ChangeNotifier {
     _activeOpenNoteIds.removeAt(closedIndex);
     reconcilePreviewTabState();
     if (_activeNoteId() != atomId) {
-      _syncWorkspaceState();
       notifyListeners();
       return true;
     }
 
     if (_activeOpenNoteIds.isEmpty) {
       _clearSelection();
-      _syncWorkspaceState();
       notifyListeners();
       return true;
     }
@@ -373,7 +361,6 @@ class NoteTabStateManager extends ChangeNotifier {
     );
     final fallbackId = _activeOpenNoteIds[fallbackIndex];
     _activateSelection(fallbackId);
-    _syncWorkspaceState();
     notifyListeners();
     await _loadSelectedDetail(fallbackId);
     return true;
@@ -391,7 +378,6 @@ class NoteTabStateManager extends ChangeNotifier {
       ..clear()
       ..add(atomId);
     reconcilePreviewTabState();
-    _syncWorkspaceState();
     notifyListeners();
     return true;
   }
@@ -418,12 +404,10 @@ class NoteTabStateManager extends ChangeNotifier {
     reconcilePreviewTabState();
     if (!_activeOpenNoteIds.contains(_activeNoteId())) {
       _activateSelection(atomId);
-      _syncWorkspaceState();
       notifyListeners();
       await _loadSelectedDetail(atomId);
       return true;
     }
-    _syncWorkspaceState();
     notifyListeners();
     return true;
   }
@@ -448,8 +432,6 @@ class NoteTabStateManager extends ChangeNotifier {
     _evictNoteState(previewId);
     _activateSelection(atomId);
     _previewTabId = atomId;
-    _syncWorkspaceState();
-    _syncWorkspaceActiveSnapshot();
     notifyListeners();
 
     await _loadSelectedDetail(atomId);
