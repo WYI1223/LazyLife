@@ -8,17 +8,10 @@ enum _TabContextAction { close, closeOthers, closeRight }
 
 /// Top tab strip managing currently opened notes.
 class NoteTabManager extends StatefulWidget {
-  const NoteTabManager({
-    super.key,
-    required this.controller,
-    this.openNoteIdsOverride,
-    this.activeNoteIdOverride,
-  });
+  const NoteTabManager({super.key, required this.controller});
 
   /// Shared notes controller that owns open-tab and active-tab state.
   final NotesCoordinator controller;
-  final List<String>? openNoteIdsOverride;
-  final String? activeNoteIdOverride;
 
   @override
   State<NoteTabManager> createState() => _NoteTabManagerState();
@@ -114,10 +107,8 @@ class _NoteTabManagerState extends State<NoteTabManager> {
   }
 
   Widget _buildTabStrip(BuildContext context) {
-    final openNoteIds =
-        widget.openNoteIdsOverride ?? widget.controller.openNoteIds;
-    final activeNoteId =
-        widget.activeNoteIdOverride ?? widget.controller.activeNoteId;
+    final openNoteIds = widget.controller.openNoteIds;
+    final activeNoteId = widget.controller.activeNoteId;
     if (openNoteIds.isEmpty) {
       return Center(
         child: Text(

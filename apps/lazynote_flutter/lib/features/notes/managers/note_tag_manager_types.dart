@@ -46,7 +46,5 @@ typedef TagSetSaveState =
 
 typedef TagSetSaveError = void Function(String? message);
 
-typedef TagSyncWorkspaceActiveSnapshot = void Function();
-
 typedef TagOnActiveNoteUpdated =
     void Function({required String atomId, required rust_api.NoteItem note});

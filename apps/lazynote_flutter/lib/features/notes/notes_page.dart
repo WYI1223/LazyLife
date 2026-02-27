@@ -436,22 +436,6 @@ class _NotesPageState extends State<NotesPage>
             animation: mergedListenable,
             builder: (context, _) {
               final workspace = _coordinator.workspaceProvider;
-              final workspaceOpenTabs =
-                  workspace.openTabsByPane[workspace.activePaneId] ??
-                  const <String>[];
-              final openTabOverride = workspaceOpenTabs.isEmpty
-                  ? null
-                  : List<String>.unmodifiable(workspaceOpenTabs);
-              final activeNoteIdOverride = workspace.activeNoteId;
-              final draftOverride = activeNoteIdOverride == null
-                  ? null
-                  : workspace.activeDraftContent;
-              final activeWorkspaceSaveState = activeNoteIdOverride == null
-                  ? null
-                  : workspace.saveStateByNoteId[activeNoteIdOverride];
-              final noteSaveStateOverride = _mapWorkspaceSaveState(
-                activeWorkspaceSaveState,
-              );
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final compactHeader = constraints.maxWidth < 860;
@@ -655,14 +639,7 @@ class _NotesPageState extends State<NotesPage>
                                 endIndent: kNotesShellDividerIndent,
                                 color: dividerColor,
                               ),
-                              Expanded(
-                                child: _buildEditorPane(
-                                  activeNoteIdOverride: activeNoteIdOverride,
-                                  draftOverride: draftOverride,
-                                  noteSaveStateOverride: noteSaveStateOverride,
-                                  openTabOverride: openTabOverride,
-                                ),
-                              ),
+                              Expanded(child: _buildEditorPane()),
                             ],
                           ),
                         ),
@@ -814,43 +791,12 @@ class _NotesPageState extends State<NotesPage>
     );
   }
 
-  Widget _buildEditorPane({
-    required String? activeNoteIdOverride,
-    required String? draftOverride,
-    required NoteSaveState? noteSaveStateOverride,
-    required List<String>? openTabOverride,
-  }) {
+  Widget _buildEditorPane() {
     return Column(
       children: [
-        NoteTabManager(
-          controller: _coordinator,
-          openNoteIdsOverride: openTabOverride,
-          activeNoteIdOverride: activeNoteIdOverride,
-        ),
-        Expanded(
-          child: NoteContentArea(
-            controller: _coordinator,
-            activeNoteIdOverride: activeNoteIdOverride,
-            activeDraftContentOverride: draftOverride,
-            noteSaveStateOverride: noteSaveStateOverride,
-          ),
-        ),
+        NoteTabManager(controller: _coordinator),
+        Expanded(child: NoteContentArea(controller: _coordinator)),
       ],
     );
-  }
-
-  NoteSaveState? _mapWorkspaceSaveState(WorkspaceSaveState? state) {
-    switch (state) {
-      case WorkspaceSaveState.clean:
-        return NoteSaveState.clean;
-      case WorkspaceSaveState.dirty:
-        return NoteSaveState.dirty;
-      case WorkspaceSaveState.saving:
-        return NoteSaveState.saving;
-      case WorkspaceSaveState.saveError:
-        return NoteSaveState.error;
-      case null:
-        return null;
-    }
   }
 }

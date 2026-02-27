@@ -22,7 +22,6 @@ class NoteTagManager extends ChangeNotifier {
     required TagIsDirtyReader isDirty,
     required TagSetSaveState setSaveState,
     required TagSetSaveError setSaveError,
-    required TagSyncWorkspaceActiveSnapshot syncWorkspaceActiveSnapshot,
     required TagOnActiveNoteUpdated onActiveNoteUpdated,
   }) : _tagsListInvoker = tagsListInvoker,
        _noteSetTagsInvoker = noteSetTagsInvoker,
@@ -36,7 +35,6 @@ class NoteTagManager extends ChangeNotifier {
        _isDirty = isDirty,
        _setSaveState = setSaveState,
        _setSaveError = setSaveError,
-       _syncWorkspaceActiveSnapshot = syncWorkspaceActiveSnapshot,
        _onActiveNoteUpdated = onActiveNoteUpdated;
 
   final TagsListInvoker _tagsListInvoker;
@@ -51,7 +49,6 @@ class NoteTagManager extends ChangeNotifier {
   final TagIsDirtyReader _isDirty;
   final TagSetSaveState _setSaveState;
   final TagSetSaveError _setSaveError;
-  final TagSyncWorkspaceActiveSnapshot _syncWorkspaceActiveSnapshot;
   final TagOnActiveNoteUpdated _onActiveNoteUpdated;
 
   final NoteTagMutationQueue _mutationQueue = NoteTagMutationQueue();
@@ -289,7 +286,6 @@ class NoteTagManager extends ChangeNotifier {
         } else {
           _setSaveState(NoteSaveState.clean, showSavedBadge: true);
         }
-        _syncWorkspaceActiveSnapshot();
       }
       notifyListeners();
       await refreshAvailableTags(showLoading: false);

@@ -1,35 +1,5 @@
 part of 'notes_coordinator.dart';
 
-/// Async list loader for Notes v0.1 UI flow.
-typedef NotesListInvoker =
-    Future<rust_api.NotesListResponse> Function({
-      String? tag,
-      int? limit,
-      int? offset,
-    });
-
-/// Async detail loader for one selected note.
-typedef NoteGetInvoker =
-    Future<rust_api.NoteResponse> Function({required String atomId});
-
-/// Async creator for one new note atom.
-typedef NoteCreateInvoker =
-    Future<rust_api.NoteResponse> Function({required String content});
-
-/// Async updater for persisted note content.
-typedef NoteUpdateInvoker =
-    Future<rust_api.NoteResponse> Function({
-      required String atomId,
-      required String content,
-    });
-
-/// Timer factory for autosave debounce scheduling.
-typedef DebounceTimerFactory =
-    Timer Function(Duration duration, void Function() callback);
-
-/// Pre-load hook used to ensure bridge/db prerequisites.
-typedef NotesPrepare = Future<void> Function();
-
 /// Stateful controller for Notes page list/detail baseline.
 ///
 /// Contract:
@@ -89,12 +59,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     final resolvedWorkspaceListChildrenInvoker =
         workspaceListChildrenInvoker ?? _defaultWorkspaceListChildrenInvoker;
 
-    _workspaceProvider =
-        workspaceProvider ??
-        WorkspaceProvider(
-          autosaveDebounce: autosaveDebounce,
-          autosaveEnabled: false,
-        );
+    _workspaceProvider = workspaceProvider ?? WorkspaceProvider();
     _ownsWorkspaceProvider = workspaceProvider == null;
     _noteSaveTracker = NoteSaveTracker(timerFactory: _debounceTimerFactory);
     _noteSaveTracker.addListener(_handleNoteSaveTrackerChanged);
@@ -120,7 +85,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       applySaveState: _setSaveState,
       setSaveError: (message) =>
           _noteSaveTracker.setErrorMessage(message, notify: false),
-      syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
       onActiveSaveSuccess: (atomId) {
         _selectedNote = _noteListManager.cachedNoteById(atomId);
         _switchBlockErrorMessage = null;
@@ -138,8 +102,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       loadSelectedDetail: (atomId) => _loadSelectedDetail(atomId: atomId),
       flushPendingSave: flushPendingSave,
       hasPendingSaveFor: _hasPendingSaveFor,
-      syncWorkspaceState: _syncWorkspaceFromControllerState,
-      syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
       evictNoteState: _evictNoteState,
       scopedOpenNoteIds: () => openNoteIds,
       scopedActiveNoteId: () => activeNoteId,
@@ -167,7 +129,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       setSaveState: _setSaveState,
       setSaveError: (message) =>
           _noteSaveTracker.setErrorMessage(message, notify: false),
-      syncWorkspaceActiveSnapshot: _syncWorkspaceActiveSnapshot,
       onActiveNoteUpdated: ({required atomId, required note}) {
         _selectedNote = note;
         _activeDraftContent = _draftContentByAtomId[atomId] ?? note.content;
@@ -182,9 +143,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       workspaceRenameNodeInvoker: resolvedWorkspaceRenameNodeInvoker,
       workspaceMoveNodeInvoker: resolvedWorkspaceMoveNodeInvoker,
       workspaceListChildrenInvoker: resolvedWorkspaceListChildrenInvoker,
-      workspacePort: _WorkspaceProviderPort(
-        workspaceProvider: _workspaceProvider,
-      ),
       prepare: _prepare,
       createNoteAndGetAtomId: _createNoteAndGetAtomId,
       flushPendingSave: flushPendingSave,
@@ -225,6 +183,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   Future<void>? _createTagApplyFuture;
 
   String? _activeNoteId;
+  final Map<String, String?> _activeNoteIdByPane = <String, String?>{};
   int _editorFocusRequestId = 0;
   String? _switchBlockErrorMessage;
 
@@ -256,12 +215,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   String? get selectedAtomId => _activeNoteId;
 
   /// Currently active tab note id.
-  String? get activeNoteId {
-    if (_workspaceProvider.layoutState.paneOrder.length > 1) {
-      return _workspaceProvider.activeNoteId;
-    }
-    return _workspaceProvider.activeNoteId ?? _activeNoteId;
-  }
+  String? get activeNoteId => _activeNoteId;
 
   /// Current preview tab id (replaced by next explorer-open unless pinned).
   String? get previewTabId => _noteTabManager.previewTabId;
@@ -330,6 +284,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     required WorkspaceSplitDirection direction,
     required double containerExtent,
   }) {
+    _activeNoteIdByPane[_workspaceProvider.activePaneId] = _activeNoteId;
     final result = _workspaceProvider.splitActivePane(
       direction: direction,
       containerExtent: containerExtent,
@@ -340,7 +295,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     final newPaneId = _workspaceProvider.activePaneId;
     _noteTabManager.addPane(newPaneId);
     _noteTabManager.switchPane(newPaneId);
-    _syncWorkspaceFromControllerState();
     _adoptWorkspaceActivePaneState(loadDetail: false);
     notifyListeners();
     return result;
@@ -349,14 +303,20 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   /// Closes active pane and merges it into adjacent pane.
   WorkspaceMergeResult closeActivePane() {
     final closingPaneId = _workspaceProvider.activePaneId;
+    final closingActiveId = _activeNoteId;
     final result = _workspaceProvider.closeActivePane();
     if (result != WorkspaceMergeResult.ok) {
       return result;
     }
     final targetPaneId = _workspaceProvider.activePaneId;
+    _activeNoteIdByPane.remove(closingPaneId);
+    // Carry closing pane's active note into target pane so it stays active
+    // after merge (matches old WP merge behavior).
+    if (closingActiveId != null) {
+      _activeNoteIdByPane[targetPaneId] = closingActiveId;
+    }
     _noteTabManager.removePane(closingPaneId, mergeToPaneId: targetPaneId);
     _noteTabManager.switchPane(targetPaneId);
-    _syncWorkspaceFromControllerState();
     _adoptWorkspaceActivePaneState(loadDetail: false);
     notifyListeners();
     return result;
@@ -367,6 +327,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     if (!_workspaceProvider.layoutState.paneOrder.contains(paneId)) {
       return false;
     }
+    _activeNoteIdByPane[_workspaceProvider.activePaneId] = _activeNoteId;
     _workspaceProvider.switchActivePane(paneId);
     _noteTabManager.switchPane(paneId);
     _adoptWorkspaceActivePaneState();
@@ -431,12 +392,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   /// In-memory draft content for active editor instance.
   String get activeDraftContent {
-    final workspaceActive = _workspaceProvider.activeNoteId;
-    if (workspaceActive != null &&
-        _workspaceProvider.buffersByNoteId.containsKey(workspaceActive)) {
-      return _workspaceProvider.activeDraftContent;
-    }
-
     if (_activeNoteId == null) {
       return '';
     }
@@ -905,7 +860,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       _autosaveTimer?.cancel();
       _setSaveState(NoteSaveState.clean);
       _requestEditorFocus();
-      _syncWorkspaceFromControllerState();
       notifyListeners();
 
       await _noteTagManager.refreshAvailableTags(showLoading: false);
@@ -989,13 +943,11 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       _activeDraftContent = '';
       _autosaveTimer?.cancel();
       _setSaveState(NoteSaveState.clean);
-      _syncWorkspaceFromControllerState();
       notifyListeners();
       return;
     }
 
     if (!activeRemoved) {
-      _syncWorkspaceFromControllerState();
       notifyListeners();
       return;
     }
@@ -1011,7 +963,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         _draftContentByAtomId[fallbackId] ?? _selectedNote?.content ?? '';
     _refreshSaveStateForActive();
     _requestEditorFocus();
-    _syncWorkspaceFromControllerState();
     notifyListeners();
     await _loadSelectedDetail(atomId: fallbackId);
   }
@@ -1143,7 +1094,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       _autosaveTimer?.cancel();
       _setSaveState(NoteSaveState.clean);
     }
-    _syncWorkspaceActiveSnapshot();
     notifyListeners();
   }
 
@@ -1226,7 +1176,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       _setSaveState(NoteSaveState.clean);
     }
     _noteTabManager.reconcilePreviewTabState();
-    _syncWorkspaceFromControllerState();
     notifyListeners();
 
     if (detailTargetId != null) {
@@ -1256,7 +1205,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _createTagApplyFuture = null;
     _autosaveTimer?.cancel();
     _noteSaveTracker.reset(notify: false);
-    _syncWorkspaceFromControllerState();
   }
 
   /// Retries loading current selected note detail.
@@ -1319,7 +1267,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         _detailLoading = false;
         _detailErrorMessage = null;
         _refreshSaveStateForActive();
-        _syncWorkspaceActiveSnapshot();
         if (_disposed) {
           return;
         }
@@ -1412,58 +1359,11 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       showSavedBadge: showSavedBadge,
       notify: false,
     );
-    if (_activeNoteId case final activeId?) {
-      _workspaceProvider.syncSaveState(
-        noteId: activeId,
-        saveState: _mapSaveStateToWorkspace(nextState),
-      );
-    }
-  }
-
-  WorkspaceSaveState _mapSaveStateToWorkspace(NoteSaveState state) {
-    switch (state) {
-      case NoteSaveState.clean:
-        return WorkspaceSaveState.clean;
-      case NoteSaveState.dirty:
-        return WorkspaceSaveState.dirty;
-      case NoteSaveState.saving:
-        return WorkspaceSaveState.saving;
-      case NoteSaveState.error:
-        return WorkspaceSaveState.saveError;
-    }
-  }
-
-  WorkspaceSaveState _workspaceSaveStateForNote(String atomId) {
-    if (_activeNoteId == atomId) {
-      return _mapSaveStateToWorkspace(_noteSaveTracker.noteSaveState);
-    }
-    return _isDirty(atomId)
-        ? WorkspaceSaveState.dirty
-        : WorkspaceSaveState.clean;
-  }
-
-  String _workspacePersistedContentFor(String atomId) {
-    final persisted = _persistedContentByAtomId[atomId];
-    if (persisted != null) {
-      return persisted;
-    }
-    final cached = _noteListManager.cachedNoteById(atomId);
-    if (cached != null) {
-      return cached.content;
-    }
-    if (_selectedNote?.atomId == atomId) {
-      return _selectedNote?.content ?? '';
-    }
-    return '';
-  }
-
-  String _workspaceDraftContentFor(String atomId) {
-    return _draftContentByAtomId[atomId] ??
-        _workspacePersistedContentFor(atomId);
   }
 
   void _adoptWorkspaceActivePaneState({bool loadDetail = true}) {
-    final paneActiveId = _workspaceProvider.activeNoteId;
+    final paneId = _workspaceProvider.activePaneId;
+    final paneActiveId = _activeNoteIdByPane[paneId];
     _activeNoteId = paneActiveId;
     if (paneActiveId == null) {
       _selectedNote = null;
@@ -1484,96 +1384,13 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         _noteListManager.findListItem(paneActiveId);
     _selectedNote = local;
     _activeDraftAtomId = paneActiveId;
-    _activeDraftContent = _workspaceDraftContentFor(paneActiveId);
+    _activeDraftContent =
+        _draftContentByAtomId[paneActiveId] ?? local?.content ?? '';
     _refreshSaveStateForActive();
     _switchBlockErrorMessage = null;
     _requestEditorFocus();
     if (loadDetail) {
       unawaited(_loadSelectedDetail(atomId: paneActiveId));
-    }
-  }
-
-  void _syncWorkspaceActiveSnapshot() {
-    final activeId = _activeNoteId;
-    if (activeId == null) {
-      return;
-    }
-    _workspaceProvider.syncExternalNote(
-      noteId: activeId,
-      persistedContent: _workspacePersistedContentFor(activeId),
-      draftContent: _workspaceDraftContentFor(activeId),
-      saveState: _workspaceSaveStateForNote(activeId),
-      activate: true,
-    );
-  }
-
-  void _syncWorkspaceFromControllerState() {
-    _workspaceProvider.beginBatchSync();
-    try {
-      final paneOrder = List<String>.from(
-        _workspaceProvider.layoutState.paneOrder,
-      );
-      final activePaneId = _workspaceProvider.activePaneId;
-      final paneTabsBeforeReset = <String, List<String>>{};
-      for (final paneId in paneOrder) {
-        paneTabsBeforeReset[paneId] = List<String>.from(
-          _workspaceProvider.openTabsByPane[paneId] ?? const <String>[],
-        );
-      }
-
-      _workspaceProvider.resetAll();
-      final restoredNoteIds = <String>{};
-      for (final paneId in paneOrder) {
-        final paneTabs = paneTabsBeforeReset[paneId] ?? const <String>[];
-        for (final atomId in paneTabs) {
-          if (!_noteTabManager.containsOpenNote(atomId) &&
-              _activeNoteId != atomId) {
-            continue;
-          }
-          _workspaceProvider.syncExternalNote(
-            noteId: atomId,
-            paneId: paneId,
-            persistedContent: _workspacePersistedContentFor(atomId),
-            draftContent: _workspaceDraftContentFor(atomId),
-            saveState: _workspaceSaveStateForNote(atomId),
-            activate: activePaneId == paneId && _activeNoteId == atomId,
-          );
-          restoredNoteIds.add(atomId);
-        }
-      }
-
-      if (_noteTabManager.openNoteIds.isEmpty && _activeNoteId == null) {
-        return;
-      }
-
-      for (final atomId in _noteTabManager.openNoteIds) {
-        if (restoredNoteIds.contains(atomId)) {
-          continue;
-        }
-        _workspaceProvider.syncExternalNote(
-          noteId: atomId,
-          paneId: activePaneId,
-          persistedContent: _workspacePersistedContentFor(atomId),
-          draftContent: _workspaceDraftContentFor(atomId),
-          saveState: _workspaceSaveStateForNote(atomId),
-          activate: _activeNoteId == atomId,
-        );
-        restoredNoteIds.add(atomId);
-      }
-      if (_activeNoteId case final activeId?) {
-        if (!restoredNoteIds.contains(activeId)) {
-          _workspaceProvider.syncExternalNote(
-            noteId: activeId,
-            paneId: activePaneId,
-            persistedContent: _workspacePersistedContentFor(activeId),
-            draftContent: _workspaceDraftContentFor(activeId),
-            saveState: _workspaceSaveStateForNote(activeId),
-            activate: true,
-          );
-        }
-      }
-    } finally {
-      _workspaceProvider.endBatchSync();
     }
   }
 
@@ -1603,92 +1420,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       return withoutHeading.isEmpty ? trimmed : withoutHeading;
     }
     return 'Untitled';
-  }
-}
-
-class _WorkspaceProviderPort implements WorkspacePort {
-  _WorkspaceProviderPort({required WorkspaceProvider workspaceProvider})
-    : _workspaceProvider = workspaceProvider;
-
-  final WorkspaceProvider _workspaceProvider;
-
-  @override
-  String? get activeNoteId => _workspaceProvider.activeNoteId;
-
-  @override
-  String get activeDraftContent => _workspaceProvider.activeDraftContent;
-
-  @override
-  bool hasDraftBuffer(String noteId) {
-    return _workspaceProvider.buffersByNoteId.containsKey(noteId);
-  }
-
-  @override
-  WorkspacePortSnapshot snapshot() {
-    return (
-      paneOrder: List<String>.from(_workspaceProvider.layoutState.paneOrder),
-      activePaneId: _workspaceProvider.activePaneId,
-      openTabsByPane: _workspaceProvider.openTabsByPane.map(
-        (key, value) => MapEntry(key, List<String>.from(value)),
-      ),
-    );
-  }
-
-  @override
-  void beginBatchSync() {
-    _workspaceProvider.beginBatchSync();
-  }
-
-  @override
-  void endBatchSync() {
-    _workspaceProvider.endBatchSync();
-  }
-
-  @override
-  void resetAll() {
-    _workspaceProvider.resetAll();
-  }
-
-  @override
-  void syncExternalNote({
-    required String noteId,
-    required String persistedContent,
-    required String draftContent,
-    required String saveState,
-    bool activate = false,
-    String? paneId,
-  }) {
-    _workspaceProvider.syncExternalNote(
-      noteId: noteId,
-      persistedContent: persistedContent,
-      draftContent: draftContent,
-      saveState: _saveStateFromWire(saveState),
-      activate: activate,
-      paneId: paneId,
-    );
-  }
-
-  @override
-  void syncSaveState({required String noteId, required String saveState}) {
-    _workspaceProvider.syncSaveState(
-      noteId: noteId,
-      saveState: _saveStateFromWire(saveState),
-    );
-  }
-
-  WorkspaceSaveState _saveStateFromWire(String saveState) {
-    switch (saveState) {
-      case 'clean':
-        return WorkspaceSaveState.clean;
-      case 'dirty':
-        return WorkspaceSaveState.dirty;
-      case 'saving':
-        return WorkspaceSaveState.saving;
-      case 'saveError':
-        return WorkspaceSaveState.saveError;
-      default:
-        return WorkspaceSaveState.clean;
-    }
   }
 }
 
