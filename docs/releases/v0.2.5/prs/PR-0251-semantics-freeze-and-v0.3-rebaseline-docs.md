@@ -1,7 +1,17 @@
 # PR-0251-semantics-freeze-and-v0.3-rebaseline-docs
 
 - Proposed title: `docs(notes/workspace): freeze semantics and re-baseline v0.3 prerequisites`
-- Status: **Superseded by PR-0256** — S1-S8 rulings cover all 5 original areas and expand to 8. See `PR-0256-semantic-rulings-and-doc-alignment.md`.
+- Status: **Completed (Superseded/Closed)** — scope absorbed by `PR-0256-semantic-rulings-and-doc-alignment.md` (S1-S8 rulings cover all 5 original areas and expand to 8).
+
+## Closure Decision
+
+- Closure date: 2026-02-27
+- Closure mode: superseded without direct execution in this PR
+- Canonical replacement: `docs/releases/v0.2.5/prs/PR-0256-semantic-rulings-and-doc-alignment.md`
+- Scope handoff:
+  - semantic rulings moved to `08b-semantic-decisions.md` and downstream 08c/08d planning
+  - documentation alignment executed under PR-0256 task model
+  - release plan marks PR-0251 as superseded in `docs/releases/v0.2.5/README.md`
 
 ## Goal
 
@@ -38,8 +48,8 @@ Out of scope:
 - [edit] `docs/releases/v0.3/README.md`
 - [edit] `docs/product/roadmap.md`
 
-## Acceptance Criteria
+## Acceptance Criteria (Closure)
 
-- [ ] No known semantic ambiguity remains in the listed clarification areas.
-- [ ] v0.2.5 and v0.3 docs use consistent terms and boundaries.
-- [ ] Refactor PR (`PR-0252`) has explicit "must not change behavior" guardrails.
+- [x] PR is explicitly marked as superseded/closed with a canonical replacement PR.
+- [x] Scope handoff is recorded and points to the 08b/08c/08d + PR-0256 execution path.
+- [x] v0.2.5 release plan marks PR-0251 as superseded.
