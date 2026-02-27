@@ -22,7 +22,7 @@ user-facing features.
 - Frontend review sub-lane (`PR-0255A/B/C`): **Completed**
 - Modular refactor (`PR-0252`): **Completed** (22 tasks, 333 pass / 0 fail)
 - Reassessment series (`08a-08d`): **Completed** (plan finalized)
-- Current active item: `PR-0258-notes-workspace-structural-decoupling`
+- Current active item: `PR-0259-rule-e-reduction-and-ci-guardrails`
 
 ## Lane Strategy
 

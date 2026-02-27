@@ -1,7 +1,7 @@
 # PR-0259-rule-e-reduction-and-ci-guardrails
 
 - Proposed title: `refactor(frontend): PR-0259 Rule E violation reduction and CI guardrails`
-- Status: Planned
+- Status: Ready for Review
 
 ## Goal
 
@@ -99,23 +99,23 @@ Out of scope:
 
 ## Test Baseline
 
-Entry: ~322 pass / 0 fail (PR-0258 exit)
-Exit: **~322 pass / 0 fail** (no test additions or deletions in this PR)
+Entry: 333 pass / 0 fail (PR-0258 exit)
+Exit: **333 pass / 0 fail** (no test additions or deletions in this PR)
 
 ## Task Checklist
 
-- [ ] `T1` create `shared/ui_tokens.dart`
-- [ ] `T2` re-export from `notes_style.dart`
-- [ ] `T3` update `tag_filter.dart` import
-- [ ] `T4` move `reminder_scheduler.dart` to `core/reminders/`
-- [ ] `T5` move `reminder_service.dart` to `core/reminders/`
-- [ ] `T6` update consumer imports
-- [ ] `T7` update test imports
-- [ ] `T8` delete empty `features/reminders/`
-- [ ] `T9` create `architecture_check.dart`
-- [ ] `T10` create `rule_e_allowlist.yaml`
-- [ ] `T11` create `file_size_exemptions.yaml`
-- [ ] `T12` update CI workflow
+- [x] `T1` create `shared/ui_tokens.dart`
+- [x] `T2` re-export from `notes_style.dart`
+- [x] `T3` update `tag_filter.dart` import
+- [x] `T4` move `reminder_scheduler.dart` to `core/reminders/`
+- [x] `T5` move `reminder_service.dart` to `core/reminders/`
+- [x] `T6` update consumer imports
+- [x] `T7` update test imports
+- [x] `T8` delete empty `features/reminders/`
+- [x] `T9` create `architecture_check.dart`
+- [x] `T10` create `rule_e_allowlist.yaml`
+- [x] `T11` create `file_size_exemptions.yaml`
+- [x] `T12` update CI workflow
 
 ## Verification
 
@@ -165,12 +165,12 @@ the check.
 
 ## Acceptance Criteria
 
-- [ ] `tag_filter.dart` no longer imports `features/notes/`.
-- [ ] `lib/shared/ui_tokens.dart` exists with 4 shared color constants.
-- [ ] `features/reminders/` directory no longer exists.
-- [ ] `lib/core/reminders/` contains `reminder_scheduler.dart` and `reminder_service.dart`.
-- [ ] All consumer and test imports updated.
-- [ ] `architecture_check.dart` runs successfully: 0 non-allowlisted violations.
-- [ ] File size check: no file exceeds 2,200 lines; `note_explorer.dart` (1,720) triggers warning only.
-- [ ] CI workflow includes architecture check step.
-- [ ] CI green (format + analyze + test + build + architecture check).
+- [x] `tag_filter.dart` no longer imports `features/notes/`.
+- [x] `lib/shared/ui_tokens.dart` exists with 4 shared color constants.
+- [x] `features/reminders/` directory no longer exists.
+- [x] `lib/core/reminders/` contains `reminder_scheduler.dart` and `reminder_service.dart`.
+- [x] All consumer and test imports updated.
+- [x] `architecture_check.dart` runs successfully: 0 non-allowlisted violations.
+- [x] File size check: no file exceeds 2,200 lines; `note_explorer.dart` (1,720) triggers warning only.
+- [x] CI workflow includes architecture check step.
+- [x] CI green (format + analyze + test + build + architecture check).
