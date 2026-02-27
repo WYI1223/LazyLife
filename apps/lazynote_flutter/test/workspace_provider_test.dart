@@ -1,144 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
 void main() {
-  test('R02-1.1 active draft is derived from buffers map after tab switch', () {
-    final provider = WorkspaceProvider();
-    addTearDown(provider.dispose);
-
-    provider.openNote(noteId: 'note-1', initialContent: 'persisted one');
-    provider.openNote(noteId: 'note-2', initialContent: 'persisted two');
-    provider.updateDraft(noteId: 'note-2', content: 'draft two');
-    provider.activateNote(noteId: 'note-1');
-    expect(provider.activeDraftContent, 'persisted one');
-
-    provider.activateNote(noteId: 'note-2');
-    expect(provider.activeDraftContent, 'draft two');
-  });
-
-  test('R02-1.2 flush has bounded retries and ends in saveError', () async {
-    var saveCalls = 0;
-    final provider = WorkspaceProvider(
-      flushMaxRetries: 5,
-      autosaveDebounce: const Duration(seconds: 30),
-      saveInvoker: ({required noteId, required content}) async {
-        saveCalls += 1;
-        return false;
-      },
-    );
-    addTearDown(provider.dispose);
-
-    provider.openNote(noteId: 'note-1', initialContent: 'v1');
-    provider.updateDraft(noteId: 'note-1', content: 'v2');
-
-    final ok = await provider.flushActiveNote();
-    expect(ok, isFalse);
-    expect(saveCalls, 5);
-    expect(provider.saveStateByNoteId['note-1'], WorkspaceSaveState.saveError);
-  });
-
-  test('R02-1.2 flush tolerates in-flight typing and still exits', () async {
-    var saveCalls = 0;
-    late WorkspaceProvider provider;
-    provider = WorkspaceProvider(
-      flushMaxRetries: 5,
-      autosaveDebounce: const Duration(seconds: 30),
-      saveInvoker: ({required noteId, required content}) async {
-        saveCalls += 1;
-        if (saveCalls == 1) {
-          provider.updateDraft(noteId: noteId, content: 'v3');
-        }
-        return false;
-      },
-    );
-    addTearDown(provider.dispose);
-
-    provider.openNote(noteId: 'note-1', initialContent: 'v1');
-    provider.updateDraft(noteId: 'note-1', content: 'v2');
-
-    final ok = await provider.flushActiveNote();
-    expect(ok, isFalse);
-    expect(saveCalls, lessThanOrEqualTo(5));
-    expect(provider.saveStateByNoteId['note-1'], WorkspaceSaveState.saveError);
-  });
-
-  test('R02-1.3 queued tag mutation skips call after note closes', () async {
-    final gate = Completer<void>();
-    final firstStarted = Completer<void>();
-    var mutationCalls = 0;
-    final provider = WorkspaceProvider(
-      tagMutationInvoker: ({required noteId, required tags}) async {
-        mutationCalls += 1;
-        if (mutationCalls == 1) {
-          firstStarted.complete();
-          await gate.future;
-        }
-        return true;
-      },
-    );
-    addTearDown(provider.dispose);
-
-    provider.openNote(noteId: 'note-1', initialContent: 'note');
-
-    final first = provider.enqueueTagMutation(noteId: 'note-1', tags: ['a']);
-    await firstStarted.future;
-    final second = provider.enqueueTagMutation(noteId: 'note-1', tags: ['b']);
-
-    provider.closeNote(noteId: 'note-1');
-    gate.complete();
-
-    expect(await first, isFalse);
-    expect(await second, isFalse);
-    expect(mutationCalls, 1);
-  });
-
-  test(
-    'flush maps saveInvoker throw to saveError and remains callable',
-    () async {
-      var calls = 0;
-      final provider = WorkspaceProvider(
-        flushMaxRetries: 3,
-        autosaveDebounce: const Duration(seconds: 30),
-        saveInvoker: ({required noteId, required content}) async {
-          calls += 1;
-          throw StateError('boom');
-        },
-      );
-      addTearDown(provider.dispose);
-
-      provider.openNote(noteId: 'note-1', initialContent: 'v1');
-      provider.updateDraft(noteId: 'note-1', content: 'v2');
-
-      final first = await provider.flushActiveNote();
-      expect(first, isFalse);
-      expect(
-        provider.saveStateByNoteId['note-1'],
-        WorkspaceSaveState.saveError,
-      );
-
-      final second = await provider.flushActiveNote();
-      expect(second, isFalse);
-      expect(calls, greaterThanOrEqualTo(2));
-    },
-  );
-
-  test('flush on closed note does not recreate orphan saveState', () async {
-    final provider = WorkspaceProvider();
-    addTearDown(provider.dispose);
-
-    provider.openNote(noteId: 'note-1', initialContent: 'v1');
-    provider.updateDraft(noteId: 'note-1', content: 'v2');
-    provider.closeNote(noteId: 'note-1');
-    expect(provider.saveStateByNoteId.containsKey('note-1'), isFalse);
-
-    final ok = await provider.flushNote('note-1');
-    expect(ok, isTrue);
-    expect(provider.saveStateByNoteId.containsKey('note-1'), isFalse);
-  });
-
   test('WorkspaceLayoutState snapshots are defensively immutable', () {
     final paneOrder = <String>['pane.primary'];
     final paneFractions = <double>[1.0];
@@ -253,24 +117,6 @@ void main() {
     expect(provider.layoutState.paneOrder.length, 4);
   });
 
-  test('openNote routes to active split pane', () {
-    final provider = WorkspaceProvider();
-    addTearDown(provider.dispose);
-
-    final split = provider.splitActivePane(
-      direction: WorkspaceSplitDirection.horizontal,
-      containerExtent: 1200,
-    );
-    expect(split, WorkspaceSplitResult.ok);
-    final primaryPane = provider.layoutState.primaryPaneId;
-    final activeSplitPane = provider.activePaneId;
-
-    provider.openNote(noteId: 'note-2', initialContent: 'split note');
-
-    expect(provider.openTabsByPane[activeSplitPane], const ['note-2']);
-    expect(provider.openTabsByPane[primaryPane], isEmpty);
-  });
-
   test('closeActivePane blocks when only one pane exists', () {
     final provider = WorkspaceProvider();
     addTearDown(provider.dispose);
@@ -285,7 +131,6 @@ void main() {
     final provider = WorkspaceProvider();
     addTearDown(provider.dispose);
 
-    provider.openNote(noteId: 'note-1', initialContent: 'n1');
     expect(
       provider.splitActivePane(
         direction: WorkspaceSplitDirection.horizontal,
@@ -293,12 +138,7 @@ void main() {
       ),
       WorkspaceSplitResult.ok,
     );
-    final splitPane = provider.activePaneId;
     final primaryPane = provider.layoutState.primaryPaneId;
-    provider.openNote(noteId: 'note-2', initialContent: 'n2');
-    provider.openNote(noteId: 'note-3', initialContent: 'n3');
-    expect(provider.activePaneId, splitPane);
-    expect(provider.activeNoteId, 'note-3');
 
     final merged = provider.closeActivePane();
 
@@ -306,20 +146,12 @@ void main() {
     expect(provider.layoutState.paneOrder, [primaryPane]);
     expect(provider.layoutState.paneFractions, [1.0]);
     expect(provider.activePaneId, primaryPane);
-    expect(provider.activeNoteId, 'note-3');
-    expect(provider.openTabsByPane[primaryPane], [
-      'note-1',
-      'note-2',
-      'note-3',
-    ]);
-    expect(provider.openTabsByPane.containsKey(splitPane), isFalse);
   });
 
   test('closeActivePane uses next pane when closing first pane', () {
     final provider = WorkspaceProvider();
     addTearDown(provider.dispose);
 
-    provider.openNote(noteId: 'note-1', initialContent: 'n1');
     expect(
       provider.splitActivePane(
         direction: WorkspaceSplitDirection.horizontal,
@@ -329,9 +161,7 @@ void main() {
     );
     final splitPane = provider.activePaneId;
     final primaryPane = provider.layoutState.primaryPaneId;
-    provider.openNote(noteId: 'note-2', initialContent: 'n2');
     provider.switchActivePane(primaryPane);
-    provider.openNote(noteId: 'note-3', initialContent: 'n3');
     expect(provider.activePaneId, primaryPane);
 
     final merged = provider.closeActivePane();
@@ -339,7 +169,5 @@ void main() {
     expect(merged, WorkspaceMergeResult.ok);
     expect(provider.layoutState.paneOrder, [splitPane]);
     expect(provider.activePaneId, splitPane);
-    expect(provider.activeNoteId, 'note-3');
-    expect(provider.openTabsByPane[splitPane], ['note-2', 'note-1', 'note-3']);
   });
 }

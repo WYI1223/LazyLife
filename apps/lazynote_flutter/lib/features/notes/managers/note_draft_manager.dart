@@ -46,7 +46,6 @@ typedef DraftApplySaveState =
 
 typedef DraftSetSaveError = void Function(String? message);
 
-typedef DraftSyncWorkspaceActiveSnapshot = void Function();
 typedef DraftActiveSaveHook = void Function(String atomId);
 
 class NoteDraftManager extends ChangeNotifier {
@@ -60,7 +59,6 @@ class NoteDraftManager extends ChangeNotifier {
     required DraftEnvelopeError envelopeError,
     required DraftApplySaveState applySaveState,
     required DraftSetSaveError setSaveError,
-    required DraftSyncWorkspaceActiveSnapshot syncWorkspaceActiveSnapshot,
     DraftActiveSaveHook? onActiveSaveSuccess,
     DraftTimerFactory? timerFactory,
     this.autosaveDebounce = const Duration(milliseconds: 1500),
@@ -73,7 +71,6 @@ class NoteDraftManager extends ChangeNotifier {
        _envelopeError = envelopeError,
        _applySaveState = applySaveState,
        _setSaveError = setSaveError,
-       _syncWorkspaceActiveSnapshot = syncWorkspaceActiveSnapshot,
        _onActiveSaveSuccess = onActiveSaveSuccess,
        _timerFactory = timerFactory ?? Timer.new;
 
@@ -86,7 +83,6 @@ class NoteDraftManager extends ChangeNotifier {
   final DraftEnvelopeError _envelopeError;
   final DraftApplySaveState _applySaveState;
   final DraftSetSaveError _setSaveError;
-  final DraftSyncWorkspaceActiveSnapshot _syncWorkspaceActiveSnapshot;
   final DraftActiveSaveHook? _onActiveSaveSuccess;
   final DraftTimerFactory _timerFactory;
 
@@ -219,7 +215,6 @@ class NoteDraftManager extends ChangeNotifier {
         } else {
           _applySaveState(NoteSaveState.clean, showSavedBadge: true);
         }
-        _syncWorkspaceActiveSnapshot();
         notifyListeners();
       }
       return true;

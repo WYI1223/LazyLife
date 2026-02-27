@@ -4,8 +4,6 @@ import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_children_loader.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_error_utils.dart';
 import 'package:lazynote_flutter/features/notes/managers/workspace_tree_types.dart';
-import 'package:lazynote_flutter/features/notes/workspace_port.dart';
-
 export 'workspace_tree_types.dart';
 
 /// Extracted workspace-tree state and mutation manager.
@@ -27,7 +25,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
     required WorkspaceRenameNodeInvoker workspaceRenameNodeInvoker,
     required WorkspaceMoveNodeInvoker workspaceMoveNodeInvoker,
     required WorkspaceListChildrenInvoker workspaceListChildrenInvoker,
-    required this.workspacePort,
     required WorkspacePrepare prepare,
     required WorkspaceCreateNoteAndGetAtomId createNoteAndGetAtomId,
     required WorkspaceFlushPendingSave flushPendingSave,
@@ -62,8 +59,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
   final WorkspaceFlushPendingSave _flushPendingSave;
   final WorkspaceDeleteSuccessHook _onDeleteSuccess;
   final WorkspaceTreeChildrenLoader _childrenLoader;
-
-  final WorkspacePort workspacePort;
 
   bool _workspaceDeleteInFlight = false;
   String? _workspaceDeleteErrorMessage;
