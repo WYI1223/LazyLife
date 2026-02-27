@@ -122,7 +122,7 @@ view_hint 作为快捷路径，但最终渲染行为由实际字段组合决定�
 
 #### R6. Workspace Explorer 采用指定默认路径模型
 
-**核心原则**：所有文件夹在结构上平等。"Smart Folder" 不是查询驱动的虚拟视图，而是**指定了默认创建路径的普通文件夹** — 和用户手动创建的文件夹完全相同，支持重命名、移动、删除。
+**核心原则**：所有文件夹在结构上平等。"Smart Folder" 不是查询驱动的虚拟视图，而是**指定了默认创建路径的普通文件夹** — 和用户手动创建的文件夹完全相同，支持重命名、移动。
 
 ```
 Workspace Explorer
@@ -142,19 +142,61 @@ Workspace Explorer
 
 **默认创建路径路由**：
 
-| 创建上下文 | atom_ref 目标 |
-|---|---|
-| 文件夹内右键创建 | 该文件夹 |
-| Tasks 视图创建 | Tasks 指定文件夹 |
-| Calendar 视图创建 | Calendar 指定文件夹 |
-| 头部按钮 / Single Entry（无上下文） | 根级别（`parent_uuid = NULL`） |
+| 创建上下文 | atom_ref 目标 | 附加行为 |
+|---|---|---|
+| 文件夹内右键创建 | 该文件夹 | — |
+| Tasks 视图创建 | Tasks 指定文件夹 | 自动设置 `task_status` |
+| Calendar 视图创建 | Calendar 指定文件夹 | 可选设置 time fields（未设置则进入待排期池） |
+| 头部按钮（Tag 已选中） | 根级别 | 自动应用当前 tag |
+| 头部按钮（无上下文） | 根级别 | — |
+| Single Entry 命令 | 按命令类型路由到对应指定文件夹 | 按命令设置属性 |
+
+创建路径的差异从"是否产出 atom_ref"变为"atom_ref 落在哪里 + 附加什么属性"。
 
 **指定路径配置**：配置层存储视图 → 文件夹的映射关系（类似 app 指定缓存目录）。用户未来可更改指定路径（如将 Tasks 默认路径指向 `/Work/Tasks`）。
 
-**指定文件夹删除行为**：
-- 删除指定文件夹 → 内部 atom_ref 全部回归根级别（`parent_uuid = NULL`）+ 清除该指定路径配置
-- 后续创建 → atom_ref 落到根级别，直到用户重新指定
-- 重新指定新文件夹 → 根级别中匹配属性的 atom_ref 一次性迁移到新文件夹（不动用户已手动归档到其他文件夹的 atom）
+**指定文件夹生命周期**：
+
+| 操作 | 行为 |
+|---|---|
+| 首次指定 | 配置映射 `视图 → 文件夹`，后续该视图创建的 atom_ref 路由到此文件夹 |
+| 重新指定 | 旧文件夹全部子节点移动到新文件夹（单步 `UPDATE parent_uuid`），旧文件夹变为空的普通文件夹 |
+| 取消指定 | 解除映射，文件夹变为普通文件夹，内容不动 |
+| 删除指定文件夹 | **禁止** — 仅允许重新指定或取消指定 |
+| 不设指定文件夹 | 对应视图创建的 atom_ref 落到根级别（合法状态） |
+
+- 重新指定 = 搬家，不区分 ref 来源，文件夹里所有内容全部移动
+- 不需要 `source_view` 等额外字段 — 指定文件夹就是 Tasks/Calendar 的家，里面所有东西都跟着走
+- 旧文件夹变空后，删除保护解除（不再是指定文件夹），用户可自行删除
+
+**指定文件夹在视图中的呈现**：
+
+指定文件夹中未匹配视图查询条件的 atom 不会"消失"，而是在视图内有对应的承接区域：
+
+| 视图 | 未排期 atom 的呈现 | 排期操作 |
+|---|---|---|
+| Tasks | Inbox section 天然承接（`task_status IS NOT NULL` 但无时间字段） | 在 Atom 编辑器中设置时间 |
+| Calendar | 左侧边栏「待排期池」（Calendar 文件夹中 `start_at IS NULL AND end_at IS NULL` 的子集） | 从侧边栏拖拽到周视图时间格，自动设置 `start_at`/`end_at` |
+
+Calendar 待排期池布局：
+
+```
+┌──────────┬──────────────────────────┐
+│ ◀ Feb ▶  │   Mon   Tue   Wed   ... │
+│ [月历]    │   ┌───┐                 │
+│           │   │会议│                 │
+│           │   └───┘                 │
+├──────────┤                          │
+│ 📁 待排期 │                          │
+│ ├ 📄 读书 │  ← 拖到右边周视图        │
+│ ├ 📄 体检 │     自动设置 start/end   │
+│ └ 📄 约饭 │                          │
+└──────────┴──────────────────────────┘
+```
+
+- 待排期池数据源 = Calendar 指定文件夹中无时间字段的 atom_ref（按 `parent_uuid` 查 + `start_at IS NULL AND end_at IS NULL` 过滤）
+- 拖拽到周视图 → atom 从待排期池消失，出现在对应时间格
+- 入站时不自动推断属性 — 待排期池本身就是"和日程有关，但还没决定什么时候"的合法中间态
 
 **"未分类" = 根级别**：根级别（`parent_uuid = NULL`）的 atom_ref 即为"未分类"。不需要单独的 Uncategorized 文件夹 — 根级别本身就是默认归属。
 
@@ -616,17 +658,17 @@ Phase 1 结束后：coordinator 是唯一状态源，WP Bridge 完全删除，Wo
 
 当前 NoteExplorer 面板同时展示：
 - **TagFilter**：tag 芯片列表，选中 tag 后过滤扁平笔记列表
-- **Workspace Tree**：文件夹/note_ref 层级结构
+- **Workspace Tree**：文件夹/atom_ref 层级结构
 
-两者**独立工作** — 选中 tag 不会过滤 tree 中的 note_ref。用户可能预期一致行为。
+两者**独立工作** — 选中 tag 不会过滤 tree 中的 atom_ref。用户可能预期一致行为。
 
-Tag 挂在 Atom 上，note_ref 引用 Atom。理论上可以通过 note_ref → atom_id → atom tags 实现 tree 过滤，但当前 `WorkspaceTreeChildrenLoader` 无此逻辑。
+Tag 挂在 Atom 上，atom_ref 引用 Atom。理论上可以通过 atom_ref → atom_id → atom tags 实现 tree 过滤，但当前 `WorkspaceTreeChildrenLoader` 无此逻辑。
 
 ### 选项
 
 **A. 保持独立（明确声明）**：Tag 过滤仅影响扁平列表视图。Tree 视图始终展示完整结构。在 UI 上通过视觉区分（如 tab/toggle 切换列表视图和树视图）消除歧义。
 
-**B. Tree 响应 tag 过滤**：选中 tag 后，tree 中不含该 tag 的 note_ref 被灰显或隐藏。需要新增 tree 过滤逻辑。
+**B. Tree 响应 tag 过滤**：选中 tag 后，tree 中不含该 tag 的 atom_ref 被灰显或隐藏。需要新增 tree 过滤逻辑。
 
 **C. 分离面板**：Tag 过滤和 Workspace Tree 不在同一面板中，彻底避免交互歧义。
 
@@ -790,29 +832,11 @@ Phase B 是 Phase A 的自然进阶，不需要架构变更，仅调整布局行
 
 所有创建路径统一为：`创建 Atom` + `创建 atom_ref（落到指定位置）`。不存在"只创建 Atom 不创建 ref"的路径。
 
-#### 创建路径路由
+#### 创建路径路由、指定文件夹模型
 
-| 创建上下文 | atom_ref 目标 | 附加行为 |
-|---|---|---|
-| 文件夹内右键创建 | 该文件夹 | — |
-| Tasks 视图创建 | Tasks 指定文件夹 | 自动设置 `task_status` |
-| Calendar 视图创建 | Calendar 指定文件夹 | 自动设置 time fields |
-| 头部按钮（Tag 已选中） | 根级别 | 自动应用当前 tag |
-| 头部按钮（无上下文） | 根级别 | — |
-| Single Entry 命令 | 按命令类型路由到对应指定文件夹 | 按命令设置属性 |
+完整定义见 **S1 R6**（单一信息源）。包括：默认创建路径路由表、指定文件夹生命周期、待排期池、"未分类"=根级别。
 
-创建路径的差异从"是否产出 atom_ref"变为"atom_ref 落在哪里 + 附加什么属性"。
-
-#### Smart Folder → 指定默认路径文件夹
-
-**重定义**（同步修订 S1 R6）：
-
-- Smart Folder **不是**查询驱动的虚拟视图，**是**指定了默认创建路径的普通文件夹
-- 与用户手动创建的文件夹在结构上完全相同，支持重命名、移动、删除
-- "Smart" 的含义仅在于：它被指定为某个视图的默认落地路径
-- 指定关系是配置层映射（类似 app 指定缓存目录），不是文件夹本身的特殊属性
-
-**视图与文件夹的正交性**：
+S4 补充的视图-文件夹正交性分析：
 
 | | Tasks 视图 | Tasks 文件夹 |
 |---|---|---|
@@ -820,16 +844,6 @@ Phase B 是 Phase A 的自然进阶，不需要架构变更，仅调整布局行
 | 一个在、另一个不在 | 正常（用户可能把 task 移到了 /Work/） | 正常（文件夹里可以有非 task atom） |
 
 视图和文件夹不保持同步。指定文件夹仅影响**创建时的默认路由**，不影响之后的查询和组织。
-
-#### 指定文件夹生命周期
-
-- **删除指定文件夹** → 内部 atom_ref 回归根级别 + 清除指定配置 + 后续创建落到根级别
-- **重新指定文件夹** → 根级别中匹配属性的 atom_ref 一次性迁移到新文件夹（不动用户已手动归档到其他文件夹的 atom）
-- **不设指定文件夹** → 对应视图创建的 atom 落到根级别（合法状态）
-
-#### "未分类" = 根级别
-
-`parent_uuid = NULL` 的 atom_ref 即为"未分类"。不需要单独的 Uncategorized 文件夹或 Smart Folder — 根级别本身就是默认归属地。
 
 #### v0.2.5 范围
 
@@ -873,11 +887,71 @@ Flutter 端现有的命令基础设施：
 
 ### 裁决
 
-`[待讨论]`
+**First-party 与 Extension Kernel 分离，Extension Kernel 定位为 third-party 合约。**
+
+#### 核心立场：两套系统服务不同对象
+
+| | First-party（Notes/Tasks/Calendar） | Third-party（未来插件） |
+|---|---|---|
+| 信任级别 | 完全信任 — 直接 FFI，全 DB 访问 | 沙箱化 — capability-gated API |
+| 注册路径 | 编译时确定（hardcoded parsers/slots） | 运行时动态加载（manifest 驱动） |
+| 安全需求 | 无 — 产品核心功能 | `RuntimeCapability` 守卫 |
+| 迭代约束 | 直接改代码，无 API 稳定性负担 | 必须通过稳定 extension API |
+
+#### Flutter 命令系统 = first-party 运行时
+
+`CommandParser` / `CommandRouter` / `CommandRegistry` 是产品功能的直接实现，不是 Extension Kernel 的 runtime host。
+
+- 3 个 first-party parser（`new_note`、`task`、`schedule`）直接注册在 `EntryParserChain` 中
+- 命令执行通过 `EntryCommandRegistry` 直接调用 FFI
+- UI Slots 通过 `UiSlotRegistry` 直接注册 first-party contributions
+- 以上均不经过 Extension Kernel 的 manifest 验证或 capability guard
+
+这是正确的 — first-party 功能不需要对自己做权限检查。
+
+#### Extension Kernel = third-party 安全合约
+
+Extension Kernel 的 `ExtensionManifest`、`RuntimeCapability`、`ExtensionRegistry` 是为未来 third-party 插件准备的：
+
+- Manifest 验证确保第三方声明合法的 capabilities
+- `assert_invocation_allowed()` 在第三方调用时做权限守卫
+- `FirstPartyExtensionAdapter` 存在是为了 baseline 测试，不意味着 first-party 需要走 extension 路径
+
+Extension Kernel 保持 declaration-only 是当前阶段的**正确状态**，不是"待修复的缺陷"。
+
+#### S1-S4 裁决的影响作用在命令执行层
+
+S1-S4 改变的是"命令做什么"，不是"命令如何注册和发现"：
+
+| S1-S4 裁决 | 影响层 | 变化 |
+|---|---|---|
+| R5 atom_ref 强制伴随 | Core service + FFI | 创建类 API 同时产出 Atom + atom_ref |
+| R6 指定默认路径路由 | Flutter CommandRegistry 执行函数 | `> task` → atom_ref 路由到 Tasks 指定文件夹 |
+| R4 view_hint 自动推导 | Core service | 命令执行后 Core 自动计算 view_hint |
+
+这些是 FFI 合约和命令执行逻辑的变化，属于 CLAUDE.md Rule A 允许的交互逻辑，不经过 Extension Kernel。
+
+#### 桥接的构建时机
+
+Extension Kernel → Flutter 运行时的桥接在**第一个真实 third-party 插件需求出现时**构建（预计 v0.4+）。届时需要：
+
+1. FFI 暴露 extension 注册接口（`list_extensions()`、`assert_capability()`）
+2. Flutter 端动态注册路径（manifest → parser/command/slot 注册）
+3. 沙箱化执行环境（third-party 代码不直接访问 FFI/DB）
+
+当前不构建 = 不建没有车跑的高速公路。
+
+#### v0.2.5 范围
+
+**语义定义**。明确 first-party / Extension Kernel 的边界。不改动 Extension Kernel 代码，不改动命令系统代码。
 
 ### 理由
 
-（待填充）
+1. **阶段适配**：v0.2.5 没有任何 third-party 插件。强制 first-party 走 Extension Kernel = 为了架构一致性牺牲迭代速度，而当前阶段迭代速度远比架构纯度重要
+2. **本质差异**：first-party 和 third-party 在信任、注册、安全三个维度上根本不同。统一注册路径会引入不必要的间接层，同时模糊安全边界
+3. **Extension Kernel 完备性**：declaration-only 是正确状态。manifest 验证、capability guard 的代码已经过充分测试（17 个单元测试），等待 third-party 需求驱动即可
+4. **命令系统独立性**：Flutter 命令系统已经 production-ready（解析→路由→执行完整链路）。它不需要 Extension Kernel 的 manifest 来工作，也不应该因为 Extension Kernel 的存在而增加间接层
+5. **S1-S4 变化路径清晰**：atom_ref 强制伴随、指定文件夹路由等变化直接作用在 FFI/CommandRegistry 层，路径明确，不涉及 Extension Kernel
 
 ---
 
@@ -901,11 +975,73 @@ v0.3 PR-0309（Google Calendar Provider）是第一个真实实现，需要这�
 
 ### 裁决
 
-`[待讨论]`
+**选项 B — external_mappings 由 Core 的 sync orchestrator 管理，ProviderSpi 实现不直接接触映射表。**
+
+#### 三层职责分离
+
+| 层 | 组件 | 职责 | 接触 external_mappings? |
+|---|---|---|---|
+| Provider adapter | `ProviderSpi` 实现（如 Google Calendar） | 远端 API 交互：auth、拉取远端记录、推送本地变更、冲突策略 | **否** — 只做"翻译官" |
+| Sync orchestrator | `SyncOrchestratorService`（待建） | 编排同步流程：调度 provider 操作、管理映射、遵循创建语义 | **是** — 唯一读写者 |
+| Mapping persistence | `ExternalMappingRepository`（待建） | external_mappings 表的 CRUD | **是** — 被 orchestrator 调用 |
+
+#### Provider = 翻译官，Orchestrator = 调度员
+
+Provider 实现（如 Google Calendar adapter）只负责远端 API 格式转换：
+
+- `pull()` → 调 Google Calendar API，返回 `ProviderRecord[]`（external_id、updated_at、payload_hash）
+- `push()` → 接收 `ProviderPushChange[]`，调 Google Calendar API 推送，返回成功/失败计数
+- `conflict_map()` → 接收冲突列表，返回解决策略（KeepLocal/KeepRemote/ManualMerge）
+
+Provider **不知道** LazyNote 内部如何存储映射。这保证了 provider 实现的可测试性和可替换性 — 换一个 provider（如 Outlook Calendar）只需要实现同一个 trait。
+
+Sync orchestrator 负责**全流程编排**：
+
+```
+1. provider.auth()           → 确认认证状态
+2. provider.pull(cursor)     → 拿到远端变更
+3. mapping_repo.find(...)    → 查找已有映射
+   - 有映射 → 更新本地 Atom
+   - 无映射 → 创建 Atom + atom_ref + 创建映射
+4. 收集本地变更
+5. mapping_repo.get(...)     → 获取 external_id
+6. provider.push(changes)    → 推送到远端
+7. mapping_repo.update(...)  → 更新 version/last_synced_at
+8. 如有冲突 → provider.conflict_map() → 按策略执行
+```
+
+#### S1-S4 裁决对同步流程的影响
+
+Sync orchestrator 在创建来自远端的 Atom 时，必须遵循 S1 的创建语义：
+
+| S1 裁决 | 对 sync orchestrator 的要求 |
+|---|---|
+| R5 atom_ref 强制伴随 | pull 创建新 Atom 时必须同时创建 atom_ref |
+| R6 指定默认路径路由 | Google Calendar pull 的 Atom → atom_ref 落入 Calendar 指定文件夹（pull 是一种"创建"，遵循相同路由表） |
+| R4 view_hint 自动推导 | pull 的 Atom 有 start_at/end_at → Core 自动推导 view_hint = event，provider 不需要指定 type |
+
+Sync orchestrator 调用的是与用户创建相同的 Core service API，确保同步创建的 Atom 和手动创建的 Atom 在组织层面完全一致。
+
+#### external_mappings 表的约束验证
+
+当前 schema 的两个 UNIQUE 约束：
+
+- `UNIQUE(provider, external_id)` — 一个远端记录只映射到一个 Atom ✓
+- `UNIQUE(provider, atom_uuid)` — 一个 Atom 在一个 provider 中只有一个映射 ✓
+
+这两个约束在 S1 语义下仍然成立。atom_ref 多引用不影响映射（映射关系是 Atom 级别的，不是 atom_ref 级别的）。
+
+#### v0.2.5 范围
+
+**语义定义**。明确 ProviderSpi / external_mappings / sync orchestrator 三者的职责边界。不写代码。PR-0309（v0.3）实现时按此语义构建 `ExternalMappingRepository` 和 `SyncOrchestratorService`。
 
 ### 理由
 
-（待填充）
+1. **关注点分离**：Provider 只做远端 API 翻译，不接触内部持久化。Orchestrator 统一管理映射和流程编排。每层职责清晰，可独立测试
+2. **Provider 可替换性**：Google Calendar、Outlook Calendar、CalDAV 等 provider 只需实现相同的 `ProviderSpi` trait，不需要了解 external_mappings 的 schema。换 provider = 换翻译官，调度员不变
+3. **S1 创建语义统一**：sync pull 创建的 Atom 走与手动创建相同的路径（Atom + atom_ref + view_hint 推导 + 指定文件夹路由），不存在"同步创建的 Atom 没有 atom_ref"的边界情况
+4. **映射层级正确**：external_mappings 是 Atom 级别（not atom_ref 级别）。一个 Atom 可以有多个 atom_ref，但只有一个 external mapping per provider。这与 S1 R5 的多引用模型正交
+5. **当前状态合理**：ProviderSpi declaration-only + external_mappings schema-only = 两块拼图各自就位，等待 sync orchestrator 作为胶水在 v0.3 把它们连接起来
 
 ---
 
@@ -927,11 +1063,71 @@ Reminders 的使用模式更接近 **cross-cutting infrastructure**（类似 log
 
 ### 裁决
 
-`[待讨论]`
+**修订版 A — Reminders 是平台基础设施，触发语义绑定 Atom 生命周期。**
+
+#### 模块归属：`features/` → `lib/core/`
+
+ReminderScheduler 提供的是**平台通知能力**（通过 `flutter_local_notifications` 调用 Windows 通知 API）。它不拥有 UI、不拥有数据、不拥有路由。和 `RustBridge`（FFI 通道）、`LocalSettingsStore`（设置持久化）是同级的 — 封装平台能力给其他层使用。
+
+迁移到 `lib/core/` 后，Rule E 违规自然消解 — `core/` 被所有 features 合法引用。
+
+#### 触发语义：绑定 Atom 生命周期，而非视图加载
+
+**当前问题**：提醒调度由 `TasksController._scheduleReminders()` 和 `CalendarController._scheduleReminders()` 在视图数据加载后触发。导致：
+
+- **覆盖缺口** — 有时间字段的 Atom 若不被 Tasks 或 Calendar 视图加载，不会收到提醒
+- **触发依赖 UI 行为** — 用户不打开 Tasks/Calendar 视图 → 无提醒
+
+**目标模型**：提醒与 Atom 的**数据变更**绑定，不与**视图加载**绑定：
+
+| Atom 生命周期事件 | 提醒操作 |
+|---|---|
+| 创建 Atom（有 time fields） | 设置 reminder |
+| 修改 Atom 的 time fields | 更新 reminder |
+| 完成 / 取消 Atom（`task_status = done/cancelled`） | 取消 reminder |
+| 删除 Atom | 取消 reminder |
+
+不在 Tasks / Calendar / Notes 视图控制器中考虑提醒调度 — 提醒是 Atom 时间字段的**属性衍生行为**，不是某个视图的职责。
+
+#### App 启动恢复
+
+当前实现使用进程内 Timer（非 OS 级定时通知），app 重启后所有 Timer 丢失。需要 bootstrap 恢复：
+
+```
+App 启动
+  → ReminderScheduler.ensureInitialized()
+  → 查询所有 is_deleted=0 且有 time fields 的 Atom → 批量 schedule
+  → 后续：每次 Atom 创建/修改/完成 → 增量 schedule/cancel
+```
+
+这替代了当前"视图加载时顺便调度"的隐式恢复机制。
+
+#### S1 裁决验证
+
+| S1 裁决 | 对 Reminders 的影响 |
+|---|---|
+| R1 Atom 统一容器 | 提醒逻辑已正确 — 基于 time-matrix，不基于 kind |
+| R4 view_hint 自动推导 | 不影响 — 提醒不依赖 view_hint |
+| R5 atom_ref 强制伴随 | 不影响 — 提醒基于 Atom 数据，与 workspace 位置正交 |
+
+S1 的 Atom 中心模型验证了此触发语义：Atom 的时间字段决定是否需要提醒，这是 Atom 自身的属性衍生，不是视图的职责。
+
+#### 不选 B / C 的理由
+
+- **B（接口注入）**：ReminderScheduler 是天然单例 — 整个 app 只有一个通知通道。加接口注入增加间接层但不解决触发碎片化问题。已有 `setServiceForTesting()` 支持测试注入
+- **C（Core API 暴露）**：Rust Core 无法直接调用 Windows 通知 API（`flutter_local_notifications` 是 Flutter 平台插件）。调度决策逻辑仅 ~15 行（time-matrix → reminder time），不值得增加 FFI round-trip
+
+#### v0.2.5 范围
+
+**语义定义 + 模块迁移**。将 `features/reminders/` 迁移到 `lib/core/reminders/`，消除 Rule E 违规。触发语义从视图驱动改为生命周期驱动的代码变更在 v0.3 实施（需要在 Atom 创建/更新的 FFI 调用后统一挂接提醒逻辑）。
 
 ### 理由
 
-（待填充）
+1. **平台能力定位**：Reminders 封装的是 OS 通知 API，和 RustBridge（FFI）、LocalSettingsStore（文件 IO）同级。放在 `features/` 是分类错误，不是 Rule E 违规
+2. **Atom 中心触发**：与 S1 的 Atom 统一容器一致 — 提醒由 Atom 的时间字段决定，不由哪个视图碰巧加载了该 Atom 决定。消除了覆盖缺口和 UI 行为依赖
+3. **启动恢复完备**：显式的 bootstrap 恢复（查询所有 time-bearing Atoms）替代了隐式的"视图加载顺便调度"，保证即使用户不打开 Tasks/Calendar 视图也能收到提醒
+4. **单例合理性**：整个 app 共享一个通知通道。ReminderScheduler 的静态单例模式（含 `_atomNotificationIds` 去重）是正确的设计，不需要接口注入的间接层
+5. **调度逻辑位置正确**：time-matrix → reminder time 的计算（~15 行）是 Flutter 层的交互逻辑，不是 Core 层的领域不变量。留在 Flutter 符合 Rule A
 
 ---
 
@@ -955,8 +1151,61 @@ Reminders 的使用模式更接近 **cross-cutting infrastructure**（类似 log
 
 ### 裁决
 
-`[待讨论]`
+**选项 B — 统一为 AtomListItem，废弃 NoteItem。**
+
+#### 核心问题：NoteItem 在 FFI 边界主动丢弃信息
+
+AtomListItem 是 NoteItem 的**严格超集**（6 共有字段 + 4 独有字段）：
+
+| 字段 | NoteItem | AtomListItem |
+|---|---|---|
+| atom_id, content, preview_text, preview_image, updated_at, tags | ✓ | ✓ |
+| kind（→ view_hint） | **✗** | ✓ |
+| start_at | **✗** | ✓ |
+| end_at | **✗** | ✓ |
+| task_status | **✗** | ✓ |
+
+NoteItem 缺失的 4 个字段恰好是 S1 Atom 统一容器模型的核心维度。当 Notes API 返回 NoteItem 时，消费者**无法知道**该 Atom 是否有 deadline、是否有 task_status — 不是 UI 选择不显示，而是 DTO 没给数据。
+
+#### S1 统一容器要求 DTO 携带完整状态
+
+S1 R1 确立任何 Atom 都可以有任意组合的 time fields 和 task_status。用户可能：
+
+1. 在 Notes 视图写一条笔记，然后在 Tasks 视图给它加 deadline
+2. 回到 Notes 视图 → NoteItem 不携带 `end_at` → 看不到 deadline 标识
+3. 信息断裂 — 同一个 Atom 在不同视图有不同的"可见属性"
+
+统一为 AtomListItem 后，Notes 视图可以在条目上显示轻量的时间/状态指示（如 deadline 标签、checkbox），UI 层根据字段值决定渲染，不由 DTO 类型限制。
+
+#### 迁移路径
+
+| 当前 | 统一后 |
+|---|---|
+| `note_create` → `NoteResponse(NoteItem)` | → 响应类型包装 `AtomListItem` |
+| `note_update` → `NoteResponse(NoteItem)` | → 同上 |
+| `note_get` → `NoteResponse(NoteItem)` | → 同上 |
+| `notes_list` → `NotesListResponse(Vec<NoteItem>)` | → `AtomListResponse(Vec<AtomListItem>)` |
+
+**EntrySearchItem 保留** — 搜索结果是不同投影（snippet-based，不含 full content），不在统一范围内。
+
+#### S1 后续字段的收益
+
+| S1 裁决 | 统一后影响 |
+|---|---|
+| R4 view_hint | `kind` 重命名为 `view_hint` — 只改一个 DTO |
+| R8 title | 新增 `title` 字段 — 只加到一个 DTO |
+| R9 content_type | 新增 `content_type` 字段 — 同上 |
+
+统一后，S1 的所有新字段只需加到一处，消除两套 DTO 的同步维护成本。
+
+#### v0.2.5 范围
+
+**语义定义**。明确 NoteItem → AtomListItem 的统一方向。实际 FFI 签名变更在 v0.3 实施（需更新 Rust FFI 函数返回类型 + Flutter 端所有 NoteItem 消费者迁移到 AtomListItem）。
 
 ### 理由
 
-（待填充）
+1. **信息完整性**：NoteItem 在 FFI 边界主动丢弃 time/status 字段，导致 Notes 视图无法感知 Atom 的完整状态。统一为 AtomListItem 让所有消费者都能看到 Atom 的全部可展示属性
+2. **S1 一致性**：Atom 是统一容器，不区分"笔记字段"和"任务字段"。DTO 应反映这一模型 — 一个 Atom 的所有属性在任何 API 路径都可见
+3. **维护成本降低**：一套 DTO（AtomListItem）替代两套（NoteItem + AtomListItem）。S1 的新字段（title、view_hint、content_type）只需加到一处
+4. **渲染灵活性**：统一后 Notes 视图可选择性展示 deadline 标签、status 指示等，UI 层按字段值决策。当前 NoteItem 不给数据 = UI 无选择权
+5. **超集关系无损**：AtomListItem 包含 NoteItem 的全部字段 + 额外 4 个。迁移是纯加法，不丢失现有信息
