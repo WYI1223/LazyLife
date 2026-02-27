@@ -83,6 +83,32 @@ No token or payload content is included.
 - provide active-operation hooks (`auth_active/pull_active/push_active/conflict_map_active`)
 - return explicit `provider_not_selected` envelope when active provider is not set
 
+## Three-Layer Responsibility Separation (S6 Ruling, v0.2.5)
+
+`external_mappings` (Migration 3) is managed by Core's sync orchestrator, not by `ProviderSpi` implementations.
+
+**Three layers:**
+
+| Layer | Responsibility | Accesses `external_mappings`? |
+|-------|---------------|------|
+| **Provider** (`ProviderSpi` impl) | External API adapter — translates remote format to/from Core DTOs | No |
+| **Orchestrator** (Core `sync/`) | Sync coordination — drives auth→pull→diff→push→conflict flow | Yes (read/write) |
+| **Mapping** (Core `repo/`) | `external_mappings` table CRUD | Yes (owner) |
+
+Key rules:
+
+- Provider implementations must NOT directly access `external_mappings` table.
+- Sync pull creates Atoms through the same path as manual creation (Atom + atom_ref + view_hint).
+- `external_mappings` are Atom-level (not atom_ref-level): one Atom has one external mapping per provider.
+- Mapping layer is thin and reusable across providers; orchestrator is the coordination point.
+
+Activation timeline:
+
+- **v0.2.5**: Declaration-only contracts, no concrete provider implementation.
+- **v0.3 (PR-0309)**: First concrete provider implementation with three-layer separation enforced.
+
+See: `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S6.
+
 ## Notes
 
 - v0.2 baseline is in-process and contract-focused.
