@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/reminders/reminder_service.dart';
+import 'package:lazynote_flutter/core/reminders/reminder_service.dart';
 
 /// Process-level singleton that manages reminders for timed atoms.
 ///
