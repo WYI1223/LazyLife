@@ -9,7 +9,7 @@
 | 基线 commit | `372bf18`（PR-0252 全部闭合后） |
 | 前置文档 | 01–07 全部报告、PR-0252 任务文档 |
 | 参与方 | AI Agent（Claude）、前端 TL（WYI1223） |
-| 状态 | **草稿 — 讨论中** |
+| 状态 | **08a-08c 已完成，08d 待细化** |
 
 ---
 
@@ -20,9 +20,9 @@
 | 部分 | 文件 | 内容 | 状态 |
 |------|------|------|------|
 | **第一部分** | [08a-audit-findings.md](08a-audit-findings.md) | 审计发现（事实基础）：D1–D10 实测、Rule E 全景、语义模糊清单、文档漂移清单 | 已完成 |
-| **第二部分** | [08b-semantic-decisions.md](08b-semantic-decisions.md) | 语义裁决记录：S1–S8 逐项 背景→选项→裁决→理由 | 讨论中 |
-| **第三部分** | [08c-solution-proposals.md](08c-solution-proposals.md) | 解决方案：结构性解耦、CI 防线、文档同步 | 待裁决后细化 |
-| **第四部分** | [08d-pr-replanning.md](08d-pr-replanning.md) | PR 再规划：新 PR 结构、执行顺序、v0.3 就绪度检查清单 | 待裁决后细化 |
+| **第二部分** | [08b-semantic-decisions.md](08b-semantic-decisions.md) | 语义裁决记录：S1–S8 逐项 背景→选项→裁决→理由 | 已完成 |
+| **第三部分** | [08c-solution-proposals.md](08c-solution-proposals.md) | 解决方案：结构性解耦、CI 防线、文档同步 | 已完成 |
+| **第四部分** | [08d-pr-replanning.md](08d-pr-replanning.md) | PR 再规划：新 PR 结构、执行顺序、v0.3 就绪度检查清单 | 待细化 |
 
 ---
 

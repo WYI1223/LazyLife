@@ -30,15 +30,36 @@
 
 方向：notes → workspace 单向依赖（workspace 不 import notes）。
 
+**WP tab/save 状态的全部消费者**（代码验证结果）：
+
+删除 WorkspaceProvider 的 tab/save 状态前，以下消费者必须全部迁移：
+
+| 消费者 | 文件:行 | 读取的 WP 字段 | 迁移方案 |
+|---|---|---|---|
+| app shell 标题 | `app.dart:71-77` | `openTabsByPane`, `activePaneId` | 改为读 coordinator 的 `openNoteIds.length` |
+| notes page 覆盖层 | `notes_page.dart:440-451` | `openTabsByPane`, `saveStateByNoteId` | 改为读 coordinator/managers（步骤 1 核心） |
+| workspace port snapshot | `workspace_port.dart:4` | `openTabsByPane`（typedef 字段） | 删除 typedef（随步骤 3 WP Bridge 删除） |
+
+**受影响的测试文件**（必须同步迁移或删除）：
+
+| 测试文件 | 受影响测试数 | 读取的 WP 字段 | 迁移方案 |
+|---|---|---|---|
+| `notes_controller_workspace_bridge_test.dart` | 9 cases（按文件内 `test(` 调用计数） | `openTabsByPane`, `saveStateByNoteId` | **整文件删除** — WP Bridge 不再存在，测试失去测试对象 |
+| `workspace_provider_test.dart` | 15 cases 中 7 cases 受影响（按文件内 `test(` 调用计数；tab/save/draft 相关 7，pane 布局 8） | `openTabsByPane`, `saveStateByNoteId` | 保留 pane 布局测试（8 cases），删除 tab/save 状态测试（7 cases，状态已迁移到 coordinator） |
+| `workspace_integration_flow_test.dart` | 5 cases | `activePaneId` | 保留 — `activePaneId` 属于 pane 布局，不删除 |
+| `workspace_split_v1_test.dart` | 4 cases | `activePaneId` | 保留 — `activePaneId` 属于 pane 布局，不删除 |
+
 **S2 Phase 1 执行步骤**：
 
 | 步骤 | 内容 | 变更量 | 依赖 |
 |---|---|---|---|
-| 1 | 迁移 `NotesPage` 的 ~5 个消费点从读 WorkspaceProvider 改为读 coordinator/managers | 改 ~30 行 | — |
-| 2 | 删除 `_syncWorkspaceFromControllerState()` (~67 行) + `_syncWorkspaceActiveSnapshot()` (~12 行) | 删 ~80 行 | 步骤 1 |
-| 3 | 删除 `_WorkspaceProviderPort` adapter (1608-1692 行) | 删 ~85 行 | 步骤 2 |
+| 1a | 迁移 `NotesPage` 的 ~5 个消费点从读 WorkspaceProvider 改为读 coordinator/managers | 改 ~30 行 | — |
+| 1b | 迁移 `app.dart` titleBuilder 从读 `workspace.openTabsByPane` 改为读 coordinator `openNoteIds` | 改 ~5 行 | — |
+| 2 | 删除 `_syncWorkspaceFromControllerState()` (~67 行) + `_syncWorkspaceActiveSnapshot()` (~12 行) | 删 ~80 行 | 步骤 1a/1b |
+| 3 | 删除 `_WorkspaceProviderPort` adapter (1608-1692 行) + `workspace_port.dart` typedef | 删 ~90 行 | 步骤 2 |
 | 4 | 删除辅助映射方法 (`_mapSaveStateToWorkspace`, `_workspaceSaveStateForNote` 等) | 删 ~20 行 | 步骤 3 |
 | 5 | WorkspaceProvider 缩减到仅 pane 布局（`splitActivePane` / `closeActivePane` / `layoutState`） | WP 从 664 行缩至 ~200 行 | 步骤 1-4 |
+| 6 | 测试迁移：删除 `notes_controller_workspace_bridge_test.dart`；裁剪 `workspace_provider_test.dart` 中 tab/save 相关 cases | 删 ~300 行测试 | 步骤 5 |
 
 **步骤 5 详细**：WorkspaceProvider 删除以下状态：
 
@@ -194,7 +215,7 @@ Phase 1 完成后，notes 仍需要 import workspace 的 pane 布局 API（`spli
 | 文件 | 当前行数 | 3.1 后预期 | 是否需要豁免 |
 |---|---|---|---|
 | `notes_coordinator_impl.dart` | 1,782 | ~1,400（3.1.3） | 否（低于警告阈值） |
-| `note_explorer.dart` | ~1,100 | ~1,100 | 否（低于警告阈值） |
+| `note_explorer.dart` | 1,720 | 1,720 | 是（超过警告阈值 1,500，但 08a D1 分析结论为 HOLD — 已确认为固有编排逻辑） |
 | `workspace_provider.dart` | 664 | ~200（3.1.1） | 否 |
 
 3.1 解耦完成后预计无需豁免。如未来出现合理大文件，记录在 `tools/ci/file_size_exemptions.yaml`。
@@ -216,18 +237,20 @@ Phase 1 完成后，notes 仍需要 import workspace 的 pane 布局 API（`spli
 
 以下规则由 S1-S8 裁决定义，v0.2.5 仅记录语义约束，v0.3 实现对应功能时同步添加 CI 检查：
 
-| 裁决 | CI 规则 | 实现时机 |
-|---|---|---|
-| S1-R3 | `view_hint` 必须自动推导，禁止用户直接设置 | v0.3（添加 view_hint 字段时） |
-| S1-R5 | Atom 创建必须事务性伴随 atom_ref 创建 | v0.3（atom_ref 强制配对实现时） |
-| S1-R8 | `title` 字段自动派生，markdown 类型禁止手动设置 | v0.3（添加 title 字段时） |
-| S2-P2 | Tab/draft/save 状态管理不得存在于 `features/notes/` 内部 | v0.3（EditorShellService 提取时） |
-| S5 | First-party 命令不通过 ExtensionManifest/ExtensionRegistry 注册 | v0.3（Extension Kernel 激活时） |
-| S6 | ProviderSpi 实现不直接访问 `external_mappings` 表 | v0.3（Sync Provider 实现时） |
-| S7 | Reminder 调度由 Atom 生命周期触发，不由 view controller 触发 | v0.3（触发语义重构时） |
-| S8 | `NoteItem` DTO 完全废弃，所有 note API 返回 `AtomListItem` | v0.3（FFI 类型统一时） |
+| 裁决 | CI 规则 | v0.2.5 状态 | 实现时机 |
+|---|---|---|---|
+| S1-R3 | `view_hint` 必须自动推导，禁止用户直接设置 | 语义定义 | v0.3（添加 view_hint 字段时） |
+| S1-R5 | Atom 创建必须事务性伴随 atom_ref 创建 | 语义定义 | v0.3（atom_ref 强制配对实现时） |
+| S1-R8 | `title` 字段自动派生，markdown 类型禁止手动设置 | 语义定义 | v0.3（添加 title 字段时） |
+| S2-P2 | Tab/draft/save 状态管理不得存在于 `features/notes/` 内部 | 语义定义 | v0.3（EditorShellService 提取时） |
+| S3 | Tag 筛选不得影响 workspace tree 显示；tree 始终展示完整结构 | 当前行为已符合目标语义 | v0.3（Phase A tag 查询面板实现时） |
+| S4 | 所有创建路径必须生成 Atom + atom_ref；Path A 当前缺失 atom_ref | 语义定义；Path A 缺陷已知 | v0.3（创建路径统一 + Smart Folder 时） |
+| S5 | First-party 命令不通过 ExtensionManifest/ExtensionRegistry 注册 | 语义定义 | v0.3（Extension Kernel 激活时） |
+| S6 | ProviderSpi 实现不直接访问 `external_mappings` 表 | 语义定义 | v0.3（Sync Provider 实现时） |
+| S7 | Reminder 调度由 Atom 生命周期触发，不由 view controller 触发 | 语义定义 | v0.3（触发语义重构时） |
+| S8 | `NoteItem` DTO 完全废弃，所有 note API 返回 `AtomListItem` | 语义定义 | v0.3（FFI 类型统一时） |
 
-v0.2.5 中这些规则以 08b 裁决文档形式存在作为设计约束。v0.3 各 PR 中逐项实现并添加对应 CI 自动化检查。
+v0.2.5 中这些规则以 08b 裁决文档形式存在作为设计约束。S3 当前代码行为已符合目标语义（tag filter 和 explorer tree 独立工作），S4 的 Path A 缺陷（创建 Atom 不伴随 atom_ref）已记录为 v0.3 修正项。v0.3 各 PR 中逐项实现并添加对应 CI 自动化检查。
 
 ---
 
