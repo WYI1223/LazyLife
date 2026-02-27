@@ -1,7 +1,7 @@
 # PR-0251-semantics-freeze-and-v0.3-rebaseline-docs
 
 - Proposed title: `docs(notes/workspace): freeze semantics and re-baseline v0.3 prerequisites`
-- Status: Planned
+- Status: **Superseded by PR-0256** — S1-S8 rulings cover all 5 original areas and expand to 8. See `PR-0256-semantic-rulings-and-doc-alignment.md`.
 
 ## Goal
 

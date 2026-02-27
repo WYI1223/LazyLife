@@ -20,17 +20,24 @@ user-facing features.
 - Status: **In Progress**
 - Baseline sub-lane (`PR-0254A/B/C`): **Completed**
 - Frontend review sub-lane (`PR-0255A/B/C`): **Completed**
-- Current active item: `PR-0252-dart-modular-refactor-and-decoupling`
+- Modular refactor (`PR-0252`): **Completed** (22 tasks, 333 pass / 0 fail)
+- Reassessment series (`08a-08d`): **Completed** (plan finalized)
+- Current active item: `PR-0256-semantic-rulings-and-doc-alignment`
 
 ## Lane Strategy
 
-v0.2.5 uses a strict three-stage lane:
+v0.2.5 uses a multi-stage lane:
 
-1. contract/docs freeze (`PR-0251`)
-2. behavior-parity refactor (`PR-0252`)
-3. closure replay + v0.3 handoff (`PR-0253`)
+1. ~~contract/docs freeze (`PR-0251`)~~ — superseded by `PR-0256`
+2. behavior-parity refactor (`PR-0252`) — **completed**
+3. reassessment series (`08a-08d`) — **completed** (plan finalized)
+4. semantic rulings + docs (`PR-0256`) — replaces `PR-0251`
+5. pane-aware NoteTabManager upgrade (`PR-0257`) — micro-PR
+6. notes↔workspace structural decoupling (`PR-0258`) — HIGH risk
+7. Rule E reduction + CI guardrails (`PR-0259`)
+8. closure replay + v0.3 handoff (`PR-0253`)
 
-No code refactor should start before the contract freeze is accepted.
+Code PRs depend on the semantic foundation established by PR-0256.
 
 v0.2.5 also uses an analysis sub-lane before large refactor slices:
 
@@ -85,7 +92,7 @@ Out of scope:
 
 ## Execution Order
 
-1. `PR-0251-semantics-freeze-and-v0.3-rebaseline-docs`
+1. ~~`PR-0251-semantics-freeze-and-v0.3-rebaseline-docs`~~ (superseded by PR-0256)
 2. `PR-0254A-architecture-baseline-contract`
 3. `PR-0254B-architecture-baseline-tooling-implementation`
 4. `PR-0254C-architecture-baseline-report-closure`
@@ -93,7 +100,11 @@ Out of scope:
 6. `PR-0255B-frontend-module-split-blueprint`
 7. `PR-0255C-frontend-phased-refactor-plan`
 8. `PR-0252-dart-modular-refactor-and-decoupling`
-9. `PR-0253-v0.2.5-closure-and-v0.3-handoff`
+9. `PR-0256-semantic-rulings-and-doc-alignment`
+10. `PR-0257-pane-aware-tab-manager-upgrade`
+11. `PR-0258-notes-workspace-structural-decoupling`
+12. `PR-0259-rule-e-reduction-and-ci-guardrails`
+13. `PR-0253-v0.2.5-closure-and-v0.3-handoff`
 
 ## Milestones
 
@@ -135,7 +146,7 @@ v0.2.5 is complete when:
 
 ## PR Specs
 
-- `docs/releases/v0.2.5/prs/PR-0251-semantics-freeze-and-v0.3-rebaseline-docs.md`
+- ~~`docs/releases/v0.2.5/prs/PR-0251-semantics-freeze-and-v0.3-rebaseline-docs.md`~~ (superseded by PR-0256)
 - `docs/releases/v0.2.5/prs/PR-0254A-architecture-baseline-contract.md`
 - `docs/releases/v0.2.5/prs/PR-0254B-architecture-baseline-tooling-implementation.md`
 - `docs/releases/v0.2.5/prs/PR-0254C-architecture-baseline-report-closure.md`
@@ -144,4 +155,8 @@ v0.2.5 is complete when:
 - `docs/releases/v0.2.5/prs/PR-0255C-frontend-phased-refactor-plan.md`
 - `docs/releases/v0.2.5/prs/PR-0252-dart-modular-refactor-and-decoupling.md`
   - Execution sub-PRs: `docs/releases/v0.2.5/prs/PR-0252/` (22 task specs, P0-1 ~ P3-5)
+- `docs/releases/v0.2.5/prs/PR-0256-semantic-rulings-and-doc-alignment.md`
+- `docs/releases/v0.2.5/prs/PR-0257-pane-aware-tab-manager-upgrade.md`
+- `docs/releases/v0.2.5/prs/PR-0258-notes-workspace-structural-decoupling.md`
+- `docs/releases/v0.2.5/prs/PR-0259-rule-e-reduction-and-ci-guardrails.md`
 - `docs/releases/v0.2.5/prs/PR-0253-v0.2.5-closure-and-v0.3-handoff.md`
