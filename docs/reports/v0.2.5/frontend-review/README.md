@@ -15,9 +15,17 @@
   - `docs/reports/v0.2.5/architecture-baseline/artifacts/frontend/size/snapshot.windows-x64.json`
   - `docs/reports/v0.2.5/architecture-baseline/artifacts/frontend/size/trace.windows-x64.json`
 
-## Planned Outputs
+## Outputs
 
-1. `docs/reports/v0.2.5/frontend-review/01-code-health-report.md`
-2. `docs/reports/v0.2.5/frontend-review/02-module-split-blueprint.md`
-3. `docs/reports/v0.2.5/frontend-review/03-phased-refactor-plan.md`
-4. `docs/reports/v0.2.5/frontend-review/04-regression-checklist-v1.md`
+1. `01-code-health-report.md` — 代码体检报告
+2. `02-module-split-blueprint.md` — 模块拆分方案
+3. `03-phased-refactor-plan.md` — 分阶段重构计划
+4. `04-regression-checklist-v1.md` — 回归测试清单 v1
+5. `05-refactor-retrospective.md` — PR-0252 重构复盘
+6. `06-remaining-split-analysis.md` — 残余大模块分析
+7. `07-wp-wpbridge-analysis.md` — WorkspaceProvider / WP Bridge 分析
+8. `08-reassessment-and-replanning.md` — v0.2.5 重新审视与再规划（索引）
+   - `08a-audit-findings.md` — 审计发现（事实基础）
+   - `08b-semantic-decisions.md` — 语义裁决记录
+   - `08c-solution-proposals.md` — 解决方案
+   - `08d-pr-replanning.md` — PR 再规划
