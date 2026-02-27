@@ -1,7 +1,7 @@
 # PR-0257-pane-aware-tab-manager-upgrade
 
 - Proposed title: `refactor(frontend): PR-0257 extend NoteTabManager with pane-scoped tab tracking`
-- Status: Planned
+- Status: Ready for Review
 
 ## Goal
 
@@ -95,16 +95,16 @@ T6 can run in parallel with T4-T5 (tests can be written against T3's output).
 ## Test Baseline
 
 Entry: 333 pass / 0 fail (PR-0252 exit)
-Exit: 333 + ~5 new pane tests = **~338 pass / 0 fail**
+Exit: **349 pass / 0 fail** (347 + 2 additional pane-scope tests)
 
 ## Task Checklist
 
-- [ ] `T1` add pane-scoped fields to NoteTabManager
-- [ ] `T2` add pane-scoped methods
-- [ ] `T3` refactor internal methods to pane-scoped
-- [ ] `T4` update coordinator `openNoteIds` getter
-- [ ] `T5` update coordinator open/close/activate routing
-- [ ] `T6` add pane-scoped tab tests
+- [x] `T1` add pane-scoped fields to NoteTabManager
+- [x] `T2` add pane-scoped methods
+- [x] `T3` refactor internal methods to pane-scoped
+- [x] `T4` update coordinator `openNoteIds` getter
+- [x] `T5` update coordinator open/close/activate routing
+- [x] `T6` add pane-scoped tab tests
 
 ## Verification (cwd: `apps/lazynote_flutter/`)
 
@@ -129,8 +129,8 @@ Independent branch, safe to revert entirely. Does not affect other PRs.
 
 ## Acceptance Criteria
 
-- [ ] NoteTabManager supports `openNoteIdsForPane(paneId)` method.
-- [ ] Coordinator `openNoteIds` reads from NoteTabManager in both single-pane and multi-pane modes.
-- [ ] Existing single-pane behavior fully preserved (all 333 existing tests pass).
-- [ ] New pane-scoped test coverage: add/remove/switch pane, tab open/close within pane.
-- [ ] CI green (format + analyze + test + build).
+- [x] NoteTabManager supports `openNoteIdsForPane(paneId)` method.
+- [x] Coordinator `openNoteIds` reads from NoteTabManager in both single-pane and multi-pane modes.
+- [x] Existing single-pane behavior fully preserved (all 333 existing tests pass).
+- [x] New pane-scoped test coverage: add/remove/switch pane, tab open/close within pane.
+- [x] CI green (format + analyze + test + build).

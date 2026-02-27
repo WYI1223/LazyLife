@@ -15,6 +15,7 @@ typedef TabScopedActiveNoteIdReader = String? Function();
 
 class NoteTabStateManager extends ChangeNotifier {
   NoteTabStateManager({
+    required String initialPaneId,
     required TabCanReuseSelection canReuseSelection,
     required TabActiveNoteIdReader activeNoteId,
     required TabActivateSelection activateSelection,
@@ -27,7 +28,9 @@ class NoteTabStateManager extends ChangeNotifier {
     required TabEvictNoteState evictNoteState,
     required TabScopedOpenNoteIdsReader scopedOpenNoteIds,
     required TabScopedActiveNoteIdReader scopedActiveNoteId,
-  }) : _canReuseSelection = canReuseSelection,
+  }) : _activePaneId = initialPaneId,
+       _openNoteIdsByPane = {initialPaneId: <String>[]},
+       _canReuseSelection = canReuseSelection,
        _activeNoteId = activeNoteId,
        _activateSelection = activateSelection,
        _clearSelection = clearSelection,
@@ -53,24 +56,113 @@ class NoteTabStateManager extends ChangeNotifier {
   final TabScopedOpenNoteIdsReader _scopedOpenNoteIds;
   final TabScopedActiveNoteIdReader _scopedActiveNoteId;
 
-  final List<String> _openNoteIds = <String>[];
+  // ── Pane-scoped state ──────────────────────────────────────────────
+
+  String _activePaneId;
+  final Map<String, List<String>> _openNoteIdsByPane;
   String? _previewTabId;
 
-  List<String> get openNoteIds => List.unmodifiable(_openNoteIds);
+  /// Returns the active pane's open note IDs (mutable internal reference).
+  List<String> get _activeOpenNoteIds => _openNoteIdsByPane[_activePaneId]!;
+
+  // ── Pane-scoped public API ─────────────────────────────────────────
+
+  /// Current active pane identifier.
+  String get activePaneId => _activePaneId;
+
+  /// Returns an unmodifiable snapshot of open note IDs for [paneId].
+  List<String> openNoteIdsForPane(String paneId) =>
+      List.unmodifiable(_openNoteIdsByPane[paneId] ?? const <String>[]);
+
+  /// Registers a new pane with an empty tab list.
+  void addPane(String paneId) {
+    _openNoteIdsByPane.putIfAbsent(paneId, () => <String>[]);
+  }
+
+  /// Removes [paneId] and merges its tabs into [mergeToPaneId].
+  void removePane(String paneId, {required String mergeToPaneId}) {
+    final removedTabs = _openNoteIdsByPane.remove(paneId) ?? <String>[];
+    final targetTabs = _openNoteIdsByPane[mergeToPaneId];
+    if (targetTabs != null) {
+      for (final atomId in removedTabs) {
+        if (!targetTabs.contains(atomId)) {
+          targetTabs.add(atomId);
+        }
+      }
+    }
+    if (_activePaneId == paneId) {
+      _activePaneId = mergeToPaneId;
+    }
+  }
+
+  /// Switches active pane pointer (does not notify — caller is responsible).
+  void switchPane(String paneId) {
+    if (_openNoteIdsByPane.containsKey(paneId)) {
+      _activePaneId = paneId;
+    }
+  }
+
+  /// Adds a note to a specific pane's tab list.
+  void addNoteToPane(String paneId, String atomId) {
+    final tabs = _openNoteIdsByPane[paneId];
+    if (tabs != null && !tabs.contains(atomId)) {
+      tabs.add(atomId);
+    }
+  }
+
+  /// Removes a note from a specific pane's tab list.
+  void removeNoteFromPane(String paneId, String atomId) {
+    _openNoteIdsByPane[paneId]?.remove(atomId);
+  }
+
+  // ── Active-pane tab accessors (backwards-compatible) ───────────────
+
+  List<String> get openNoteIds => List.unmodifiable(_activeOpenNoteIds);
   String? get previewTabId => _previewTabId;
   bool isPreviewTab(String atomId) => _previewTabId == atomId;
-  bool containsOpenNote(String atomId) => _openNoteIds.contains(atomId);
-  int get openNoteCount => _openNoteIds.length;
 
-  String openNoteIdAt(int index) => _openNoteIds[index];
+  /// Checks whether [atomId] is open in ANY pane (cross-pane lookup).
+  bool containsOpenNote(String atomId) =>
+      _openNoteIdsByPane.values.any((ids) => ids.contains(atomId));
 
-  List<String> snapshotOpenNoteIds() => List<String>.from(_openNoteIds);
+  /// Returns all unique open note IDs across ALL panes (deduplicated).
+  List<String> get allOpenNoteIds {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final ids in _openNoteIdsByPane.values) {
+      for (final id in ids) {
+        if (seen.add(id)) {
+          result.add(id);
+        }
+      }
+    }
+    return result;
+  }
+
+  /// Removes notes matching [test] from ALL panes.
+  void removeOpenNotesWhereAllPanes(
+    bool Function(String atomId) test, {
+    bool notify = false,
+  }) {
+    for (final ids in _openNoteIdsByPane.values) {
+      ids.removeWhere(test);
+    }
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  int get openNoteCount => _activeOpenNoteIds.length;
+
+  String openNoteIdAt(int index) => _activeOpenNoteIds[index];
+
+  List<String> snapshotOpenNoteIds() => List<String>.from(_activeOpenNoteIds);
 
   void addOpenNoteIfAbsent(String atomId, {bool notify = false}) {
-    if (_openNoteIds.contains(atomId)) {
+    if (_activeOpenNoteIds.contains(atomId)) {
       return;
     }
-    _openNoteIds.add(atomId);
+    _activeOpenNoteIds.add(atomId);
     if (notify) {
       notifyListeners();
     }
@@ -80,14 +172,14 @@ class NoteTabStateManager extends ChangeNotifier {
     bool Function(String atomId) test, {
     bool notify = false,
   }) {
-    _openNoteIds.removeWhere(test);
+    _activeOpenNoteIds.removeWhere(test);
     if (notify) {
       notifyListeners();
     }
   }
 
   void clearOpenNotes({bool notify = false}) {
-    _openNoteIds.clear();
+    _activeOpenNoteIds.clear();
     if (notify) {
       notifyListeners();
     }
@@ -108,7 +200,7 @@ class NoteTabStateManager extends ChangeNotifier {
     if (previewId == null) {
       return;
     }
-    if (_openNoteIds.contains(previewId)) {
+    if (_activeOpenNoteIds.contains(previewId)) {
       return;
     }
     _previewTabId = null;
@@ -128,7 +220,7 @@ class NoteTabStateManager extends ChangeNotifier {
   }
 
   Future<bool> openNoteFromExplorer(String atomId) async {
-    final alreadyOpened = _openNoteIds.contains(atomId);
+    final alreadyOpened = _activeOpenNoteIds.contains(atomId);
     String? replacePreviewId;
     if (!alreadyOpened) {
       final previousPreviewId = _previewTabId;
@@ -166,7 +258,7 @@ class NoteTabStateManager extends ChangeNotifier {
       pinPreviewTab(atomId);
       return true;
     }
-    if (_openNoteIds.contains(atomId)) {
+    if (_activeOpenNoteIds.contains(atomId)) {
       final switched = await selectNote(atomId);
       if (!switched) {
         return false;
@@ -202,8 +294,8 @@ class NoteTabStateManager extends ChangeNotifier {
       }
     }
 
-    if (!_openNoteIds.contains(atomId)) {
-      _openNoteIds.add(atomId);
+    if (!_activeOpenNoteIds.contains(atomId)) {
+      _activeOpenNoteIds.add(atomId);
     }
     _activateSelection(atomId);
     _syncWorkspaceState();
@@ -249,7 +341,7 @@ class NoteTabStateManager extends ChangeNotifier {
   }
 
   Future<bool> closeOpenNote(String atomId) async {
-    final closedIndex = _openNoteIds.indexOf(atomId);
+    final closedIndex = _activeOpenNoteIds.indexOf(atomId);
     if (closedIndex < 0) {
       return false;
     }
@@ -260,7 +352,7 @@ class NoteTabStateManager extends ChangeNotifier {
       }
     }
 
-    _openNoteIds.removeAt(closedIndex);
+    _activeOpenNoteIds.removeAt(closedIndex);
     reconcilePreviewTabState();
     if (_activeNoteId() != atomId) {
       _syncWorkspaceState();
@@ -268,15 +360,18 @@ class NoteTabStateManager extends ChangeNotifier {
       return true;
     }
 
-    if (_openNoteIds.isEmpty) {
+    if (_activeOpenNoteIds.isEmpty) {
       _clearSelection();
       _syncWorkspaceState();
       notifyListeners();
       return true;
     }
 
-    final fallbackIndex = (closedIndex - 1).clamp(0, _openNoteIds.length - 1);
-    final fallbackId = _openNoteIds[fallbackIndex];
+    final fallbackIndex = (closedIndex - 1).clamp(
+      0,
+      _activeOpenNoteIds.length - 1,
+    );
+    final fallbackId = _activeOpenNoteIds[fallbackIndex];
     _activateSelection(fallbackId);
     _syncWorkspaceState();
     notifyListeners();
@@ -285,14 +380,14 @@ class NoteTabStateManager extends ChangeNotifier {
   }
 
   Future<bool> closeOtherOpenNotes(String atomId) async {
-    if (!_openNoteIds.contains(atomId)) {
+    if (!_activeOpenNoteIds.contains(atomId)) {
       return false;
     }
     final switched = await activateOpenNote(atomId);
     if (!switched) {
       return false;
     }
-    _openNoteIds
+    _activeOpenNoteIds
       ..clear()
       ..add(atomId);
     reconcilePreviewTabState();
@@ -302,26 +397,26 @@ class NoteTabStateManager extends ChangeNotifier {
   }
 
   Future<bool> closeOpenNotesToRight(String atomId) async {
-    final index = _openNoteIds.indexOf(atomId);
+    final index = _activeOpenNoteIds.indexOf(atomId);
     if (index < 0) {
       return false;
     }
-    if (index == _openNoteIds.length - 1) {
+    if (index == _activeOpenNoteIds.length - 1) {
       return true;
     }
 
     final activeId = _activeNoteId();
     final willPruneActive =
-        activeId != null && _openNoteIds.indexOf(activeId) > index;
+        activeId != null && _activeOpenNoteIds.indexOf(activeId) > index;
     if (willPruneActive) {
       final flushed = await _flushPendingSave();
       if (!flushed) {
         return false;
       }
     }
-    _openNoteIds.removeRange(index + 1, _openNoteIds.length);
+    _activeOpenNoteIds.removeRange(index + 1, _activeOpenNoteIds.length);
     reconcilePreviewTabState();
-    if (!_openNoteIds.contains(_activeNoteId())) {
+    if (!_activeOpenNoteIds.contains(_activeNoteId())) {
       _activateSelection(atomId);
       _syncWorkspaceState();
       notifyListeners();
@@ -337,7 +432,7 @@ class NoteTabStateManager extends ChangeNotifier {
     required String atomId,
     required String previewId,
   }) async {
-    final previewIndex = _openNoteIds.indexOf(previewId);
+    final previewIndex = _activeOpenNoteIds.indexOf(previewId);
     if (previewIndex < 0) {
       _previewTabId = atomId;
       return selectNote(atomId);
@@ -349,7 +444,7 @@ class NoteTabStateManager extends ChangeNotifier {
       }
     }
 
-    _openNoteIds[previewIndex] = atomId;
+    _activeOpenNoteIds[previewIndex] = atomId;
     _evictNoteState(previewId);
     _activateSelection(atomId);
     _previewTabId = atomId;
