@@ -1,4 +1,4 @@
-import 'package:lazynote_flutter/features/reminders/reminder_service.dart';
+import 'package:lazynote_flutter/core/reminders/reminder_service.dart';
 
 /// Mock implementation for unit testing.
 class MockReminderService implements ReminderService {

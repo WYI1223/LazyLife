@@ -4,9 +4,9 @@ import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/app/app.dart';
 import 'package:lazynote_flutter/app/app_locale_controller.dart';
+import 'package:lazynote_flutter/core/reminders/reminder_scheduler.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/core/settings/local_settings_store.dart';
-import 'package:lazynote_flutter/features/reminders/reminder_scheduler.dart';
 
 /// Application entrypoint.
 ///

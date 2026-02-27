@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lazynote_flutter/features/notes/notes_style.dart';
+import 'package:lazynote_flutter/shared/ui_tokens.dart';
 
 const int _kCollapsedVisibleTagCount = 6;
 
