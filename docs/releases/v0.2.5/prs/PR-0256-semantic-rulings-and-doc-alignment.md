@@ -1,7 +1,7 @@
 # PR-0256-semantic-rulings-and-doc-alignment
 
 - Proposed title: `docs(architecture): PR-0256 semantic rulings and documentation alignment`
-- Status: Planned
+- Status: Ready for Review
 
 ## Goal
 
@@ -74,16 +74,16 @@ Out of scope:
 
 ## Task Checklist
 
-- [ ] `T1` rewrite `architecture/overview.md` to v0.2.5 state
-- [ ] `T2` annotate NoteItem→AtomListItem in `ffi-contracts.md`
-- [ ] `T3` add first-party/third-party boundary to `extension-kernel.md`
-- [ ] `T4` add three-layer separation to `provider-spi.md`
-- [ ] `T5` add Rule E `core/` exemption to `engineering-standards.md`
-- [ ] `T6` correct NoteItem/AtomListItem timeline in `API_COMPATIBILITY.md`
-- [ ] `T7` update `CLAUDE.md` post-PR-0252 state
-- [ ] `T8` update v0.2.5 Release README
-- [ ] `T9` mark PR-0251 as superseded
-- [ ] `T10` finalize 08 series index
+- [x] `T1` rewrite `architecture/overview.md` to v0.2.5 state
+- [x] `T2` annotate NoteItem→AtomListItem in `ffi-contracts.md`
+- [x] `T3` add first-party/third-party boundary to `extension-kernel.md`
+- [x] `T4` add three-layer separation to `provider-spi.md`
+- [x] `T5` add Rule E `core/` exemption to `engineering-standards.md`
+- [x] `T6` correct NoteItem/AtomListItem timeline in `API_COMPATIBILITY.md`
+- [x] `T7` update `CLAUDE.md` post-PR-0252 state
+- [x] `T8` update v0.2.5 Release README
+- [x] `T9` mark PR-0251 as superseded
+- [x] `T10` finalize 08 series index
 
 ## Verification
 
@@ -97,11 +97,11 @@ git diff --name-only | grep -E '^(apps|crates|tools|\.github)/'
 
 ## Acceptance Criteria
 
-- [ ] `architecture/overview.md` reflects v0.2.5 actual state (workspace tree, coordinator architecture, extension kernel, provider SPI).
-- [ ] S5 first-party/third-party boundary written into `extension-kernel.md`.
-- [ ] S6 three-layer responsibility separation written into `provider-spi.md`.
-- [ ] S7 Rule E `core/` exemption written into `engineering-standards.md`.
-- [ ] S8 NoteItem→AtomListItem timeline corrected to v0.3.
-- [ ] CLAUDE.md layout table and controller table aligned with code.
-- [ ] Release README execution order updated, PR-0251 marked superseded.
-- [ ] No runtime code file changes (`git diff --name-only | grep -E '^(apps|crates|tools|\.github)/'` is empty).
+- [x] `architecture/overview.md` reflects v0.2.5 actual state (workspace tree, coordinator architecture, extension kernel, provider SPI).
+- [x] S5 first-party/third-party boundary written into `extension-kernel.md`.
+- [x] S6 three-layer responsibility separation written into `provider-spi.md`.
+- [x] S7 Rule E `core/` exemption written into `engineering-standards.md`.
+- [x] S8 NoteItem→AtomListItem timeline corrected to v0.3.
+- [x] CLAUDE.md layout table and controller table aligned with code.
+- [x] Release README execution order updated, PR-0251 marked superseded.
+- [x] No runtime code file changes (`git diff --name-only | grep -E '^(apps|crates|tools|\.github)/'` is empty).

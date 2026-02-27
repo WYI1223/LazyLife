@@ -95,7 +95,7 @@ Flutter app. All data operations go through FFI calls. No domain state is stored
 | `lib/core/debug/` | `LogReader` — reads rolling log files |
 | `lib/core/diagnostics/` | `DartEventLogger` — Dart-side structured event logging |
 | `lib/features/entry/` | Single-entry search/command panel, `CommandParser`, `CommandRouter`, `CommandRegistry`, workbench shell layout |
-| `lib/features/notes/` | Note list, tab manager, editor, explorer tree (drag-and-drop, context menu), workspace integration |
+| `lib/features/notes/` | Coordinator + 6 managers (tab, draft, save, list, tag, tree), editor, explorer tree, tab strip |
 | `lib/features/tags/` | `TagFilter` widget |
 | `lib/features/search/` | Search results view |
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
@@ -162,7 +162,7 @@ These are the baseline constraints. **Changing any Rule A–F requires an ADR** 
 | **B** | `crates/lazynote_ffi` exposes use-case APIs (e.g., `create_note`, `search`), **never** raw DB operations. Exception: `debug_*` / `experimental_*` prefixed functions may expose lower-level hooks for diagnostics only; they carry no stability guarantee. |
 | **C** | All entities use stable UUIDs (never reused). **Business-path deletion is soft-delete only** (`is_deleted` flag). Maintenance tools (vacuum, retention purge) may hard-delete with an ADR documenting the rationale. |
 | **D** | External sync mappings (e.g., Google Calendar) live in Core, never in Flutter. |
-| **E** | Flutter `features/<name>` modules must **not** import each other's internals. Cross-feature UI primitives go to `lib/shared/`; cross-feature domain operations go through Core API. |
+| **E** | Flutter `features/<name>` modules must **not** import each other's internals. Cross-feature UI primitives go to `lib/shared/`; cross-feature domain operations go through Core API. `lib/core/` infrastructure is exempt from this rule (S7 ruling). |
 | **F** | Default runtime root: `%APPDATA%/LazyLife/` (Windows), `<app_support>/LazyLife/` (other platforms). The root and DB path may be overridden via `settings.json` or `configure_entry_db_path()`; all path resolution is coordinated by Core. |
 
 ---
@@ -351,21 +351,40 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 ## Flutter State Management
 
-All feature controllers extend `ChangeNotifier` and use `AnimatedBuilder` for reactive UI updates:
+Feature controllers extend `ChangeNotifier` and use `AnimatedBuilder` for reactive UI updates.
+
+### Notes Coordinator Architecture (Post-PR-0252)
+
+PR-0252 decomposed the monolithic `NotesController` into a coordinator + manager pattern:
+
+```
+NotesCoordinator (orchestrator)
+├── NoteTabStateManager  — tab open/close/activate state
+├── NoteDraftManager     — draft buffer lifecycle
+├── NoteSaveTracker      — save state, debounce, retry
+├── NoteListManager      — note list queries + pagination
+├── NoteTagManager       — tag operations
+└── WorkspaceTreeManager — explorer tree operations
+```
+
+`WorkspaceProvider` remains separate, managing pane layout state (split/close/activate pane). The coordinator currently reads some tab state from `WorkspaceProvider` in multi-pane mode — this dual-state pattern is targeted for elimination in PR-0258.
+
+### Other Controllers
 
 | Controller | Feature |
 |------------|---------|
 | `SingleEntryController` | Search/command input, debounced search, command routing |
-| `NotesController` | Note list, tabs, workspace tree, autosave with debounce |
 | `TasksController` | Inbox/Today/Upcoming sections, inline create |
 | `CalendarController` | Week navigation, event loading |
 | `AppLocaleController` | Language preference (en/zh) |
 
-**Key patterns:**
+### Key Patterns
+
 - All FFI invokers are injectable for testability
 - Request deduplication via sequence IDs (prevents stale response overwrite)
 - `RustBridge` uses 3-stage initialization with deduplication (FRB runtime → DB path → logging)
 - Settings loaded synchronously before first frame; non-critical bootstrap runs in background
+- Coordinator delegates to extracted managers; managers are unit-testable in isolation
 
 ---
 
