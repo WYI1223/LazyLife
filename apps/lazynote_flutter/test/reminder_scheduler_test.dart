@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/reminders/reminder_scheduler.dart';
+import 'package:lazynote_flutter/core/reminders/reminder_scheduler.dart';
 
 import 'helpers/mock_reminder_service.dart';
 

@@ -13,8 +13,8 @@ import 'package:lazynote_flutter/features/notes/explorer_tree_builder.dart';
 import 'package:lazynote_flutter/features/notes/explorer_tree_state.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
-import 'package:lazynote_flutter/features/tags/tag_filter.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
+import 'package:lazynote_flutter/shared/tag_filter.dart';
 
 export 'package:lazynote_flutter/features/notes/explorer_tree_builder.dart'
     show ExplorerFolderNode;

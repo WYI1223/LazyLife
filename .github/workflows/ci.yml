@@ -73,6 +73,9 @@ jobs:
       - name: Flutter test
         run: flutter test
 
+      - name: Architecture check
+        run: dart run ../../tools/ci/architecture_check.dart
+
       - name: Flutter build windows (debug)
         run: flutter build windows --debug
 
