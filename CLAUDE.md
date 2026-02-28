@@ -100,8 +100,8 @@ Flutter app. All data operations go through FFI calls. No domain state is stored
 | `lib/features/search/` | Search results view |
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
 | `lib/features/calendar/` | Weekly calendar: mini month sidebar, week grid, event blocks, create/edit dialog |
-| `lib/features/workspace/` | `WorkspaceProvider` (global tree state), `WorkspaceModels` (TreeNode, etc.) |
-| `lib/features/reminders/` | `ReminderScheduler` + `ReminderService` — local notifications via `flutter_local_notifications` |
+| `lib/features/workspace/` | `WorkspaceProvider` (pane layout state only — post-PR-0258), `WorkspaceModels` (TreeNode, etc.) |
+| `lib/core/reminders/` | `ReminderScheduler` + `ReminderService` — local notifications via `flutter_local_notifications` (S7 ruling: infrastructure, not feature) |
 | `lib/features/settings/` | Settings capability page (extension permissions UI) |
 | `lib/features/diagnostics/` | Rust health panel + live log viewer |
 | `lib/l10n/` | Localization: `AppLocalizations` base + `_en.dart` + `_zh.dart` |
@@ -426,6 +426,7 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 | Extension kernel | `docs/architecture/extension-kernel.md` | Plugin architecture contracts |
 | Provider SPI | `docs/architecture/provider-spi.md` | Sync provider interface |
 | UI extension slots | `docs/architecture/ui-extension-slots.md` | UI extensibility system |
+| Semantic rulings | `docs/architecture/rulings/README.md` | S1-S8 structural and semantic rulings registry |
 | FFI contracts | `docs/api/ffi-contracts.md` | Consolidated FFI API specs |
 | Error codes | `docs/api/error-codes.md` | Stable error code registry |
 | API compatibility | `docs/governance/API_COMPATIBILITY.md` | Breaking change policy |

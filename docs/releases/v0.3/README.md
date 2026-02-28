@@ -66,18 +66,36 @@ Out of scope:
 - CRDT merge runtime
 - provider-sync conflict UI redesign
 
-## Dependencies from v0.2
+## Dependencies from v0.2 / v0.2.5
 
-Required baseline:
+Required baseline (v0.2):
 
 - tree schema + tree FFI
 - workspace provider state hoisting
 - explorer recursive lazy rendering
 - split layout v1
 - extension kernel + provider SPI + capability model
-- v0.2.5 semantic freeze outputs (`PR-0251`)
-- v0.2.5 Dart decoupling baseline for notes/workspace seams (`PR-0252`)
-- v0.2.5 closure replay and handoff evidence (`PR-0253`)
+
+Required baseline (v0.2.5, completed 2026-02-27):
+
+- Semantic rulings S1-S8 documented (`PR-0256`, supersedes `PR-0251`)
+- Dart god-object decomposition — NotesCoordinator + 6 managers (`PR-0252`)
+- Pane-aware NoteTabStateManager with per-pane tab isolation (`PR-0257`)
+- Notes-workspace decoupling — coordinator is sole state source,
+  WorkspaceProvider is pane-layout-only (`PR-0258`)
+- Rule E enforcement via CI `architecture_check.dart` (`PR-0259`)
+- Closure replay and handoff evidence (`PR-0253`)
+
+## v0.2.5 Handoff: S1/S3/S4/S8 v0.3 Re-baseline Items
+
+These 4 rulings from v0.2.5 semantic review (08b) require v0.3 implementation:
+
+| Ruling | Target | DoD |
+|--------|--------|-----|
+| S1 (Atom projection) | Add `view_hint`/`title` fields + `atom_ref` forced pairing to `Atom` model | New `data-model-v2` PR or integrate into `PR-0301`. All creation paths produce `Atom` + workspace `atom_ref`. `view_hint` replaces implicit `kind`-based rendering. |
+| S3 (tag×workspace orthogonality) | Verify orthogonality invariant when tag query panel is implemented | New `tag-query-panel` PR or integrate into `PR-0307`. Tags filter atoms globally; workspace tree scopes display. No cross-contamination in query results. |
+| S4 (creation path unification) | All creation paths (entry, explorer, API) generate `Atom` + `atom_ref` | New `creation-unification` PR, prerequisite for `PR-0301`. Eliminates orphan atoms without workspace references. |
+| S8 (NoteItem→AtomListItem) | FFI type unification: deprecate `NoteItem` DTO, use `AtomListItem` | New `ffi-type-unification` PR. `NoteItem` removed from `api.rs`; all list endpoints return `AtomListItem`. Breaking change per API compatibility policy. |
 
 ## Execution Order
 

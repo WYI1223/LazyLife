@@ -74,7 +74,7 @@ Non-responsibilities:
    - `NotesCoordinator` orchestrates tab/draft/save lifecycle
    - Delegates to extracted managers (NoteTabStateManager, NoteDraftManager, NoteSaveTracker, NoteListManager, NoteTagManager, WorkspaceTreeManager)
    - `WorkspaceProvider` manages pane layout state (split/close/activate)
-6. Reminders scheduled via `flutter_local_notifications` (in `lib/core/reminders/` post-PR-0259, currently `lib/features/reminders/`).
+6. Reminders scheduled via `flutter_local_notifications` (in `lib/core/reminders/`, S7 ruling: platform infrastructure).
 
 ## Data Plane
 
@@ -106,7 +106,7 @@ Non-responsibilities:
 - `lib/features/tasks/`: tasks dashboard (Inbox/Today/Upcoming)
 - `lib/features/calendar/`: weekly calendar with event create/edit
 - `lib/features/workspace/`: WorkspaceProvider (pane layout state)
-- `lib/features/reminders/`: local notification scheduling
+- `lib/core/reminders/`: local notification scheduling (S7 ruling: platform infrastructure)
 - `lib/features/settings/`: extension permissions UI
 - `lib/features/diagnostics/`: Rust health panel + live log viewer
 
@@ -134,8 +134,8 @@ NotesCoordinator (orchestrator)
 └── WorkspaceTreeManager — explorer tree operations
 ```
 
-WorkspaceProvider remains separate, managing pane layout (split/close/activate pane).
-The coordinator currently reads some tab state from WorkspaceProvider in multi-pane mode — this dual-state pattern is targeted for elimination in PR-0258.
+WorkspaceProvider remains separate, managing pane layout only (split/close/activate pane).
+PR-0258 eliminated the dual-state pattern — NotesCoordinator is now the sole source of tab/draft/save state. WorkspaceProvider was reduced from 664 to 166 lines.
 
 ## Extension Kernel (Declaration-Only)
 
@@ -146,7 +146,7 @@ v0.2 defines contracts without runtime execution:
 - Capability model: `command`, `parser`, `provider`, `ui_slot`
 - Runtime security capabilities: `network`, `file`, `notification`, `calendar`
 
-**S5 ruling (v0.2.5)**: First-party commands (SingleEntry CommandParser/CommandRouter/CommandRegistry) are **not** registered through ExtensionManifest/ExtensionRegistry. They are direct in-process registrations. Extension kernel activation for first-party migration is v0.3 scope (PR-0310).
+**S5 ruling (v0.2.5)**: First-party commands (SingleEntry CommandParser/CommandRouter/CommandRegistry) are **not** registered through ExtensionManifest/ExtensionRegistry. They are direct in-process registrations. Extension Kernel is a third-party security contract; first-party does not go through it. See `docs/architecture/rulings/S5-extension-kernel-boundary.md`.
 
 See: `docs/architecture/extension-kernel.md`
 
@@ -184,10 +184,13 @@ Completed:
 - v0.2.5: PR-0255A/B/C frontend review reports
 - v0.2.5: 08a-08d reassessment series
 
-In progress:
+- v0.2.5: PR-0256 semantic rulings (S1-S8) and documentation alignment
+- v0.2.5: PR-0257 pane-aware NoteTabManager
+- v0.2.5: PR-0258 notes↔workspace structural decoupling
+- v0.2.5: PR-0259 Rule E reduction and CI guardrails
+- v0.2.5: PR-0253 closure and v0.3 handoff
 
-- PR-0256 semantic rulings and documentation alignment
-- PR-0257/0258/0259 structural decoupling (see `docs/releases/v0.2.5/README.md`)
+Next: v0.3 (see `docs/releases/v0.3/README.md`)
 
 ## Out of Scope (current state)
 
@@ -203,6 +206,7 @@ In progress:
 - `docs/releases/v0.3/README.md`
 - `docs/architecture/data-model.md`
 - `docs/architecture/engineering-standards.md`
+- `docs/architecture/rulings/README.md` — S1-S8 semantic rulings registry
 - `docs/architecture/extension-kernel.md`
 - `docs/architecture/provider-spi.md`
 - `docs/architecture/logging.md`

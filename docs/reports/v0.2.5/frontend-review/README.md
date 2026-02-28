@@ -29,3 +29,4 @@
    - `08b-semantic-decisions.md` — 语义裁决记录
    - `08c-solution-proposals.md` — 解决方案
    - `08d-pr-replanning.md` — PR 再规划
+9. `09-acceptance-report.md` — v0.2.5 重构验收报告（终盘闭合）
