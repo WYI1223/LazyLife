@@ -16,9 +16,9 @@
    - focus PRs: `PR-0202` to `PR-0221` (deferred from v0.2: `PR-0201`, `PR-0212`)
    - plan: `docs/releases/v0.2/README.md`
    - closure kit: `docs/releases/v0.2/CLOSURE_KIT.md`
-2.5. v0.2.5 (debt paydown and semantic freeze bridge)
+2.5. v0.2.5 (debt paydown and semantic freeze bridge) — **completed 2026-02-27**
    - scope: semantics freeze, architecture/size baseline artifacts, frontend TL review docs, Dart god-object decomposition, decoupling, closure replay, v0.3 handoff re-baseline
-   - focus PRs: `PR-0251` to `PR-0255C`
+   - focus PRs: `PR-0252` to `PR-0259`, `PR-0253` closure (PR-0251 superseded by PR-0256)
    - plan: `docs/releases/v0.2.5/README.md`
    - gate: v0.2 closure must be green before v0.2.5 closure handoff
 3. v0.3 (IDE-grade recursive workspace)

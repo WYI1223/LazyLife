@@ -17,12 +17,16 @@ user-facing features.
 
 ## Release Status
 
-- Status: **In Progress**
+- Status: **Completed**
 - Baseline sub-lane (`PR-0254A/B/C`): **Completed**
 - Frontend review sub-lane (`PR-0255A/B/C`): **Completed**
 - Modular refactor (`PR-0252`): **Completed** (22 tasks, 333 pass / 0 fail)
 - Reassessment series (`08a-08d`): **Completed** (plan finalized)
-- Current active item: `PR-0259-rule-e-reduction-and-ci-guardrails`
+- Semantic rulings + docs (`PR-0256`): **Completed**
+- Pane-aware tab manager (`PR-0257`): **Completed**
+- Notes-workspace decoupling (`PR-0258`): **Completed** (333 pass / 0 fail)
+- Rule E reduction + CI guardrails (`PR-0259`): **Completed** (333 pass / 0 fail)
+- Closure + v0.3 handoff (`PR-0253`): **Completed**
 
 ## Lane Strategy
 
@@ -31,11 +35,11 @@ v0.2.5 uses a multi-stage lane:
 1. ~~contract/docs freeze (`PR-0251`)~~ — superseded by `PR-0256`
 2. behavior-parity refactor (`PR-0252`) — **completed**
 3. reassessment series (`08a-08d`) — **completed** (plan finalized)
-4. semantic rulings + docs (`PR-0256`) — replaces `PR-0251`
-5. pane-aware NoteTabManager upgrade (`PR-0257`) — micro-PR
-6. notes↔workspace structural decoupling (`PR-0258`) — HIGH risk
-7. Rule E reduction + CI guardrails (`PR-0259`)
-8. closure replay + v0.3 handoff (`PR-0253`)
+4. semantic rulings + docs (`PR-0256`) — **completed**
+5. pane-aware NoteTabManager upgrade (`PR-0257`) — **completed**
+6. notes↔workspace structural decoupling (`PR-0258`) — **completed**
+7. Rule E reduction + CI guardrails (`PR-0259`) — **completed**
+8. closure replay + v0.3 handoff (`PR-0253`) — **completed**
 
 Code PRs depend on the semantic foundation established by PR-0256.
 
