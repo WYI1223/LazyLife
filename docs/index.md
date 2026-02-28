@@ -19,7 +19,8 @@ Translation header template (for future localized pages):
 
 - `README.md`
 - `docs/governance/CONTRIBUTING.md`
-- `docs/releases/v0.2/README.md`
+- `docs/releases/v0.2.5/README.md` (current baseline)
+- `docs/releases/v0.3/README.md` (next release)
 
 ## Architecture
 
@@ -27,6 +28,7 @@ Translation header template (for future localized pages):
 - `docs/architecture/data-model.md`
 - `docs/architecture/note-schema.md`
 - `docs/architecture/engineering-standards.md`
+- `docs/architecture/rulings/README.md` — S1-S8 semantic rulings registry
 
 ## API
 
