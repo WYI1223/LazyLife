@@ -93,7 +93,22 @@ Atom 不是"笔记/任务/事件"三种实体的联合类型，而是一个**六
 
 ### R8: title 字段
 
-新增 `title TEXT`（可选）。当前 `preview_text` 从 content 自动派生，`title` 为用户显式设定的标题。列表优先显示 `title`，回退到 `preview_text`。
+新增 `title TEXT NOT NULL DEFAULT ''`，应用语义层保证**永远非空，永远是纯文本**。
+
+- **title 是"这个东西叫什么"** — Tab 栏、Explorer、Task 列表、Calendar 全部读同一个字段
+- **preview_text 是"这个东西里面长什么样"** — 列表卡片的次级摘要区域，不再被当 title 使用
+
+**title 写入策略**（按 content_type 区分，由 Rust Core 在创建/更新时执行）：
+
+| content_type | title 来源 | content 更新时 |
+|---|---|---|
+| `markdown` | 自动推导：content 第一非空行，去 `#`，截取 50 字符 | 自动重新推导并覆盖 |
+| `canvas` | 用户命名，默认 "Untitled"（canvas 中心不可删除的标题文本框） | 不自动更新（content 是 JSON） |
+| `conversation` | 自动推导：第一条用户 prompt 截断 | 不自动更新（保持首次 prompt） |
+
+- markdown 的 title 永远 = content 第一行的推导结果，不支持手动覆盖 Atom 本体的 title
+- 用户想给引用起别名 → 使用 atom_ref 的 `display_name`（节点级别名，不影响 Atom 本体）
+- title 推导逻辑从 Flutter 下沉到 Rust Core，在 `note_create` / `note_update` 时写入
 
 ### R9: icon 字段
 

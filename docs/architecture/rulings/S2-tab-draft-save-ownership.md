@@ -40,11 +40,60 @@ Tab/Draft/Save 状态**不属于 Notes feature**，而是 workbench 级基础设
 
 | 步骤 | 内容 |
 |------|------|
-| 1 | 新建 `EditorShellService`（workbench 级），从 coordinator 提取 `NoteTabManager` → `EditorGroupModel[]`，提取 `NoteDraftManager` → `DraftManager`，提取 `NoteSaveTracker` → `SaveTracker` |
+| 1 | 新建 `EditorShellService`（workbench 级），从 coordinator 提取 `NoteTabManager` → `EditorGroupModel[]`，提取 `NoteDraftManager` + `NoteSaveTracker` → 统一为 `EditBuffer`（per-atom）（DI-1 Q3 修正：双组件存在状态双写，统一为自包含状态机） |
 | 2 | WorkspaceProvider 的 pane 布局提取为 `GroupLayout`，合并入 `EditorShellService` |
 | 3 | Tab 列表改为 per-group，直接支持多 pane |
-| 4 | Tab 列表接受任意 Atom UUID，DraftManager/SaveTracker 同步泛化 |
+| 4 | Tab 列表接受任意 Atom UUID，EditBuffer 同步泛化（DI-1 Q3：DraftManager/SaveTracker 已统一为 EditBuffer） |
 | 5 | 删除 WorkspaceProvider（完全被 EditorShellService 取代） |
+
+#### Phase 2 设计规则（DI-1 裁决）
+
+> 完整分析见 `docs/reports/v0.3/design-discussions/DI-1-editor-shell-service.md`。以下为关键裁决摘要。
+
+**EditorGroupModel（per-pane 视觉状态）**：
+
+| 状态 | 说明 |
+|------|------|
+| `tabs: List<TabEntry>` | 窗格内打开的 tab 列表。`TabEntry { atomId: String, title: String }`，title 来源为 `atom.title`（S1 R8） |
+| `activeAtomId: String?` | 窗格当前激活的 tab |
+| `previewTabId: String?` | 窗格的预览 tab（per-group，非全局） |
+
+Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom 的 EditBuffer 状态，跨 pane 共享。
+
+**Group 生命周期**：
+
+| 事件 | 行为 |
+|------|------|
+| 启动 | 创建 1 个 primary group |
+| Split | 创建新 group，复制当前 activeTab |
+| 关闭 tab | 从 group.tabs 移除 |
+| 关闭最后一个 tab（非 primary） | group 自动销毁 |
+| 关闭最后一个 tab（primary） | group 保留，显示空状态 |
+
+**EditBuffer（per-atom 自包含状态机）**：
+
+- 统一原 `NoteDraftManager` + `NoteSaveTracker`，消除状态双写
+- 三阶段状态机：`loading → ready → disposing`
+- `saveState` 为 getter（从字段派生），不存储
+- `persistFn` 闭包注入：Coordinator 提供 FFI 保存回调，EditBuffer 不知道 FFI 的存在
+- 引用计数：closeTab 时检查 atomId 是否还在其他 group 中，无则 flush + dispose
+
+**NoteTabStrip（UI widget）**：
+
+渲染 tab 条的 StatefulWidget（`lib/features/notes/note_tab_strip.dart`），负责 tab chip 显示、点击、右键菜单、滚轮交互。与 `EditorGroupModel`（纯逻辑状态管理）是正交的两个组件。
+
+**Coordinator 提取后结构**：
+
+提取 tab/draft/save 后，NotesCoordinator 保留为 notes feature controller：
+
+| 保留组件 | 职责 |
+|---------|------|
+| `NoteListManager` | 列表查询 + 缓存 |
+| `NoteTagManager` | tag CRUD + 变更队列 |
+| `selectedNote` / `detailLoading` | 详情面板 DTO + 加载状态 |
+| `selectedTag` | 列表过滤条件 |
+
+通信模式：Coordinator → Service（直接调用）、Service → FFI（persistFn 闭包）、Service → Coordinator（onBufferSaved 回调）。
 
 ### Phase 3 — v0.3 PR-0301+：EditorResolver
 
@@ -82,12 +131,12 @@ VSCode EditorService 三层分离验证了此模型：
 | 项目 | 状态 |
 |------|------|
 | Phase 1：消除双状态 | **已完成** — PR-0258，WP 664→166 行 |
-| Phase 2：EditorShellService | v0.3 待实施 |
+| Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED） |
 | Phase 3：EditorResolver | v0.3 待实施 |
 
 ---
 
 ## 开放设计项
 
-- Phase 2 的 `EditorGroupModel` 状态机细节（group 创建/销毁/合并生命周期）
-- Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现）
+- ~~Phase 2 的 `EditorGroupModel` 状态机细节（group 创建/销毁/合并生命周期）~~ — **已由 DI-1 Q1+Q2 回答**
+- Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现） — 待 DI-3
