@@ -39,7 +39,21 @@ Tag（语义分类）与 Explorer / Workspace Tree（结构归档）是**完全�
 
 ### Phase A — 独立面板（v0.3 实现）
 
-Tag 查询结果作为独立面板，选中 tag 时展开，将 Explorer 下推：
+Tag 查询结果作为独立面板，选中 tag 时展开，将 Explorer 下推。
+
+**Tag 查询结果条目格式**：
+
+```
+[icon] Atom.title
+       📁 文件夹A / 子文件夹B          ← atom_ref 路径面包屑
+```
+
+- icon 来自 view_hint 默认图标（或 R9 自定义 icon）
+- 面包屑来自该 Atom 的 atom_ref 路径（如有多个 ref，显示主引用或全部）
+- 根级别 atom_ref 的 Atom 显示 "根目录"（所有 Atom 必有 atom_ref，见 S1 R5）
+- 列表支持点击直接打开 Atom 编辑
+
+**面板布局**：
 
 ```
 ┌─────────────────────┐
@@ -56,6 +70,9 @@ Tag 查询结果作为独立面板，选中 tag 时展开，将 Explorer 下推�
 │ └── ...              │
 └─────────────────────┘
 ```
+
+- Tag 取消选择 → 结果面板收起，Explorer 恢复完整高度
+- Tag 结果面板和 Explorer 互不影响内部状态
 
 ### Phase B — 视图替换（v0.3+ 优化）
 

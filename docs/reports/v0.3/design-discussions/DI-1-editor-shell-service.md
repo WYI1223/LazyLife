@@ -50,7 +50,7 @@ S2 参考架构：VSCode `EditorGroupsService` → `EditorShellService`，VSCode
 S2 的开放设计项：
 
 > 1. ~~Phase 2 的 `EditorGroupModel` 状态机细节（group 创建/销毁/合并生命周期）~~ — **已由 Q1+Q2 回答**
-> 2. Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现） — 待 DI-3
+> 2. Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现） — 待 DI-10
 
 ---
 

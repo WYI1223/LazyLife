@@ -95,13 +95,68 @@ Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom
 
 通信模式：Coordinator → Service（直接调用）、Service → FFI（persistFn 闭包）、Service → Coordinator（onBufferSaved 回调）。
 
+#### Phase 2 布局持久化（DI-3 裁决）
+
+> 完整分析见 `docs/reports/v0.3/design-discussions/DI-3-layout-persistence.md`。以下为关键裁决摘要。
+
+GroupLayout 和 EditorGroupModel tab 列表**联合持久化**到独立文件：
+
+- **文件路径**：`%APPDATA%/LazyLife/workspace_layout.json`（独立于 `settings.json`，避免频繁写入干扰设置文件）
+- **序列化范围**：树结构（SplitNode/LeafNode）+ per-group tab 列表 + activeTab + previewTab + primaryGroupId。不序列化 draft 内容和 save 状态（分别由 DB 重加载和 getter 派生）
+- **写入策略**：1 秒去抖（debounce），复用 `LocalSettingsStore` 三阶段 atomic write
+- **Recovery**：文件不存在/损坏/schema 版本不匹配 → 默认单 pane
+- **Pane 上限**：8（DI-3 D9），无深度限制
+
+**两阶段恢复模型**（DI-3 ↔ DI-4 边界）：
+
+| 阶段 | 范畴 | 依赖 | 产出 |
+|------|------|------|------|
+| 1 — 结构恢复 | DI-3 | 纯 Dart（无 FFI） | GroupLayout 树 + EditorGroupModel（EditBuffer 均为 `loading`） |
+| 2 — 内容加载 | DI-4 | RustBridge + SQLite | EditBuffer `loading` → `ready` |
+
+**序列化方法归属**：`GroupLayout.toJson()`/`fromJson()` 在 `group_layout.dart` 内；文件 I/O + 去抖 + recovery 在独立的 `LayoutPersistence`（`lib/core/editor/layout_persistence.dart`）。
+
 ### Phase 3 — v0.3 PR-0301+：EditorResolver
+
+> 完整分析见 `docs/reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md`。以下为关键裁决摘要。
 
 | 步骤 | 内容 |
 |------|------|
 | 1 | 新建 `EditorResolver`，根据 Atom 的 `content_type` 选择 `EditorPane` |
-| 2 | 当前 `NoteContentArea` 重命名为 `MarkdownEditorPane`，注册为 `markdown` 渲染器 |
+| 2 | 当前 `NoteContentArea` 拆分：编辑核心提取为 `MarkdownEditorPane`，注册为 `markdown` 渲染器；外壳 chrome（loading/error/metadata/tags）保留在 notes feature |
 | 3 | 未来 canvas/conversation/plugin 各注册自己的 `EditorPane` |
+
+#### Phase 3 设计规则（DI-10 裁决）
+
+**EditorPane 接口**：
+
+```dart
+typedef EditorPaneBuilder = Widget Function(BuildContext context, EditBuffer buffer);
+```
+
+EditBuffer 提供 `content`（opaque string）、`edit()`、`atomId`、`saveState`。每个 EditorPane 自己负责按 content_type 解析内容、渲染、序列化回写。不传入 EditorGroupModel 或 feature-level 状态。
+
+**注册协议**：静态 Map + `register()` 方法。v0.3 只注册 `markdown`；`plugin:<id>` 动态注册时复用同一接口。
+
+```dart
+class EditorResolver {
+  final Map<String, EditorPaneBuilder> _registry = {};
+  void register(String contentType, EditorPaneBuilder builder);
+  EditorPaneBuilder resolve(String contentType);
+}
+```
+
+**Fallback 行为**：未知 content_type → 错误占位（"不支持的内容类型"），不 fallback 到 markdown。避免结构化数据（canvas JSON / conversation JSON）被文本编辑器渲染导致数据破坏。
+
+**文件位置**：`lib/core/editor/editor_resolver.dart`，与 EditorShellService 同目录。
+
+**三层职责分离**：
+
+| 层 | 职责 | 组件 |
+|---|------|------|
+| 状态管理 | groups, buffers, layout | EditorShellService |
+| 编辑器选择 | content_type → EditorPane widget | EditorResolver |
+| 外壳展示 | loading/error/metadata/tags | Feature controller（notes/tasks/...） |
 
 ---
 
@@ -132,11 +187,12 @@ VSCode EditorService 三层分离验证了此模型：
 |------|------|
 | Phase 1：消除双状态 | **已完成** — PR-0258，WP 664→166 行 |
 | Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED） |
-| Phase 3：EditorResolver | v0.3 待实施 |
+| Phase 3：EditorResolver | v0.3 待实施（**设计完成** — DI-10 RESOLVED） |
 
 ---
 
 ## 开放设计项
 
 - ~~Phase 2 的 `EditorGroupModel` 状态机细节（group 创建/销毁/合并生命周期）~~ — **已由 DI-1 Q1+Q2 回答**
-- Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现） — 待 DI-3
+- ~~Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现）~~ — **已由 DI-10 回答**（静态 Map + register()）
+- Phase 3 的 EditBuffer 桥接模式（EditorPane 共享的 buffer 监听/同步逻辑） — 待 DI-4 裁决后细化
