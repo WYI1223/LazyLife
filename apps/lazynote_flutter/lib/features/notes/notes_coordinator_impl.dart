@@ -174,7 +174,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   /// Debounce window used by autosave pipeline.
   final Duration autosaveDebounce;
 
-  rust_api.NoteItem? _selectedNote;
+  rust_api.AtomListItem? _selectedNote;
   bool _detailLoading = false;
   String? _detailErrorMessage;
   bool _creatingNote = false;
@@ -194,7 +194,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   NotesListPhase get listPhase => _noteListManager.listPhase;
 
   /// Current list items from `notes_list`.
-  List<rust_api.NoteItem> get items => _noteListManager.items;
+  List<rust_api.AtomListItem> get items => _noteListManager.items;
 
   /// Current list-level error message.
   String? get listErrorMessage => _noteListManager.listErrorMessage;
@@ -229,7 +229,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   bool isPreviewTab(String atomId) => _noteTabManager.isPreviewTab(atomId);
 
   /// Selected note detail payload used by right pane.
-  rust_api.NoteItem? get selectedNote => _selectedNote;
+  rust_api.AtomListItem? get selectedNote => _selectedNote;
 
   /// Whether selected-note detail load is in flight.
   bool get detailLoading => _detailLoading;
@@ -406,7 +406,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   }
 
   /// Returns one cached/list note by id when available.
-  rust_api.NoteItem? noteById(String atomId) {
+  rust_api.AtomListItem? noteById(String atomId) {
     return _noteListManager.noteById(atomId);
   }
 
@@ -808,7 +808,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         return false;
       }
 
-      final created = response.note;
+      final created = response.item;
       if (created == null) {
         _creatingNote = false;
         _createErrorMessage =
@@ -830,8 +830,8 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         notifyListeners();
         try {
           final tagged = await taggedFuture;
-          if (tagged.ok && tagged.note != null) {
-            createdNote = tagged.note!;
+          if (tagged.ok && tagged.item != null) {
+            createdNote = tagged.item!;
           } else {
             _createWarningMessage =
                 'Note created, but applying active filter tag failed. Check All Notes.';
@@ -909,7 +909,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
           }
           continue;
         }
-        if (response.note case final note?) {
+        if (response.item case final note?) {
           _noteListManager.upsertNote(note, updatePersisted: true);
         }
       } catch (_) {
@@ -1258,7 +1258,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         return;
       }
 
-      if (response.note case final note?) {
+      if (response.item case final note?) {
         _selectedNote = note;
         _noteListManager.upsertNote(note, updatePersisted: true);
         _activeDraftAtomId = note.atomId;
@@ -1307,14 +1307,21 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     }
   }
 
-  rust_api.NoteItem _withContent(rust_api.NoteItem current, String content) {
-    return rust_api.NoteItem(
+  rust_api.AtomListItem _withContent(
+    rust_api.AtomListItem current,
+    String content,
+  ) {
+    return rust_api.AtomListItem(
       atomId: current.atomId,
+      kind: current.kind,
       content: content,
       previewText: current.previewText,
       previewImage: current.previewImage,
-      updatedAt: current.updatedAt,
       tags: current.tags,
+      startAt: current.startAt,
+      endAt: current.endAt,
+      taskStatus: current.taskStatus,
+      updatedAt: current.updatedAt,
     );
   }
 
@@ -1332,7 +1339,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         _noteTagManager.hasPendingTagWorkFor(atomId);
   }
 
-  bool _shouldIncludeInVisibleList(rust_api.NoteItem note) {
+  bool _shouldIncludeInVisibleList(rust_api.AtomListItem note) {
     return _noteTagManager.shouldIncludeInVisibleList(note);
   }
 
@@ -1423,7 +1430,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   }
 }
 
-Future<rust_api.NotesListResponse> _defaultNotesListInvoker({
+Future<rust_api.AtomListResponse> _defaultNotesListInvoker({
   String? tag,
   int? limit,
   int? offset,
@@ -1431,17 +1438,19 @@ Future<rust_api.NotesListResponse> _defaultNotesListInvoker({
   return rust_api.notesList(tag: tag, limit: limit, offset: offset);
 }
 
-Future<rust_api.NoteResponse> _defaultNoteGetInvoker({required String atomId}) {
+Future<rust_api.AtomItemResponse> _defaultNoteGetInvoker({
+  required String atomId,
+}) {
   return rust_api.noteGet(atomId: atomId);
 }
 
-Future<rust_api.NoteResponse> _defaultNoteCreateInvoker({
+Future<rust_api.AtomItemResponse> _defaultNoteCreateInvoker({
   required String content,
 }) {
   return rust_api.noteCreate(content: content);
 }
 
-Future<rust_api.NoteResponse> _defaultNoteUpdateInvoker({
+Future<rust_api.AtomItemResponse> _defaultNoteUpdateInvoker({
   required String atomId,
   required String content,
 }) {
@@ -1452,7 +1461,7 @@ Future<rust_api.TagsListResponse> _defaultTagsListInvoker() {
   return rust_api.tagsList();
 }
 
-Future<rust_api.NoteResponse> _defaultNoteSetTagsInvoker({
+Future<rust_api.AtomItemResponse> _defaultNoteSetTagsInvoker({
   required String atomId,
   required List<String> tags,
 }) {

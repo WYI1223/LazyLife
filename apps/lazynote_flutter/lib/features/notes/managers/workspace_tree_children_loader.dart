@@ -10,9 +10,10 @@ typedef WorkspaceChildrenListInvoker =
       String? parentNodeId,
     });
 
-typedef WorkspaceChildrenNoteById = rust_api.NoteItem? Function(String atomId);
+typedef WorkspaceChildrenNoteById =
+    rust_api.AtomListItem? Function(String atomId);
 
-typedef WorkspaceChildrenItemsReader = List<rust_api.NoteItem> Function();
+typedef WorkspaceChildrenItemsReader = List<rust_api.AtomListItem> Function();
 
 typedef WorkspaceChildrenTitleResolver = String Function(String content);
 
@@ -225,7 +226,7 @@ class WorkspaceTreeChildrenLoader {
   rust_api.WorkspaceListChildrenResponse
   _legacySyntheticUncategorizedChildren() {
     final items = <rust_api.WorkspaceNodeItem>[];
-    final sortedNotes = List<rust_api.NoteItem>.from(_listItems())
+    final sortedNotes = List<rust_api.AtomListItem>.from(_listItems())
       ..sort((left, right) {
         final byUpdated = right.updatedAt.compareTo(left.updatedAt);
         if (byUpdated != 0) {

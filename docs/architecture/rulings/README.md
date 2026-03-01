@@ -27,7 +27,7 @@
 | [S5](S5-extension-kernel-boundary.md) | Extension Kernel → Flutter 命令系统边界 | Landed | — |
 | [S6](S6-provider-spi-interaction.md) | Provider SPI → external_mappings 交互 | Accepted — v0.3 | PR-RB-12 (Conditional) |
 | [S7](S7-reminders-infrastructure.md) | Reminders 模块定位 | Landed | — |
-| [S8](S8-noteitem-unification.md) | NoteItem → AtomListItem 类型统一 | Accepted — v0.3 | PR-RB-01 |
+| [S8](S8-noteitem-unification.md) | NoteItem → AtomListItem 类型统一 | Landed | PR-RB-01 |
 | [S9](S9-cross-feature-infrastructure-placement.md) | 跨 feature 基础设施模块归属 | Accepted — v0.3 | PR-RB-05 |
 
 ### E 系列（Engineering — 工程/基础设施决策）

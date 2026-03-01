@@ -13,13 +13,14 @@ void main() {
     return MaterialApp(home: Scaffold(body: child));
   }
 
-  rust_api.NoteItem note({
+  rust_api.AtomListItem note({
     required String atomId,
     required String content,
     required int updatedAt,
     String? previewText,
   }) {
-    return rust_api.NoteItem(
+    return rust_api.AtomListItem(
+      kind: 'note',
       atomId: atomId,
       content: content,
       previewText: previewText,
@@ -32,7 +33,7 @@ void main() {
   testWidgets(
     'C1 renders loading then success list and auto-selects first note',
     (WidgetTester tester) async {
-      final listCompleter = Completer<rust_api.NotesListResponse>();
+      final listCompleter = Completer<rust_api.AtomListResponse>();
       final detailCalls = <String>[];
 
       final controller = NotesCoordinator(
@@ -40,11 +41,11 @@ void main() {
         notesListInvoker: ({tag, limit, offset}) => listCompleter.future,
         noteGetInvoker: ({required atomId}) async {
           detailCalls.add(atomId);
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: note(
+            item: note(
               atomId: atomId,
               content: '# $atomId',
               previewText: 'detail $atomId',
@@ -62,7 +63,7 @@ void main() {
       expect(find.byKey(const Key('notes_list_loading')), findsOneWidget);
 
       listCompleter.complete(
-        rust_api.NotesListResponse(
+        rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -98,11 +99,11 @@ void main() {
   testWidgets('C1 empty state exits after creating first note', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{};
+    final store = <String, rust_api.AtomListItem>{};
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -118,19 +119,19 @@ void main() {
           updatedAt: 1,
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -162,7 +163,7 @@ void main() {
       notesListInvoker: ({tag, limit, offset}) async {
         listCallCount += 1;
         if (listCallCount == 1) {
-          return const rust_api.NotesListResponse(
+          return const rust_api.AtomListResponse(
             ok: false,
             errorCode: 'db_error',
             message: 'load failed',
@@ -170,7 +171,7 @@ void main() {
             appliedLimit: 50,
           );
         }
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -187,11 +188,11 @@ void main() {
       },
       noteGetInvoker: ({required atomId}) async {
         detailCalls.add(atomId);
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: note(
+          item: note(
             atomId: atomId,
             content: '# Retry Note',
             previewText: 'ready',
@@ -227,7 +228,7 @@ void main() {
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return const rust_api.NotesListResponse(
+        return const rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -236,11 +237,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'not_found',
           message: 'not found',
-          note: null,
+          item: null,
         );
       },
     );

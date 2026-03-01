@@ -6,12 +6,13 @@ import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: content,
@@ -24,7 +25,7 @@ rust_api.NoteItem _note({
 NotesCoordinator _buildController({
   required WorkspaceProvider workspaceProvider,
 }) {
-  final store = <String, rust_api.NoteItem>{
+  final store = <String, rust_api.AtomListItem>{
     'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 2),
     'note-2': _note(atomId: 'note-2', content: '# two', updatedAt: 1),
     'note-3': _note(atomId: 'note-3', content: '# three', updatedAt: 0),
@@ -33,7 +34,7 @@ NotesCoordinator _buildController({
     workspaceProvider: workspaceProvider,
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -42,11 +43,11 @@ NotesCoordinator _buildController({
       );
     },
     noteGetInvoker: ({required atomId}) async {
-      return rust_api.NoteResponse(
+      return rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: store[atomId],
+        item: store[atomId],
       );
     },
   );

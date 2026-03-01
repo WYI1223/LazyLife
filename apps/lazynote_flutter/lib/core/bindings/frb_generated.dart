@@ -127,21 +127,21 @@ abstract class RustLibApi extends BaseApi {
     required String message,
   });
 
-  Future<NoteResponse> crateApiNoteCreate({required String content});
+  Future<AtomItemResponse> crateApiNoteCreate({required String content});
 
-  Future<NoteResponse> crateApiNoteGet({required String atomId});
+  Future<AtomItemResponse> crateApiNoteGet({required String atomId});
 
-  Future<NoteResponse> crateApiNoteSetTags({
+  Future<AtomItemResponse> crateApiNoteSetTags({
     required String atomId,
     required List<String> tags,
   });
 
-  Future<NoteResponse> crateApiNoteUpdate({
+  Future<AtomItemResponse> crateApiNoteUpdate({
     required String atomId,
     required String content,
   });
 
-  Future<NotesListResponse> crateApiNotesList({
+  Future<AtomListResponse> crateApiNotesList({
     String? tag,
     int? limit,
     int? offset,
@@ -560,7 +560,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<NoteResponse> crateApiNoteCreate({required String content}) {
+  Future<AtomItemResponse> crateApiNoteCreate({required String content}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -574,7 +574,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_note_response,
+          decodeSuccessData: sse_decode_atom_item_response,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiNoteCreateConstMeta,
@@ -588,7 +588,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: 'note_create', argNames: ['content']);
 
   @override
-  Future<NoteResponse> crateApiNoteGet({required String atomId}) {
+  Future<AtomItemResponse> crateApiNoteGet({required String atomId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -602,7 +602,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_note_response,
+          decodeSuccessData: sse_decode_atom_item_response,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiNoteGetConstMeta,
@@ -616,7 +616,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: 'note_get', argNames: ['atomId']);
 
   @override
-  Future<NoteResponse> crateApiNoteSetTags({
+  Future<AtomItemResponse> crateApiNoteSetTags({
     required String atomId,
     required List<String> tags,
   }) {
@@ -634,7 +634,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_note_response,
+          decodeSuccessData: sse_decode_atom_item_response,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiNoteSetTagsConstMeta,
@@ -650,7 +650,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<NoteResponse> crateApiNoteUpdate({
+  Future<AtomItemResponse> crateApiNoteUpdate({
     required String atomId,
     required String content,
   }) {
@@ -668,7 +668,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_note_response,
+          decodeSuccessData: sse_decode_atom_item_response,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiNoteUpdateConstMeta,
@@ -684,7 +684,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<NotesListResponse> crateApiNotesList({
+  Future<AtomListResponse> crateApiNotesList({
     String? tag,
     int? limit,
     int? offset,
@@ -704,7 +704,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_notes_list_response,
+          decodeSuccessData: sse_decode_atom_list_response,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiNotesListConstMeta,
@@ -1091,6 +1091,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AtomItemResponse dco_decode_atom_item_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return AtomItemResponse(
+      ok: dco_decode_bool(arr[0]),
+      errorCode: dco_decode_opt_String(arr[1]),
+      message: dco_decode_String(arr[2]),
+      item: dco_decode_opt_box_autoadd_atom_list_item(arr[3]),
+    );
+  }
+
+  @protected
   AtomListItem dco_decode_atom_list_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1132,15 +1146,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw) {
+  AtomListItem dco_decode_box_autoadd_atom_list_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_i_64(raw);
+    return dco_decode_atom_list_item(raw);
   }
 
   @protected
-  NoteItem dco_decode_box_autoadd_note_item(dynamic raw) {
+  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_note_item(raw);
+    return dco_decode_i_64(raw);
   }
 
   @protected
@@ -1221,12 +1235,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<NoteItem> dco_decode_list_note_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_note_item).toList();
-  }
-
-  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -1252,66 +1260,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NoteItem dco_decode_note_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return NoteItem(
-      atomId: dco_decode_String(arr[0]),
-      content: dco_decode_String(arr[1]),
-      previewText: dco_decode_opt_String(arr[2]),
-      previewImage: dco_decode_opt_String(arr[3]),
-      updatedAt: dco_decode_i_64(arr[4]),
-      tags: dco_decode_list_String(arr[5]),
-    );
-  }
-
-  @protected
-  NoteResponse dco_decode_note_response(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return NoteResponse(
-      ok: dco_decode_bool(arr[0]),
-      errorCode: dco_decode_opt_String(arr[1]),
-      message: dco_decode_String(arr[2]),
-      note: dco_decode_opt_box_autoadd_note_item(arr[3]),
-    );
-  }
-
-  @protected
-  NotesListResponse dco_decode_notes_list_response(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
-    return NotesListResponse(
-      ok: dco_decode_bool(arr[0]),
-      errorCode: dco_decode_opt_String(arr[1]),
-      message: dco_decode_String(arr[2]),
-      items: dco_decode_list_note_item(arr[3]),
-      appliedLimit: dco_decode_u_32(arr[4]),
-    );
-  }
-
-  @protected
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
-  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw) {
+  AtomListItem? dco_decode_opt_box_autoadd_atom_list_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_i_64(raw);
+    return raw == null ? null : dco_decode_box_autoadd_atom_list_item(raw);
   }
 
   @protected
-  NoteItem? dco_decode_opt_box_autoadd_note_item(dynamic raw) {
+  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_note_item(raw);
+    return raw == null ? null : dco_decode_box_autoadd_i_64(raw);
   }
 
   @protected
@@ -1427,6 +1390,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AtomItemResponse sse_decode_atom_item_response(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorCode = sse_decode_opt_String(deserializer);
+    var var_message = sse_decode_String(deserializer);
+    var var_item = sse_decode_opt_box_autoadd_atom_list_item(deserializer);
+    return AtomItemResponse(
+      ok: var_ok,
+      errorCode: var_errorCode,
+      message: var_message,
+      item: var_item,
+    );
+  }
+
+  @protected
   AtomListItem sse_decode_atom_list_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_atomId = sse_decode_String(deserializer);
@@ -1477,15 +1455,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer) {
+  AtomListItem sse_decode_box_autoadd_atom_list_item(
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_i_64(deserializer));
+    return (sse_decode_atom_list_item(deserializer));
   }
 
   @protected
-  NoteItem sse_decode_box_autoadd_note_item(SseDeserializer deserializer) {
+  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_note_item(deserializer));
+    return (sse_decode_i_64(deserializer));
   }
 
   @protected
@@ -1596,18 +1576,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<NoteItem> sse_decode_list_note_item(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <NoteItem>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_note_item(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -1644,59 +1612,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  NoteItem sse_decode_note_item(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_atomId = sse_decode_String(deserializer);
-    var var_content = sse_decode_String(deserializer);
-    var var_previewText = sse_decode_opt_String(deserializer);
-    var var_previewImage = sse_decode_opt_String(deserializer);
-    var var_updatedAt = sse_decode_i_64(deserializer);
-    var var_tags = sse_decode_list_String(deserializer);
-    return NoteItem(
-      atomId: var_atomId,
-      content: var_content,
-      previewText: var_previewText,
-      previewImage: var_previewImage,
-      updatedAt: var_updatedAt,
-      tags: var_tags,
-    );
-  }
-
-  @protected
-  NoteResponse sse_decode_note_response(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_ok = sse_decode_bool(deserializer);
-    var var_errorCode = sse_decode_opt_String(deserializer);
-    var var_message = sse_decode_String(deserializer);
-    var var_note = sse_decode_opt_box_autoadd_note_item(deserializer);
-    return NoteResponse(
-      ok: var_ok,
-      errorCode: var_errorCode,
-      message: var_message,
-      note: var_note,
-    );
-  }
-
-  @protected
-  NotesListResponse sse_decode_notes_list_response(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_ok = sse_decode_bool(deserializer);
-    var var_errorCode = sse_decode_opt_String(deserializer);
-    var var_message = sse_decode_String(deserializer);
-    var var_items = sse_decode_list_note_item(deserializer);
-    var var_appliedLimit = sse_decode_u_32(deserializer);
-    return NotesListResponse(
-      ok: var_ok,
-      errorCode: var_errorCode,
-      message: var_message,
-      items: var_items,
-      appliedLimit: var_appliedLimit,
-    );
-  }
-
-  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1708,22 +1623,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer) {
+  AtomListItem? sse_decode_opt_box_autoadd_atom_list_item(
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_i_64(deserializer));
+      return (sse_decode_box_autoadd_atom_list_item(deserializer));
     } else {
       return null;
     }
   }
 
   @protected
-  NoteItem? sse_decode_opt_box_autoadd_note_item(SseDeserializer deserializer) {
+  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_note_item(deserializer));
+      return (sse_decode_box_autoadd_i_64(deserializer));
     } else {
       return null;
     }
@@ -1868,6 +1785,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_atom_item_response(
+    AtomItemResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_opt_String(self.errorCode, serializer);
+    sse_encode_String(self.message, serializer);
+    sse_encode_opt_box_autoadd_atom_list_item(self.item, serializer);
+  }
+
+  @protected
   void sse_encode_atom_list_item(AtomListItem self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.atomId, serializer);
@@ -1902,21 +1831,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_atom_list_item(
+    AtomListItem self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_atom_list_item(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_i_64(
     PlatformInt64 self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_64(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_note_item(
-    NoteItem self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_note_item(self, serializer);
   }
 
   @protected
@@ -2009,18 +1938,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_note_item(
-    List<NoteItem> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_note_item(item, serializer);
-    }
-  }
-
-  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -2054,45 +1971,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_note_item(NoteItem self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.atomId, serializer);
-    sse_encode_String(self.content, serializer);
-    sse_encode_opt_String(self.previewText, serializer);
-    sse_encode_opt_String(self.previewImage, serializer);
-    sse_encode_i_64(self.updatedAt, serializer);
-    sse_encode_list_String(self.tags, serializer);
-  }
-
-  @protected
-  void sse_encode_note_response(NoteResponse self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_bool(self.ok, serializer);
-    sse_encode_opt_String(self.errorCode, serializer);
-    sse_encode_String(self.message, serializer);
-    sse_encode_opt_box_autoadd_note_item(self.note, serializer);
-  }
-
-  @protected
-  void sse_encode_notes_list_response(
-    NotesListResponse self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_bool(self.ok, serializer);
-    sse_encode_opt_String(self.errorCode, serializer);
-    sse_encode_String(self.message, serializer);
-    sse_encode_list_note_item(self.items, serializer);
-    sse_encode_u_32(self.appliedLimit, serializer);
-  }
-
-  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_atom_list_item(
+    AtomListItem? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_atom_list_item(self, serializer);
     }
   }
 
@@ -2106,19 +2003,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_i_64(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_note_item(
-    NoteItem? self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_note_item(self, serializer);
     }
   }
 

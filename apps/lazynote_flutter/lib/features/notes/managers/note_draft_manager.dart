@@ -5,7 +5,7 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 
 typedef DraftNoteUpdateInvoker =
-    Future<rust_api.NoteResponse> Function({
+    Future<rust_api.AtomItemResponse> Function({
       required String atomId,
       required String content,
     });
@@ -17,14 +17,17 @@ typedef DraftTimerFactory =
 
 typedef DraftActiveNoteIdReader = String? Function();
 
-typedef DraftNoteLookup = rust_api.NoteItem? Function(String atomId);
+typedef DraftNoteLookup = rust_api.AtomListItem? Function(String atomId);
 
 typedef DraftCopyWithContent =
-    rust_api.NoteItem Function(rust_api.NoteItem current, String content);
+    rust_api.AtomListItem Function(
+      rust_api.AtomListItem current,
+      String content,
+    );
 
 typedef DraftUpsertNote =
     void Function(
-      rust_api.NoteItem note, {
+      rust_api.AtomListItem note, {
       bool insertFront,
       bool updatePersisted,
       bool syncVisibleList,
@@ -192,9 +195,9 @@ class NoteDraftManager extends ChangeNotifier {
       }
 
       final saved =
-          response.note ??
+          response.item ??
           (switch (_noteById(atomId)) {
-            final rust_api.NoteItem current => _withContent(current, draft),
+            final rust_api.AtomListItem current => _withContent(current, draft),
             _ => null,
           });
       if (saved == null) {

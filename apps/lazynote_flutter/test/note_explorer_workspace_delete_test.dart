@@ -4,12 +4,13 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -23,14 +24,14 @@ void main() {
   testWidgets('folder delete dialog submits selected delete_all mode', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 1),
     };
     final calls = <String>[];
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -39,11 +40,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );

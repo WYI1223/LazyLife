@@ -5,12 +5,13 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: content,
@@ -29,8 +30,8 @@ rust_api.WorkspaceActionResponse _okAction() {
 }
 
 NotesCoordinator _buildController({
-  required Map<String, rust_api.NoteItem> store,
-  Future<rust_api.NoteResponse> Function({
+  required Map<String, rust_api.AtomListItem> store,
+  Future<rust_api.AtomItemResponse> Function({
     required String atomId,
     required String content,
   })?
@@ -45,13 +46,13 @@ NotesCoordinator _buildController({
     autosaveDebounce: const Duration(seconds: 30),
     notesListInvoker: ({tag, limit, offset}) async {
       final ids = store.keys.toList()..sort();
-      final items = <rust_api.NoteItem>[];
+      final items = <rust_api.AtomListItem>[];
       for (final id in ids) {
         if (store[id] case final item?) {
           items.add(item);
         }
       }
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -61,11 +62,11 @@ NotesCoordinator _buildController({
     },
     noteGetInvoker: ({required atomId}) async {
       final found = store[atomId];
-      return rust_api.NoteResponse(
+      return rust_api.AtomItemResponse(
         ok: found != null,
         errorCode: found == null ? 'note_not_found' : null,
         message: found == null ? 'missing' : 'ok',
-        note: found,
+        item: found,
       );
     },
     noteUpdateInvoker:
@@ -73,11 +74,11 @@ NotesCoordinator _buildController({
         ({required atomId, required content}) async {
           final current = store[atomId];
           if (current == null) {
-            return const rust_api.NoteResponse(
+            return const rust_api.AtomItemResponse(
               ok: false,
               errorCode: 'note_not_found',
               message: 'missing',
-              note: null,
+              item: null,
             );
           }
           final updated = _note(
@@ -86,11 +87,11 @@ NotesCoordinator _buildController({
             updatedAt: current.updatedAt + 1,
           );
           store[atomId] = updated;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: updated,
+            item: updated,
           );
         },
     workspaceCreateFolderInvoker:
@@ -147,7 +148,7 @@ void main() {
   test(
     'save-in-flight + pane switch keeps active-pane routing stable',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
         'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
       };
@@ -170,11 +171,11 @@ void main() {
             updatedAt: current.updatedAt + 1,
           );
           store[atomId] = updated;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: updated,
+            item: updated,
           );
         },
       );
@@ -216,7 +217,7 @@ void main() {
   );
 
   test('rename/move workspace node keeps active editor state stable', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
@@ -264,7 +265,7 @@ void main() {
   });
 
   test('workspace tree refresh path does not reset opened tabs', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };

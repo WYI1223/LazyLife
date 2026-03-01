@@ -4,12 +4,13 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -19,11 +20,11 @@ rust_api.NoteItem _note({
   );
 }
 
-NotesCoordinator _buildController(Map<String, rust_api.NoteItem> store) {
+NotesCoordinator _buildController(Map<String, rust_api.AtomListItem> store) {
   return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -32,11 +33,11 @@ NotesCoordinator _buildController(Map<String, rust_api.NoteItem> store) {
       );
     },
     noteGetInvoker: ({required atomId}) async {
-      return rust_api.NoteResponse(
+      return rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: store[atomId],
+        item: store[atomId],
       );
     },
   );
@@ -46,7 +47,7 @@ void main() {
   testWidgets('single tap on preview tab keeps preview state', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# two', updatedAt: 1),
     };
@@ -85,7 +86,7 @@ void main() {
   testWidgets('double tap on preview tab pins tab and removes preview marker', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# two', updatedAt: 1),
     };

@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 
 typedef NoteListNotesListInvoker =
-    Future<rust_api.NotesListResponse> Function({
+    Future<rust_api.AtomListResponse> Function({
       String? tag,
       int? limit,
       int? offset,
     });
 
 typedef NoteListNoteGetInvoker =
-    Future<rust_api.NoteResponse> Function({required String atomId});
+    Future<rust_api.AtomItemResponse> Function({required String atomId});
 
 typedef NoteListPrepare = Future<void> Function();
 
@@ -23,7 +23,7 @@ typedef NoteListEnvelopeError =
 typedef NoteListSelectedTagReader = String? Function();
 
 typedef NoteListShouldIncludeInVisibleList =
-    bool Function(rust_api.NoteItem note);
+    bool Function(rust_api.AtomListItem note);
 
 typedef NoteListIsDirty = bool Function(String atomId);
 
@@ -65,23 +65,23 @@ class NoteListManager extends ChangeNotifier {
   final NoteListSyncPersistedSnapshot _syncPersistedSnapshot;
 
   NotesListPhase _listPhase = NotesListPhase.idle;
-  List<rust_api.NoteItem> _items = const [];
+  List<rust_api.AtomListItem> _items = const [];
   String? _listErrorMessage;
   int _listRequestId = 0;
-  final Map<String, rust_api.NoteItem> _noteCache =
-      <String, rust_api.NoteItem>{};
+  final Map<String, rust_api.AtomListItem> _noteCache =
+      <String, rust_api.AtomListItem>{};
 
   NotesListPhase get listPhase => _listPhase;
-  List<rust_api.NoteItem> get items => List.unmodifiable(_items);
+  List<rust_api.AtomListItem> get items => List.unmodifiable(_items);
   String? get listErrorMessage => _listErrorMessage;
 
-  rust_api.NoteItem? noteById(String atomId) {
+  rust_api.AtomListItem? noteById(String atomId) {
     return _noteCache[atomId] ?? findListItem(atomId);
   }
 
-  rust_api.NoteItem? cachedNoteById(String atomId) => _noteCache[atomId];
+  rust_api.AtomListItem? cachedNoteById(String atomId) => _noteCache[atomId];
 
-  rust_api.NoteItem? findListItem(String atomId) {
+  rust_api.AtomListItem? findListItem(String atomId) {
     for (final item in _items) {
       if (item.atomId == atomId) {
         return item;
@@ -90,8 +90,8 @@ class NoteListManager extends ChangeNotifier {
     return null;
   }
 
-  rust_api.NoteItem? findLoadedItem(
-    List<rust_api.NoteItem> items,
+  rust_api.AtomListItem? findLoadedItem(
+    List<rust_api.AtomListItem> items,
     String atomId,
   ) {
     for (final item in items) {
@@ -125,7 +125,7 @@ class NoteListManager extends ChangeNotifier {
   }
 
   void upsertNote(
-    rust_api.NoteItem note, {
+    rust_api.AtomListItem note, {
     bool insertFront = false,
     bool updatePersisted = false,
     bool syncVisibleList = true,
@@ -144,7 +144,7 @@ class NoteListManager extends ChangeNotifier {
     }
 
     final includeInVisibleList = _shouldIncludeInVisibleList(note);
-    final mutable = List<rust_api.NoteItem>.from(_items);
+    final mutable = List<rust_api.AtomListItem>.from(_items);
     final existingIndex = mutable.indexWhere(
       (item) => item.atomId == note.atomId,
     );
@@ -159,10 +159,10 @@ class NoteListManager extends ChangeNotifier {
     } else if (existingIndex >= 0) {
       mutable.removeAt(existingIndex);
     }
-    _items = List<rust_api.NoteItem>.unmodifiable(mutable);
+    _items = List<rust_api.AtomListItem>.unmodifiable(mutable);
   }
 
-  Future<List<rust_api.NoteItem>?> loadNotes({
+  Future<List<rust_api.AtomListItem>?> loadNotes({
     required int limit,
     int offset = 0,
   }) async {
@@ -198,7 +198,9 @@ class NoteListManager extends ChangeNotifier {
         return null;
       }
 
-      final loadedItems = List<rust_api.NoteItem>.unmodifiable(response.items);
+      final loadedItems = List<rust_api.AtomListItem>.unmodifiable(
+        response.items,
+      );
       _items = loadedItems;
       for (final item in loadedItems) {
         // Keep visible list as returned by backend filter; only refresh cache.
@@ -221,7 +223,9 @@ class NoteListManager extends ChangeNotifier {
     }
   }
 
-  Future<rust_api.NoteResponse> loadNoteDetail({required String atomId}) async {
+  Future<rust_api.AtomItemResponse> loadNoteDetail({
+    required String atomId,
+  }) async {
     return _noteGetInvoker(atomId: atomId);
   }
 }

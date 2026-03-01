@@ -6,9 +6,9 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_type_label`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item`, `to_entry_search_item`, `to_note_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `with_atom_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_folder_impl`, `workspace_create_note_ref_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
+// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_type_label`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `with_atom_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_folder_impl`, `workspace_create_note_ref_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `LogDartEventFfiError`, `NotesFfiError`, `WorkspaceFfiError`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Minimal health-check API for FRB smoke integration.
 ///
@@ -126,7 +126,7 @@ Future<EntryActionResponse> entrySchedule({
 /// - Async call, DB-backed execution.
 /// - Applies markdown preview hooks (`preview_text`, `preview_image`).
 /// - Returns typed envelope with stable error codes.
-Future<NoteResponse> noteCreate({required String content}) =>
+Future<AtomItemResponse> noteCreate({required String content}) =>
     RustLib.instance.api.crateApiNoteCreate(content: content);
 
 /// Fully replaces note content by stable id.
@@ -135,7 +135,7 @@ Future<NoteResponse> noteCreate({required String content}) =>
 /// - Async call, DB-backed execution.
 /// - `content` is treated as full markdown source replacement.
 /// - Returns typed envelope with stable error codes.
-Future<NoteResponse> noteUpdate({
+Future<AtomItemResponse> noteUpdate({
   required String atomId,
   required String content,
 }) => RustLib.instance.api.crateApiNoteUpdate(atomId: atomId, content: content);
@@ -145,7 +145,7 @@ Future<NoteResponse> noteUpdate({
 /// # FFI contract
 /// - Async call, DB-backed execution.
 /// - Returns typed envelope with stable error codes.
-Future<NoteResponse> noteGet({required String atomId}) =>
+Future<AtomItemResponse> noteGet({required String atomId}) =>
     RustLib.instance.api.crateApiNoteGet(atomId: atomId);
 
 /// Lists notes with optional single-tag filter and pagination.
@@ -154,7 +154,7 @@ Future<NoteResponse> noteGet({required String atomId}) =>
 /// - Async call, DB-backed execution.
 /// - Returns only `AtomType::Note` rows.
 /// - Limit normalization: default 10, max 50.
-Future<NotesListResponse> notesList({String? tag, int? limit, int? offset}) =>
+Future<AtomListResponse> notesList({String? tag, int? limit, int? offset}) =>
     RustLib.instance.api.crateApiNotesList(
       tag: tag,
       limit: limit,
@@ -167,7 +167,7 @@ Future<NotesListResponse> notesList({String? tag, int? limit, int? offset}) =>
 /// - Async call, DB-backed execution.
 /// - `tags` is treated as complete replacement, not incremental patch.
 /// - Returns typed envelope with stable error codes.
-Future<NoteResponse> noteSetTags({
+Future<AtomItemResponse> noteSetTags({
   required String atomId,
   required List<String> tags,
 }) => RustLib.instance.api.crateApiNoteSetTags(atomId: atomId, tags: tags);
@@ -349,6 +349,42 @@ Future<EntryActionResponse> calendarUpdateEvent({
   startMs: startMs,
   endMs: endMs,
 );
+
+/// Single atom item response envelope (notes create/update/get/set_tags).
+class AtomItemResponse {
+  /// Whether operation succeeded.
+  final bool ok;
+
+  /// Stable machine-readable error code for failure paths.
+  final String? errorCode;
+
+  /// Human-readable message for diagnostics/UI.
+  final String message;
+
+  /// Returned atom item payload on success.
+  final AtomListItem? item;
+
+  const AtomItemResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    this.item,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ item.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AtomItemResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          item == other.item;
+}
 
 /// Atom list item returned by section queries (Inbox/Today/Upcoming).
 class AtomListItem {
@@ -603,138 +639,6 @@ class LogDartEventResponse {
           ok == other.ok &&
           errorCode == other.errorCode &&
           message == other.message;
-}
-
-/// Note DTO returned by notes/tags APIs.
-class NoteItem {
-  /// Stable note atom id.
-  final String atomId;
-
-  /// Raw markdown content.
-  final String content;
-
-  /// Derived plain-text preview.
-  final String? previewText;
-
-  /// Derived first markdown image path.
-  final String? previewImage;
-
-  /// Update timestamp in epoch milliseconds.
-  final PlatformInt64 updatedAt;
-
-  /// Normalized tags attached to the note.
-  final List<String> tags;
-
-  const NoteItem({
-    required this.atomId,
-    required this.content,
-    this.previewText,
-    this.previewImage,
-    required this.updatedAt,
-    required this.tags,
-  });
-
-  @override
-  int get hashCode =>
-      atomId.hashCode ^
-      content.hashCode ^
-      previewText.hashCode ^
-      previewImage.hashCode ^
-      updatedAt.hashCode ^
-      tags.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NoteItem &&
-          runtimeType == other.runtimeType &&
-          atomId == other.atomId &&
-          content == other.content &&
-          previewText == other.previewText &&
-          previewImage == other.previewImage &&
-          updatedAt == other.updatedAt &&
-          tags == other.tags;
-}
-
-/// Note create/update/get response envelope.
-class NoteResponse {
-  /// Whether operation succeeded.
-  final bool ok;
-
-  /// Stable machine-readable error code for failure paths.
-  final String? errorCode;
-
-  /// Human-readable message for diagnostics/UI.
-  final String message;
-
-  /// Returned note payload on success.
-  final NoteItem? note;
-
-  const NoteResponse({
-    required this.ok,
-    this.errorCode,
-    required this.message,
-    this.note,
-  });
-
-  @override
-  int get hashCode =>
-      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ note.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NoteResponse &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          errorCode == other.errorCode &&
-          message == other.message &&
-          note == other.note;
-}
-
-/// Note list response envelope.
-class NotesListResponse {
-  /// Whether operation succeeded.
-  final bool ok;
-
-  /// Stable machine-readable error code for failure paths.
-  final String? errorCode;
-
-  /// Human-readable message for diagnostics/UI.
-  final String message;
-
-  /// Note list items sorted by `updated_at DESC, uuid ASC`.
-  final List<NoteItem> items;
-
-  /// Effective limit after normalization.
-  final int appliedLimit;
-
-  const NotesListResponse({
-    required this.ok,
-    this.errorCode,
-    required this.message,
-    required this.items,
-    required this.appliedLimit,
-  });
-
-  @override
-  int get hashCode =>
-      ok.hashCode ^
-      errorCode.hashCode ^
-      message.hashCode ^
-      items.hashCode ^
-      appliedLimit.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NotesListResponse &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          errorCode == other.errorCode &&
-          message == other.message &&
-          items == other.items &&
-          appliedLimit == other.appliedLimit;
 }
 
 /// Tags list response envelope.

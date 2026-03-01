@@ -2,9 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart';
 
 void main() {
-  test('NoteItem supports nullable preview fields', () {
-    const item = NoteItem(
+  test('AtomListItem supports nullable preview fields', () {
+    const item = AtomListItem(
       atomId: 'atom-1',
+      kind: 'note',
       content: 'content',
       previewText: null,
       previewImage: null,
@@ -17,45 +18,48 @@ void main() {
     expect(item.tags, ['work']);
   });
 
-  test('NoteResponse carries preview fields when present', () {
-    const note = NoteItem(
+  test('AtomItemResponse carries preview fields when present', () {
+    const note = AtomListItem(
       atomId: 'atom-2',
+      kind: 'note',
       content: '# title',
       previewText: 'title',
       previewImage: 'cover.png',
       updatedAt: 456,
       tags: ['important', 'work'],
     );
-    const response = NoteResponse(
+    const response = AtomItemResponse(
       ok: true,
       errorCode: null,
       message: 'ok',
-      note: note,
+      item: note,
     );
 
     expect(response.ok, isTrue);
-    expect(response.note, isNotNull);
-    expect(response.note!.previewText, 'title');
-    expect(response.note!.previewImage, 'cover.png');
+    expect(response.item, isNotNull);
+    expect(response.item!.previewText, 'title');
+    expect(response.item!.previewImage, 'cover.png');
   });
 
-  test('NotesListResponse tolerates mixed preview nullability', () {
-    const response = NotesListResponse(
+  test('AtomListResponse tolerates mixed preview nullability', () {
+    const response = AtomListResponse(
       ok: true,
       errorCode: null,
       message: 'Loaded',
       appliedLimit: 10,
       items: [
-        NoteItem(
+        AtomListItem(
           atomId: 'atom-a',
+          kind: 'note',
           content: 'a',
           previewText: 'summary a',
           previewImage: null,
           updatedAt: 1,
           tags: ['work'],
         ),
-        NoteItem(
+        AtomListItem(
           atomId: 'atom-b',
+          kind: 'note',
           content: 'b',
           previewText: null,
           previewImage: 'b.png',

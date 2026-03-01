@@ -1,7 +1,7 @@
 # PR-RB-01: S8 DTO 统一
 
 - Proposed title: `refactor(ffi): PR-RB-01 unify notes API to AtomListItem, deprecate NoteItem`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 
@@ -284,15 +284,32 @@ rg "pub struct AtomItemResponse" crates/lazynote_ffi/src/api.rs
 Entry: PR-RB-00 exit count（预期 333 pass / 0 fail）
 Exit: **≥ 333 pass / 0 fail**（测试数量不减少，mock 构造更新不删除用例）
 
+## Manual Walkthrough
+
+| # | 走查项 | 结果 | 备注 |
+|---|--------|------|------|
+| 1 | 启动应用，进入 Notes 视图 | PASS | 笔记列表正常加载 |
+| 2 | 创建一条新笔记 | ISSUE | 底部"新建页面"与右键"New note"创建逻辑不一致。已提 [#44](https://github.com/WYI1223/LazyLife/issues/44)，**非本 PR 回归**，属 pre-existing |
+| 3 | 编辑笔记内容，等待自动保存 | PASS | 保存状态指示器正常 |
+| 4 | 给笔记添加/移除标签 | PASS | 标签操作成功 |
+| 5 | 通过标签过滤切换 | DEFERRED | tag 功能整体正常，过滤视图待后续 PR 完成新过滤视图后再验证 |
+| 6 | Workspace Tree 浏览 | PASS | 文件夹展开/折叠正常，note_ref 显示正确 |
+| 7 | Uncategorized 文件夹 | PASS | 未分类笔记正确聚合 |
+| 8 | 多标签页操作 | PASS | 多 tab 切换内容不串、保存状态独立 |
+| 9 | 搜索笔记 | PASS (minor) | 整体正常，偶现未响应但不能稳定复现，**非本 PR 回归** |
+| 10 | Tasks 视图中创建的条目在 Notes 视图显示 | PASS (manual) | 能正常显示，但需手动刷新一次。属 pre-existing 跨视图刷新行为 |
+
+**结论**：无本 PR 引入的回归。#2 和 #10 为 pre-existing 问题（#2 已提 issue），#5 待后续 PR 补充验证，#9 偶发且不可复现。
+
 ## Acceptance Criteria
 
-- [ ] Rust FFI 中 `NoteItem`/`NoteResponse`/`NotesListResponse` 三个 struct 已删除
-- [ ] `AtomItemResponse` 新增并被 `note_create`/`note_update`/`note_get`/`note_set_tags` 使用
-- [ ] `notes_list` 返回 `AtomListResponse`
-- [ ] `NoteRecord` 包含 `kind`/`start_at`/`end_at`/`task_status` 字段
-- [ ] Flutter 手写代码中 `NoteItem` 引用归零（`lib/core/bindings/` 除外）
-- [ ] `architecture_check.dart` 包含 NoteItem 归零检查
-- [ ] 全部 Rust tests 通过
-- [ ] 全部 Flutter tests 通过（≥ 333）
-- [ ] `ffi-contracts.md` 和 `API_COMPATIBILITY.md` 已更新
-- [ ] CI green（format + analyze + test + architecture check）
+- [x] Rust FFI 中 `NoteItem`/`NoteResponse`/`NotesListResponse` 三个 struct 已删除
+- [x] `AtomItemResponse` 新增并被 `note_create`/`note_update`/`note_get`/`note_set_tags` 使用
+- [x] `notes_list` 返回 `AtomListResponse`
+- [x] `NoteRecord` 包含 `kind`/`start_at`/`end_at`/`task_status` 字段
+- [x] Flutter 手写代码中 `NoteItem` 引用归零（`lib/core/bindings/` 除外）
+- [x] `architecture_check.dart` 包含 NoteItem 归零检查
+- [x] 全部 Rust tests 通过（191 pass）
+- [x] 全部 Flutter tests 通过（333 pass）
+- [x] `ffi-contracts.md` 和 `API_COMPATIBILITY.md` 已更新
+- [x] CI green（format + analyze + test + architecture check）

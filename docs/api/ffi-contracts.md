@@ -88,14 +88,25 @@ All APIs are use-case level and async.
 - Failure branch must carry stable `error_code`.
 - `message` is for diagnostics/display only.
 
-### Notes Payload
+### Response Types (PR-RB-01, S8 ruling)
+
+- Single-item note operations (`note_create`, `note_update`, `note_get`, `note_set_tags`) return `AtomItemResponse` (field: `item: AtomListItem?`).
+- `notes_list` returns `AtomListResponse` (field: `items: [AtomListItem]`).
+- `tags_list` returns `TagsListResponse` (unchanged).
+- Deprecated: `NoteItem`, `NoteResponse`, `NotesListResponse` — removed in PR-RB-01.
+
+### Notes Payload (AtomListItem)
 
 - `atom_id`
+- `kind`
 - `content`
 - `preview_text`
 - `preview_image`
-- `updated_at`
 - `tags`
+- `start_at`
+- `end_at`
+- `task_status`
+- `updated_at`
 
 ### Pagination
 
@@ -374,12 +385,6 @@ All APIs are use-case level and async.
 - `items: Vec<AtomListItem>` — result list
 - `message: String` — human-readable status text
 - `total_count: u32?` — total matching records (before pagination)
-
-**Migration note (S8 ruling, v0.2.5)**: `notes_list` and `tags_list` will migrate from `NoteItem`/`NotesListResponse`
-to `AtomListItem`/`AtomListResponse` in **v0.3** when list views are unified. Both type families
-coexist until then. Rationale: `NoteItem` actively discards time/status fields at the FFI boundary,
-preventing Notes views from rendering Atom scheduling state. Unified `AtomListItem` gives all
-consumers the full Atom projection. See `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S8.
 
 ### Section Queries
 

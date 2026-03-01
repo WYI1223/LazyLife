@@ -18,20 +18,20 @@ void main() {
       final controller = NotesCoordinator(
         prepare: () async {},
         notesListInvoker: ({tag, limit, offset}) async {
-          return const rust_api.NotesListResponse(
+          return const rust_api.AtomListResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
             appliedLimit: 50,
-            items: <rust_api.NoteItem>[],
+            items: <rust_api.AtomListItem>[],
           );
         },
         noteGetInvoker: ({required atomId}) async {
-          return const rust_api.NoteResponse(
+          return const rust_api.AtomItemResponse(
             ok: false,
             errorCode: 'note_not_found',
             message: 'missing',
-            note: null,
+            item: null,
           );
         },
         workspaceDeleteFolderInvoker: ({required nodeId, required mode}) async {

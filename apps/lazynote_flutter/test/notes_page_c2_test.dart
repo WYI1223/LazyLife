@@ -9,12 +9,13 @@ void main() {
     return MaterialApp(home: Scaffold(body: child));
   }
 
-  rust_api.NoteItem note({
+  rust_api.AtomListItem note({
     required String atomId,
     required String content,
     required int updatedAt,
   }) {
-    return rust_api.NoteItem(
+    return rust_api.AtomListItem(
+      kind: 'note',
       atomId: atomId,
       content: content,
       previewText: null,
@@ -27,14 +28,14 @@ void main() {
   testWidgets('C2 create auto-selects note and focuses editor', (
     WidgetTester tester,
   ) async {
-    final noteStore = <String, rust_api.NoteItem>{
+    final noteStore = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# Existing', updatedAt: 1000),
     };
 
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -49,20 +50,20 @@ void main() {
           updatedAt: 2000,
         );
         noteStore[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteGetInvoker: ({required atomId}) async {
         final found = noteStore[atomId];
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: found != null,
           errorCode: found == null ? 'note_not_found' : null,
           message: found == null ? 'missing' : 'ok',
-          note: found,
+          item: found,
         );
       },
     );
@@ -90,7 +91,7 @@ void main() {
   testWidgets('C2 selecting list item updates editor content', (
     WidgetTester tester,
   ) async {
-    final noteStore = <String, rust_api.NoteItem>{
+    final noteStore = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# First', updatedAt: 2000),
       'note-2': note(atomId: 'note-2', content: '# Second', updatedAt: 1000),
     };
@@ -98,7 +99,7 @@ void main() {
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -107,11 +108,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: noteStore[atomId],
+          item: noteStore[atomId],
         );
       },
     );
@@ -145,7 +146,7 @@ void main() {
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -156,18 +157,18 @@ void main() {
       noteGetInvoker: ({required atomId}) async {
         detailCallCount += 1;
         if (detailCallCount == 1) {
-          return const rust_api.NoteResponse(
+          return const rust_api.AtomItemResponse(
             ok: false,
             errorCode: 'db_error',
             message: 'detail failed',
-            note: null,
+            item: null,
           );
         }
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: stableNote,
+          item: stableNote,
         );
       },
     );

@@ -4,7 +4,7 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 
 /// Async list loader for Notes v0.1 UI flow.
 typedef NotesListInvoker =
-    Future<rust_api.NotesListResponse> Function({
+    Future<rust_api.AtomListResponse> Function({
       String? tag,
       int? limit,
       int? offset,
@@ -12,15 +12,15 @@ typedef NotesListInvoker =
 
 /// Async detail loader for one selected note.
 typedef NoteGetInvoker =
-    Future<rust_api.NoteResponse> Function({required String atomId});
+    Future<rust_api.AtomItemResponse> Function({required String atomId});
 
 /// Async creator for one new note atom.
 typedef NoteCreateInvoker =
-    Future<rust_api.NoteResponse> Function({required String content});
+    Future<rust_api.AtomItemResponse> Function({required String content});
 
 /// Async updater for persisted note content.
 typedef NoteUpdateInvoker =
-    Future<rust_api.NoteResponse> Function({
+    Future<rust_api.AtomItemResponse> Function({
       required String atomId,
       required String content,
     });

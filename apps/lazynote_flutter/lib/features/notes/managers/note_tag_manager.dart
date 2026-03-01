@@ -212,7 +212,7 @@ class NoteTagManager extends ChangeNotifier {
     );
   }
 
-  bool shouldIncludeInVisibleList(rust_api.NoteItem note) {
+  bool shouldIncludeInVisibleList(rust_api.AtomListItem note) {
     final selected = _selectedTag;
     if (selected == null) {
       return true;
@@ -270,7 +270,7 @@ class NoteTagManager extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      final updated = response.note;
+      final updated = response.item;
       if (updated == null) {
         _setSaveError('Tag update succeeded without note payload.');
         _setSaveState(NoteSaveState.error, preserveError: true);

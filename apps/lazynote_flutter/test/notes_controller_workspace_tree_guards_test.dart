@@ -5,12 +5,13 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -21,7 +22,7 @@ rust_api.NoteItem _note({
 }
 
 NotesCoordinator _buildController({
-  required Map<String, rust_api.NoteItem> store,
+  required Map<String, rust_api.AtomListItem> store,
   NoteCreateInvoker? noteCreateInvoker,
   WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
@@ -33,7 +34,7 @@ NotesCoordinator _buildController({
   return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -42,11 +43,11 @@ NotesCoordinator _buildController({
       );
     },
     noteGetInvoker: ({required atomId}) async {
-      return rust_api.NoteResponse(
+      return rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: store[atomId],
+        item: store[atomId],
       );
     },
     noteCreateInvoker: noteCreateInvoker,
@@ -78,7 +79,7 @@ void main() {
       final completer = Completer<rust_api.WorkspaceNodeResponse>();
       var createCalls = 0;
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceCreateFolderInvoker: ({parentNodeId, required name}) {
@@ -113,7 +114,7 @@ void main() {
     () async {
       var createCalls = 0;
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceCreateFolderInvoker: ({parentNodeId, required name}) async {
@@ -143,7 +144,7 @@ void main() {
     'createWorkspaceFolder db_busy failure is actionable and non-destructive',
     () async {
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceCreateFolderInvoker: ({parentNodeId, required name}) async {
@@ -176,7 +177,7 @@ void main() {
     () async {
       final requestedParentIds = <String?>[];
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -209,7 +210,7 @@ void main() {
     'listWorkspaceChildren returns explicit error envelope on bridge exception',
     () async {
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -238,18 +239,18 @@ void main() {
         content: '# created',
         updatedAt: 2,
       );
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       };
       final controller = _buildController(
         store: store,
         noteCreateInvoker: ({required content}) async {
           store[created.atomId] = created;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: created,
+            item: created,
           );
         },
         workspaceCreateNoteRefInvoker:
@@ -279,7 +280,7 @@ void main() {
     String? movedParentNodeId;
     int? movedTargetOrder;
     final controller = _buildController(
-      store: <String, rust_api.NoteItem>{
+      store: <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       },
       workspaceMoveNodeInvoker:
@@ -326,7 +327,7 @@ void main() {
           };
 
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceMoveNodeInvoker:
@@ -362,7 +363,7 @@ void main() {
         };
 
     final controller = _buildController(
-      store: <String, rust_api.NoteItem>{
+      store: <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       },
       workspaceMoveNodeInvoker:
@@ -388,7 +389,7 @@ void main() {
     'moveWorkspaceNode db_busy failure is actionable and non-destructive',
     () async {
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceMoveNodeInvoker:
@@ -423,7 +424,7 @@ void main() {
     'deleteWorkspaceFolder db_error failure is actionable and non-destructive',
     () async {
       final controller = _buildController(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceDeleteFolderInvoker: ({required nodeId, required mode}) async {

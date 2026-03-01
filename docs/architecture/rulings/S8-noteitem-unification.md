@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Accepted** — v0.3 PR-RB-01 实现 |
+| 状态 | **Landed** — v0.3 PR-RB-01 |
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
@@ -85,9 +85,9 @@ NoteItem 缺失的 4 个字段恰好是 S1 Atom 统一容器模型的核心维�
 | 项目 | 状态 |
 |------|------|
 | 语义定义 | v0.2.5 已完成 |
-| Rust FFI 返回类型变更 | v0.3 待实施 |
-| Flutter 端 NoteItem 消费者迁移 | v0.3 待实施 |
-| ffi-contracts.md 更新 | v0.3 随实施同步 |
+| Rust FFI 返回类型变更 | v0.3 PR-RB-01 已完成 |
+| Flutter 端 NoteItem 消费者迁移 | v0.3 PR-RB-01 已完成 |
+| ffi-contracts.md 更新 | v0.3 PR-RB-01 已完成 |
 
 ---
 
