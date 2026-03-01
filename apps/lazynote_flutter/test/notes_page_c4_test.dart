@@ -11,13 +11,14 @@ void main() {
     return MaterialApp(home: Scaffold(body: child));
   }
 
-  rust_api.NoteItem note({
+  rust_api.AtomListItem note({
     required String atomId,
     required String content,
     required int updatedAt,
     required List<String> tags,
   }) {
-    return rust_api.NoteItem(
+    return rust_api.AtomListItem(
+      kind: 'note',
       atomId: atomId,
       content: content,
       previewText: null,
@@ -30,7 +31,7 @@ void main() {
   testWidgets('C4 filter apply and clear refresh notes_list(tag)', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work',
@@ -59,7 +60,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -68,11 +69,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -115,7 +116,7 @@ void main() {
   testWidgets('C4 tag filter supports expand/collapse when too many tags', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Seed',
@@ -136,7 +137,7 @@ void main() {
         );
       },
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -145,11 +146,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -191,7 +192,7 @@ void main() {
   testWidgets(
     'C4 activating non-matching open tab does not pollute filtered list',
     (WidgetTester tester) async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-home': note(
           atomId: 'note-home',
           content: '# Home',
@@ -220,7 +221,7 @@ void main() {
           final items = store.values
               .where((item) => tag == null || item.tags.contains(tag))
               .toList();
-          return rust_api.NotesListResponse(
+          return rust_api.AtomListResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
@@ -229,11 +230,11 @@ void main() {
           );
         },
         noteGetInvoker: ({required atomId}) async {
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: store[atomId],
+            item: store[atomId],
           );
         },
       );
@@ -276,7 +277,7 @@ void main() {
   testWidgets('C4 contextual create auto-applies active filter tag', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -300,7 +301,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -316,11 +317,11 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
@@ -332,19 +333,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -374,7 +375,7 @@ void main() {
   testWidgets('C4 add-tag dialog submits without controller dispose crash', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Seed',
@@ -394,7 +395,7 @@ void main() {
         );
       },
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -410,19 +411,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -453,7 +454,7 @@ void main() {
   testWidgets('C4 ghost state keeps editor when active note leaves filter', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Doc',
@@ -476,7 +477,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -492,19 +493,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -534,7 +535,7 @@ void main() {
   testWidgets('C4 tag chip disappears after removed from last note', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Seed',
@@ -566,7 +567,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -582,19 +583,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -627,7 +628,7 @@ void main() {
     WidgetTester tester,
   ) async {
     var tagCalls = 0;
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work',
@@ -656,7 +657,7 @@ void main() {
         );
       },
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -665,11 +666,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -695,7 +696,7 @@ void main() {
   testWidgets('C4 filtered notes_list failure can recover via retry', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work',
@@ -725,7 +726,7 @@ void main() {
         if (tag == 'work') {
           filteredCalls += 1;
           if (filteredCalls == 1) {
-            return const rust_api.NotesListResponse(
+            return const rust_api.AtomListResponse(
               ok: false,
               errorCode: 'db_error',
               message: 'filter failed',
@@ -737,7 +738,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -746,11 +747,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -779,7 +780,7 @@ void main() {
   testWidgets('C4 contextual create tag failure shows warning and keeps create', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -802,7 +803,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -818,27 +819,27 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -873,7 +874,7 @@ void main() {
   testWidgets('C4 orphan note becomes visible after clearing active filter', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -896,7 +897,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -912,27 +913,27 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -966,7 +967,7 @@ void main() {
   test(
     'C4 tag writes are serialized and preserve latest user intent',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': note(
           atomId: 'note-1',
           content: '# Seed',
@@ -1001,7 +1002,7 @@ void main() {
           final items = store.values
               .where((item) => tag == null || item.tags.contains(tag))
               .toList();
-          return rust_api.NotesListResponse(
+          return rust_api.AtomListResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
@@ -1022,19 +1023,19 @@ void main() {
             tags: tags,
           );
           store[atomId] = updated;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: updated,
+            item: updated,
           );
         },
         noteGetInvoker: ({required atomId}) async {
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: store[atomId],
+            item: store[atomId],
           );
         },
       );
@@ -1064,7 +1065,7 @@ void main() {
   );
 
   test('C4 manual reload waits for pending tag mutation queue', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Seed',
@@ -1089,7 +1090,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -1109,19 +1110,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -1147,7 +1148,7 @@ void main() {
   });
 
   test('C4 retryLoad waits for pending tag mutation queue', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Seed',
@@ -1172,7 +1173,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -1192,19 +1193,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -1230,7 +1231,7 @@ void main() {
   });
 
   test('C4 create tag apply in-flight marks pending save work', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -1254,7 +1255,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -1270,11 +1271,11 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
@@ -1286,19 +1287,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -1324,7 +1325,7 @@ void main() {
   });
 
   test('C4 loadNotes waits for pending create tag apply', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -1348,7 +1349,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -1364,11 +1365,11 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
@@ -1380,19 +1381,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -1425,7 +1426,7 @@ void main() {
   });
 
   test('C4 retryLoad waits for pending create tag apply', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -1449,7 +1450,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -1465,11 +1466,11 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
@@ -1481,19 +1482,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );
@@ -1526,7 +1527,7 @@ void main() {
   });
 
   test('C4 flushPendingSave waits for pending create tag apply', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(
         atomId: 'note-1',
         content: '# Work Seed',
@@ -1550,7 +1551,7 @@ void main() {
         final items = store.values
             .where((item) => tag == null || item.tags.contains(tag))
             .toList();
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -1566,11 +1567,11 @@ void main() {
           tags: const [],
         );
         store[created.atomId] = created;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: created,
+          item: created,
         );
       },
       noteSetTagsInvoker: ({required atomId, required tags}) async {
@@ -1582,19 +1583,19 @@ void main() {
           tags: tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );

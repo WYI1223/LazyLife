@@ -1,7 +1,7 @@
 # PR-RB-01: S8 DTO 统一
 
 - Proposed title: `refactor(ffi): PR-RB-01 unify notes API to AtomListItem, deprecate NoteItem`
-- Status: Draft
+- Status: In Progress
 
 ## Goal
 

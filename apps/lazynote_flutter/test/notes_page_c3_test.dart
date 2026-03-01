@@ -11,12 +11,13 @@ void main() {
     return MaterialApp(home: Scaffold(body: child));
   }
 
-  rust_api.NoteItem note({
+  rust_api.AtomListItem note({
     required String atomId,
     required String content,
     required int updatedAt,
   }) {
-    return rust_api.NoteItem(
+    return rust_api.AtomListItem(
+      kind: 'note',
       atomId: atomId,
       content: content,
       previewText: null,
@@ -29,17 +30,17 @@ void main() {
   testWidgets('C3.1 typing transitions dirty -> saving -> saved', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# Seed', updatedAt: 1000),
     };
-    final saveCompleter = Completer<rust_api.NoteResponse>();
+    final saveCompleter = Completer<rust_api.AtomItemResponse>();
     final saveCalls = <String>[];
 
     final controller = NotesCoordinator(
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 50),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -48,11 +49,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) {
@@ -82,11 +83,11 @@ void main() {
     final saved = note(atomId: 'note-1', content: '# Next', updatedAt: 1200);
     store['note-1'] = saved;
     saveCompleter.complete(
-      rust_api.NoteResponse(
+      rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: saved,
+        item: saved,
       ),
     );
     await tester.pump();
@@ -103,7 +104,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 30),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -112,19 +113,19 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: base,
+          item: base,
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'disk full',
-          note: null,
+          item: null,
         );
       },
     );
@@ -161,7 +162,7 @@ void main() {
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -170,11 +171,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: base,
+          item: base,
         );
       },
     );
@@ -212,7 +213,7 @@ void main() {
     final controller = NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -221,11 +222,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: base,
+          item: base,
         );
       },
     );
@@ -252,7 +253,7 @@ void main() {
   testWidgets('C3.2 blocks note switch when flush fails', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# One', updatedAt: 2000),
       'note-2': note(atomId: 'note-2', content: '# Two', updatedAt: 1000),
     };
@@ -261,7 +262,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -270,19 +271,19 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
     );
@@ -314,7 +315,7 @@ void main() {
   testWidgets('C3.2 blocks closing active tab when flush fails', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# One', updatedAt: 2000),
     };
 
@@ -322,7 +323,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -331,19 +332,19 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
     );
@@ -376,7 +377,7 @@ void main() {
   testWidgets('C3.2 flush success allows note switch', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# One', updatedAt: 2000),
       'note-2': note(atomId: 'note-2', content: '# Two', updatedAt: 1000),
     };
@@ -385,7 +386,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -394,11 +395,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) async {
@@ -408,11 +409,11 @@ void main() {
           updatedAt: DateTime.now().millisecondsSinceEpoch,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
     );
@@ -444,7 +445,7 @@ void main() {
   testWidgets('C3.3 retry saves current latest draft', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# Seed', updatedAt: 1000),
     };
     final updateCalls = <String>[];
@@ -454,7 +455,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 30),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -463,22 +464,22 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) async {
         callCount += 1;
         updateCalls.add(content);
         if (callCount == 1) {
-          return const rust_api.NoteResponse(
+          return const rust_api.AtomItemResponse(
             ok: false,
             errorCode: 'db_error',
             message: 'disk full',
-            note: null,
+            item: null,
           );
         }
         final updated = note(
@@ -487,11 +488,11 @@ void main() {
           updatedAt: 1100 + callCount,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
     );
@@ -532,11 +533,11 @@ void main() {
   testWidgets('C3.3 stale save completion cannot overwrite newer draft', (
     WidgetTester tester,
   ) async {
-    final save1 = Completer<rust_api.NoteResponse>();
-    final save2 = Completer<rust_api.NoteResponse>();
+    final save1 = Completer<rust_api.AtomItemResponse>();
+    final save2 = Completer<rust_api.AtomItemResponse>();
     var callCount = 0;
     final updateCalls = <String>[];
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# base', updatedAt: 1000),
     };
 
@@ -544,7 +545,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 20),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -553,11 +554,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) {
@@ -588,11 +589,11 @@ void main() {
     expect(updateCalls.first, '# one');
 
     save1.complete(
-      rust_api.NoteResponse(
+      rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: note(atomId: 'note-1', content: '# one', updatedAt: 2000),
+        item: note(atomId: 'note-1', content: '# one', updatedAt: 2000),
       ),
     );
     await tester.pump();
@@ -603,11 +604,11 @@ void main() {
     expect(find.byKey(const Key('notes_save_status_saving')), findsOneWidget);
 
     save2.complete(
-      rust_api.NoteResponse(
+      rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: note(atomId: 'note-1', content: '# two', updatedAt: 3000),
+        item: note(atomId: 'note-1', content: '# two', updatedAt: 3000),
       ),
     );
     await tester.pump();
@@ -620,7 +621,7 @@ void main() {
   testWidgets('C3.3 app paused triggers best-effort flush', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# Seed', updatedAt: 1000),
     };
     final updateCalls = <String>[];
@@ -629,7 +630,7 @@ void main() {
       prepare: () async {},
       autosaveDebounce: const Duration(seconds: 5),
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -638,22 +639,22 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
       noteUpdateInvoker: ({required atomId, required content}) async {
         updateCalls.add(content);
         final updated = note(atomId: atomId, content: content, updatedAt: 2000);
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
     );

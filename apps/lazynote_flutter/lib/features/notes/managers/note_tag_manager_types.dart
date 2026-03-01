@@ -4,7 +4,7 @@ import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart'
 typedef TagsListInvoker = Future<rust_api.TagsListResponse> Function();
 
 typedef NoteSetTagsInvoker =
-    Future<rust_api.NoteResponse> Function({
+    Future<rust_api.AtomItemResponse> Function({
       required String atomId,
       required List<String> tags,
     });
@@ -25,11 +25,11 @@ typedef TagReloadNotesForFilter =
 
 typedef TagActiveNoteIdReader = String? Function();
 
-typedef TagNoteLookup = rust_api.NoteItem? Function(String atomId);
+typedef TagNoteLookup = rust_api.AtomListItem? Function(String atomId);
 
 typedef TagUpsertNote =
     void Function(
-      rust_api.NoteItem note, {
+      rust_api.AtomListItem note, {
       bool insertFront,
       bool updatePersisted,
       bool syncVisibleList,
@@ -47,4 +47,7 @@ typedef TagSetSaveState =
 typedef TagSetSaveError = void Function(String? message);
 
 typedef TagOnActiveNoteUpdated =
-    void Function({required String atomId, required rust_api.NoteItem note});
+    void Function({
+      required String atomId,
+      required rust_api.AtomListItem note,
+    });

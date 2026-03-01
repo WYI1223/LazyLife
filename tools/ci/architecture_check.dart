@@ -104,6 +104,16 @@ Future<void> main() async {
     '${docsResult.allowlisted} allowlisted',
   );
 
+  // ── Check 5: NoteItem deprecation ────────────────────────────────────
+  stdout.writeln('\n=== NoteItem deprecation check (S8) ===');
+  final noteItemResult = _checkNoteItemDeprecation();
+  if (noteItemResult.hasFailure) {
+    hasFailure = true;
+  }
+  stdout.writeln(
+    'NoteItem deprecation result: ${noteItemResult.failures} violation(s)',
+  );
+
   // ── Summary ────────────────────────────────────────────────────────────
   stdout.writeln('\n=== Summary ===');
   if (hasFailure) {
@@ -556,6 +566,50 @@ String _repoRelativePath(String absolutePath) {
     return normalized.substring(root.length + 1);
   }
   return normalized;
+}
+
+// ---------------------------------------------------------------------------
+// NoteItem deprecation check (S8)
+// ---------------------------------------------------------------------------
+
+class _NoteItemDeprecationResult {
+  int failures = 0;
+  bool hasFailure = false;
+}
+
+_NoteItemDeprecationResult _checkNoteItemDeprecation() {
+  final result = _NoteItemDeprecationResult();
+  final deprecatedPatterns = ['NoteItem', 'NoteResponse', 'NotesListResponse'];
+
+  // Scan lib/ excluding auto-generated bindings.
+  final dartFiles = _libDir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'))
+      .where((f) {
+        final normalized = f.path.replaceAll(r'\', '/');
+        return !normalized.contains('/core/bindings/');
+      });
+
+  for (final file in dartFiles) {
+    final relPath = _relativePath(file.path);
+    final lines = file.readAsLinesSync();
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      for (final pattern in deprecatedPatterns) {
+        if (line.contains(pattern)) {
+          stderr.writeln(
+            '  FAIL: $relPath:${i + 1} references deprecated $pattern '
+            '(S8 ruling: use AtomListItem/AtomItemResponse/AtomListResponse)',
+          );
+          result.failures++;
+          result.hasFailure = true;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------

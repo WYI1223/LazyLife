@@ -5,12 +5,13 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -50,7 +51,7 @@ rust_api.WorkspaceListChildrenResponse _ok(
 }
 
 NotesCoordinator _controllerWithStore(
-  Map<String, rust_api.NoteItem> store, {
+  Map<String, rust_api.AtomListItem> store, {
   NoteCreateInvoker? noteCreateInvoker,
   NoteUpdateInvoker? noteUpdateInvoker,
   WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
@@ -62,7 +63,7 @@ NotesCoordinator _controllerWithStore(
   return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -71,11 +72,11 @@ NotesCoordinator _controllerWithStore(
       );
     },
     noteGetInvoker: ({required atomId}) async {
-      return rust_api.NoteResponse(
+      return rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: store[atomId],
+        item: store[atomId],
       );
     },
     noteCreateInvoker: noteCreateInvoker,
@@ -124,7 +125,7 @@ void main() {
   testWidgets('loads root first and lazy-loads folder children on expand', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
       'note-2': _note(atomId: 'note-2', content: '# Note Two', updatedAt: 2),
     };
@@ -192,7 +193,7 @@ void main() {
       const parentId = '11111111-1111-4111-8111-111111111111';
       const childFolderId = '22222222-2222-4222-8222-222222222222';
       const childNoteRefId = '33333333-3333-4333-8333-333333333333';
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(
           atomId: 'note-1',
           content: '# Child Note',
@@ -265,14 +266,15 @@ void main() {
   testWidgets('injects default uncategorized folder and shows existing notes', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
     };
     final controller = _controllerWithStore(
       store,
       noteUpdateInvoker: ({required atomId, required content}) async {
         final existing = store[atomId]!;
-        final updated = rust_api.NoteItem(
+        final updated = rust_api.AtomListItem(
+          kind: 'note',
           atomId: existing.atomId,
           content: content,
           previewText: null,
@@ -281,11 +283,11 @@ void main() {
           tags: existing.tags,
         );
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
       workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -311,7 +313,7 @@ void main() {
   testWidgets(
     'create folder button triggers callback and refreshes root tree',
     (WidgetTester tester) async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
       };
       final controller = _controllerWithStore(store);
@@ -383,7 +385,7 @@ void main() {
   testWidgets('create folder refresh keeps uncategorized collapse state', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
     };
     final rootFolders = <rust_api.WorkspaceNodeItem>[];
@@ -455,7 +457,7 @@ void main() {
   testWidgets('folder row create button forwards parent folder id', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
     };
     final controller = _controllerWithStore(store);
@@ -522,7 +524,7 @@ void main() {
   testWidgets('create child folder refreshes parent branch and shows child', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
     };
     final controller = _controllerWithStore(store);
@@ -609,7 +611,7 @@ void main() {
   testWidgets(
     'create child folder stays visible when controller revision refresh path is used',
     (WidgetTester tester) async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
       };
       const parentId = '11111111-1111-4111-8111-111111111111';
@@ -703,7 +705,7 @@ void main() {
   testWidgets('single tap emits open intent for note row', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
     };
     final opened = <String>[];
@@ -745,7 +747,7 @@ void main() {
   testWidgets('double tap emits pinned-open intent when callback is provided', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
     };
     final opened = <String>[];
@@ -793,7 +795,7 @@ void main() {
   testWidgets('root error displays retry action and can recover', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
     };
     final controller = _controllerWithStore(store);
@@ -843,7 +845,7 @@ void main() {
   testWidgets(
     'create note from uncategorized refreshes cached branch while collapsed',
     (WidgetTester tester) async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(
           atomId: 'note-1',
           content: '# Legacy Note',
@@ -859,11 +861,11 @@ void main() {
             updatedAt: 2,
           );
           store[created.atomId] = created;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: created,
+            item: created,
           );
         },
         workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -929,7 +931,7 @@ void main() {
   testWidgets('delete folder preserves uncategorized collapse state', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
     };
     const folderId = '11111111-1111-4111-8111-111111111111';
@@ -989,7 +991,7 @@ void main() {
   testWidgets('delete child folder refreshes parent branch immediately', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
     };
     const parentId = '11111111-1111-4111-8111-111111111111';
@@ -1072,7 +1074,7 @@ void main() {
   testWidgets('rename child folder refreshes parent branch immediately', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
     };
     const parentId = '11111111-1111-4111-8111-111111111111';
@@ -1158,7 +1160,7 @@ void main() {
   testWidgets('uncategorized note title updates after draft edit', (
     WidgetTester tester,
   ) async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# Old Title', updatedAt: 1),
     };
     final controller = _controllerWithStore(
@@ -1190,7 +1192,7 @@ void main() {
   ) async {
     const folderId = '11111111-1111-4111-8111-111111111111';
     const noteRefId = '22222222-2222-4222-8222-222222222222';
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(
         atomId: 'note-1',
         content: '# Old Folder Title',
@@ -1251,7 +1253,7 @@ void main() {
     (WidgetTester tester) async {
       const folderId = '11111111-1111-4111-8111-111111111111';
       const folderNoteRefId = 'ref_folder_note_1';
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(
           atomId: 'note-1',
           content: '# Child Note',
@@ -1315,7 +1317,7 @@ void main() {
     (WidgetTester tester) async {
       const folderId = '11111111-1111-4111-8111-111111111111';
       const noteRefId = '33333333-3333-4333-8333-333333333333';
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: 'Untitled', updatedAt: 1),
       };
       final controller = _controllerWithStore(

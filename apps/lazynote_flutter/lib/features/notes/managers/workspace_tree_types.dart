@@ -47,8 +47,8 @@ typedef WorkspaceFlushPendingSave = Future<bool> Function();
 
 typedef WorkspaceDeleteSuccessHook = Future<void> Function();
 
-typedef WorkspaceNoteById = rust_api.NoteItem? Function(String atomId);
+typedef WorkspaceNoteById = rust_api.AtomListItem? Function(String atomId);
 
-typedef WorkspaceListItemsReader = List<rust_api.NoteItem> Function();
+typedef WorkspaceListItemsReader = List<rust_api.AtomListItem> Function();
 
 typedef WorkspaceTitleResolver = String Function(String content);

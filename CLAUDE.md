@@ -251,10 +251,9 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 | Struct | Used by |
 |--------|---------|
 | `EntryActionResponse` | Single-item mutations (create, update, delete, status change) |
-| `NoteResponse` | Single note operations (create, update, get, set_tags) |
-| `NotesListResponse` | Note list queries |
+| `AtomItemResponse` | Single note operations (create, update, get, set_tags) |
 | `TagsListResponse` | Tag listing |
-| `AtomListResponse` | Section list queries (tasks views, calendar range) |
+| `AtomListResponse` | Section list queries (tasks views, calendar range, notes list) |
 | `EntrySearchResponse` | FTS5 search results |
 | `WorkspaceNodeResponse` | Single workspace node operations |
 | `WorkspaceListChildrenResponse` | Workspace tree listing |
@@ -286,11 +285,11 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 | Function | Returns |
 |----------|---------|
-| `note_create(content)` | `NoteResponse` |
-| `note_update(atom_id, content)` | `NoteResponse` |
-| `note_get(atom_id)` | `NoteResponse` |
-| `notes_list(tag?, limit?, offset?)` | `NotesListResponse` |
-| `note_set_tags(atom_id, tags[])` | `NoteResponse` |
+| `note_create(content)` | `AtomItemResponse` |
+| `note_update(atom_id, content)` | `AtomItemResponse` |
+| `note_get(atom_id)` | `AtomItemResponse` |
+| `notes_list(tag?, limit?, offset?)` | `AtomListResponse` |
+| `note_set_tags(atom_id, tags[])` | `AtomItemResponse` |
 | `tags_list()` | `TagsListResponse` |
 
 **Tasks & Status (async):**

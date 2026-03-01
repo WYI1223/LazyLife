@@ -23,6 +23,9 @@ const NOTES_DEFAULT_LIMIT: u32 = 10;
 const NOTES_LIMIT_MAX: u32 = 50;
 
 /// Read model for note list/detail use-cases.
+///
+/// S8: includes full Atom projection fields (`kind`, `start_at`, `end_at`,
+/// `task_status`) so FFI can return `AtomListItem` without information loss.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteRecord {
     /// Stable atom id.
@@ -37,6 +40,14 @@ pub struct NoteRecord {
     pub updated_at: i64,
     /// Note tags, normalized to lowercase.
     pub tags: Vec<String>,
+    /// Atom projection kind (`note` | `task` | `event`).
+    pub kind: String,
+    /// Epoch ms — start boundary (NULL = no start).
+    pub start_at: Option<i64>,
+    /// Epoch ms — end boundary (NULL = no end).
+    pub end_at: Option<i64>,
+    /// Current task status string, or None if statusless.
+    pub task_status: Option<String>,
 }
 
 /// Query options for note list use-cases.
@@ -133,7 +144,11 @@ impl NoteRepository for SqliteNoteRepository<'_> {
                 content,
                 preview_text,
                 preview_image,
-                updated_at
+                updated_at,
+                type,
+                start_at,
+                end_at,
+                task_status
              FROM atoms
              WHERE uuid = ?1
                AND type = 'note'
@@ -152,6 +167,10 @@ impl NoteRepository for SqliteNoteRepository<'_> {
                 preview_image: row.get("preview_image")?,
                 updated_at: row.get("updated_at")?,
                 tags,
+                kind: row.get("type")?,
+                start_at: row.get("start_at")?,
+                end_at: row.get("end_at")?,
+                task_status: row.get("task_status")?,
             }));
         }
 
@@ -165,7 +184,11 @@ impl NoteRepository for SqliteNoteRepository<'_> {
                 content,
                 preview_text,
                 preview_image,
-                updated_at
+                updated_at,
+                type,
+                start_at,
+                end_at,
+                task_status
              FROM atoms
              WHERE type = 'note'
                AND is_deleted = 0",
@@ -208,6 +231,10 @@ impl NoteRepository for SqliteNoteRepository<'_> {
                 preview_image: row.get("preview_image")?,
                 updated_at: row.get("updated_at")?,
                 tags,
+                kind: row.get("type")?,
+                start_at: row.get("start_at")?,
+                end_at: row.get("end_at")?,
+                task_status: row.get("task_status")?,
             });
         }
 

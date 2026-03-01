@@ -1101,6 +1101,22 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for crate::api::AtomItemResponse {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_ok = <bool>::sse_decode(deserializer);
+        let mut var_errorCode = <Option<String>>::sse_decode(deserializer);
+        let mut var_message = <String>::sse_decode(deserializer);
+        let mut var_item = <Option<crate::api::AtomListItem>>::sse_decode(deserializer);
+        return crate::api::AtomItemResponse {
+            ok: var_ok,
+            error_code: var_errorCode,
+            message: var_message,
+            item: var_item,
+        };
+    }
+}
+
 impl SseDecode for crate::api::AtomListItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1243,18 +1259,6 @@ impl SseDecode for Vec<crate::api::EntrySearchItem> {
     }
 }
 
-impl SseDecode for Vec<crate::api::NoteItem> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = vec![];
-        for idx_ in 0..len_ {
-            ans_.push(<crate::api::NoteItem>::sse_decode(deserializer));
-        }
-        return ans_;
-    }
-}
-
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1293,60 +1297,6 @@ impl SseDecode for crate::api::LogDartEventResponse {
     }
 }
 
-impl SseDecode for crate::api::NoteItem {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_atomId = <String>::sse_decode(deserializer);
-        let mut var_content = <String>::sse_decode(deserializer);
-        let mut var_previewText = <Option<String>>::sse_decode(deserializer);
-        let mut var_previewImage = <Option<String>>::sse_decode(deserializer);
-        let mut var_updatedAt = <i64>::sse_decode(deserializer);
-        let mut var_tags = <Vec<String>>::sse_decode(deserializer);
-        return crate::api::NoteItem {
-            atom_id: var_atomId,
-            content: var_content,
-            preview_text: var_previewText,
-            preview_image: var_previewImage,
-            updated_at: var_updatedAt,
-            tags: var_tags,
-        };
-    }
-}
-
-impl SseDecode for crate::api::NoteResponse {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_ok = <bool>::sse_decode(deserializer);
-        let mut var_errorCode = <Option<String>>::sse_decode(deserializer);
-        let mut var_message = <String>::sse_decode(deserializer);
-        let mut var_note = <Option<crate::api::NoteItem>>::sse_decode(deserializer);
-        return crate::api::NoteResponse {
-            ok: var_ok,
-            error_code: var_errorCode,
-            message: var_message,
-            note: var_note,
-        };
-    }
-}
-
-impl SseDecode for crate::api::NotesListResponse {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_ok = <bool>::sse_decode(deserializer);
-        let mut var_errorCode = <Option<String>>::sse_decode(deserializer);
-        let mut var_message = <String>::sse_decode(deserializer);
-        let mut var_items = <Vec<crate::api::NoteItem>>::sse_decode(deserializer);
-        let mut var_appliedLimit = <u32>::sse_decode(deserializer);
-        return crate::api::NotesListResponse {
-            ok: var_ok,
-            error_code: var_errorCode,
-            message: var_message,
-            items: var_items,
-            applied_limit: var_appliedLimit,
-        };
-    }
-}
-
 impl SseDecode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1358,22 +1308,22 @@ impl SseDecode for Option<String> {
     }
 }
 
-impl SseDecode for Option<i64> {
+impl SseDecode for Option<crate::api::AtomListItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<i64>::sse_decode(deserializer));
+            return Some(<crate::api::AtomListItem>::sse_decode(deserializer));
         } else {
             return None;
         }
     }
 }
 
-impl SseDecode for Option<crate::api::NoteItem> {
+impl SseDecode for Option<i64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::api::NoteItem>::sse_decode(deserializer));
+            return Some(<i64>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -1565,6 +1515,26 @@ fn pde_ffi_dispatcher_sync_impl(
 // Section: rust2dart
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::AtomItemResponse {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ok.into_into_dart().into_dart(),
+            self.error_code.into_into_dart().into_dart(),
+            self.message.into_into_dart().into_dart(),
+            self.item.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::AtomItemResponse {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::AtomItemResponse>
+    for crate::api::AtomItemResponse
+{
+    fn into_into_dart(self) -> crate::api::AtomItemResponse {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::AtomListItem {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1697,65 +1667,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::LogDartEventResponse>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::NoteItem {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.atom_id.into_into_dart().into_dart(),
-            self.content.into_into_dart().into_dart(),
-            self.preview_text.into_into_dart().into_dart(),
-            self.preview_image.into_into_dart().into_dart(),
-            self.updated_at.into_into_dart().into_dart(),
-            self.tags.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::NoteItem {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::NoteItem> for crate::api::NoteItem {
-    fn into_into_dart(self) -> crate::api::NoteItem {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::NoteResponse {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.ok.into_into_dart().into_dart(),
-            self.error_code.into_into_dart().into_dart(),
-            self.message.into_into_dart().into_dart(),
-            self.note.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::NoteResponse {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::NoteResponse> for crate::api::NoteResponse {
-    fn into_into_dart(self) -> crate::api::NoteResponse {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::NotesListResponse {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.ok.into_into_dart().into_dart(),
-            self.error_code.into_into_dart().into_dart(),
-            self.message.into_into_dart().into_dart(),
-            self.items.into_into_dart().into_dart(),
-            self.applied_limit.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::NotesListResponse {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::NotesListResponse>
-    for crate::api::NotesListResponse
-{
-    fn into_into_dart(self) -> crate::api::NotesListResponse {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::TagsListResponse {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1873,6 +1784,16 @@ impl SseEncode for String {
     }
 }
 
+impl SseEncode for crate::api::AtomItemResponse {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.ok, serializer);
+        <Option<String>>::sse_encode(self.error_code, serializer);
+        <String>::sse_encode(self.message, serializer);
+        <Option<crate::api::AtomListItem>>::sse_encode(self.item, serializer);
+    }
+}
+
 impl SseEncode for crate::api::AtomListItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1973,16 +1894,6 @@ impl SseEncode for Vec<crate::api::EntrySearchItem> {
     }
 }
 
-impl SseEncode for Vec<crate::api::NoteItem> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <crate::api::NoteItem>::sse_encode(item, serializer);
-        }
-    }
-}
-
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2012,39 +1923,6 @@ impl SseEncode for crate::api::LogDartEventResponse {
     }
 }
 
-impl SseEncode for crate::api::NoteItem {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.atom_id, serializer);
-        <String>::sse_encode(self.content, serializer);
-        <Option<String>>::sse_encode(self.preview_text, serializer);
-        <Option<String>>::sse_encode(self.preview_image, serializer);
-        <i64>::sse_encode(self.updated_at, serializer);
-        <Vec<String>>::sse_encode(self.tags, serializer);
-    }
-}
-
-impl SseEncode for crate::api::NoteResponse {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <bool>::sse_encode(self.ok, serializer);
-        <Option<String>>::sse_encode(self.error_code, serializer);
-        <String>::sse_encode(self.message, serializer);
-        <Option<crate::api::NoteItem>>::sse_encode(self.note, serializer);
-    }
-}
-
-impl SseEncode for crate::api::NotesListResponse {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <bool>::sse_encode(self.ok, serializer);
-        <Option<String>>::sse_encode(self.error_code, serializer);
-        <String>::sse_encode(self.message, serializer);
-        <Vec<crate::api::NoteItem>>::sse_encode(self.items, serializer);
-        <u32>::sse_encode(self.applied_limit, serializer);
-    }
-}
-
 impl SseEncode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2055,22 +1933,22 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<crate::api::AtomListItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::AtomListItem>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<i64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <i64>::sse_encode(value, serializer);
-        }
-    }
-}
-
-impl SseEncode for Option<crate::api::NoteItem> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <bool>::sse_encode(self.is_some(), serializer);
-        if let Some(value) = self {
-            <crate::api::NoteItem>::sse_encode(value, serializer);
         }
     }
 }

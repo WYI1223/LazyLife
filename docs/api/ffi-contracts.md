@@ -88,14 +88,25 @@ All APIs are use-case level and async.
 - Failure branch must carry stable `error_code`.
 - `message` is for diagnostics/display only.
 
-### Notes Payload
+### Response Types (PR-RB-01, S8 ruling)
+
+- Single-item note operations (`note_create`, `note_update`, `note_get`, `note_set_tags`) return `AtomItemResponse` (field: `item: AtomListItem?`).
+- `notes_list` returns `AtomListResponse` (field: `items: [AtomListItem]`).
+- `tags_list` returns `TagsListResponse` (unchanged).
+- Deprecated: `NoteItem`, `NoteResponse`, `NotesListResponse` — removed in PR-RB-01.
+
+### Notes Payload (AtomListItem)
 
 - `atom_id`
+- `kind`
 - `content`
 - `preview_text`
 - `preview_image`
-- `updated_at`
 - `tags`
+- `start_at`
+- `end_at`
+- `task_status`
+- `updated_at`
 
 ### Pagination
 

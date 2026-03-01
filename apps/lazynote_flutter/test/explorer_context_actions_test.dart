@@ -5,12 +5,13 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -50,13 +51,13 @@ rust_api.WorkspaceListChildrenResponse _ok(
 }
 
 NotesCoordinator _controller({
-  required Map<String, rust_api.NoteItem> store,
+  required Map<String, rust_api.AtomListItem> store,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
 }) {
   return NotesCoordinator(
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -65,11 +66,11 @@ NotesCoordinator _controller({
       );
     },
     noteGetInvoker: ({required atomId}) async {
-      return rust_api.NoteResponse(
+      return rust_api.AtomItemResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
-        note: store[atomId],
+        item: store[atomId],
       );
     },
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
@@ -108,7 +109,7 @@ void main() {
     'synthetic uncategorized context menu exposes create-only actions',
     (tester) async {
       final controller = _controller(
-        store: <String, rust_api.NoteItem>{
+        store: <String, rust_api.AtomListItem>{
           'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
         },
         workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -185,7 +186,7 @@ void main() {
   ) async {
     final createdParents = <String?>[];
     final controller = _controller(
-      store: <String, rust_api.NoteItem>{
+      store: <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       },
       workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -235,7 +236,7 @@ void main() {
     tester,
   ) async {
     final controller = _controller(
-      store: <String, rust_api.NoteItem>{
+      store: <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       },
       workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -284,7 +285,7 @@ void main() {
   ) async {
     final moveCalls = <String>[];
     final controller = _controller(
-      store: <String, rust_api.NoteItem>{
+      store: <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       },
       workspaceListChildrenInvoker: ({parentNodeId}) async {
@@ -349,7 +350,7 @@ void main() {
   ) async {
     const folderId = '11111111-1111-4111-8111-111111111111';
     final controller = _controller(
-      store: <String, rust_api.NoteItem>{
+      store: <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
       },
       workspaceListChildrenInvoker: ({parentNodeId}) async {

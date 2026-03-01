@@ -4,13 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
   String? previewText,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: previewText,
@@ -21,15 +22,15 @@ rust_api.NoteItem _note({
 }
 
 NotesCoordinator _buildController({
-  required Map<String, rust_api.NoteItem> store,
-  Future<rust_api.NoteResponse> Function({required String atomId})?
+  required Map<String, rust_api.AtomListItem> store,
+  Future<rust_api.AtomItemResponse> Function({required String atomId})?
   noteGetInvoker,
   Future<rust_api.WorkspaceActionResponse> Function({
     required String nodeId,
     required String mode,
   })?
   workspaceDeleteFolderInvoker,
-  Future<rust_api.NoteResponse> Function({
+  Future<rust_api.AtomItemResponse> Function({
     required String atomId,
     required String content,
   })?
@@ -39,13 +40,13 @@ NotesCoordinator _buildController({
     prepare: () async {},
     autosaveDebounce: const Duration(seconds: 10),
     notesListInvoker: ({tag, limit, offset}) async {
-      final items = <rust_api.NoteItem>[];
+      final items = <rust_api.AtomListItem>[];
       for (final id in const ['note-1', 'note-2']) {
         if (store[id] case final item?) {
           items.add(item);
         }
       }
-      return rust_api.NotesListResponse(
+      return rust_api.AtomListResponse(
         ok: true,
         errorCode: null,
         message: 'ok',
@@ -57,11 +58,11 @@ NotesCoordinator _buildController({
         noteGetInvoker ??
         ({required atomId}) async {
           final found = store[atomId];
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: found != null,
             errorCode: found == null ? 'note_not_found' : null,
             message: found == null ? 'missing' : 'ok',
-            note: found,
+            item: found,
           );
         },
     noteUpdateInvoker:
@@ -69,14 +70,15 @@ NotesCoordinator _buildController({
         ({required atomId, required content}) async {
           final current = store[atomId];
           if (current == null) {
-            return const rust_api.NoteResponse(
+            return const rust_api.AtomItemResponse(
               ok: false,
               errorCode: 'note_not_found',
               message: 'missing',
-              note: null,
+              item: null,
             );
           }
-          final updated = rust_api.NoteItem(
+          final updated = rust_api.AtomListItem(
+            kind: 'note',
             atomId: atomId,
             content: content,
             previewText: current.previewText,
@@ -85,11 +87,11 @@ NotesCoordinator _buildController({
             tags: current.tags,
           );
           store[atomId] = updated;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: updated,
+            item: updated,
           );
         },
     workspaceDeleteFolderInvoker:
@@ -106,7 +108,7 @@ NotesCoordinator _buildController({
 
 void main() {
   test('load initializes first tab as active', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(
         atomId: 'note-1',
         content: '# first',
@@ -130,7 +132,7 @@ void main() {
   });
 
   test('open from explorer appends tab and activates target', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
@@ -147,7 +149,7 @@ void main() {
   });
 
   test('explorer pinned-open immediately pins target tab', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
@@ -166,7 +168,7 @@ void main() {
   test(
     'explorer pinned-open on already active note does not duplicate note_get',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
         'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
       };
@@ -176,11 +178,11 @@ void main() {
         noteGetInvoker: ({required atomId}) async {
           noteGetCalls.add(atomId);
           final found = store[atomId];
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: found != null,
             errorCode: found == null ? 'note_not_found' : null,
             message: found == null ? 'missing' : 'ok',
-            note: found,
+            item: found,
           );
         },
       );
@@ -198,7 +200,7 @@ void main() {
   );
 
   test('explorer open replaces previous clean preview tab', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
       'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
@@ -220,7 +222,7 @@ void main() {
   });
 
   test('stale detail response does not override newer active note', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
     };
@@ -237,11 +239,11 @@ void main() {
           await note1Gate.future;
         }
         final found = store[atomId];
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: found != null,
           errorCode: found == null ? 'note_not_found' : null,
           message: found == null ? 'missing' : 'ok',
-          note: found,
+          item: found,
         );
       },
     );
@@ -271,7 +273,7 @@ void main() {
   test(
     'preview replacement does not expose transient appended tab count',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
         'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
         'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
@@ -300,7 +302,7 @@ void main() {
   test(
     'dirty preview is promoted and not replaced by next explorer open',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 3),
         'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 2),
         'note-3': _note(atomId: 'note-3', content: '# third', updatedAt: 1),
@@ -323,7 +325,7 @@ void main() {
   );
 
   test('tab close helpers keep deterministic active tab', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
@@ -347,7 +349,7 @@ void main() {
   });
 
   test('closing active last tab flushes dirty draft before clearing', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
     };
     final updateCalls = <String>[];
@@ -357,11 +359,11 @@ void main() {
         updateCalls.add(content);
         final updated = _note(atomId: atomId, content: content, updatedAt: 3);
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
     );
@@ -379,17 +381,17 @@ void main() {
   });
 
   test('closing active last tab is blocked when flush fails', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
     };
     final controller = _buildController(
       store: store,
       noteUpdateInvoker: ({required atomId, required content}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
     );
@@ -406,7 +408,7 @@ void main() {
   });
 
   test('close others flushes when switching away from dirty active', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
@@ -417,11 +419,11 @@ void main() {
         updateCalls.add(content);
         final updated = _note(atomId: atomId, content: content, updatedAt: 5);
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
     );
@@ -440,7 +442,7 @@ void main() {
   });
 
   test('close right flushes when active tab would be pruned', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
@@ -451,11 +453,11 @@ void main() {
         updateCalls.add(content);
         final updated = _note(atomId: atomId, content: content, updatedAt: 6);
         store[atomId] = updated;
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: updated,
+          item: updated,
         );
       },
     );
@@ -474,18 +476,18 @@ void main() {
   });
 
   test('close right is blocked when flush for pruned active fails', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
       'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
     };
     final controller = _buildController(
       store: store,
       noteUpdateInvoker: ({required atomId, required content}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
     );
@@ -505,7 +507,7 @@ void main() {
   test(
     'workspace delete_all refreshes and removes deleted active tab',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
         'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
       };
@@ -541,18 +543,18 @@ void main() {
   );
 
   test('workspace delete is blocked when draft flush fails', () async {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
     };
     var deleteInvoked = false;
     final controller = _buildController(
       store: store,
       noteUpdateInvoker: ({required atomId, required content}) async {
-        return const rust_api.NoteResponse(
+        return const rust_api.AtomItemResponse(
           ok: false,
           errorCode: 'db_error',
           message: 'write failed',
-          note: null,
+          item: null,
         );
       },
       workspaceDeleteFolderInvoker: ({required nodeId, required mode}) async {

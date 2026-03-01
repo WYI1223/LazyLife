@@ -5,13 +5,14 @@ import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_manager.dart';
 
-rust_api.NoteItem _note({
+rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
   required List<String> tags,
 }) {
-  return rust_api.NoteItem(
+  return rust_api.AtomListItem(
+    kind: 'note',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -25,7 +26,7 @@ void main() {
   test(
     'serializes concurrent tag mutations and waitForAtomTagMutations waits completion',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(
           atomId: 'note-1',
           content: '# Seed',
@@ -58,11 +59,11 @@ void main() {
             updatedAt: store[atomId]!.updatedAt + 1,
             tags: tags,
           );
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: updated,
+            item: updated,
           );
         },
         prepare: () async {},
@@ -122,7 +123,7 @@ void main() {
   test(
     'error path returns false and queue can continue with next mutation',
     () async {
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': _note(
           atomId: 'note-1',
           content: '# Seed',
@@ -154,11 +155,11 @@ void main() {
             updatedAt: store[atomId]!.updatedAt + 1,
             tags: tags,
           );
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: updated,
+            item: updated,
           );
         },
         prepare: () async {},

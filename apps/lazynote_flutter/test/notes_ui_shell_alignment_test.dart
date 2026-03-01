@@ -10,12 +10,13 @@ void main() {
     return MaterialApp(home: Scaffold(body: child));
   }
 
-  rust_api.NoteItem note({
+  rust_api.AtomListItem note({
     required String atomId,
     required String content,
     required int updatedAt,
   }) {
-    return rust_api.NoteItem(
+    return rust_api.AtomListItem(
+      kind: 'note',
       atomId: atomId,
       content: content,
       previewText: null,
@@ -26,14 +27,14 @@ void main() {
   }
 
   NotesCoordinator buildController() {
-    final store = <String, rust_api.NoteItem>{
+    final store = <String, rust_api.AtomListItem>{
       'note-1': note(atomId: 'note-1', content: '# First', updatedAt: 10),
       'note-2': note(atomId: 'note-2', content: '# Second', updatedAt: 8),
     };
     return NotesCoordinator(
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
-        return rust_api.NotesListResponse(
+        return rust_api.AtomListResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
@@ -42,11 +43,11 @@ void main() {
         );
       },
       noteGetInvoker: ({required atomId}) async {
-        return rust_api.NoteResponse(
+        return rust_api.AtomItemResponse(
           ok: true,
           errorCode: null,
           message: 'ok',
-          note: store[atomId],
+          item: store[atomId],
         );
       },
     );

@@ -10,12 +10,13 @@ void main() {
     return MaterialApp(home: Scaffold(body: child));
   }
 
-  rust_api.NoteItem note({
+  rust_api.AtomListItem note({
     required String atomId,
     required String content,
     required int updatedAt,
   }) {
-    return rust_api.NoteItem(
+    return rust_api.AtomListItem(
+      kind: 'note',
       atomId: atomId,
       content: content,
       previewText: null,
@@ -35,14 +36,14 @@ void main() {
       final noteRefParents = <String?>[];
       final renameCalls = <(String, String)>[];
       final moveCalls = <(String, String?)>[];
-      final store = <String, rust_api.NoteItem>{
+      final store = <String, rust_api.AtomListItem>{
         'note-1': note(atomId: 'note-1', content: '# Seed', updatedAt: 1),
       };
 
       final controller = NotesCoordinator(
         prepare: () async {},
         notesListInvoker: ({tag, limit, offset}) async {
-          return rust_api.NotesListResponse(
+          return rust_api.AtomListResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
@@ -51,11 +52,11 @@ void main() {
           );
         },
         noteGetInvoker: ({required atomId}) async {
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: store[atomId],
+            item: store[atomId],
           );
         },
         noteCreateInvoker: ({required content}) async {
@@ -67,11 +68,11 @@ void main() {
           );
           nextUpdatedAt += 1;
           store[created.atomId] = created;
-          return rust_api.NoteResponse(
+          return rust_api.AtomItemResponse(
             ok: true,
             errorCode: null,
             message: 'ok',
-            note: created,
+            item: created,
           );
         },
         workspaceListChildrenInvoker: ({parentNodeId}) async {

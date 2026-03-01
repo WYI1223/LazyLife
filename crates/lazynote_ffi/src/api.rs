@@ -312,51 +312,6 @@ impl EntryActionResponse {
     }
 }
 
-/// Note DTO returned by notes/tags APIs.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NoteItem {
-    /// Stable note atom id.
-    pub atom_id: String,
-    /// Raw markdown content.
-    pub content: String,
-    /// Derived plain-text preview.
-    pub preview_text: Option<String>,
-    /// Derived first markdown image path.
-    pub preview_image: Option<String>,
-    /// Update timestamp in epoch milliseconds.
-    pub updated_at: i64,
-    /// Normalized tags attached to the note.
-    pub tags: Vec<String>,
-}
-
-/// Note create/update/get response envelope.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NoteResponse {
-    /// Whether operation succeeded.
-    pub ok: bool,
-    /// Stable machine-readable error code for failure paths.
-    pub error_code: Option<String>,
-    /// Human-readable message for diagnostics/UI.
-    pub message: String,
-    /// Returned note payload on success.
-    pub note: Option<NoteItem>,
-}
-
-/// Note list response envelope.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NotesListResponse {
-    /// Whether operation succeeded.
-    pub ok: bool,
-    /// Stable machine-readable error code for failure paths.
-    pub error_code: Option<String>,
-    /// Human-readable message for diagnostics/UI.
-    pub message: String,
-    /// Note list items sorted by `updated_at DESC, uuid ASC`.
-    pub items: Vec<NoteItem>,
-    /// Effective limit after normalization.
-    pub applied_limit: u32,
-}
-
 /// Tags list response envelope.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TagsListResponse {
@@ -706,24 +661,19 @@ fn entry_schedule_impl(
 /// - Applies markdown preview hooks (`preview_text`, `preview_image`).
 /// - Returns typed envelope with stable error codes.
 #[flutter_rust_bridge::frb]
-pub async fn note_create(content: String) -> NoteResponse {
+pub async fn note_create(content: String) -> AtomItemResponse {
     note_create_impl(content)
 }
 
-fn note_create_impl(content: String) -> NoteResponse {
+fn note_create_impl(content: String) -> AtomItemResponse {
     match with_note_service(|service| service.create_note(content)) {
-        Ok(note) => NoteResponse {
+        Ok(note) => AtomItemResponse {
             ok: true,
             error_code: None,
             message: "Note created.".to_string(),
-            note: Some(to_note_item(note)),
+            item: Some(to_atom_list_item_from_note(note)),
         },
-        Err(err) => NoteResponse {
-            ok: false,
-            error_code: Some(err.code().to_string()),
-            message: err.message(),
-            note: None,
-        },
+        Err(err) => note_failure(err),
     }
 }
 
@@ -734,22 +684,22 @@ fn note_create_impl(content: String) -> NoteResponse {
 /// - `content` is treated as full markdown source replacement.
 /// - Returns typed envelope with stable error codes.
 #[flutter_rust_bridge::frb]
-pub async fn note_update(atom_id: String, content: String) -> NoteResponse {
+pub async fn note_update(atom_id: String, content: String) -> AtomItemResponse {
     note_update_impl(atom_id, content)
 }
 
-fn note_update_impl(atom_id: String, content: String) -> NoteResponse {
+fn note_update_impl(atom_id: String, content: String) -> AtomItemResponse {
     let parsed_id = match parse_note_id(atom_id.as_str()) {
         Ok(value) => value,
         Err(err) => return note_failure(err),
     };
 
     match with_note_service(|service| service.update_note(parsed_id, content)) {
-        Ok(note) => NoteResponse {
+        Ok(note) => AtomItemResponse {
             ok: true,
             error_code: None,
             message: "Note updated.".to_string(),
-            note: Some(to_note_item(note)),
+            item: Some(to_atom_list_item_from_note(note)),
         },
         Err(err) => note_failure(err),
     }
@@ -761,11 +711,11 @@ fn note_update_impl(atom_id: String, content: String) -> NoteResponse {
 /// - Async call, DB-backed execution.
 /// - Returns typed envelope with stable error codes.
 #[flutter_rust_bridge::frb]
-pub async fn note_get(atom_id: String) -> NoteResponse {
+pub async fn note_get(atom_id: String) -> AtomItemResponse {
     note_get_impl(atom_id)
 }
 
-fn note_get_impl(atom_id: String) -> NoteResponse {
+fn note_get_impl(atom_id: String) -> AtomItemResponse {
     let parsed_id = match parse_note_id(atom_id.as_str()) {
         Ok(value) => value,
         Err(err) => return note_failure(err),
@@ -777,11 +727,11 @@ fn note_get_impl(atom_id: String) -> NoteResponse {
             .map_err(NoteServiceError::from)?
             .ok_or(NoteServiceError::NoteNotFound(parsed_id))
     }) {
-        Ok(note) => NoteResponse {
+        Ok(note) => AtomItemResponse {
             ok: true,
             error_code: None,
             message: "Note loaded.".to_string(),
-            note: Some(to_note_item(note)),
+            item: Some(to_atom_list_item_from_note(note)),
         },
         Err(err) => note_failure(err),
     }
@@ -798,7 +748,7 @@ pub async fn notes_list(
     tag: Option<String>,
     limit: Option<u32>,
     offset: Option<u32>,
-) -> NotesListResponse {
+) -> AtomListResponse {
     notes_list_impl(tag, limit, offset)
 }
 
@@ -806,18 +756,22 @@ fn notes_list_impl(
     tag: Option<String>,
     limit: Option<u32>,
     offset: Option<u32>,
-) -> NotesListResponse {
+) -> AtomListResponse {
     let resolved_offset = offset.unwrap_or(0);
 
     match with_note_service(|service| service.list_notes(tag, limit, resolved_offset)) {
-        Ok(result) => NotesListResponse {
+        Ok(result) => AtomListResponse {
             ok: true,
             error_code: None,
             message: format!("Loaded {} note(s).", result.items.len()),
-            items: result.items.into_iter().map(to_note_item).collect(),
+            items: result
+                .items
+                .into_iter()
+                .map(to_atom_list_item_from_note)
+                .collect(),
             applied_limit: result.applied_limit,
         },
-        Err(err) => NotesListResponse {
+        Err(err) => AtomListResponse {
             ok: false,
             error_code: Some(err.code().to_string()),
             message: err.message(),
@@ -834,22 +788,22 @@ fn notes_list_impl(
 /// - `tags` is treated as complete replacement, not incremental patch.
 /// - Returns typed envelope with stable error codes.
 #[flutter_rust_bridge::frb]
-pub async fn note_set_tags(atom_id: String, tags: Vec<String>) -> NoteResponse {
+pub async fn note_set_tags(atom_id: String, tags: Vec<String>) -> AtomItemResponse {
     note_set_tags_impl(atom_id, tags)
 }
 
-fn note_set_tags_impl(atom_id: String, tags: Vec<String>) -> NoteResponse {
+fn note_set_tags_impl(atom_id: String, tags: Vec<String>) -> AtomItemResponse {
     let parsed_id = match parse_note_id(atom_id.as_str()) {
         Ok(value) => value,
         Err(err) => return note_failure(err),
     };
 
     match with_note_service(|service| service.set_note_tags(parsed_id, tags)) {
-        Ok(note) => NoteResponse {
+        Ok(note) => AtomItemResponse {
             ok: true,
             error_code: None,
             message: "Note tags replaced.".to_string(),
-            note: Some(to_note_item(note)),
+            item: Some(to_atom_list_item_from_note(note)),
         },
         Err(err) => note_failure(err),
     }
@@ -1204,14 +1158,19 @@ fn parse_note_id(raw: &str) -> Result<AtomId, NotesFfiError> {
     Uuid::parse_str(raw.trim()).map_err(|_| NotesFfiError::InvalidNoteId(raw.to_string()))
 }
 
-fn to_note_item(value: NoteRecord) -> NoteItem {
-    NoteItem {
-        atom_id: value.atom_id.to_string(),
-        content: value.content,
-        preview_text: value.preview_text,
-        preview_image: value.preview_image,
-        updated_at: value.updated_at,
-        tags: value.tags,
+/// Converts a `NoteRecord` (with S8-expanded fields) into `AtomListItem`.
+fn to_atom_list_item_from_note(nr: NoteRecord) -> AtomListItem {
+    AtomListItem {
+        atom_id: nr.atom_id.to_string(),
+        kind: nr.kind,
+        content: nr.content,
+        preview_text: nr.preview_text,
+        preview_image: nr.preview_image,
+        tags: nr.tags,
+        start_at: nr.start_at,
+        end_at: nr.end_at,
+        task_status: nr.task_status,
+        updated_at: nr.updated_at,
     }
 }
 
@@ -1233,12 +1192,12 @@ fn to_workspace_node_item(node: WorkspaceNode) -> WorkspaceNodeItem {
     }
 }
 
-fn note_failure(error: NotesFfiError) -> NoteResponse {
-    NoteResponse {
+fn note_failure(error: NotesFfiError) -> AtomItemResponse {
+    AtomItemResponse {
         ok: false,
         error_code: Some(error.code().to_string()),
         message: error.message(),
-        note: None,
+        item: None,
     }
 }
 
@@ -1430,6 +1389,19 @@ pub struct AtomListItem {
     pub task_status: Option<String>,
     /// Update timestamp in epoch milliseconds.
     pub updated_at: i64,
+}
+
+/// Single atom item response envelope (notes create/update/get/set_tags).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomItemResponse {
+    /// Whether operation succeeded.
+    pub ok: bool,
+    /// Stable machine-readable error code for failure paths.
+    pub error_code: Option<String>,
+    /// Human-readable message for diagnostics/UI.
+    pub message: String,
+    /// Returned atom item payload on success.
+    pub item: Option<AtomListItem>,
 }
 
 /// Section list response envelope.
@@ -2039,7 +2011,7 @@ mod tests {
         assert!(created.ok, "{}", created.message);
         assert!(created.error_code.is_none());
         let atom_id = created
-            .note
+            .item
             .as_ref()
             .expect("note payload should exist")
             .atom_id
@@ -2050,9 +2022,9 @@ mod tests {
         assert!(loaded.error_code.is_none());
         assert_eq!(
             loaded
-                .note
+                .item
                 .as_ref()
-                .and_then(|note| note.preview_image.as_deref()),
+                .and_then(|n| n.preview_image.as_deref()),
             Some("first.png")
         );
     }
@@ -2063,7 +2035,7 @@ mod tests {
         let created = note_create_impl("first body".to_string());
         assert!(created.ok, "{}", created.message);
         let atom_id = created
-            .note
+            .item
             .as_ref()
             .expect("created note payload")
             .atom_id
@@ -2073,9 +2045,9 @@ mod tests {
         assert!(updated.ok, "{}", updated.message);
         assert_eq!(
             updated
-                .note
+                .item
                 .as_ref()
-                .and_then(|note| note.preview_image.as_deref()),
+                .and_then(|n| n.preview_image.as_deref()),
             Some("two.png")
         );
     }
@@ -2085,10 +2057,10 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let first = note_create_impl("work note".to_string());
         assert!(first.ok, "{}", first.message);
-        let first_id = first.note.as_ref().expect("first note").atom_id.clone();
+        let first_id = first.item.as_ref().expect("first note").atom_id.clone();
         let second = note_create_impl("other note".to_string());
         assert!(second.ok, "{}", second.message);
-        let second_id = second.note.as_ref().expect("second note").atom_id.clone();
+        let second_id = second.item.as_ref().expect("second note").atom_id.clone();
 
         let tag_set = note_set_tags_impl(
             first_id.clone(),
@@ -2124,7 +2096,7 @@ mod tests {
         let created = note_create_impl("tag update target".to_string());
         assert!(created.ok, "{}", created.message);
         let atom_id = created
-            .note
+            .item
             .as_ref()
             .expect("created note payload")
             .atom_id
@@ -2146,7 +2118,7 @@ mod tests {
             ],
         );
         assert!(tagged.ok, "{}", tagged.message);
-        let note = tagged.note.expect("note payload should exist");
+        let note = tagged.item.expect("note payload should exist");
         assert_eq!(note.tags, vec!["important".to_string(), "work".to_string()]);
         assert!(note.updated_at > 1000);
     }
@@ -2217,7 +2189,7 @@ mod tests {
         let created = note_create_impl("tag source".to_string());
         assert!(created.ok, "{}", created.message);
         let atom_id = created
-            .note
+            .item
             .as_ref()
             .expect("created note payload")
             .atom_id
@@ -2246,7 +2218,7 @@ mod tests {
         let created_note = note_create_impl("workspace note".to_string());
         assert!(created_note.ok, "{}", created_note.message);
         let atom_id = created_note
-            .note
+            .item
             .as_ref()
             .expect("note payload")
             .atom_id
