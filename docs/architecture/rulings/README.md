@@ -24,6 +24,7 @@
 | [S6](S6-provider-spi-interaction.md) | Provider SPI → external_mappings 交互 | Documented — v0.3 实现 | PR-0309 |
 | [S7](S7-reminders-infrastructure.md) | Reminders 模块定位 | Landed — v0.2.5 PR-0259 | — |
 | [S8](S8-noteitem-unification.md) | NoteItem → AtomListItem 类型统一 | Deferred — v0.3 | 新 PR |
+| [S9](S9-cross-feature-infrastructure-placement.md) | 跨 feature 基础设施模块归属 | Deferred — v0.3 | PR-0301B, PR-0300D |
 
 ## 状态定义
 

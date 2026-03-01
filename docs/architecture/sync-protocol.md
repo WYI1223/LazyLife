@@ -1,4 +1,4 @@
-﻿# Sync Protocol
+# Sync Protocol
 
 ## Purpose
 
@@ -6,9 +6,10 @@ This document describes the synchronization protocol baseline and planned evolut
 
 Current status:
 
-- v0.1 sync protocol is partially prepared at schema level.
+- v0.2 sync protocol is prepared at schema level + provider SPI contracts (declaration-only).
 - Full provider sync engine is not implemented yet.
-- Sync architecture is being shifted to provider SPI + provider plugin model.
+- First concrete implementation (Google Calendar) is v0.3 scope (PR-0309).
+- Architecture follows S6 three-layer separation: Provider → Orchestrator → Mapping.
 
 ## Design Goals
 
@@ -19,29 +20,61 @@ Current status:
 
 ## Scope by Version
 
-### v0.1 (current + deferred PRs)
+### v0.1–v0.2 (completed)
 
-Already implemented:
-
-- `external_mappings` table as canonical provider link registry
+- `external_mappings` table as canonical provider link registry (Migration 3)
 - stable atom IDs + soft-delete semantics
-
-Planned in draft PRs:
-
-- PR-0014: local task-calendar projection baseline (provider-agnostic)
-- PR-0015: Google provider plugin track (deferred, depends on provider SPI)
-
-### v0.2
-
-- provider SPI contract baseline (`auth/pull/push/conflict`)
-- capability-aware provider invocation guardrails
+- `ProviderSpi` trait defined (auth/pull/push/conflict_map) — declaration-only
+- `ProviderRegistry` defined — declaration-only
+- provider SPI contract baseline with capability-aware invocation guardrails
 - API lifecycle/deprecation baseline for sync/provider surfaces
 
-### v0.3+
+### v0.3 (planned)
 
-- better conflict UX and replay tooling
-- Google provider plugin implementation on SPI
+- **SyncOrchestratorService**: sync flow coordination, mapping management, S1 creation semantics (S6 ruling)
+- **ExternalMappingRepository**: `external_mappings` table CRUD
+- **Google Calendar Provider**: first concrete `ProviderSpi` implementation (PR-0309)
+- S1 R5 alignment: sync pull creates Atom + atom_ref (mandatory accompaniment)
+- S1 R4 alignment: pull Atom with `start_at`/`end_at` auto-derives `view_hint = event`
+
+### v0.4+
+
 - broader provider support and reliability hardening
+- better conflict UX and replay tooling
+- cursor-based incremental sync strategy
+
+## Three-Layer Responsibility Separation (S6 Ruling)
+
+See [S6: Provider SPI → external_mappings 交互](rulings/S6-provider-spi-interaction.md) for full ruling.
+
+| Layer | Component | Responsibility | Touches external_mappings? |
+|-------|-----------|----------------|---------------------------|
+| Provider adapter | `ProviderSpi` implementation | Remote API interaction: auth, pull, push, conflict strategy | **No** |
+| Sync orchestrator | `SyncOrchestratorService` (v0.3) | Orchestrate sync flow, manage mappings, enforce creation semantics | **Yes** — sole reader/writer |
+| Mapping persistence | `ExternalMappingRepository` (v0.3) | `external_mappings` table CRUD | **Yes** — called by orchestrator |
+
+### Sync Flow
+
+```
+1. provider.auth()           → confirm auth status
+2. provider.pull(cursor)     → get remote changes
+3. mapping_repo.find(...)    → look up existing mappings
+   - has mapping → update local Atom
+   - no mapping → create Atom + atom_ref + create mapping (S1 R5)
+4. collect local changes
+5. mapping_repo.get(...)     → get external_id
+6. provider.push(changes)    → push to remote
+7. mapping_repo.update(...)  → update version/last_synced_at
+8. if conflicts → provider.conflict_map() → execute per strategy
+```
+
+### S1 Ruling Impact on Sync
+
+| S1 Rule | Requirement for sync orchestrator |
+|---------|----------------------------------|
+| R5 atom_ref mandatory | Pull creating new Atom must also create atom_ref |
+| R6 designated default path | Google Calendar pull → atom_ref routes to Calendar designated folder |
+| R3 view_hint auto-derivation | Pull Atom with `start_at`/`end_at` → Core auto-derives `view_hint = event` |
 
 ## Core Concepts
 
@@ -52,8 +85,10 @@ Planned in draft PRs:
 
 ### Mapping Registry
 
-- mapping lives in `external_mappings` (Rust core owned)
+- Mapping lives in `external_mappings` (Rust core owned)
+- Mapping is **Atom-level** (not atom_ref-level) — atom_ref multi-references are orthogonal (S6 ruling)
 - UI must not manage provider ID mapping logic
+- Uniqueness: `UNIQUE(provider, external_id)` + `UNIQUE(provider, atom_uuid)`
 
 ### Deletion Semantics
 
@@ -67,15 +102,15 @@ Planned in draft PRs:
 3. `reconcile`: apply local changes and resolve conflicts
 4. `checkpoint`: persist sync token and sync timestamp
 
-## Conflict Baseline (v0.1 target)
+## Conflict Baseline
 
-Minimal rule set (planned):
+Minimal rule set:
 
 - deterministic last-writer strategy for low-risk fields
 - preserve mapping consistency first
 - expose conflict count and status in logs/diagnostics
 
-Detailed conflict UI is out of scope for current v0.1 progress.
+Detailed conflict UI is an open design item (see S6).
 
 ## Error Handling Principles
 
@@ -113,10 +148,12 @@ See: `docs/compliance/google-calendar.md` and `docs/compliance/privacy.md`.
 
 - CRDT-level multi-master merge implementation
 - remote telemetry upload
-- production sandboxed third-party provider runtime in v0.1/v0.2
+- production sandboxed third-party provider runtime in v0.3
 
 ## References
 
+- [S6: Provider SPI → external_mappings 交互](rulings/S6-provider-spi-interaction.md)
+- [S1: Atom 投影语义](rulings/S1-atom-projection.md)
 - `docs/releases/v0.1/prs/PR-0014-local-task-calendar-projection.md`
 - `docs/releases/v0.1/prs/PR-0015-google-calendar-provider-plugin.md`
 - `docs/releases/v0.2/prs/PR-0215-provider-spi-and-sync-contract.md`

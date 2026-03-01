@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the current LazyNote architecture baseline for v0.2.5.
+This document defines the LazyNote architecture baseline (v0.2.5) and planned v0.3 evolution.
 
 Focus:
 
@@ -10,6 +10,7 @@ Focus:
 - Rust Core as business and persistence boundary
 - Flutter as UI/runtime/interaction boundary
 - coordinator-based state management (post-PR-0252)
+- v0.3: editor workbench extraction (EditorShellService, EditBuffer, EditorResolver)
 - declaration-only extension and sync contracts
 - staged delivery via `docs/releases/`
 
@@ -84,7 +85,7 @@ Non-responsibilities:
 - Soft delete policy: `is_deleted` tombstone (business paths never hard-delete)
 - Runtime file root: `%APPDATA%/LazyLife/` (Windows), `<app_support>/LazyLife/` (others)
 
-## Module Map (v0.2.5)
+## Module Map (v0.2.5 + v0.3 Planned)
 
 ### Rust Core
 
@@ -100,13 +101,12 @@ Non-responsibilities:
 ### Flutter Features
 
 - `lib/features/entry/`: workbench/shell, command parser, command router, section registry
-- `lib/features/notes/`: coordinator + 6 managers, editor, explorer tree, tab strip
+- `lib/features/notes/`: coordinator + managers (list, tag, tree), editor, explorer tree, tab strip. **v0.3: tab/draft/save managers extracted to `lib/core/editor/`**
 - `lib/features/tags/`: tag filter widget
 - `lib/features/search/`: search results view
 - `lib/features/tasks/`: tasks dashboard (Inbox/Today/Upcoming)
 - `lib/features/calendar/`: weekly calendar with event create/edit
-- `lib/features/workspace/`: WorkspaceProvider (pane layout state)
-- `lib/core/reminders/`: local notification scheduling (S7 ruling: platform infrastructure)
+- `lib/features/workspace/`: WorkspaceProvider (pane layout state). **v0.3: replaced by `lib/core/editor/group_layout.dart`**
 - `lib/features/settings/`: extension permissions UI
 - `lib/features/diagnostics/`: Rust health panel + live log viewer
 
@@ -118,7 +118,26 @@ Non-responsibilities:
 - `lib/core/local_paths.dart`: platform-specific app root resolution
 - `lib/core/debug/`: LogReader for rolling log files
 - `lib/core/diagnostics/`: DartEventLogger for structured events
+- `lib/core/reminders/`: local notification scheduling (S7 ruling: platform infrastructure)
 - `lib/app/`: app shell, routes, locale controller, UI slots
+
+### Flutter Core Infrastructure — v0.3 Planned (S9)
+
+Cross-feature infrastructure modules are placed in `lib/core/` per [S9 ruling](rulings/S9-cross-feature-infrastructure-placement.md):
+
+```
+lib/core/editor/                        ← EditorShellService (S2 Phase 2/3)
+├── editor_shell_service.dart           ← Main service (singleton)
+├── editor_group_model.dart             ← EditorGroupModel + TabEntry
+├── edit_buffer.dart                    ← EditBuffer (per-atom state machine)
+├── group_layout.dart                   ← GroupLayout (recursive layout tree)
+├── layout_persistence.dart             ← Layout file I/O + debounce (DI-3)
+└── editor_resolver.dart                ← content_type → EditorPane (DI-10)
+
+lib/core/workspace/                     ← WorkspaceTreeService extraction
+├── workspace_tree_service.dart         ← From features/notes/managers/
+└── workspace_models.dart               ← From features/workspace/
+```
 
 ## Notes Coordinator Architecture (Post-PR-0252)
 
@@ -136,6 +155,34 @@ NotesCoordinator (orchestrator)
 
 WorkspaceProvider remains separate, managing pane layout only (split/close/activate pane).
 PR-0258 eliminated the dual-state pattern — NotesCoordinator is now the sole source of tab/draft/save state. WorkspaceProvider was reduced from 664 to 166 lines.
+
+## v0.3 Editor Workbench Architecture (S2 Phase 2/3)
+
+v0.3 extracts tab, draft, save, and pane layout from notes-specific code into workbench-level infrastructure. Three-layer separation (modeled after VSCode's EditorService):
+
+| Layer | Responsibility | Component |
+|-------|---------------|-----------|
+| State management | Groups, buffers, layout | `EditorShellService` |
+| Editor selection | content_type → EditorPane widget | `EditorResolver` |
+| Shell presentation | Loading/error/metadata/tags | Feature controller (notes/tasks/...) |
+
+**EditorShellService** (`lib/core/editor/editor_shell_service.dart`): Singleton service managing `EditorGroupModel[]` (per-pane tab lists) and `EditBuffer` (per-atom editing state). Replaces `WorkspaceProvider` and the tab/draft/save managers currently in `NotesCoordinator`.
+
+**EditBuffer** (`lib/core/editor/edit_buffer.dart`): Per-atom self-contained state machine with 4 states: `loading → ready | error → disposing`. Unifies the current `NoteDraftManager` + `NoteSaveTracker` (eliminating state dual-write). Key properties:
+- `_rev: int` — monotonic revision number for stale-save prevention and sync protocol
+- `persistFn` closure injection — Coordinator provides FFI save callback; EditBuffer doesn't know about FFI
+- Reference counting — close tab checks if atomId exists in other groups before flush + dispose
+
+**EditorGroupModel** (`lib/core/editor/editor_group_model.dart`): Per-pane visual state:
+- `tabs: List<TabEntry>` — tab list per group
+- `activeAtomId: String?` — currently active tab
+- `previewTabId: String?` — preview tab (per-group)
+
+**EditorResolver** (`lib/core/editor/editor_resolver.dart`): Maps `content_type` to EditorPane widget builder. v0.3 registers `markdown` only. Unknown content_type → error placeholder (no fallback to markdown — prevents data corruption). See [S2 Phase 3](rulings/S2-tab-draft-save-ownership.md), [DI-10](../reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md).
+
+**Communication pattern**: Coordinator → Service (direct call), Service → FFI (`loadContentFn` + `persistFn` dual closures), Service → Coordinator (`onBufferSaved` callback).
+
+Design details: [S2](rulings/S2-tab-draft-save-ownership.md), [DI-1](../reports/v0.3/design-discussions/DI-1-editor-shell-service.md), [DI-4](../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md).
 
 ## Extension Kernel (Declaration-Only)
 
@@ -194,11 +241,13 @@ Next: v0.3 (see `docs/releases/v0.3/README.md`)
 
 ## Out of Scope (current state)
 
-- production-grade multi-provider sync engine (v0.3+)
-- dynamic extension loading/sandbox runtime (v0.3+)
+- production-grade multi-provider sync engine (first provider in v0.3, full engine v0.4+)
+- dynamic extension loading/sandbox runtime (v0.4+)
 - cloud telemetry pipeline
 - cross-platform parity (non-Windows UX maturity)
 - CRDT merge runtime
+- Canvas/Conversation content types (v0.4+, S1 R12/R13)
+- Block WYSIWYG editing (v0.4+, S1 R14)
 
 ## References
 
@@ -206,9 +255,11 @@ Next: v0.3 (see `docs/releases/v0.3/README.md`)
 - `docs/releases/v0.3/README.md`
 - `docs/architecture/data-model.md`
 - `docs/architecture/engineering-standards.md`
-- `docs/architecture/rulings/README.md` — S1-S8 semantic rulings registry
+- `docs/architecture/rulings/README.md` — S1-S9 semantic rulings registry
+- `docs/architecture/modules/README.md` — per-module implementation specs (v0.3)
 - `docs/architecture/extension-kernel.md`
 - `docs/architecture/provider-spi.md`
+- `docs/architecture/sync-protocol.md`
 - `docs/architecture/logging.md`
 - `docs/architecture/settings-config.md`
 - `docs/api/ffi-contracts.md`
