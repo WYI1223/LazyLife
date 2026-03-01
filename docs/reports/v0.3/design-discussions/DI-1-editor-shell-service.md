@@ -230,21 +230,24 @@ Undo 由 Flutter `TextEditingController` 内置 undo 栈在 widget 层处理。E
 - 销毁（会话重置）：`_resetSessionForReload()` 全 clear
 - 关闭 tab：只从 tab 列表移除，**不清理 draft Map**（状态泄漏）
 
-**状态机设计**：
+**状态机设计**（DI-4 Q4 细化4 扩展：增加 `error` 状态）：
 
 ```
-  loading ──→ ready ──→ disposing
-    │                      │
-    │  initialize()        │  dispose()
-    │                      │
-    └── edit()/save()/flush() 均为 no-op
+  loading ──┬──→ ready ──→ disposing
+            │                  ↑
+            └──→ error ────────┘
+                  │
+                  └── retry() → 重新触发 _loadSingleBuffer → loading
 ```
 
 | 阶段 | 允许的操作 | UI 表现 |
 |------|-----------|---------|
-| `loading` | 仅 `initialize(loadedContent)` | 编辑器显示 loading 占位，不可交互 |
+| `loading` | `initialize(loadedContent)` 或 `markError(e)` | 编辑器显示 loading 占位，不可交互 |
 | `ready` | `edit()`, `flush()`, `dispose()` | 编辑器正常交互 |
+| `error` | `retry()`（回到 `loading` 重新加载），`dispose()` | 错误占位 + retry 按钮 |
 | `disposing` | 无 | buffer 即将销毁 |
+
+> **注**：`error` 状态由 DI-4 Q4 细化4 引入。`AtomNotFoundException` 不进入 `error`（直接移除 tab），仅 FFI 通用异常（DB 锁定、I/O 错误等可恢复故障）使用 `markError()`。
 
 **loading 阶段为什么必须阻止所有变更操作**：
 
@@ -252,7 +255,7 @@ Undo 由 Flutter `TextEditingController` 内置 undo 栈在 widget 层处理。E
 当前实现也有此隐患（`_syncPersistedSnapshot` 依赖 `wasDirty` 判断是否覆盖，而 persisted 为 null 时 `isDirty` 返回 false），
 只是因为本地 SQLite 加载极快（< 50ms）未暴露。loading 阶段的显式保护消除了这个隐患。
 
-**创建与加载**：
+**创建与加载**（DI-4 Q4 细化3 修正：`loadContentFn` 闭包注入替代 `initializeBuffer` 外部调用）：
 
 ```
 service.openTab(groupId, atomId, {initialContent?, title?}):
@@ -260,16 +263,12 @@ service.openTab(groupId, atomId, {initialContent?, title?}):
   2. 若 buffers[atomId] 不存在：
      a. 创建 EditBuffer(atomId, phase: loading)
      b. 若 initialContent != null → buffer.initialize(initialContent) → phase = ready
-     c. 否则 → 保持 loading，等待外部调用 service.initializeBuffer(atomId, content)
+     c. 否则 → _loadSingleBuffer(atomId)（fire-and-forget，内部调用 _loadContentFn 闭包）
   3. 若 buffers[atomId] 已存在（其他 pane 已打开）：
      → 直接复用，无需加载
-
-service.initializeBuffer(atomId, content):
-  → buffers[atomId].initialize(content)  → phase = ready
 ```
 
-**加载职责**：service 本身不做 FFI 调用。Coordinator 负责调用 FFI 获取内容，然后通过 `initializeBuffer` 传入。
-这保证了 EditorShellService 的通用性 — 它不知道数据从哪里来（FFI / 网络 / 内存）。
+**加载职责**（DI-4 Q4 细化3 裁决）：Service 通过 `_loadContentFn` 闭包加载内容，与 `_persistFn` 保存路径**对称**。Service 控制**何时**加载，Coordinator 提供**怎么**加载（闭包内封装 FFI 调用）。Coordinator 是接线员——构造时注入闭包，不亲自调 FFI 再塞回 Service。这保证了 EditorShellService 的通用性 — 它不知道数据从哪里来（FFI / 网络 / 内存）。
 
 **销毁与引用计数**：
 
@@ -386,13 +385,14 @@ Coordinator 是 notes feature 的中介者，负责协调多个子系统之间�
 
 | 方向 | 机制 | 说明 |
 |------|------|------|
-| Coordinator → Service | 直接方法调用 | `service.openTab()`, `service.flushBuffer()`, `service.initializeBuffer()` |
-| Service → FFI | 闭包（Coordinator 注入的 `persistFn`） | EditBuffer 调用 `_persistFn(atomId, content)`，不知道 FFI 的存在 |
+| Coordinator → Service | 直接方法调用 | `service.openTab()`, `service.flushBuffer()`, `service.closeTab()` |
+| Service → FFI（加载） | 闭包（Coordinator 注入的 `loadContentFn`） | Service 内部调用 `_loadContentFn(atomId)`，不知道 FFI 的存在（DI-4 Q4 细化3） |
+| Service → FFI（保存） | 闭包（Coordinator 注入的 `persistFn`） | EditBuffer 调用 `_persistFn(atomId, content)`，不知道 FFI 的存在 |
 | Service → Coordinator | 回调（`onBufferSaved`） | 保存成功后通知外部更新缓存 |
 
-**persistFn 闭包模式（关键设计）**：
+**双闭包注入模式（关键设计，DI-4 Q4 细化3 扩展）**：
 
-Coordinator 在构造/注册 buffer 时提供 `persistFn` 闭包。闭包内部封装了完整的保存链路：
+Coordinator 在构造 Service 时注入 `loadContentFn` + `persistFn` 双闭包，加载和保存路径对称。以下为 `persistFn` 闭包示例（`loadContentFn` 见 DI-4 Q4 细化3）：
 
 ```
 persistFn = (atomId, content) async {
@@ -415,7 +415,7 @@ EditBuffer 只看到 `Future<bool> Function(String atomId, String content)` — 
 
 **五个核心场景的数据流**：
 
-**场景 1：用户点击笔记打开**
+**场景 1：用户点击笔记打开**（DI-4 Q4 细化3 修正：loadContentFn 替代 initializeBuffer）
 
 ```
 Coordinator.selectNote(atomId):
@@ -425,12 +425,11 @@ Coordinator.selectNote(atomId):
   4. service.openTab(activeGroupId, atomId, title: noteItem.title)
      → 创建 EditBuffer(phase: loading)
      → 加入 group.tabs
-  5. service.initializeBuffer(atomId, noteItem.content) ← content 传给 service
-     → buffer.initialize(content) → phase = ready
-  6. detailLoading = false, notifyListeners()
+     → 内部触发 _loadContentFn(atomId) → buffer.initialize(content) → phase = ready
+  5. detailLoading = false, notifyListeners()
 ```
 
-关键：Coordinator 做一次 FFI 调用，结果拆分 — metadata 留在 `selectedNote`，content 传给 service。Service 不做 FFI 调用。
+关键：Coordinator 调 FFI 获取 metadata（tags、preview 等 feature-level 数据），content 加载由 Service 通过 `_loadContentFn` 闭包自主完成。Coordinator 在构造 Service 时注入闭包，不亲自调 FFI 再塞回 Service（DI-4 Q4 细化3 "接线员原则"）。
 
 **场景 2：用户编辑内容**
 
@@ -670,7 +669,9 @@ lib/core/editor/
 ├── editor_shell_service.dart     ← 主 service（singleton）
 ├── editor_group_model.dart       ← EditorGroupModel + TabEntry
 ├── edit_buffer.dart              ← EditBuffer（per-atom 状态机）
-└── group_layout.dart             ← GroupLayout（递归布局树，从 WorkspaceProvider 迁入）
+├── group_layout.dart             ← GroupLayout（递归布局树，从 WorkspaceProvider 迁入）
+├── layout_persistence.dart       ← 布局文件 I/O + 去抖 + atomic write（DI-3）
+└── editor_resolver.dart          ← content_type → EditorPane（DI-10）
 ```
 
 与其他 `core/` 模块形成对称：
@@ -690,6 +691,8 @@ lib/core/
 
 ```
 EditorShellService (singleton, lib/core/editor/)
+├── _loadContentFn (注入: FFI 加载回调，DI-4 Q4 细化3)
+├── _persistFn (注入: FFI 保存回调)
 ├── groups: Map<GroupId, EditorGroupModel>
 │   └── EditorGroupModel (per-pane)
 │       ├── tabs: List<TabEntry>        ← TabEntry { atomId, title }
@@ -698,19 +701,19 @@ EditorShellService (singleton, lib/core/editor/)
 ├── activeGroupId: String
 ├── buffers: Map<AtomId, EditBuffer> (per-atom, 统一 draft+save)
 │   └── EditBuffer (ChangeNotifier)
-│       ├── _phase: loading | ready | disposing
+│       ├── _phase: loading | ready | error | disposing（DI-4 Q4 细化4 扩展）
 │       ├── content / lastSavedContent
+│       ├── _rev: int（DI-4 Q1 补充，统一 _editVersion）
 │       ├── saveState (getter: loading/clean/dirty/saving/error)
-│       ├── _persistFn (注入: FFI 保存回调)
 │       ├── _onSaved (注入: 保存成功通知回调)
-│       ├── initialize() / edit() / flush() / dispose()
-│       └── loading 阶段: edit/save/flush 均为 no-op
+│       ├── initialize() / edit({EditOp? op}) / flush() / dispose() / markError() / retry()
+│       └── loading/error 阶段: edit/save/flush 均为 no-op
 ├── layout: GroupLayout (递归树，原 WorkspaceProvider)
 │
 ├── openTab(groupId, atomId, {initialContent?, title?})
 ├── updateTabTitle(atomId, newTitle)
-├── initializeBuffer(atomId, content)
 ├── closeTab(groupId, atomId)
+├── switchTab(groupId, atomId)
 ├── flushBuffer(atomId) / flushAllDirtyBuffers()
 └── hasPendingSaveWork (getter)
 

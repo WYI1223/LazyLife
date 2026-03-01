@@ -5,7 +5,7 @@
 | 状态 | **Phase 1 Landed** (v0.2.5 PR-0258) — Phase 2/3 Deferred to v0.3 |
 | 裁决日期 | 2026-02-26 |
 | 关联 PR | PR-0258（已完成）、PR-0301（递归布局）、PR-0303（buffer 同步）、PR-0304（tab 模型）、PR-0305（间接 — buffer 同步性能） |
-| 关联 DI | DI-1（RESOLVED）、DI-2（RESOLVED）、DI-3（RESOLVED）、DI-4（Q1+Q1补充 RESOLVED，Q2-Q5 OPEN）、DI-10（RESOLVED） |
+| 关联 DI | DI-1（RESOLVED）、DI-2（RESOLVED）、DI-3（RESOLVED）、DI-4（RESOLVED — D10、D11、D12）、DI-10（RESOLVED） |
 
 ---
 
@@ -74,7 +74,7 @@ Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom
 **EditBuffer（per-atom 自包含状态机）**：
 
 - 统一原 `NoteDraftManager` + `NoteSaveTracker`，消除状态双写
-- 三阶段状态机：`loading → ready → disposing`
+- 四状态状态机：`loading → ready | error → disposing`。`error` 状态由 `markError()` 进入（FFI 通用异常），支持 `retry()` 和 `dispose()`；`AtomNotFoundException` 不进入 error 状态，直接移除 tab。详见 [DI-4 Q4 细化4](../../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md)、[DI-1 状态机](../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md)
 - `saveState` 为 getter（从字段派生），不存储
 - `persistFn` 闭包注入：Coordinator 提供 FFI 保存回调，EditBuffer 不知道 FFI 的存在
 - 引用计数：closeTab 时检查 atomId 是否还在其他 group 中，无则 flush + dispose
@@ -96,7 +96,7 @@ Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom
 | `selectedNote` / `detailLoading` | 详情面板 DTO + 加载状态 |
 | `selectedTag` | 列表过滤条件 |
 
-通信模式：Coordinator → Service（直接调用）、Service → FFI（persistFn 闭包）、Service → Coordinator（onBufferSaved 回调）。
+通信模式：Coordinator → Service（直接调用）、Service → FFI（`loadContentFn` + `persistFn` 双闭包，DI-4 Q4 细化3 裁决）、Service → Coordinator（onBufferSaved 回调）。
 
 #### Phase 2 布局持久化（DI-3 裁决）
 
@@ -191,7 +191,7 @@ VSCode EditorService 三层分离验证了此模型：
 | 项目 | 状态 |
 |------|------|
 | Phase 1：消除双状态 | **已完成** — PR-0258，WP 664→166 行 |
-| Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED，DI-4 Q1 RESOLVED + Q1 补充 RESOLVED） |
+| Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED，DI-4 Q1-Q5 全部 RESOLVED（D10、D11、D12）） |
 | Phase 3：EditorResolver | v0.3 待实施（**设计完成** — DI-10 RESOLVED，含 View Mode 占位） |
 
 ---
@@ -201,6 +201,6 @@ VSCode EditorService 三层分离验证了此模型：
 - ~~Phase 2 的 `EditorGroupModel` 状态机细节（group 创建/销毁/合并生命周期）~~ — **已由 DI-1 Q1+Q2 回答**
 - ~~Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现）~~ — **已由 DI-10 回答**（静态 Map + register()）
 - ~~DI-1 `_editVersion` 与 DI-4 `_rev` 统一~~ — **已统一为 `_rev`**（本文 EditBuffer 节已更新；DI-1 后续实现时同步重命名）
-- Phase 3 的 EditBuffer 桥接模式（EditorPane 共享的 buffer 监听/同步逻辑） — DI-4 Q3 OPEN（桥接机制初步建议已出，待细化裁决）
+- ~~Phase 3 的 EditBuffer 桥接模式（EditorPane 共享的 buffer 监听/同步逻辑）~~ — **已由 DI-4 Q3 裁决（D12：Manual listener + 字符串比较守卫，v0.3 inline 在 MarkdownEditorPane，v0.4+ 提取 EditorBufferBridge mixin）**
 - 多编辑范式（source / block WYSIWYG / inline WYSIWYG）架构预留 — DI-4 Q1 补充已裁决协议层；实现延后至 v0.4+。完整方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`
 - View Mode per-pane 选择 + DI-3 布局持久化 viewMode 字段 — v0.4+ schema_version 升级时处理

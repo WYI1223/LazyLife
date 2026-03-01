@@ -184,30 +184,33 @@ resolver.resolve('markdown', viewMode: ViewMode.preview)  // → MarkdownPreview
 - 编辑模式是 per-pane 视图选择，不是 content_type 属性
 - v0.3 不实现——`resolve(contentType)` 签名不变，只有 source editor
 
-### EditBuffer 桥接模式（占位 — 待 DI-4 裁决后细化）
+### EditBuffer 桥接模式（已由 DI-4 Q3 裁决 — D12）
+
+> **裁决摘要**：Manual listener + 字符串比较守卫。完整裁决见 DI-4 Q3。
 
 所有 EditorPane（无论 markdown / canvas / conversation）都需要处理同一个问题：**与 EditBuffer 的桥接**。
 
-| 关注点 | 说明 |
-|--------|------|
-| 初始内容加载 | EditorPane 创建时从 `buffer.content` 读取初始内容 |
-| 外部变更同步 | 另一个 pane 编辑了同一 atom → buffer 内容变化 → 当前 pane 需要更新 |
-| 自身编辑回写 | 用户在当前 pane 编辑 → 调用 `buffer.edit()` → 不应触发自身再次 rebuild |
-| Loading/Disposing | 处理 buffer 的 `loading → ready` 阶段转换和 dispose 清理 |
+| 关注点 | DI-4 Q3 裁决 |
+|--------|-------------|
+| 初始内容加载 | EditorPane 创建时从 `buffer.content` 读取初始内容；仅在 `ready` 状态实例化（外壳 chrome 处理 loading/error） |
+| 外部变更同步 | Manual listener (`addListener`) 监听 buffer 变更 → 字符串比较守卫区分本地/远程 |
+| 自身编辑回写 | `buffer.edit()` → `notifyListeners()` → 自身 listener 触发 → 字符串比较 = 相等 → NO-OP（无循环） |
+| Buffer swap | `didUpdateWidget` 中引用比较 (`widget.buffer != oldWidget.buffer`) 处理 tab 切换 |
 
-这个桥接逻辑对所有 EditorPane 通用，可能抽象为共享 mixin 或 base class：
+通用桥接 mixin 方向（v0.4+ 提取）：
 
 ```dart
-// 可能的抽象方向（非裁决，仅思考占位）
+// v0.4+ 第二个 EditorPane 出现时提取
 mixin EditorBufferBridge<T extends StatefulWidget> on State<T> {
   EditBuffer get buffer;
-  // 自动处理 listen/unlisten、区分本地编辑 vs 远程同步、loading 阶段保护
+  bool applyContentToLocalState(String content);  // content_type 特定
+  String serializeLocalState();                     // content_type 特定
 }
 ```
 
-**v0.3 不需要此抽象**——只有 markdown 一种 EditorPane，桥接逻辑直接写在 MarkdownEditorPane 内部即可。当 v0.4+ 出现第二种 EditorPane 时，再提取共性。
+**v0.3 不提取此 mixin**——只有 markdown 一种 EditorPane，桥接逻辑直接 inline 在 MarkdownEditorPane 内部（约 30 行）。当 v0.4+ 出现第二种 EditorPane 时，再提取共性。
 
-具体的同步机制（如何区分"本地编辑"和"远程同步"以避免循环更新）属于 **DI-4（Buffer 同步模型）** 的范畴。
+具体的同步机制（如何区分"本地编辑"和"远程同步"以避免循环更新）**已由 DI-4 Q3 裁决**（D12：Manual listener + 字符串比较守卫）。
 
 ---
 
@@ -218,7 +221,7 @@ mixin EditorBufferBridge<T extends StatefulWidget> on State<T> {
 - ← S1 R2（content_type 类型体系）
 - ← S1 R12（canvas content_type，v0.4+）
 - ← S1 R13（conversation content_type，v0.4+）
-- → DI-4（EditBuffer 桥接模式依赖 Buffer 同步模型裁决）
+- ← DI-4 Q3（EditBuffer 桥接模式 — D12 已裁决：Manual listener + 字符串比较守卫）
 - → PR-0301B（EditorShellService 提取时可同步建立 resolver 壳）
 
 ---

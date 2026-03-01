@@ -288,7 +288,7 @@ DI-4 接收 DI-3 的产出作为前提条件：
 | atomId 在 DB 中不存在 | DI-4 | 跳过该 tab；非 primary group 因此清空 → 坍缩 |
 | 用户在 loading 阶段关闭 tab | DI-3（结构操作） | 允许——仅更新 GroupLayout + EditorGroupModel |
 | 用户在 loading 阶段尝试编辑 | DI-4（Buffer 状态） | `loading` 状态拒绝 `edit()` 调用，UI 禁用编辑 |
-| DB 加载失败 | DI-4 | EditBuffer 保持 `loading`，不影响布局结构 |
+| DB 加载失败（FFI 通用异常） | DI-4 | EditBuffer 标记 `error` 状态（`markError()`），UI 显示错误占位 + retry 按钮，不影响布局结构（DI-4 Q4 细化4） |
 
 ---
 

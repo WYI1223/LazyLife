@@ -2,8 +2,8 @@
 
 | 项目 | 值 |
 |------|-----|
-| **状态** | OPEN |
-| **关联决策点** | D10、D11 |
+| **状态** | **RESOLVED** — D10、D11、D12 全部裁决完毕，Q4 四项细化全部完成 |
+| **关联决策点** | D10、D11、D12 |
 | **阻塞 PR** | PR-0303（直接）、PR-0305（间接） |
 | **前置依赖** | DI-1（D1/D2 确定 buffer 放在哪）、DI-3（两阶段恢复模型边界） |
 | **来源** | 01-design-readiness-audit.md §4.3 + §6.3 |
@@ -60,10 +60,10 @@ DI-3 两阶段恢复模型定义了 DI-4 的入口条件：
 | 编号 | 议题 | 关联决策点 | 状态 |
 |------|------|-----------|------|
 | Q1 | D10 同步模型选型 | D10 | RESOLVED |
-| Q2 | D11 同步粒度 | D11 | OPEN |
-| Q3 | EditBuffer ↔ TextEditingController 桥接机制 | DI-1 细化4 遗留 | OPEN |
-| Q4 | 阶段 2 内容加载策略 | DI-3 边界 | OPEN |
-| Q5 | 方法论（是否需要原型） | §6.3 | OPEN |
+| Q2 | D11 同步粒度 | D11 | RESOLVED |
+| Q3 | EditBuffer ↔ TextEditingController 桥接机制 | DI-1 细化4 遗留 | RESOLVED |
+| Q4 | 阶段 2 内容加载策略 | DI-3 边界 | RESOLVED |
+| Q5 | 方法论（是否需要原型） | §6.3 | RESOLVED |
 
 讨论顺序：Q1 → Q2 → Q3 → Q4 → Q5（Q1/Q2 前提确认 → Q3 核心设计 → Q4 DI-3 接口履行 → Q5 收尾）
 
@@ -441,13 +441,13 @@ Layer 2: Block Model（可选，按需加载）
 | Layer 1/2 | 不加载 | 接口形态确定，宿主延后 |
 | 编辑模式选择 | 仅源码编辑 | EditorGroupModel 概念上支持 viewMode |
 
-DI-4 的核心剩余工作在 Q3（桥接机制实现）。
+DI-4 的 Q3 桥接机制已在下文裁决（D12）。
 
 > 完整的多编辑范式架构方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`。
 
 ---
 
-## Q2: D11 同步粒度 — OPEN
+## Q2: D11 同步粒度 — RESOLVED
 
 ### 当前代码实现
 
@@ -458,6 +458,39 @@ coordinator.updateActiveDraft(content):
 
 NoteEditor → coordinator 传递的是完整 content 字符串（`TextEditingController.text`），不做 diff。
 
+完整数据流（每次击键）：
+
+```
+用户击键
+  → TextField.onChanged("完整文本")
+  → coordinator.updateActiveDraft("完整文本")
+      → _draftContentByAtomId[id] = "完整文本"     // 全量存储
+      → previous == content? → return（字符串比较 guard）
+      → _draftVersionByAtomId[id]++                 // 版本自增（→ 新模型中的 _rev）
+      → _isDirty() = (draft != persisted)           // 全量字符串比较
+      → _scheduleAutosave(version)                  // 1500ms debounce
+      → notifyListeners()
+          → NoteEditor.didUpdateWidget:
+              widget.content != _textController.text?  // 全量字符串比较
+              → 相等则 no-op，不等则 controller.text = 新内容
+
+debounce 到期 (1500ms)
+  → _performSaveDraft(version)
+      → 双重 stale check（version 比对 — 调度时 vs 当前）
+      → await FFI: note_update(atomId, 完整内容)     // 全量写入 SQLite
+      → _persistedContentByAtomId[id] = content      // 全量更新基线
+```
+
+全链路特征：
+
+| 层 | 粒度 | 机制 |
+|---|------|------|
+| UI → Buffer | 全量 string | `TextEditingController.text` |
+| Buffer 内部 | 全量存储 + 版本号 | `Map<String, String>` + `Map<String, int>` |
+| Buffer → UI（跨 pane） | 全量字符串比较 guard | `didUpdateWidget` 中 `==` |
+| Buffer → SQLite | 全量 content 列 | `note_update(id, content)` FFI |
+| SQLite → FTS5 | 全量重索引 | UPDATE trigger 整行替换 |
+
 ### 已有裁决约束
 
 | 裁决 | 内容 | 对 D11 的约束 |
@@ -465,6 +498,15 @@ NoteEditor → coordinator 传递的是完整 content 字符串（`TextEditingCo
 | DI-1 Q3 | `EditBuffer.content: String` — opaque string，不感知内部结构 | buffer 层不做 diff |
 | DI-10 | EditorPane 自己负责解析 `buffer.content`（markdown / canvas JSON / 消息 JSON） | 内容格式差异大，通用 diff 不现实 |
 | S2 Rule 1 | 单一状态源 | content 字符串是权威值 |
+| Q1 补充 | `edit(String newContent, {EditOp? op})` — EditOp 是 advisory hint | hint 不是 source of truth |
+
+### Q1 与 Q2 的关系澄清
+
+Q1 裁决的是 **buffer 内存层的 source of truth 和通知机制**——`_content` 存全量字符串，`notifyListeners()` 每次击键触发。
+
+Q2 问的是 **数据从 A 传到 B 时，传输和应用的粒度**——消费者收到通知后，怎么高效地更新自身状态。这是两个独立的问题。
+
+Q1 裁决 source of truth = 全量字符串，但**不排除**消费者利用 EditOp hint 做增量应用以减少性能消耗。
 
 ### 三选项分析
 
@@ -474,31 +516,123 @@ NoteEditor → coordinator 传递的是完整 content 字符串（`TextEditingCo
 | B: 差分 patch | 高 | 协同编辑 / 超大文档 | 超出范围——本地单用户无协同需求 |
 | C: 段落级 | 很高 | 实时多人协同 | 远超 v0.3 范围 |
 
-**性能估算（全量替换）：**
+**最终方案不是 A/B/C 任何单一选项，而是 "A 为真相 + B 为可选提示"。**
 
-| 文档大小 | 字符串比较耗时 | 判定 |
-|---------|-------------|------|
-| 1KB（短笔记） | < 0.01ms | 可忽略 |
-| 10KB（长笔记） | < 0.05ms | 可忽略 |
-| 100KB（极长文档） | < 0.5ms | 可接受（低于 1 帧 16ms 预算） |
+### 两层模型
 
-**为什么不提前做 diff：**
+```
+┌─────────────────────────────────────────┐
+│ Source of Truth 层（always present）      │
+│  buffer._content: String  ← 完整字符串   │
+│  buffer._rev: int         ← 单调版本号   │
+│                                         │
+│  edit() 无条件替换 _content + rev++       │
+│  所有正确性保证基于此层                    │
+└─────────────────────────────────────────┘
+                    +
+┌─────────────────────────────────────────┐
+│ Hint 层（optional, advisory）            │
+│  buffer._lastOp: EditOp?  ← 变更提示    │
+│                                         │
+│  仅供消费者优化使用，不影响正确性          │
+│  消费者读不懂 → 忽略，回退到读 _content   │
+└─────────────────────────────────────────┘
+```
 
-1. `EditBuffer.content` 是 opaque string（DI-10 裁决）——buffer 层不知道内容是 markdown / JSON / 其他格式
-2. 不同 content_type 的 diff 语义完全不同——markdown 按行 diff ≠ canvas JSON 按元素 diff
-3. v0.3 仅有 markdown 一种类型，引入 diff 机制是为尚不存在的场景优化
+**hint 的设计约束**：EditOp 是 advisory hint，不是 authoritative delta。正确性检验方式——消费者忽略 `_lastOp`，只读 `_content`，行为仍然正确（只是可能多做一些不必要的 rebuild）。如果 EditOp 成为正确性依赖，系统就从 state replication 变成了 operation replication，复杂度急剧上升。
 
-### 初步建议（Q1 补充后修正）
+### 性能估算
 
-**D11 = 全量字符串为 source of truth + 可选 EditOp 提示。**
+**全量字符串操作（per-keystroke）：**
 
-v0.3 实现全量替换（等效选项 A）。接口预留三路 EditOp 通道（SnapshotReplace / TextDelta / StructuredOp），供 v0.4+ 的 Block 编辑和 Inline 编辑使用。
+| 文档大小 | 字符串赋值 | 字符串比较（跨 pane） | 判定 |
+|---------|----------|-------------------|------|
+| 1KB（短笔记） | < 0.01ms | < 0.01ms | 可忽略 |
+| 10KB（长笔记） | < 0.05ms | < 0.05ms | 可忽略 |
+| 100KB（极长文档） | < 0.5ms | < 0.5ms | 可接受（16ms 帧预算的 6%） |
+| 500KB（极端边界） | ~3ms | ~3ms | 边界——开始值得关注 |
+| 1MB+（超大文档） | ~10ms | ~10ms | **需要演化方案** |
 
-修正理由：字符级 delta 无法覆盖 block 级操作（如 block 拖拽排序），需要 StructuredOp 路径。三路并存 + 降级兜底是完整方案（详见 Q1 补充裁决）。
+v0.3 目标文档 < 100KB，全量替换充足。性能瓶颈不在同步粒度（字符串操作），而在 widget 渲染层（全文 widget tree 构建）——后者由 EditorPane 内部 viewport rendering 解决，与同步模型无关。
+
+### 消费者侧的 delta 应用路径
+
+Q1 补充的 EditOp hint 为消费者提供增量应用的可能：
+
+| 消费者 | v0.3 消费方式 | v0.4+ 消费方式（利用 EditOp hint） |
+|--------|-------------|--------------------------------|
+| 跨 pane 文本编辑器 | `controller.text = 全文`（字符串比较 guard） | 读 `TextDelta` → `controller.value` 精准插入/删除，保留光标相对位置 |
+| Block 编辑器 | 不存在 | 读 `StructuredOp` → 直接应用 block 操作，避免全量 re-parse |
+| 渲染预览 | 不存在 | 读 `TextDelta.offset` → 判断是否在 viewport 内，不在则跳过 rebuild |
+| SQLite 持久化 | `UPDATE SET content = ?`（全列写入） | 不变——SQLite UPDATE 就是全列替换，delta 无法减少 I/O |
+| FTS5 | trigger 全量重索引 | 不变——FTS5 UPDATE trigger 是全行替换语义 |
+
+### 持久化粒度
+
+| 层 | 粒度 | v0.3 行为 | 理由 |
+|---|------|----------|------|
+| FFI 接口 | 全量 content 写入 | `note_update(id, 完整content)` | SQLite UPDATE 是全列写入，delta 不减少 I/O |
+| FTS5 更新 | 全量重索引 | UPDATE trigger | FTS5 trigger 是全行替换语义 |
+| overlay 写入 | 不存在 | v0.4+ 新增 | Q1 补充已裁决 |
+
+### 大文档演化路径
+
+当文档大小超过全量字符串的性能边界（~500KB+）时，有两条互补的演化路径：
+
+**路径 1：Transclusion（语义层 LOD）— 首选**
+
+用户将大文档拆分为多个 Atom，通过 markdown 嵌入引用组合：
+
+```markdown
+# 我的巨著
+![[chapter_1_atom_id]]
+![[chapter_2_atom_id]]
+```
+
+- "目录 Atom" 的 content 只有几十字节，各章节 Atom 各自 < 100KB
+- 每章 Atom 有独立 EditBuffer，编辑时只触发该章的 buffer 通知
+- **与 Q1/Q2 完全兼容**——不改 Atom 模型、EditBuffer、FFI、持久化
+- 仅需新增：`![[id]]` 语法解析（EditorPane 内）+ 引用 Atom 动态加载 + 嵌入渲染
+- 已在 Obsidian / Logseq / Roam 充分验证的用户心智模型
+
+**路径 2：Rope 数据结构（物理层优化）— 极端兜底**
+
+Rust Core 层用 Rope 树替代 String，提供 O(log n) 编辑和范围查询：
+
+- 适用场景：单个 Atom 无法逻辑拆分（如导入的外部大文件）
+- **与 Q1 兼容但非透明**——需要扩展 EditBuffer API（新增 `getRange(start, end)` 等范围查询），EditorPane 需从读全文改为按 viewport 请求范围，FFI 需新增范围查询端点
+- Q1 的 `edit()` + `content` 基础接口保留作为兼容 fallback
+
+**路径 3：DocumentSession 中间层（chunk 分段）— 结构化方案**
+
+在 EditBuffer 之上插入 DocumentSession 层，将文档拆为 chunks：
+
+```
+v0.3:  1 Atom → 1 EditBuffer → 1 EditorPane
+v0.5+: 1 Atom → 1 DocumentSession → N EditBuffer(per chunk) → 1 EditorPane
+```
+
+- 每个 chunk EditBuffer 接口不变（存 chunk string，edit + notifyListeners）
+- 编辑只触发受影响 chunk 的通知
+- Atom.content 仍存全文（chunk 边界为运行时元数据，可存 overlay sidecar）
+- **与 Q1 兼容**——EditBuffer 接口不变，scope 从整文档变为 chunk
+
+**三路径关系**：Transclusion 覆盖 99% 场景（用户主动拆分），Rope/DocumentSession 是剩余 1% 的工程兜底（用户无法/不愿拆分）。三者与 Q2 全量字符串裁决均兼容。
+
+### 裁决
+
+**D11 = 全量字符串为 source of truth + EditOp 可选 advisory hint。**
+
+1. buffer 层存储和传递全量字符串——`_content: String` 是唯一权威值
+2. EditOp（`_lastOp`）是可选优化 hint，消费者可读可忽略，不影响正确性
+3. v0.3 不使用 EditOp（调用方不传 `op`，等效全量替换 = 选项 A）
+4. 持久化路径（FFI → SQLite → FTS5）全量写入，v0.3 无需改动
+5. 大文档演化首选 Transclusion（语义层，Q1 完全兼容），Rope / DocumentSession 作为物理层兜底预留（需 API 扩展但不推翻 Q1）
+6. 性能边界明确：100KB 内无感知，500KB 边界，1MB+ 需要演化方案
 
 ---
 
-## Q3: EditBuffer ↔ TextEditingController 桥接机制 — OPEN
+## Q3: EditBuffer ↔ TextEditingController 桥接机制 — RESOLVED
 
 ### 问题定义
 
@@ -506,60 +640,264 @@ DI-1 细化4 识别的核心问题：
 
 > 编辑中的 pane 触发 `buffer.edit()` → `notifyListeners()` → **自身也会 rebuild** → 可能导致光标跳动或循环。需要区分"本地编辑"（不需要更新自身 TextEditingController）和"远程同步"（需要更新其他 pane 的 TextEditingController）。
 
-### 当前代码中已存在的模式
+### 当前实现分析
 
-NoteEditor 的 `didUpdateWidget` 已使用**内容字符串比较**作为守卫：
+**NoteEditor 现状**（`lib/features/notes/note_editor.dart`，110 行）：
+
+NoteEditor 是一个**纯展示 widget**（"dumb widget"），通过 props 接收状态：
 
 ```dart
-if (widget.content != _textController.text) {
-  _textController.text = widget.content;
+class NoteEditor extends StatefulWidget {
+  final String content;          // 从 coordinator 传入的全量 markdown
+  final int focusRequestId;      // 焦点请求令牌
+  final ValueChanged<String> onChanged;  // 编辑回调
 }
 ```
 
-这个比较在多 pane 场景下的行为：
+桥接机制在 `didUpdateWidget` 中：
 
-| 场景 | widget.content | _textController.text | 相等？ | 行为 |
-|------|---------------|---------------------|--------|------|
-| 本地编辑后 rebuild（Pane A 自身） | newContent（来自 buffer） | newContent（用户刚键入） | **是** | no-op ✓ |
-| 远程同步 rebuild（Pane B） | newContent（来自 buffer） | oldContent（Pane B 未编辑） | **否** | 更新 controller ✓ |
+```dart
+if (widget.content != _textController.text) {
+  _textController.value = TextEditingValue(
+    text: widget.content,
+    selection: TextSelection.collapsed(offset: widget.content.length),
+  );
+}
+```
 
-### 目标架构数据流
+build 方法中直接透传 `onChanged`：
+
+```dart
+TextField(
+  controller: _textController,
+  onChanged: widget.onChanged,  // → coordinator → draftManager
+  ...
+)
+```
+
+**数据流链路**：
+
+```
+当前（props-based bridge）：
+  用户键入 → TextField.onChanged → widget.onChanged → coordinator.updateDraft()
+                                                           → draftContent = newText
+                                                           → notifyListeners()
+                                                           → AnimatedBuilder rebuild
+                                                           → NoteEditor(content: newText)
+                                                           → didUpdateWidget: newText == controller.text → NO-OP ✓
+
+  Tab 切换 → coordinator.selectNote()
+           → draftContent = loadedContent
+           → notifyListeners() → rebuild
+           → NoteEditor(content: loadedContent)
+           → didUpdateWidget: loadedContent != controller.text → 更新 controller ✓
+```
+
+### 目标架构：Manual Listener
+
+Phase 2 中 NoteEditor 演化为 **MarkdownEditorPane**，直接持有 EditBuffer 引用，使用 manual listener 模式：
+
+```dart
+class MarkdownEditorPane extends StatefulWidget {
+  final EditBuffer buffer;      // 直接引用，不再经 coordinator 中转
+
+  @override
+  State<MarkdownEditorPane> createState() => _MarkdownEditorPaneState();
+}
+
+class _MarkdownEditorPaneState extends State<MarkdownEditorPane> {
+  late final TextEditingController _textController;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.buffer.content);
+    _focusNode = FocusNode();
+    widget.buffer.addListener(_onBufferChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant MarkdownEditorPane oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Buffer swap（tab 切换导致 EditorShellService 传入新 buffer）
+    if (widget.buffer != oldWidget.buffer) {
+      oldWidget.buffer.removeListener(_onBufferChanged);
+      widget.buffer.addListener(_onBufferChanged);
+      _textController.value = TextEditingValue(
+        text: widget.buffer.content,
+        selection: TextSelection.collapsed(offset: widget.buffer.content.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.buffer.removeListener(_onBufferChanged);
+    _textController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  /// Buffer 变更监听——字符串比较守卫防自循环
+  void _onBufferChanged() {
+    final bufferContent = widget.buffer.content;
+    if (bufferContent != _textController.text) {
+      // 远程同步（其他 pane 编辑、外部加载）→ 更新 controller
+      _textController.value = TextEditingValue(
+        text: bufferContent,
+        selection: TextSelection.collapsed(offset: bufferContent.length),
+      );
+    }
+    // 本地编辑 → controller.text 已等于 buffer.content → NO-OP
+  }
+
+  /// 用户键入回调
+  void _onTextChanged(String newText) {
+    widget.buffer.edit(newText);  // 直接写 buffer，不经 coordinator
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _textController,
+      focusNode: _focusNode,
+      onChanged: _onTextChanged,
+      maxLines: null,
+      expands: true,
+      textAlignVertical: TextAlignVertical.top,
+      // ... styling
+    );
+  }
+}
+```
+
+### 循环风险确认
+
+**Flutter 行为验证**：`_textController.text = newContent` 或 `_textController.value = TextEditingValue(...)` **不会**触发 `TextField.onChanged` 回调。Flutter 的 `onChanged` 仅在**用户输入路径**（键盘输入、IME、粘贴等用户动作）触发，programmatic 赋值不触发。
+
+因此 `_onBufferChanged` → 更新 controller → **不会**回调 `_onTextChanged` → **无循环风险**。
+
+完整数据流（多 pane 场景）：
 
 ```
 用户在 Pane A 键入 "x"
   → Pane A 的 TextEditingController.text 变为 "...x"（Flutter 内部更新，在 onChanged 之前）
-  → NoteEditor.onChanged("...x")
+  → TextField.onChanged("...x")
+  → _onTextChanged("...x")
   → buffer.edit("...x")
-      → buffer.content = "...x"
+      → buffer._content = "...x"
       → buffer._rev++
-      → buffer 重启 debounce timer
       → buffer.notifyListeners()
-  → Pane A rebuild:
-      widget receives buffer.content = "...x"
-      didUpdateWidget: "...x" == _textController.text ("...x") → NO-OP
-      光标位置不受影响 ✓
-  → Pane B rebuild:
-      widget receives buffer.content = "...x"
-      didUpdateWidget: "...x" != _textController.text (old) → 更新 controller
-      内容同步 ✓，光标位置重置（→ DI-5 范畴）
+          // debounce timer 由 Service 层管理（细化3 裁决），不在 buffer 内
+  → Pane A 的 _onBufferChanged():
+      buffer.content = "...x"
+      _textController.text = "...x"
+      "...x" == "...x" → NO-OP ✓（光标不跳）
+  → Pane B 的 _onBufferChanged():
+      buffer.content = "...x"
+      _textController.text = oldContent
+      "...x" != oldContent → 更新 controller ✓
+      光标位置重置（→ DI-5 范畴）
 ```
 
-### 初步建议
+### 字符串比较守卫的通用性
 
-**内容字符串比较守卫**——复用当前 NoteEditor 已有的 `didUpdateWidget` 模式。
+**核心发现**：字符串比较守卫模式适用于**所有 content_type**，不仅限于 markdown。
 
-理由：
-1. 模式已在当前代码中验证（单 pane 场景下 content prop 变化时正确工作）
-2. 无需引入 edit source tag、widget-level guard 或额外原语
-3. 字符串比较成本在 D11 全量替换方案下可接受（与 Q2 一致）
+差异仅在于"缓存字符串"的持有方式：
 
-待讨论：
-- Pane B 的光标位置重置问题——移交 DI-5
-- `_textController.text = newContent` 是否会触发 NoteEditor 自身的 `onChanged` 回调导致循环？——需确认 Flutter 行为
+| content_type | 本地状态 | 缓存字符串位置 | 序列化/反序列化 |
+|-------------|---------|--------------|---------------|
+| markdown | `TextEditingController` | `_textController.text`（隐式） | 无需（纯文本直存） |
+| canvas (JSON) | `CanvasModel` 对象 | `_lastSerializedContent`（显式缓存） | `CanvasModel.fromJson(buffer.content)` / `toJson()` |
+| conversation | `MessageList` 对象 | `_lastSerializedContent`（显式缓存） | `MessageList.fromJson(buffer.content)` / `toJson()` |
+
+**通用桥接模式**（v0.4+ 提取 mixin 时的目标接口）：
+
+```dart
+/// EditorPane 通用桥接 mixin（v0.3 不提取，v0.4+ 第二个 EditorPane 出现时提取）
+mixin EditorBufferBridge<T extends StatefulWidget> on State<T> {
+  EditBuffer get buffer;
+
+  /// content_type 特定：将 buffer.content 应用到本地状态
+  /// 返回 false 表示内容未变（等价于字符串比较守卫）
+  bool applyContentToLocalState(String content);
+
+  /// content_type 特定：将本地状态序列化为 string
+  String serializeLocalState();
+
+  void onBufferChanged() {
+    final bufferContent = buffer.content;
+    applyContentToLocalState(bufferContent);
+    // 实现内部做字符串比较或语义比较
+  }
+
+  void onLocalEdit() {
+    final serialized = serializeLocalState();
+    buffer.edit(serialized);
+  }
+}
+```
+
+对于 markdown，`applyContentToLocalState` = 比较 `_textController.text`；对于 canvas，= 比较 `_lastSerializedContent` 并反序列化为 `CanvasModel`。桥接模式相同，仅序列化/反序列化层不同。
+
+### 方案比较
+
+| 方案 | 描述 | 优势 | 劣势 |
+|------|------|------|------|
+| **A: Props-based（当前）** | coordinator 中转，NoteEditor 通过 widget props 接收 content | 纯展示 widget，易测试 | 多一层中转；tab/draft 耦合在 coordinator |
+| **B: AnimatedBuilder** | EditorPane 包裹 AnimatedBuilder(animation: buffer) | 与现有 controller 模式一致 | rebuild 整个 build()，无法细粒度控制 |
+| **C: Manual listener（选定）** | EditorPane 直接 addListener/removeListener 到 buffer | 精确控制更新时机；无额外 rebuild；buffer swap 清晰 | 需手动管理生命周期 |
+| **D: ValueListenableBuilder** | 包裹 ValueListenableBuilder | 自动管理生命周期 | EditBuffer 不是 ValueListenable；需额外适配 |
+
+**选择 C（Manual listener）的理由**：
+
+1. **精确控制**：`_onBufferChanged` 仅在 buffer 变更时执行字符串比较 + 条件更新，不触发 `setState` / rebuild
+2. **无额外 rebuild**：内容更新通过 `_textController.value = ...` 直接注入 TextField，不经过 `build()`
+3. **Buffer swap 清晰**：`didUpdateWidget` 中的 `buffer != oldBuffer` 引用比较处理 tab 切换
+4. **生命周期可控**：`initState` add → `didUpdateWidget` swap → `dispose` remove，三点管理
+
+### Buffer 加载阶段处理
+
+EditorPane **不负责** buffer 的 loading 状态处理。loading/error 状态由**外壳 chrome 层**（feature controller 提供的 UI）处理：
+
+```
+EditorShellService 传入 buffer:
+  buffer.state == loading → 外壳显示 loading 占位
+  buffer.state == ready   → 渲染 EditorPane(buffer: buffer)
+  buffer.state == error   → 外壳显示 error 占位
+```
+
+EditorPane 只在 `ready` 状态下被实例化，`initState` 中 `buffer.content` 一定有值。这与 DI-10 三层职责分离一致（外壳展示 = Feature controller 职责）。
+
+> **注**：`error` 状态是对 DI-1 Q3 细化1 状态机的扩展（`loading → ready | error → disposing`）。DI-1 原始定义为 `loading → ready → disposing`，Q4 细化4 引入 `markError()` 后需在 DI-1 中同步更新状态机。
+
+### Mixin 提取策略
+
+| 阶段 | 做法 |
+|------|------|
+| v0.3 | 桥接逻辑直接 inline 在 `MarkdownEditorPane` 中（约 30 行） |
+| v0.4+ | 当第二个 EditorPane（如 CanvasEditorPane）出现时，提取 `EditorBufferBridge` mixin |
+
+提取触发条件：第二个 EditorPane 实现时发现桥接逻辑重复。不提前抽象——遵循"三次重复再提取"原则，两个 EditorPane 已足够明确模式。
+
+### 裁决
+
+**D12 = Manual listener + 字符串比较守卫，通用于所有 content_type。**
+
+1. MarkdownEditorPane 直接持有 EditBuffer 引用，通过 `addListener`/`removeListener` 监听变更
+2. `_onBufferChanged` 使用**字符串比较守卫**（`buffer.content != _textController.text`）区分本地编辑（NO-OP）和远程同步（更新 controller）
+3. Flutter 行为保证：programmatic `_textController.value = ...` **不触发** `onChanged`，无循环风险
+4. Buffer swap（tab 切换）通过 `didUpdateWidget` 中的**引用比较**（`widget.buffer != oldWidget.buffer`）处理
+5. 字符串比较守卫是**通用桥接模式**，适用于所有 content_type——差异仅在序列化/反序列化层
+6. v0.3 桥接逻辑 inline 在 MarkdownEditorPane；v0.4+ 第二个 EditorPane 出现时提取 `EditorBufferBridge` mixin
+7. EditorPane 不处理 buffer loading 状态——由外壳 chrome 层负责（DI-10 三层分离）
+8. Pane B 光标位置重置问题移交 DI-5 范畴
 
 ---
 
-## Q4: 阶段 2 内容加载策略 — OPEN
+## Q4: 阶段 2 内容加载策略 — RESOLVED
 
 ### 问题定义
 
@@ -572,7 +910,7 @@ DI-3 两阶段恢复模型中，阶段 2 的入口条件已定义：
 时机: Background Phase（DB 就绪后异步执行）
 ```
 
-需要裁决：加载顺序、并行策略、失败处理。
+需要裁决：触发时序、调度策略、职责归属、失败处理。
 
 ### 当前代码实现
 
@@ -588,6 +926,22 @@ selectNote(atomId):
 
 当前是**按需加载**——用户点击某笔记时才加载。无预加载、无批量加载。
 
+启动时序：
+
+```
+main()
+  ├─ [同步] LocalSettingsStore.ensureInitialized()     // 主题/语言
+  ├─ [同步] runApp()                                    // 首帧渲染
+  ├─ [异步] _bootstrapLocalRuntime()                    // RustBridge 初始化（非阻塞）
+  │    └─ RustBridge.bootstrapLogging()
+  │         └─ ensureEntryDbPathConfigured()             // DB 就绪
+  └─ NotesPage.initState()
+       └─ postFrameCallback → coordinator.loadNotes()
+            └─ _prepare() → ensureEntryDbPathConfigured()  // 隐式等待 DB 就绪
+```
+
+当前 `_prepare()` 是所有 FFI 调用的隐式门控——内部调用 `RustBridge.ensureEntryDbPathConfigured()`，dedup 保证只初始化一次。
+
 ### 已有裁决约束
 
 | 裁决 | 内容 | 对 Q4 的约束 |
@@ -595,36 +949,404 @@ selectNote(atomId):
 | DI-1 Q3 细化1 | EditBuffer 状态机 `loading → ready → disposing`；`loading` 阶段 `edit()/save()/flush()` 均为 no-op | 加载前 UI 安全 |
 | DI-3 边界 | atomId 不存在 → 跳过 tab；非 primary group 清空 → 坍缩 | 失败处理已定义方向 |
 | DI-3 边界 | 用户在 loading 阶段关闭 tab → 允许（结构操作） | 加载可中断 |
+| S2 Phase 2 | Coordinator → Service（直接调用），Service → FFI（persistFn 闭包），Service → Coordinator（onBufferSaved 回调） | 通信模式已定义 |
 
-### 初步建议
+### 细化议题
 
-**优先级分层 + 按需加载：**
+| 细化 | 议题 | 核心问题 | 状态 |
+|------|------|---------|------|
+| 细化1 | 触发时序 | 阶段 1 → 阶段 2 的衔接：DB 就绪信号怎么传递？谁发起加载？入口点在哪？ | RESOLVED |
+| 细化2 | 优先级与调度 | P1（active tabs 并行）/ P2（按需）分层；去重策略；并行度控制 | RESOLVED |
+| 细化3 | 加载职责归属 | Coordinator vs EditorShellService 的 FFI 调用边界——谁调 `note_get()`？闭包注入还是直接调用？ | RESOLVED |
+| 细化4 | 失败处理与运行时统一 | atomId 不存在 / FFI 异常 / 用户中途操作的具体行为；启动恢复与运行时打开共用同一机制的验证 | RESOLVED |
 
-```
-优先级 1 — 立即加载（启动时）:
-  各 group 的 activeTab → 并行发起 FFI note_get()
-  理由：用户只看到 active tab，这些必须最先出现
-
-优先级 2 — 按需加载（用户触发）:
-  非活跃 tab → 用户点击切换到该 tab 时才加载
-  理由：不可见的 tab 提前加载浪费资源；本地 SQLite < 50ms，用户感知不到延迟
-```
-
-**失败处理：**
-
-| 场景 | 行为 |
-|------|------|
-| atomId 在 DB 中不存在 | 从所有 group 移除该 tab → 非 primary group 清空则坍缩 |
-| FFI 调用失败（DB 错误） | EditBuffer 保持 `loading` → UI 显示错误占位 → 可重试 |
-| 用户在 loading 中关闭 tab | 允许——取消该 buffer 的加载请求，dispose buffer |
-
-**运行时按需加载（非恢复场景）：**
-
-与启动恢复共用同一机制。用户点击笔记 → `service.openTab()` → 创建 `loading` EditBuffer → coordinator FFI 加载 → `service.initializeBuffer()` → `ready`。DI-1 Q3 细化1 已定义此流程。
+讨论顺序：**细化1 → 细化3 → 细化2 → 细化4**（触发时序 → 职责归属 → 调度策略 → 异常兜底）。理由：触发时序和职责归属是架构骨架，确定后优先级和失败处理自然落位。
 
 ---
 
-## Q5: 方法论 — OPEN
+### 细化1: 触发时序 — RESOLVED
+
+**问题**：阶段 1（纯 Dart 结构恢复）完成后，如何衔接阶段 2（FFI 内容加载）？DB 就绪信号如何传递到加载入口？
+
+#### 用户体感分析
+
+启动时间轴中用户关注三个时刻：
+
+| 时刻 | 事件 | 用户看到 |
+|------|------|---------|
+| T1 | Flutter 首帧 | 窗口出现 |
+| T2 | 布局骨架可见 | Pane 分栏 + tab 条 + loading 占位 |
+| T3 | Active tab 内容出现 | 可以编辑 |
+
+**T2 与 T1 的间隔决定是否有"空白闪烁"**。
+
+#### 方案比较
+
+| 方案 | Phase 1 时机 | T2 - T1 | 视觉跳变次数 | 首帧代价 |
+|------|-------------|---------|-------------|---------|
+| **α 同步（选定）** | `runApp()` 前，与 settings 同阶段 | **0ms**（首帧即布局） | 1 次（loading→content） | +10ms |
+| β 异步 | `runApp()` 后 post-frame | ~16ms | 2 次（空→骨架→content） | 0 |
+| γ 全等待 | 等 DB + FFI 全部完成 | 300-400ms | 1 次（splash→完整） | 0 |
+
+**选择方案 α**：+10ms 首帧代价换取消除空白闪烁。与 `LocalSettingsStore.ensureInitialized()` 同步加载模式一致。
+
+#### 耗时拆解
+
+| 阶段 | 耗时 | 备注 |
+|------|------|------|
+| Layout JSON 文件读取 + 树构建 | <10ms | 纯 Dart，文件 <1KB |
+| RustBridge 初始化（DLL + DB 配置） | 100-300ms | **唯一有感知的延迟** |
+| `note_get()` FFI 调用 | 10-50ms/个 | 本地 SQLite |
+| **总 loading 占位时长** | **~150-350ms** | 接近无感 |
+
+#### 阶段 1 → 阶段 2 衔接
+
+复用现有 `_prepare()` 隐式门控模式，不引入新信号原语：
+
+```
+main():
+  [同步] LocalSettingsStore.ensureInitialized()     // 主题/语言
+  [同步] LayoutPersistence.load()                    // ← 新增，Phase 1
+  [同步] runApp()                                    // 首帧：完整布局骨架
+  [异步] _bootstrapLocalRuntime()                    // RustBridge 初始化
+  [异步] 发起 active tabs P1 加载
+           → 每个加载 await _prepare()               // 首次等 DB，后续 fast-path
+           → note_get() → buffer.initialize() → ready
+```
+
+`_prepare()` 内部调用 `RustBridge.ensureEntryDbPathConfigured()`，dedup 保证只初始化一次。Phase 2 加载只需在入口处 `await _prepare()` 即可自然等待 DB 就绪。
+
+#### Layout 加载失败保护
+
+Layout 是非关键数据（不涉及用户内容安全），保护策略从简：
+
+```
+LayoutPersistence.load():
+  try:
+    读取 workspace_layout.json → 解析 → 验证
+  catch (解析失败 / schema 不匹配 / 结构不合法):
+    1. rename 原文件 → workspace_layout.json.corrupt.{timestamp}
+    2. 尝试 .tmp.* 残留文件恢复（原子写入中间态）
+       ├─ 有且合法 → 使用 tmp 恢复
+       └─ 无或也损坏 → fall back 默认单 pane
+    3. 日志记录警告
+  文件不存在:
+    → 默认单 pane（首次启动，正常路径）
+```
+
+- 原文件保留为 `.corrupt` 备份，可人工诊断
+- 不引入多版本备份或"抑制持久化"模式——用户下次变更布局时正常写入即可
+- 所有笔记内容安全在 SQLite 中，用户只需重新打开 tab 和排列 pane
+
+#### 裁决
+
+1. Phase 1（Layout JSON）在 `runApp()` 前**同步执行**，与 `LocalSettingsStore` 同阶段，消除空白闪烁
+2. Phase 2 通过 `_prepare()` 隐式等待 DB 就绪，**复用现有模式**，不引入 `dbReady` 等新原语
+3. Layout 加载失败：rename → `.corrupt.{timestamp}` + try tmp recovery + fall back 默认单 pane
+4. Layout 非关键数据，无需重量级恢复机制
+
+---
+
+### 细化3: 加载职责归属 — RESOLVED
+
+**问题**：EditorShellService 是通用 tab/buffer 管理，不应耦合特定 content_type 的 FFI 调用。但加载内容需要 FFI。谁负责调 `note_get()`？
+
+#### 当前实现
+
+当前加载职责全在 NotesCoordinator：
+
+```dart
+// NotesCoordinator._loadSelectedDetail()
+Future<void> _loadSelectedDetail({required String atomId}) async {
+  _detailLoading = true;
+  notifyListeners();
+
+  await _prepare();
+  final response = await _noteListManager.loadNoteDetail(atomId: atomId);
+  // ↑ 内部调 noteGetInvoker(atomId)
+
+  _selectedNote = response.note;
+  _activeDraftContent = note.content;
+  _detailLoading = false;
+  notifyListeners();
+}
+```
+
+Coordinator 持有 FFI invoker → 自己调用 → 自己注入结果。无 Service 层参与。
+
+#### 方案比较
+
+| 方案 | 描述 | Service 通用性 | 与 persistFn 对称 | 遗忘风险 |
+|------|------|--------------|-----------------|---------|
+| A: Service 直接持有 FFI | Service 内部调 `note_get()` | **破坏**（耦合 FFI） | 不对称 | 无 |
+| **B: 闭包注入（选定）** | Service 通过 `loadContentFn` 闭包 | **保持** | **对称** | **无** |
+| C: Coordinator 主动加载 | Coordinator 调 FFI → `service.initializeBuffer()` | 保持 | 不对称 | **有**（openTab 后忘记跟进） |
+
+#### Coordinator 作为接线员原则
+
+Coordinator 是**中间人 / 接线员**，负责把各方连接起来，不亲自实现细节：
+
+```
+Coordinator 的角色：
+  ✓ 构造时注入闭包（loadContentFn / persistFn）——"告诉 Service 怎么联系 FFI"
+  ✓ 监听 Service 变更，转发到 UI 层——"传话"
+  ✗ 不自己调 note_get() 然后塞回 Service——"不亲自跑腿"
+```
+
+这与 PR-0252 coordinator + manager 分解理念一致：Coordinator 做接线，不做实现。
+
+#### Service 双闭包对称设计
+
+```dart
+class EditorShellService {
+  /// 加载路径：Service 决定时机，闭包提供实现
+  final Future<String> Function(String atomId) _loadContentFn;
+
+  /// 保存路径：Service 决定时机，闭包提供实现（S2 已定义）
+  final Future<void> Function(String atomId, String content) _persistFn;
+
+  // ...
+}
+
+// Coordinator 构造时注入：
+service = EditorShellService(
+  loadContentFn: (atomId) async {
+    await _prepare();
+    final response = await _noteGetInvoker(atomId);
+    return response.note!.content;
+  },
+  persistFn: (atomId, content) async {
+    await _prepare();
+    await _noteUpdateInvoker(atomId, content);
+  },
+);
+```
+
+两条路径对称：
+
+| 路径 | 时机控制 | 实现提供 | 模式 |
+|------|---------|---------|------|
+| 加载 | Service（启动 P1 / openTab） | Coordinator 闭包 | `loadContentFn` |
+| 保存 | Service（debounce / flush） | Coordinator 闭包 | `persistFn` |
+
+#### content_type 扩展性
+
+未来新增 content_type 时，Coordinator 只需换闭包实现，Service 代码零改动：
+
+```dart
+// 未来 CanvasCoordinator 注入不同闭包：
+service = EditorShellService(
+  loadContentFn: (atomId) async {
+    await _prepare();
+    return _canvasGetInvoker(atomId);  // 不同 FFI 函数
+  },
+  // ...
+);
+```
+
+#### 裁决
+
+1. Service 通过 **`loadContentFn` 闭包**加载内容，与 `persistFn` 保存路径对称
+2. Service 控制**何时**加载（启动恢复 P1、运行时 openTab），Coordinator 提供**怎么**加载
+3. Coordinator 是**接线员**——构造时注入闭包，不亲自调用 FFI 再塞回 Service
+4. 加载失败由 Service 内部处理（移除 tab / 坍缩 group），与 Service 已有的结构管理职责一致
+5. content_type 扩展时只需换闭包实现，Service 零改动
+
+---
+
+### 细化2: 优先级与调度 — RESOLVED
+
+**问题**：阶段 2 可能面对 N 个 group × M 个 tab 的加载需求。如何分层调度？并行度？去重？
+
+#### 内存估算
+
+| 场景 | Tab 数 | 平均单篇 | 内容内存 |
+|------|--------|---------|---------|
+| 典型用户 | 10-20 tabs | 5-10KB | 100-200KB |
+| 重度用户 | 30-40 tabs（8 pane 满载） | 10-50KB | 300KB-2MB |
+| 极端场景 | 40 tabs × 大文档 | 100KB | 4MB |
+
+对桌面应用而言均可忽略。且 P2 按需加载下，未点击的 tab buffer 保持 `loading` 状态，不持有 content 字符串。
+
+#### 调度策略
+
+**P1 — Active Tabs 并行 fire-and-forget**：
+
+```dart
+void _loadActiveBuffers() {
+  final activeAtomIds = _groups.values
+      .map((g) => g.activeAtomId)
+      .whereType<String>()
+      .toSet();                              // Set 自然去重
+
+  for (final atomId in activeAtomIds) {
+    final buffer = _buffers[atomId];
+    if (buffer != null && buffer.state == BufferState.loading) {
+      _loadSingleBuffer(atomId);             // fire-and-forget，不 await
+    }
+  }
+}
+
+Future<void> _loadSingleBuffer(String atomId) async {
+  try {
+    final content = await _loadContentFn(atomId);  // 闭包内含 _prepare()
+    _buffers[atomId]?.initialize(content);          // loading → ready
+  } catch (e) {
+    _handleLoadFailure(atomId, e);                  // 细化4 范畴
+  }
+}
+```
+
+为什么 fire-and-forget 而不是 `Future.wait()`：
+- 每个 buffer 独立 `loading → ready`，UI 独立响应 `notifyListeners()`
+- 一个加载失败不阻塞其他 buffer
+- 不需要"全部 P1 完成"的统一信号
+
+去重是自然的：EditBuffer per-atomId 共享（DI-1 引用计数），收集 activeAtomIds 用 Set 即去重。
+
+**P2 — Non-Active Tabs 按需触发**：
+
+```dart
+void switchTab(String groupId, String atomId) {
+  _groups[groupId]!.activeAtomId = atomId;
+  final buffer = _buffers[atomId];
+  if (buffer != null && buffer.state == BufferState.loading) {
+    _loadSingleBuffer(atomId);               // 复用同一加载函数
+  }
+  notifyListeners();
+}
+```
+
+P1 和 P2 共用 `_loadSingleBuffer`，区别仅在触发时机。
+
+**P3 — 后台预加载：不需要**。本地 SQLite < 50ms，按需加载已无感知延迟。未来云同步引入高延迟时再考虑。
+
+**并行度控制：不需要**。P1 最多 8 个并行读（DI-9 pane 上限），SQLite WAL 模式读并发无锁竞争。
+
+#### 资源生命周期架构预留
+
+加载和渲染是**一体两面**——都是资源生命周期管理：
+
+| 层级 | 资源 | 占用量级 | 恢复成本 |
+|------|------|---------|---------|
+| L1 渲染层 | Widget tree + TextEditingController + 文本布局缓存 | **MB 级**（真正的内存大户） | 零 FFI，从内存 buffer.content rebuild |
+| L2 内容层 | buffer.content 字符串 | KB 级 | 一次 `note_get()` < 50ms |
+
+**L1 已在 Q3 架构中自然实现**——EditorPane 只在 active tab 实例化，非 active tab 无 widget tree。切换 tab 时 dispose 旧 EditorPane，渲染资源立即释放。
+
+**L2 v0.3 不实现**，但架构兼容：
+- `switchTab()` 切换前调用 `flushPendingSave()`，非 active buffer 永远是 clean 的——**dirty buffer 不可驱逐是伪命题**
+- 未来 LRU / sliding window 驱逐策略只需将 clean buffer 从 `ready` 退回 `loading`，用户再次访问时自动触发 `_loadSingleBuffer` 重新加载
+- EditBuffer 状态机可扩展（`loading → ready → evicted → ready → disposing`），不推翻现有设计
+- 渲染层和内容层可**独立驱逐**：优先驱逐渲染（L1，已实现），内存仍不足时再驱逐内容（L2，未来）
+
+未来关键场景：rich text / canvas 编辑器的渲染状态远大于 markdown，L1 驱逐（仅 active tab 持有 EditorPane）将成为关键性能保障。当前 Q3 的 "EditorPane 只在 ready + active 时实例化" 架构已为此预留空间。
+
+#### 裁决
+
+1. P1（active tabs）并行 fire-and-forget，Set 自然去重
+2. P2（non-active tabs）按需触发，复用 `_loadSingleBuffer`
+3. 不需要 P3（后台预加载）和并行度控制
+4. v0.3 内存无压力（极端 4MB），不实现驱逐机制
+5. 架构预留两层驱逐（L1 渲染 / L2 内容），L1 已由 Q3 EditorPane 生命周期自然实现，L2 未来通过 LRU / sliding window 加入，不推翻现有设计
+
+#### 补充：渲染策略前瞻
+
+**问题**：v0.3 的 "Only Active" 渲染策略（Q3 裁决）意味着每次 tab 切换 dispose + rebuild EditorPane。对 markdown（TextField rebuild 几乎无成本）足够，但对未来 rich text / canvas 编辑器（rebuild 可能 50-200ms），频繁切换 tab 的用户会感知卡顿。
+
+**LRU(N) 渲染缓存方案**：
+
+| 策略 | 保活 EditorPane 数 | 内存 | 切换速度 |
+|------|-------------------|------|---------|
+| OnlyActive = LRU(1)（v0.3） | 1 | 最小 | 每次 rebuild |
+| LRU(N)（未来） | 最近 N 个 | 中等 | 最近 N 个 tab：instant |
+| AllAlive（IndexedStack） | 全部 | 最大 | 全部 instant |
+
+LRU 优于 sliding window：tab 切换是**随机访问**模式（A→C→A→E），不是顺序浏览。Sliding window 适合连续内容（长文档分页），LRU 适合离散资源（tab 缓存）。
+
+**实现思路**：多个 EditorPane 实例并存，非 active 的用 `Offstage` 隐藏但保持 widget tree + listener 活跃。Cached EditorPane 持续接收 buffer 变更通知（manual listener 保持 attached），切换回来时内容已是最新。
+
+**与 Q3 的兼容性**：
+
+- Q3 的 manual listener 模式在 LRU 下更优——cached EditorPane 保持同步，切换 instant
+- `didUpdateWidget` buffer swap 只在 LRU 驱逐后重建新 EditorPane 时触发
+- v0.3 的 OnlyActive 是 LRU(1) 特例，未来放宽 N 值是**放宽**不是**推翻**
+- 对所有已有裁决（Q1-Q3、DI-1、S2）零结构性冲突
+
+**v0.3 不实现**。当第二种 content_type EditorPane 出现且 rebuild 成本可感知时，升级 OnlyActive → LRU(N)。
+
+---
+
+### 细化4: 失败处理与运行时统一 — RESOLVED
+
+**问题**：加载失败的具体行为？启动恢复与运行时打开是否共用同一机制？
+
+#### 失败信号设计
+
+`loadContentFn` 通过**异常类型**区分失败原因（方式 2）：
+
+```dart
+Future<void> _loadSingleBuffer(String atomId) async {
+  try {
+    final content = await _loadContentFn(atomId);
+    _buffers[atomId]?.initialize(content);            // loading → ready
+  } on AtomNotFoundException {
+    _removeTabFromAllGroups(atomId);                   // 数据不存在 → 移除 tab
+  } catch (e) {
+    _buffers[atomId]?.markError(e);                    // 调用异常 → 错误占位
+  }
+}
+```
+
+选择异常区分而非返回值（`String?`）的理由：
+- "数据不存在"与"调用失败"是不同性质的错误，语义清晰
+- 返回值方式容易遗漏 null 判断
+- try-catch 在正常路径（加载成功）零性能开销；异常路径（~10-100μs）相比 FFI 调用（10-50ms）小三个数量级，可忽略
+- "atomId 不存在"是极低频事件（外部删除数据时才发生），不是热路径
+
+#### 失败场景处理
+
+| 场景 | 异常类型 | Service 行为 | 用户看到 |
+|------|---------|-------------|---------|
+| atomId 在 DB 中不存在 | `AtomNotFoundException` | 从所有 group 移除该 tab → 非 primary group 清空则坍缩（DI-3） | Tab 消失，其余 tab 正常 |
+| FFI 调用异常（DB 锁定、I/O 错误） | 通用异常 | buffer 标记 `error` 状态 → UI 显示错误占位 + retry 按钮 | 错误提示，可点击重试 |
+| 用户在 loading 中关闭 tab | — | 允许关闭（DI-3）→ 忽略后续 load 结果 → dispose buffer | Tab 关闭，符合预期 |
+| 用户在 loading 中切换 tab | — | 旧 tab 加载继续（fire-and-forget）→ 新 tab 触发 P2 加载 | 新 tab 显示 loading → content |
+
+对 buffer 已 dispose 后返回的加载结果，`_loadSingleBuffer` 中 `_buffers[atomId]?.initialize(content)` 的 `?.` 安全忽略（buffer 已从 map 移除）。
+
+#### 运行时统一
+
+三种触发场景**完全统一**——同一个 `_loadSingleBuffer`，同一套错误处理：
+
+```
+启动恢复（P1）：
+  _loadActiveBuffers()
+    → 遍历 active tabs → _loadSingleBuffer(atomId)   // fire-and-forget
+
+运行时打开新笔记：
+  service.openTab(groupId, atomId)
+    → 创建 EditBuffer(loading)
+    → _loadSingleBuffer(atomId)                        // 复用
+
+运行时切换到未加载 tab（P2）：
+  service.switchTab(groupId, atomId)
+    → buffer.state == loading?
+    → _loadSingleBuffer(atomId)                        // 复用
+```
+
+区别仅在触发入口，加载逻辑和失败处理完全一致。
+
+#### 裁决
+
+1. `loadContentFn` 失败通过**异常类型区分**：`AtomNotFoundException`（移除 tab）vs 通用异常（错误占位 + retry）
+2. 性能无影响：正常路径 try-catch 零开销；异常路径微秒级，远小于 FFI 调用
+3. buffer dispose 后的延迟返回通过 `?.` 安全忽略
+4. 启动恢复（P1）、运行时打开、运行时切换（P2）**三场景统一** `_loadSingleBuffer`，零代码分歧
+
+---
+
+## Q5: 方法论 — RESOLVED
 
 ### 审计报告建议
 
@@ -632,16 +1354,27 @@ selectNote(atomId):
 
 > 多实例 TextEditingController 同步在 Flutter 中缺少成熟先例。共享 controller 是否可行？事件广播的延迟特性？
 
-### 初步建议
+### §6.3 原始顾虑解消状态
 
-**降级为方案 A（仅文档）。** 理由：
+| 原始不确定性 | 解消方式 | 对应裁决 |
+|------------|---------|---------|
+| 共享 controller 是否可行？ | 分析排除——Q3 选择 manual listener，每个 pane 独立 controller | D12 |
+| 事件广播延迟？ | Flutter `notifyListeners()` 是同步广播，已确认 | D10 |
+| 多 pane 循环/光标跳动？ | Flutter 行为确认：programmatic `controller.text = ...` 不触发 `onChanged` | D12 |
+| 同步粒度性能？ | 性能估算 + 现有实现验证：100KB 内无感知 | D11 |
+| 内容加载时序？ | 复用现有 `_prepare()` 模式 + fire-and-forget 并行 | Q4 细化1-4 |
 
-1. 选项 A（共享 controller）已通过分析排除——不需要原型验证不可行的方案
-2. Q3 桥接机制（字符串比较守卫）已在当前 NoteEditor `didUpdateWidget` 中存在——不是新模式
-3. D11 全量替换匹配现有实现——无性能不确定性
-4. 无新 Flutter 框架原语——全是标准 ChangeNotifier + StatefulWidget 模式
+### 裁决：方案 A（仅文档）
 
-§6.3 的原始顾虑（"缺少成熟先例"）已通过 DI-1 的 EditBuffer 设计和 Q3 的现有代码模式分析化解。
+**不需要原型验证，DI-4 裁决完成后直接进入 PR 实现。**
+
+理由：
+
+1. **§6.3 的全部原始顾虑已通过分析解消**——不需要原型验证已知结论
+2. **所有裁决基于现有代码模式的组合**——`ChangeNotifier` / `addListener` / 字符串比较守卫 / `_prepare()` 门控 / 闭包注入，全是当前代码中已验证的模式
+3. **Q3 核心桥接机制已在生产代码运行**——`NoteEditor.didUpdateWidget` 字符串比较守卫是当前实际行为，不是理论推演
+4. **原型反馈周期与直接实现相当**——本地 Flutter 开发，编译运行即验证，无需单独原型阶段
+5. **DI-4 讨论深度已超过原型验证范围**——Q1-Q4 覆盖了数据流、状态机、并发、失败处理、资源生命周期，比最小原型能验证的更广
 
 ---
 
@@ -652,6 +1385,8 @@ selectNote(atomId):
 - ← DI-10（EditorPaneBuilder 接口——EditBuffer 是唯一桥接参数）
 - → DI-5（光标/冲突处理建立在同步模型之上；Pane B 光标重置问题移交）
 - → DI-7（性能基线与同步粒度相关）
+- → S2（Q4 细化3 扩展了 persistFn 闭包模式，新增 loadContentFn 对称路径）
+- → S1 R14（Q1 补充裁决的 atom_overlays sidecar 模型，由 S1 R14 冻结预留）
 - ← 01 审计报告 §4.3 + §6.3
 
 ---

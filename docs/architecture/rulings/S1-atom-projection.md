@@ -14,7 +14,7 @@ Atom 是**泛型容器**，所有投影行为（渲染形状、列表分区、�
 
 ---
 
-## 规则（R1–R13）
+## 规则（R1–R14）
 
 ### R1: Atom 统一容器模型
 
@@ -405,6 +405,39 @@ lib/features/workspace/
 3. **长对话增长** — content JSON 无限增长的分页/归档策略 `[待设计]`
 4. **Extension 集成** — LLM provider 作为 extension，对话通过 extension API 调用 `[待设计]`
 
+### R14: Sidecar Overlay 持久化模型
+
+**冻结** — 语义已定义（DI-4 Q1 补充裁决），实现排入 v0.4+。完整方案见 [`docs/product/idea_temp/rich-block-editing-architecture.md`](../../product/idea_temp/rich-block-editing-architecture.md)。
+
+**定位**：Block WYSIWYG 编辑模式下，`Atom.content`（markdown 字符串）保持为持久化层 source of truth，Block 元数据以独立 overlay 表存储，不侵入主 content。
+
+**目标表结构**（v0.4+ 新增 migration）：
+
+```sql
+CREATE TABLE atom_overlays (
+    atom_uuid TEXT PRIMARY KEY,
+    block_meta TEXT NOT NULL,                    -- JSON block 元数据
+    overlay_rev INTEGER NOT NULL,                -- overlay 版本号
+    content_rev_at_sync INTEGER NOT NULL,        -- overlay 上次与 content 同步时的 content_rev
+    FOREIGN KEY (atom_uuid) REFERENCES atoms(uuid)
+);
+```
+
+**核心约束**：
+
+| 约束 | 描述 |
+|------|------|
+| Content 优先 | `Atom.content` 始终是 source of truth，overlay 是辅助元数据 |
+| 读路径隔离 | 普通 markdown 查询不加载 block JSON，零开销 |
+| 写频率分离 | content（高频，每次保存）vs overlay（低频，模式切换/block 编辑时） |
+| Stale 判定 | `content_rev > overlay.content_rev_at_sync` → 需要 reconciliation |
+| 零存在开销 | 从未用过 block 模式的 Atom 在 overlay 表中无行 |
+| 有损降级安全 | overlay 丢失时，markdown content 仍完整可编辑（丢失 block ID 和属性） |
+
+**与 R2 content_type 的关系**：overlay 是 `content_type = 'markdown'` 的增强层（Markdown-compatible block），不改变 content_type。独立的 rich block 格式（如 `block_document`）使用不同 content_type，不依赖 overlay 表。
+
+**Reconciliation 协议**：用户从文本模式切换到 block 模式时触发 markdown → block tree 对齐。核心要求：多维匹配信号（block type + 内容相似度 + 相对顺序）、未匹配旧块进入 orphan 集合 + 用户提示（不静默删除）、超时后台继续不阻塞输入。完整协议定义见 [DI-4 Q1 补充](../../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md)。
+
 ---
 
 ## 理由
@@ -426,7 +459,7 @@ lib/features/workspace/
 
 | 项目 | 状态 |
 |------|------|
-| 语义定义（R1-R13） | v0.2.5 已完成 |
+| 语义定义（R1-R14） | v0.2.5 已完成（R1-R13）；R14 由 DI-4 Q1 补充裁决新增 |
 | view_hint 重命名 + 自动推导 | v0.3 待实施 |
 | title 字段 | v0.3 待实施 |
 | content_type 字段 | v0.3 待实施 |
@@ -436,6 +469,7 @@ lib/features/workspace/
 | R11 comment（独立实体方案） | v0.4+ |
 | R12 Spatial Canvas（渲染引擎 + 元素系统） | v0.3–v0.4+ |
 | R13 conversation content_type | v0.4+（依赖 S2 Phase 3 + extension kernel） |
+| R14 atom_overlays sidecar（Block 元数据持久化） | v0.4+（DI-4 Q1 补充裁决） |
 
 ---
 
@@ -445,3 +479,4 @@ lib/features/workspace/
 - R11: Comment 的 UI/UX 可视化方案（展示位置、交互方式）
 - R12: Canvas 渲染引擎技术选型（Flutter CustomPaint vs 第三方库）；block tree 统一评估（v0.5+）
 - R13: Conversation content_type 的 4 个待设计项（Atom 引用上下文、对话产生 Atom、长对话增长、Extension 集成）
+- R14: Reconciliation 协议的实现细节（匹配算法、超时策略、orphan 集合 UI）；atom_overlays migration 编号分配

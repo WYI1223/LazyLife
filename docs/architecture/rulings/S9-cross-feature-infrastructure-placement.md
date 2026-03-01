@@ -37,10 +37,12 @@ lib/core/editor/
 ├── editor_shell_service.dart     ← 主 service（singleton）
 ├── editor_group_model.dart       ← EditorGroupModel + TabEntry
 ├── edit_buffer.dart              ← EditBuffer（per-atom 状态机）
-└── group_layout.dart             ← GroupLayout（递归布局树，从 WorkspaceProvider 迁入）
+├── group_layout.dart             ← GroupLayout（递归布局树，从 WorkspaceProvider 迁入）
+├── layout_persistence.dart       ← 布局文件 I/O + 去抖 + atomic write（DI-3）
+└── editor_resolver.dart          ← content_type → EditorPane（DI-10）
 ```
 
-编辑器 workbench 骨架：管理 tab 模型、编辑缓冲区、pane 布局。设计细节见 S2 Phase 2 设计规则。
+编辑器 workbench 骨架：管理 tab 模型、编辑缓冲区、pane 布局。设计细节见 S2 Phase 2 设计规则、DI-4（buffer 同步模型）、DI-10（EditorResolver）。
 
 ### WorkspaceTreeService — `lib/core/workspace/`
 
