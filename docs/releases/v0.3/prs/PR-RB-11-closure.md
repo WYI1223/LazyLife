@@ -68,6 +68,39 @@ PR-RB-06 将 NoteTabStateManager / NoteDraftManager / NoteSaveTracker 提取到 
 | Rulings `S1~S9` | 更新实施状态表 |
 | DI `README.md` | 确认 DI-0~DI-5、DI-10 标注为 RESOLVED + implemented |
 
+### Lane E: Gate 验证脚本提取（SSOT）
+
+**动机**：Gate A 的 grep 模式在 PR-RB-04 和 PR-RB-11 中重复定义，Spec Review R2 时两处都需要修改（Issue 7）。遵循 SSOT（单一事实来源）原则，将 Gate 验证逻辑提取为可执行脚本，PR spec 只声明"运行 XX 脚本"。
+
+**`tools/ci/gate_checks.dart`**（新文件，~80-100 行）：
+
+```dart
+/// Gate verification script for v0.3 release.
+/// Usage: dart run ../../tools/ci/gate_checks.dart [--gate-a] [--gate-b] [--all]
+
+// Gate A: 语义与契约验证
+// - NoteItem 零引用（生成绑定除外）
+// - 创建入口 atom_ref 可观察
+// - tasks/calendar 零 reminder 直接引用（import 级静态检查）
+// - entry 零 ExtensionRegistry 引用（S5 合规）
+
+// Gate B: 编辑器基础设施验证
+// - EditorShellService 测试存在且通过
+// - EditBuffer cross-pane 测试存在且通过
+// - GroupLayout 不变式测试存在且通过
+// - Layout persistence round-trip 测试存在且通过
+```
+
+**好处**：
+1. 验证逻辑活在代码里——可测试、可版本控制
+2. CI 直接跑 `dart run ../../tools/ci/gate_checks.dart --all`
+3. 改一处，PR-RB-04/PR-RB-11/DI-7 所有引用处自动生效
+4. 未来 v0.4 可扩展 Gate C 等新门
+
+**注意**：Gate A/B 的检查模式由 DI-7 和 rebaseline §5 定义，脚本是这些规则的可执行实现，不新增规则。
+
+---
+
 ### Lane D: Release Evidence 收集
 
 #### Gate A 验证（语义与契约，§5.1）
@@ -168,13 +201,16 @@ rg "ExtensionRegistry" apps/lazynote_flutter/lib/features/entry/
 | T14 | 更新 `ffi-contracts.md`：新增/变更的 FFI 函数 | `docs/api/ffi-contracts.md` | 编辑 | — |
 | T15 | 更新 Rulings 实施状态（S1~S9） | `docs/architecture/rulings/` | 编辑 9 个文件 | — |
 | T16 | 更新 DI README 实施状态 | `docs/reports/v0.3/design-discussions/README.md` | 编辑 | — |
+| **Lane E: Gate 验证脚本提取** | | | | |
+| T17 | 创建 `tools/ci/gate_checks.dart`：Gate A + Gate B 验证逻辑 | `tools/ci/gate_checks.dart` | 新文件 ~100 行 | — |
+| T18 | 更新 PR-RB-04 / PR-RB-11 Verification 章节：inline grep → 引用 gate_checks.dart | PR spec 文件 | 编辑 | T17 |
 | **Lane D: Release Evidence** | | | | |
-| T17 | 执行 Gate A 验证命令，记录结果 | release-evidence 文件 | 新文件 | T1-T16 |
-| T18 | 执行 Gate B 验证，记录里程碑通过状态 | release-evidence 文件 | 编辑 | T17 |
-| T19 | 执行 Release Gate（full CI），记录测试数量与结果 | release-evidence 文件 | 编辑 | T17 |
-| T20 | 签核覆盖矩阵 §6.1 / §6.2 / §6.3 | release-evidence 文件 | 编辑 | T17 |
-| T21 | S5 合规校验 | release-evidence 文件 | 编辑 | T17 |
-| T22 | 编写 `v0.3-release-evidence.md` 最终报告 | `docs/releases/v0.3/v0.3-release-evidence.md` | 新文件 ~100 行 | T17-T21 |
+| T19 | 执行 Gate A 验证（`dart run gate_checks.dart --gate-a`），记录结果 | release-evidence 文件 | 新文件 | T1-T16, T17 |
+| T20 | 执行 Gate B 验证（`dart run gate_checks.dart --gate-b`），记录里程碑通过状态 | release-evidence 文件 | 编辑 | T19 |
+| T21 | 执行 Release Gate（full CI），记录测试数量与结果 | release-evidence 文件 | 编辑 | T19 |
+| T22 | 签核覆盖矩阵 §6.1 / §6.2 / §6.3 | release-evidence 文件 | 编辑 | T19 |
+| T23 | S5 合规校验 | release-evidence 文件 | 编辑 | T19 |
+| T24 | 编写 `v0.3-release-evidence.md` 最终报告 | `docs/releases/v0.3/v0.3-release-evidence.md` | 新文件 ~100 行 | T19-T23 |
 
 ## Planned File Changes
 
@@ -194,6 +230,9 @@ rg "ExtensionRegistry" apps/lazynote_flutter/lib/features/entry/
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `docs/architecture/rulings/S1-atom-projection.md` ~ `S9-cross-feature-infrastructure-placement.md`（9 个文件）
 - `[edit]` `docs/reports/v0.3/design-discussions/README.md`
+
+**Lane E（Gate 脚本）：**
+- `[add]` `tools/ci/gate_checks.dart` (~100 行)
 
 **Lane D（Evidence）：**
 - `[add]` `docs/releases/v0.3/v0.3-release-evidence.md` (~100 行)
@@ -241,8 +280,9 @@ test -f docs/releases/v0.3/v0.3-release-evidence.md
 - [ ] `CLAUDE.md` + `overview.md` + `data-model.md` + `ffi-contracts.md` 已更新反映 v0.3 状态
 - [ ] Rulings S1~S9 实施状态已标注
 - [ ] DI-0~DI-5, DI-10 实施状态已标注
-- [ ] Gate A 全部通过（NoteItem 零引用 + atom_ref 可观察 + reminder 解耦）
-- [ ] Gate B 全部通过（M1 + M2 + DI-0~DI-5 验证）
+- [ ] `tools/ci/gate_checks.dart` 已创建，Gate A/B 验证逻辑为单一事实来源
+- [ ] Gate A 全部通过（`dart run gate_checks.dart --gate-a` 零 violation）
+- [ ] Gate B 全部通过（`dart run gate_checks.dart --gate-b` 零 violation）
 - [ ] Release Gate 全部通过（Rust + Flutter CI green + architecture check pass）
 - [ ] S5 合规校验通过
 - [ ] `v0.3-release-evidence.md` 已撰写
