@@ -59,6 +59,10 @@ const MIGRATIONS: &[Migration] = &[
         version: 9,
         sql: include_str!("0009_workspace_note_ref_backfill.sql"),
     },
+    Migration {
+        version: 10,
+        sql: include_str!("0010_s1_core_fields.sql"),
+    },
 ];
 
 /// Returns the latest migration version known by this binary.

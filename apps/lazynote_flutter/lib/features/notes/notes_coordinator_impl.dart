@@ -1313,7 +1313,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   ) {
     return rust_api.AtomListItem(
       atomId: current.atomId,
-      kind: current.kind,
+      viewHint: current.viewHint,
+      title: current.title,
+      contentType: current.contentType,
       content: content,
       previewText: current.previewText,
       previewImage: current.previewImage,

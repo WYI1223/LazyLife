@@ -25,7 +25,9 @@ void main() {
   }) {
     return rust_api.AtomListItem(
       atomId: atomId,
-      kind: 'note',
+      viewHint: 'note',
+      title: content.split('\n').first,
+      contentType: 'markdown',
       content: content,
       previewText: null,
       previewImage: null,
@@ -185,7 +187,8 @@ void main() {
   });
 
   group('ReminderScheduler title', () {
-    test('truncates long title and adds ellipsis', () async {
+    test('uses server-derived title field directly', () async {
+      // Server-side derive_title caps at 50 chars; _reminderTitle passes through.
       final longContent =
           'This is a very long task title that exceeds fifty characters limit';
       final startMs = DateTime(2026, 2, 20, 9, 0).millisecondsSinceEpoch;
@@ -198,8 +201,7 @@ void main() {
       await ReminderScheduler.scheduleRemindersForAtoms([atom]);
 
       final notification = mockService.scheduled.first;
-      expect(notification.title.length, lessThan(71));
-      expect(notification.title, endsWith('...'));
+      expect(notification.title, equals(atom.title));
     });
 
     test('uses first line only for title', () async {

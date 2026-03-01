@@ -39,7 +39,7 @@ pub use logging::{
     default_log_level, init_logging, log_dart_event, logging_status, LogDartEventError,
 };
 /// Re-export canonical Atom model types.
-pub use model::atom::{Atom, AtomId, AtomType, AtomValidationError, TaskStatus};
+pub use model::atom::{Atom, AtomId, AtomValidationError, TaskStatus, ViewHint};
 /// Re-export repository contracts and SQLite implementation.
 pub use repo::atom_repo::{
     AtomListQuery, AtomRepository, RepoError, RepoResult, SectionAtomRow, SqliteAtomRepository,

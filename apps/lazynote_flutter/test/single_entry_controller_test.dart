@@ -16,7 +16,8 @@ void main() {
           items: const [
             EntrySearchItem(
               atomId: 'atom-1',
-              kind: 'note',
+              viewHint: 'note',
+              title: '',
               snippet: 'hello world',
             ),
           ],
@@ -149,7 +150,8 @@ void main() {
           items: [
             EntrySearchItem(
               atomId: 'atom-second',
-              kind: 'note',
+              viewHint: 'note',
+              title: '',
               snippet: 'second',
             ),
           ],
@@ -169,7 +171,8 @@ void main() {
           items: [
             EntrySearchItem(
               atomId: 'atom-first',
-              kind: 'note',
+              viewHint: 'note',
+              title: '',
               snippet: 'first',
             ),
           ],

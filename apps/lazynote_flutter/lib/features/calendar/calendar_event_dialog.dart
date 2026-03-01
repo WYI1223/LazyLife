@@ -56,9 +56,7 @@ class _CalendarEventDialogState extends State<CalendarEventDialog> {
 
     if (_isEditMode) {
       final item = widget.existingItem!;
-      _titleController = TextEditingController(
-        text: item.previewText ?? item.content.split('\n').first,
-      );
+      _titleController = TextEditingController(text: item.title);
       final startDt = DateTime.fromMillisecondsSinceEpoch(
         item.startAt!.toInt(),
       );

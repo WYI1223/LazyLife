@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Accepted** — v0.3 PR-RB-02/03 实现 |
+| 状态 | **Landed** — v0.3 PR-RB-02 (R2/R3/R8) |
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
@@ -462,9 +462,9 @@ CREATE TABLE atom_overlays (
 | 项目 | 状态 |
 |------|------|
 | 语义定义（R1-R14） | v0.2.5 已完成（R1-R13）；R14 由 DI-4 Q1 补充裁决新增 |
-| view_hint 重命名 + 自动推导 | v0.3 待实施 |
-| title 字段 | v0.3 待实施 |
-| content_type 字段 | v0.3 待实施 |
+| view_hint 重命名 + 自动推导 | v0.3 PR-RB-02 已完成 |
+| title 字段 | v0.3 PR-RB-02 已完成 |
+| content_type 字段 | v0.3 PR-RB-02 已完成 |
 | atom_ref 强制伴随 | v0.3 待实施（S4 前置） |
 | 指定默认路径模型 | v0.3 待实施 |
 | R9 icon / R10 cover_image | v0.4+ |

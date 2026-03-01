@@ -9,7 +9,7 @@
 //! - Result ordering is deterministic by rank and `updated_at`.
 
 use crate::db::DbError;
-use crate::model::atom::{AtomId, AtomType};
+use crate::model::atom::{AtomId, ViewHint};
 use log::{error, info};
 use rusqlite::types::Value;
 use rusqlite::{params_from_iter, Connection, Row};
@@ -72,8 +72,8 @@ impl From<rusqlite::Error> for SearchError {
 pub struct SearchQuery {
     /// User query text.
     pub text: String,
-    /// Optional type filter.
-    pub kind: Option<AtomType>,
+    /// Optional view hint filter.
+    pub view_hint: Option<ViewHint>,
     /// Maximum number of hits to return.
     pub limit: u32,
     /// Whether to pass text directly as raw FTS5 expression.
@@ -87,7 +87,7 @@ impl SearchQuery {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
-            kind: None,
+            view_hint: None,
             limit: 20,
             raw_fts_syntax: false,
         }
@@ -98,7 +98,8 @@ impl SearchQuery {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchHit {
     pub atom_id: AtomId,
-    pub kind: AtomType,
+    pub view_hint: ViewHint,
+    pub title: String,
     pub snippet: String,
 }
 
@@ -118,7 +119,7 @@ pub fn search_all(conn: &Connection, query: &SearchQuery) -> SearchResult<Vec<Se
     // Why: only log search metadata to match privacy policy.
     let query_len = query.text.chars().count();
     let query_terms = query.text.split_whitespace().count();
-    let has_kind_filter = query.kind.is_some();
+    let has_kind_filter = query.view_hint.is_some();
 
     let Some(match_expr) = build_match_expression(query)? else {
         info!(
@@ -147,7 +148,8 @@ pub fn search_all(conn: &Connection, query: &SearchQuery) -> SearchResult<Vec<Se
     let mut sql = String::from(
         "SELECT
             atoms.uuid AS uuid,
-            atoms.type AS type,
+            atoms.view_hint AS view_hint,
+            atoms.title AS title,
             snippet(atoms_fts, 0, '[', ']', ' ... ', 10) AS snippet
          FROM atoms_fts
          JOIN atoms ON atoms.rowid = atoms_fts.rowid
@@ -156,9 +158,9 @@ pub fn search_all(conn: &Connection, query: &SearchQuery) -> SearchResult<Vec<Se
     );
     let mut bind_values: Vec<Value> = vec![Value::Text(match_expr.clone())];
 
-    if let Some(kind) = query.kind {
-        sql.push_str(" AND atoms.type = ?");
-        bind_values.push(Value::Text(atom_type_to_db(kind).to_string()));
+    if let Some(hint) = query.view_hint {
+        sql.push_str(" AND atoms.view_hint = ?");
+        bind_values.push(Value::Text(view_hint_to_db(hint).to_string()));
     }
 
     sql.push_str(" ORDER BY bm25(atoms_fts), atoms.updated_at DESC, atoms.uuid ASC LIMIT ?");
@@ -214,31 +216,32 @@ fn parse_search_hit(row: &Row<'_>) -> SearchResult<SearchHit> {
     let atom_id = Uuid::parse_str(&uuid_text)
         .map_err(|_| SearchError::InvalidData(format!("invalid uuid `{uuid_text}`")))?;
 
-    let type_text: String = row.get("type")?;
-    let kind = parse_atom_type(&type_text)
-        .ok_or_else(|| SearchError::InvalidData(format!("invalid type `{type_text}`")))?;
+    let hint_text: String = row.get("view_hint")?;
+    let view_hint = parse_view_hint(&hint_text)
+        .ok_or_else(|| SearchError::InvalidData(format!("invalid view_hint `{hint_text}`")))?;
 
     Ok(SearchHit {
         atom_id,
-        kind,
+        view_hint,
+        title: row.get("title")?,
         snippet: row.get("snippet")?,
     })
 }
 
-fn parse_atom_type(value: &str) -> Option<AtomType> {
+fn parse_view_hint(value: &str) -> Option<ViewHint> {
     match value {
-        "note" => Some(AtomType::Note),
-        "task" => Some(AtomType::Task),
-        "event" => Some(AtomType::Event),
+        "note" => Some(ViewHint::Note),
+        "task" => Some(ViewHint::Task),
+        "event" => Some(ViewHint::Event),
         _ => None,
     }
 }
 
-fn atom_type_to_db(kind: AtomType) -> &'static str {
-    match kind {
-        AtomType::Note => "note",
-        AtomType::Task => "task",
-        AtomType::Event => "event",
+fn view_hint_to_db(hint: ViewHint) -> &'static str {
+    match hint {
+        ViewHint::Note => "note",
+        ViewHint::Task => "task",
+        ViewHint::Event => "event",
     }
 }
 

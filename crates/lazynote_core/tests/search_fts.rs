@@ -1,7 +1,7 @@
 use lazynote_core::db::migrations::{apply_migrations, latest_version};
 use lazynote_core::db::open_db_in_memory;
 use lazynote_core::{
-    search_all, Atom, AtomRepository, AtomType, SearchError, SearchQuery, SqliteAtomRepository,
+    search_all, Atom, AtomRepository, SearchError, SearchQuery, SqliteAtomRepository, ViewHint,
 };
 use rusqlite::Connection;
 use std::collections::HashSet;
@@ -10,7 +10,7 @@ use std::collections::HashSet;
 fn search_returns_created_atom() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let atom = Atom::new(AtomType::Note, "hello rust search");
+    let atom = Atom::new(ViewHint::Note, "hello rust search");
     repo.create_atom(&atom).unwrap();
 
     let hits = search_all(&conn, &SearchQuery::new("rust")).unwrap();
@@ -23,7 +23,7 @@ fn search_returns_created_atom() {
 fn search_reflects_updated_content() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let mut atom = Atom::new(AtomType::Note, "alpha text");
+    let mut atom = Atom::new(ViewHint::Note, "alpha text");
     repo.create_atom(&atom).unwrap();
 
     atom.content = "beta text".to_string();
@@ -41,7 +41,7 @@ fn search_reflects_updated_content() {
 fn search_excludes_soft_deleted_atoms() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let atom = Atom::new(AtomType::Task, "buy milk tomorrow");
+    let atom = Atom::new(ViewHint::Task, "buy milk tomorrow");
     repo.create_atom(&atom).unwrap();
     repo.soft_delete_atom(atom.uuid).unwrap();
 
@@ -54,15 +54,15 @@ fn search_can_filter_by_type() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let note = Atom::new(AtomType::Note, "plan meeting agenda");
-    let task = Atom::new(AtomType::Task, "plan vacation tasks");
-    let event = Atom::new(AtomType::Event, "team planning session");
+    let note = Atom::new(ViewHint::Note, "plan meeting agenda");
+    let task = Atom::new(ViewHint::Task, "plan vacation tasks");
+    let event = Atom::new(ViewHint::Event, "team planning session");
     repo.create_atom(&note).unwrap();
     repo.create_atom(&task).unwrap();
     repo.create_atom(&event).unwrap();
 
     let mut query = SearchQuery::new("plan");
-    query.kind = Some(AtomType::Task);
+    query.view_hint = Some(ViewHint::Task);
     let hits = search_all(&conn, &query).unwrap();
 
     assert_eq!(hits.len(), 1);
@@ -74,9 +74,9 @@ fn search_limit_is_applied() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let atom_a = Atom::new(AtomType::Note, "token common a");
-    let atom_b = Atom::new(AtomType::Note, "token common b");
-    let atom_c = Atom::new(AtomType::Note, "token common c");
+    let atom_a = Atom::new(ViewHint::Note, "token common a");
+    let atom_b = Atom::new(ViewHint::Note, "token common b");
+    let atom_c = Atom::new(ViewHint::Note, "token common c");
     repo.create_atom(&atom_a).unwrap();
     repo.create_atom(&atom_b).unwrap();
     repo.create_atom(&atom_c).unwrap();
@@ -101,7 +101,7 @@ fn blank_query_returns_empty_results() {
 fn limit_zero_returns_empty_results() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let atom = Atom::new(AtomType::Note, "query limit zero");
+    let atom = Atom::new(ViewHint::Note, "query limit zero");
     repo.create_atom(&atom).unwrap();
 
     let mut query = SearchQuery::new("query");
@@ -115,7 +115,7 @@ fn limit_zero_returns_empty_results() {
 fn escaped_query_text_does_not_fail_on_common_symbols() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let atom = Atom::new(AtomType::Note, "alpha beta");
+    let atom = Atom::new(ViewHint::Note, "alpha beta");
     repo.create_atom(&atom).unwrap();
 
     let query = SearchQuery::new("a:b");

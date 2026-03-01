@@ -50,7 +50,7 @@ The single source of truth for domain rules, data models, persistence, indexing,
 
 | Module | Path | Responsibility |
 |--------|------|----------------|
-| `model` | `src/model/atom.rs` | Canonical `Atom` entity; `AtomType`, `TaskStatus` enums; `AtomValidationError`; validation invariants |
+| `model` | `src/model/atom.rs` | Canonical `Atom` entity; `ViewHint`, `TaskStatus` enums; `AtomValidationError`; validation invariants |
 | `db` | `src/db/` | SQLite connection bootstrap (`open_db`, `open_db_in_memory`), WAL mode, migration executor (`PRAGMA user_version`-tracked) |
 | `repo` | `src/repo/atom_repo.rs` | `AtomRepository` trait + `SqliteAtomRepository`: atom CRUD, section queries (inbox/today/upcoming), status update, time-range fetch |
 | `repo` | `src/repo/note_repo.rs` | `NoteRepository` trait + `SqliteNoteRepository`: note CRUD, tag normalization, `NoteRecord` DTO, tag listing |
@@ -174,7 +174,9 @@ These are the baseline constraints. **Changing any Rule A–F requires a Ruling*
 ```rust
 pub struct Atom {
     pub uuid: AtomId,                        // UUIDv4, stable, never reused
-    pub kind: AtomType,                      // Note | Task | Event — rendering hint only
+    pub view_hint: ViewHint,                 // Note | Task | Event — rendering hint only
+    pub title: String,                       // Derived from content first line (max 50 chars)
+    pub content_type: String,                // Content format, currently always "markdown"
     pub content: String,                     // Markdown body
     pub preview_text: Option<String>,        // Derived from content (first non-empty text, max 100 chars)
     pub preview_image: Option<String>,       // First markdown image path
@@ -187,7 +189,7 @@ pub struct Atom {
 }
 ```
 
-**Atom Time-Matrix** — list section is derived from `start_at`/`end_at` nullability, NOT from `kind`:
+**Atom Time-Matrix** — list section is derived from `start_at`/`end_at` nullability, NOT from `view_hint`:
 
 | start_at | end_at | Semantic | Section |
 |----------|--------|----------|---------|
@@ -196,7 +198,7 @@ pub struct Atom {
 | Value | NULL | Ongoing task (started = start_at) | Today if started, else Upcoming |
 | Value | Value | Timed event / time block | Today if overlaps today, else Upcoming |
 
-`kind` determines rendering shape (checkbox / text / time bar). `task_status IN ('done','cancelled')` hides the atom from active sections.
+`view_hint` determines rendering shape (checkbox / text / time bar). `task_status IN ('done','cancelled')` hides the atom from active sections.
 
 **Workspace Tree** (`crates/lazynote_core/src/repo/tree_repo.rs`):
 
@@ -224,7 +226,7 @@ pub struct WorkspaceNode {
 
 ## Database Schema
 
-9 migrations tracked via `PRAGMA user_version` in `crates/lazynote_core/src/db/migrations/`.
+10 migrations tracked via `PRAGMA user_version` in `crates/lazynote_core/src/db/migrations/`.
 
 | Version | File | Description |
 |---------|------|-------------|
@@ -237,6 +239,7 @@ pub struct WorkspaceNode {
 | 7 | `0007_workspace_tree.sql` | `workspace_nodes` + `workspace_tree` tables |
 | 8 | `0008_workspace_tree_delete_policy.sql` | Cascade delete policy for workspace trees |
 | 9 | `0009_workspace_note_ref_backfill.sql` | Backfill workspace note references |
+| 10 | `0010_s1_core_fields.sql` | Add `title`, `content_type`; rename `type`→`view_hint`; rebuild FTS5 with title |
 
 **Never** modify existing migrations after they are applied. Add a new numbered SQL file for schema changes.
 
@@ -450,8 +453,9 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 - **`notes_list` sort order**: `updated_at DESC, uuid ASC` — do not change without updating the contract doc.
 - **Single-entry input parsing** lives in `lib/features/entry/command_parser.dart` (Flutter), not in Rust Core. This is intentional for UX iteration speed.
 - **`event_start`/`event_end` are renamed** to `start_at`/`end_at` in Migration 6. Do not reference the old column names.
-- **Section classification uses time fields, not `AtomType`**. `kind`/`type` is a rendering hint only.
-- **9 migrations exist** (not 5 or 6). Migrations 7-9 add workspace tree support.
+- **Section classification uses time fields, not `ViewHint`**. `view_hint` is a rendering hint only.
+- **`type` column is renamed to `view_hint`** in Migration 10. `AtomType` enum is renamed to `ViewHint` in Rust code. Do not reference the old names.
+- **10 migrations exist** (not 5 or 9). Migrations 7-9 add workspace tree support; migration 10 adds S1 core fields.
 - **Extension and sync modules are declaration-only** — contracts/types are defined but no runtime loading or sync execution exists yet.
 - **Navigation is in-place section switching** — all routes map to `EntryShellPage` with different `initialSection` values, not separate page widgets.
 - **Settings loaded before first frame** — `LocalSettingsStore.ensureInitialized()` is synchronous and blocks app start to prevent locale/theme janking.

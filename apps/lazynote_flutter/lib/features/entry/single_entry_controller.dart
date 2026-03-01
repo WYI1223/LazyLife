@@ -566,7 +566,7 @@ class SingleEntryController extends ChangeNotifier {
 
     for (final item in response.items) {
       buffer.writeln(
-        '- [${item.kind}] ${item.atomId}: ${_normalizeSingleLine(item.snippet)}',
+        '- [${item.viewHint}] ${item.atomId}: ${_normalizeSingleLine(item.snippet)}',
       );
     }
     return buffer.toString().trimRight();
@@ -581,7 +581,7 @@ class SingleEntryController extends ChangeNotifier {
       'query="${intent.text}"',
       'filter_kind=${_searchKind.label}',
       'limit=${intent.limit}',
-      'kind=${item.kind}',
+      'kind=${item.viewHint}',
       'atom_id=${item.atomId}',
       'snippet="${_normalizeSingleLine(item.snippet)}"',
     ].join('\n');

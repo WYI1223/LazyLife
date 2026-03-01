@@ -1108,19 +1108,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AtomListItem dco_decode_atom_list_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return AtomListItem(
       atomId: dco_decode_String(arr[0]),
-      kind: dco_decode_String(arr[1]),
-      content: dco_decode_String(arr[2]),
-      previewText: dco_decode_opt_String(arr[3]),
-      previewImage: dco_decode_opt_String(arr[4]),
-      tags: dco_decode_list_String(arr[5]),
-      startAt: dco_decode_opt_box_autoadd_i_64(arr[6]),
-      endAt: dco_decode_opt_box_autoadd_i_64(arr[7]),
-      taskStatus: dco_decode_opt_String(arr[8]),
-      updatedAt: dco_decode_i_64(arr[9]),
+      viewHint: dco_decode_String(arr[1]),
+      title: dco_decode_String(arr[2]),
+      contentType: dco_decode_String(arr[3]),
+      content: dco_decode_String(arr[4]),
+      previewText: dco_decode_opt_String(arr[5]),
+      previewImage: dco_decode_opt_String(arr[6]),
+      tags: dco_decode_list_String(arr[7]),
+      startAt: dco_decode_opt_box_autoadd_i_64(arr[8]),
+      endAt: dco_decode_opt_box_autoadd_i_64(arr[9]),
+      taskStatus: dco_decode_opt_String(arr[10]),
+      updatedAt: dco_decode_i_64(arr[11]),
     );
   }
 
@@ -1186,12 +1188,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   EntrySearchItem dco_decode_entry_search_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return EntrySearchItem(
       atomId: dco_decode_String(arr[0]),
-      kind: dco_decode_String(arr[1]),
-      snippet: dco_decode_String(arr[2]),
+      viewHint: dco_decode_String(arr[1]),
+      title: dco_decode_String(arr[2]),
+      snippet: dco_decode_String(arr[3]),
     );
   }
 
@@ -1408,7 +1411,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AtomListItem sse_decode_atom_list_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_atomId = sse_decode_String(deserializer);
-    var var_kind = sse_decode_String(deserializer);
+    var var_viewHint = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_contentType = sse_decode_String(deserializer);
     var var_content = sse_decode_String(deserializer);
     var var_previewText = sse_decode_opt_String(deserializer);
     var var_previewImage = sse_decode_opt_String(deserializer);
@@ -1419,7 +1424,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_updatedAt = sse_decode_i_64(deserializer);
     return AtomListItem(
       atomId: var_atomId,
-      kind: var_kind,
+      viewHint: var_viewHint,
+      title: var_title,
+      contentType: var_contentType,
       content: var_content,
       previewText: var_previewText,
       previewImage: var_previewImage,
@@ -1501,11 +1508,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   EntrySearchItem sse_decode_entry_search_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_atomId = sse_decode_String(deserializer);
-    var var_kind = sse_decode_String(deserializer);
+    var var_viewHint = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
     var var_snippet = sse_decode_String(deserializer);
     return EntrySearchItem(
       atomId: var_atomId,
-      kind: var_kind,
+      viewHint: var_viewHint,
+      title: var_title,
       snippet: var_snippet,
     );
   }
@@ -1800,7 +1809,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_atom_list_item(AtomListItem self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.atomId, serializer);
-    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.viewHint, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.contentType, serializer);
     sse_encode_String(self.content, serializer);
     sse_encode_opt_String(self.previewText, serializer);
     sse_encode_opt_String(self.previewImage, serializer);
@@ -1881,7 +1892,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.atomId, serializer);
-    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.viewHint, serializer);
+    sse_encode_String(self.title, serializer);
     sse_encode_String(self.snippet, serializer);
   }
 

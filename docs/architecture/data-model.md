@@ -282,12 +282,12 @@ Enforcement: `Atom::validate()`, DB `CHECK` constraints, repository write bounda
 | 7 | `0007_workspace_tree.sql` | Add `workspace_nodes`, ordering index, and note-ref integrity triggers |
 | 8 | `0008_workspace_tree_delete_policy.sql` | Remove atom-side blocking triggers and switch tree visibility to read-time filtering |
 | 9 | `0009_workspace_note_ref_backfill.sql` | Backfill root-level `note_ref` for active notes missing active workspace references |
+| 10 | `0010_s1_core_fields.sql` | Add `title`, `content_type`; rename `type`→`view_hint`; rebuild FTS5 with title indexing |
 
-**Planned v0.3 migrations** (S1):
-- `0010_*.sql`: Add `title`, `content_type`, rename `type` → `view_hint`, add `view_hint` auto-derivation trigger
-- Future: `cover_image`, `icon` columns (v0.4+)
-- Future: `atom_overlays` table for Block WYSIWYG metadata (S1 R14, v0.4+)
-- Future: `atom_comments` table for comment entities (S1 R11, v0.4+)
+**Planned future migrations**:
+- `cover_image`, `icon` columns (v0.4+, S1 R9/R10)
+- `atom_overlays` table for Block WYSIWYG metadata (S1 R14, v0.4+)
+- `atom_comments` table for comment entities (S1 R11, v0.4+)
 
 ---
 
@@ -295,8 +295,8 @@ Enforcement: `Atom::validate()`, DB `CHECK` constraints, repository write bounda
 
 FTS index behavior:
 
-- Indexes `content` from all non-deleted atoms regardless of `view_hint`/`type`.
-- **(v0.3)** FTS should also index `title` for better search relevance.
+- Indexes `content` and `title` from all non-deleted atoms regardless of `view_hint`.
+- FTS5 indexes `title` for improved search relevance (added in Migration 10).
 - Search results include notes, tasks, and events in a unified result set.
 - Frontend uses `view_hint` to render result rows differently (checkbox badge, time badge, etc.).
 - Rank + deterministic tie-break: `updated_at DESC, uuid ASC`.

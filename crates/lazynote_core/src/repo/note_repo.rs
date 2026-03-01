@@ -5,14 +5,14 @@
 //! - Own tag-link replacement logic (`note_set_tags`) with atomic semantics.
 //!
 //! # Invariants
-//! - All note queries are constrained to `type='note'` and `is_deleted=0`.
+//! - All note queries are constrained to `view_hint='note'` and `is_deleted=0`.
 //! - `note_set_tags` replaces the whole tag set in a single transaction.
 //! - Tag names are normalized to lowercase before persistence.
 //!
 //! # See also
 //! - docs/releases/v0.1/prs/PR-0010B-notes-tags-core-ffi.md
 
-use crate::model::atom::{Atom, AtomId, AtomType};
+use crate::model::atom::{Atom, AtomId, ViewHint};
 use crate::repo::atom_repo::{AtomRepository, RepoError, RepoResult, SqliteAtomRepository};
 use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, Transaction, TransactionBehavior};
@@ -30,6 +30,12 @@ const NOTES_LIMIT_MAX: u32 = 50;
 pub struct NoteRecord {
     /// Stable atom id.
     pub atom_id: AtomId,
+    /// Rendering hint (`note` | `task` | `event`).
+    pub view_hint: String,
+    /// User-facing title derived from content.
+    pub title: String,
+    /// Content format indicator (e.g. `markdown`).
+    pub content_type: String,
     /// Raw markdown source text.
     pub content: String,
     /// Derived plain-text preview (nullable).
@@ -40,8 +46,6 @@ pub struct NoteRecord {
     pub updated_at: i64,
     /// Note tags, normalized to lowercase.
     pub tags: Vec<String>,
-    /// Atom projection kind (`note` | `task` | `event`).
-    pub kind: String,
     /// Epoch ms — start boundary (NULL = no start).
     pub start_at: Option<i64>,
     /// Epoch ms — end boundary (NULL = no end).
@@ -65,11 +69,12 @@ pub struct NoteListQuery {
 pub trait NoteRepository {
     /// Creates one note atom and returns its stable id.
     fn create_note(&self, atom: &Atom) -> RepoResult<AtomId>;
-    /// Replaces full note content and preview fields.
+    /// Replaces full note content, title, and preview fields.
     fn update_note_full(
         &self,
         atom_id: AtomId,
         content: &str,
+        title: &str,
         preview_text: Option<&str>,
         preview_image: Option<&str>,
     ) -> RepoResult<()>;
@@ -99,9 +104,9 @@ impl<'conn> SqliteNoteRepository<'conn> {
 
 impl NoteRepository for SqliteNoteRepository<'_> {
     fn create_note(&self, atom: &Atom) -> RepoResult<AtomId> {
-        if atom.kind != AtomType::Note {
+        if atom.view_hint != ViewHint::Note {
             return Err(RepoError::InvalidData(
-                "note repository only accepts AtomType::Note".to_string(),
+                "note repository only accepts ViewHint::Note".to_string(),
             ));
         }
 
@@ -113,6 +118,7 @@ impl NoteRepository for SqliteNoteRepository<'_> {
         &self,
         atom_id: AtomId,
         content: &str,
+        title: &str,
         preview_text: Option<&str>,
         preview_image: Option<&str>,
     ) -> RepoResult<()> {
@@ -120,13 +126,20 @@ impl NoteRepository for SqliteNoteRepository<'_> {
             "UPDATE atoms
              SET
                 content = ?2,
-                preview_text = ?3,
-                preview_image = ?4,
+                title = ?3,
+                preview_text = ?4,
+                preview_image = ?5,
                 updated_at = (strftime('%s', 'now') * 1000)
              WHERE uuid = ?1
-               AND type = 'note'
+               AND view_hint = 'note'
                AND is_deleted = 0;",
-            params![atom_id.to_string(), content, preview_text, preview_image,],
+            params![
+                atom_id.to_string(),
+                content,
+                title,
+                preview_text,
+                preview_image,
+            ],
         )?;
 
         if changed == 0 {
@@ -141,17 +154,19 @@ impl NoteRepository for SqliteNoteRepository<'_> {
         let mut stmt = self.conn.prepare(
             "SELECT
                 uuid,
+                view_hint,
+                title,
+                content_type,
                 content,
                 preview_text,
                 preview_image,
                 updated_at,
-                type,
                 start_at,
                 end_at,
                 task_status
              FROM atoms
              WHERE uuid = ?1
-               AND type = 'note'
+               AND view_hint = 'note'
                AND is_deleted = 0;",
         )?;
 
@@ -162,12 +177,14 @@ impl NoteRepository for SqliteNoteRepository<'_> {
             let tags = load_tags_for_note(self.conn, &uuid_text)?;
             return Ok(Some(NoteRecord {
                 atom_id: parsed_id,
+                view_hint: row.get("view_hint")?,
+                title: row.get("title")?,
+                content_type: row.get("content_type")?,
                 content: row.get("content")?,
                 preview_text: row.get("preview_text")?,
                 preview_image: row.get("preview_image")?,
                 updated_at: row.get("updated_at")?,
                 tags,
-                kind: row.get("type")?,
                 start_at: row.get("start_at")?,
                 end_at: row.get("end_at")?,
                 task_status: row.get("task_status")?,
@@ -181,16 +198,18 @@ impl NoteRepository for SqliteNoteRepository<'_> {
         let mut sql = String::from(
             "SELECT
                 uuid,
+                view_hint,
+                title,
+                content_type,
                 content,
                 preview_text,
                 preview_image,
                 updated_at,
-                type,
                 start_at,
                 end_at,
                 task_status
              FROM atoms
-             WHERE type = 'note'
+             WHERE view_hint = 'note'
                AND is_deleted = 0",
         );
         let mut bind_values: Vec<Value> = Vec::new();
@@ -226,12 +245,14 @@ impl NoteRepository for SqliteNoteRepository<'_> {
             let tags = load_tags_for_note(self.conn, &uuid_text)?;
             notes.push(NoteRecord {
                 atom_id: parsed_id,
+                view_hint: row.get("view_hint")?,
+                title: row.get("title")?,
+                content_type: row.get("content_type")?,
                 content: row.get("content")?,
                 preview_text: row.get("preview_text")?,
                 preview_image: row.get("preview_image")?,
                 updated_at: row.get("updated_at")?,
                 tags,
-                kind: row.get("type")?,
                 start_at: row.get("start_at")?,
                 end_at: row.get("end_at")?,
                 task_status: row.get("task_status")?,
@@ -281,7 +302,7 @@ impl NoteRepository for SqliteNoteRepository<'_> {
             "UPDATE atoms
              SET updated_at = (strftime('%s', 'now') * 1000)
              WHERE uuid = ?1
-               AND type = 'note'
+               AND view_hint = 'note'
                AND is_deleted = 0;",
             [atom_id_text.as_str()],
         )?;
@@ -400,7 +421,7 @@ fn note_exists_in_tx(tx: &Transaction<'_>, atom_uuid: &str) -> RepoResult<bool> 
             SELECT 1
             FROM atoms
              WHERE uuid = ?1
-               AND type = 'note'
+               AND view_hint = 'note'
                AND is_deleted = 0
         );",
         [atom_uuid],

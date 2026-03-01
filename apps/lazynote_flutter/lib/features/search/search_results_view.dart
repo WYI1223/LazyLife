@@ -116,7 +116,7 @@ class _SearchResultRowState extends State<_SearchResultRow> {
   @override
   Widget build(BuildContext context) {
     final subtitleLines = <String>[
-      widget.item.kind.toUpperCase(),
+      widget.item.viewHint.toUpperCase(),
       widget.item.atomId,
       if (widget.showAppliedLimit) 'Applied limit: ${widget.appliedLimit}',
     ];
@@ -135,7 +135,7 @@ class _SearchResultRowState extends State<_SearchResultRow> {
             vertical: 2,
           ),
           leading: Icon(
-            _iconForKind(widget.item.kind),
+            _iconForKind(widget.item.viewHint),
             color: Colors.grey.shade600,
           ),
           title: Text(

@@ -22,7 +22,8 @@ class _EntrySearchContractSmokeApi implements RustLibApi {
       items: [
         bindings.EntrySearchItem(
           atomId: 'atom-${kind ?? 'all'}',
-          kind: kind ?? 'note',
+          viewHint: kind ?? 'note',
+          title: '',
           snippet: 'snippet $text',
         ),
       ],
@@ -56,7 +57,7 @@ void main() {
         limit: 12,
       );
       expect(filteredResponse.ok, isTrue);
-      expect(filteredResponse.items.single.kind, 'task');
+      expect(filteredResponse.items.single.viewHint, 'task');
       expect(filteredResponse.appliedLimit, 12);
       expect(mockApi.lastText, 'ship');
       expect(mockApi.lastKind, 'task');

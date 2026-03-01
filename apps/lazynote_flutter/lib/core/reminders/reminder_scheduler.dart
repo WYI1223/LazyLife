@@ -137,12 +137,9 @@ class ReminderScheduler {
     return eventStart.subtract(const Duration(minutes: defaultLeadTimeMinutes));
   }
 
-  /// Generate reminder title from atom content (first line, max 50 chars).
+  /// Generate reminder title from atom title field.
   static String _reminderTitle(rust_api.AtomListItem atom) {
-    final firstLine = atom.content.split('\n').first;
-    return firstLine.length > 50
-        ? '${firstLine.substring(0, 50)}...'
-        : firstLine;
+    return atom.title.isNotEmpty ? atom.title : 'Reminder';
   }
 
   /// Generate reminder body with the actual target time (not reminder time).

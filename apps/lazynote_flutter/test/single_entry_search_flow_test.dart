@@ -25,7 +25,8 @@ void main() {
           items: [
             EntrySearchItem(
               atomId: 'atom-$resolvedKind',
-              kind: resolvedKind == 'all' ? 'note' : resolvedKind,
+              viewHint: resolvedKind == 'all' ? 'note' : resolvedKind,
+              title: '',
               snippet: 'snippet for $text/$resolvedKind',
             ),
           ],
@@ -79,7 +80,8 @@ void main() {
           items: const [
             EntrySearchItem(
               atomId: 'atom-1',
-              kind: 'note',
+              viewHint: 'note',
+              title: '',
               snippet: 'first result',
             ),
           ],
@@ -134,7 +136,8 @@ void main() {
           items: [
             EntrySearchItem(
               atomId: 'atom-picked',
-              kind: 'task',
+              viewHint: 'task',
+              title: '',
               snippet: 'picked result snippet',
             ),
           ],
@@ -187,7 +190,8 @@ void main() {
           items: [
             EntrySearchItem(
               atomId: 'atom-esc-1',
-              kind: 'note',
+              viewHint: 'note',
+              title: '',
               snippet: 'escape result',
             ),
           ],

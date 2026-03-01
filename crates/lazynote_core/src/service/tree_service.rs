@@ -7,9 +7,9 @@
 //! # Invariants
 //! - Parent node must exist and be a folder when provided.
 //! - Move operations must not create parent-child cycles.
-//! - `note_ref` must target an active `AtomType::Note`.
+//! - `note_ref` must target an active note atom (`view_hint = 'note'`).
 
-use crate::model::atom::{AtomId, AtomType};
+use crate::model::atom::{AtomId, ViewHint};
 use crate::repo::tree_repo::{
     TreeRepoError, TreeRepository, WorkspaceNode, WorkspaceNodeId, WorkspaceNodeKind,
 };
@@ -241,9 +241,9 @@ impl<R: TreeRepository> TreeService<R> {
     }
 
     fn ensure_atom_is_note(&self, atom_uuid: AtomId) -> Result<(), TreeServiceError> {
-        match self.repo.atom_kind(atom_uuid)? {
+        match self.repo.atom_view_hint(atom_uuid)? {
             None => Err(TreeServiceError::AtomNotFound(atom_uuid)),
-            Some(AtomType::Note) => Ok(()),
+            Some(ViewHint::Note) => Ok(()),
             Some(_) => Err(TreeServiceError::AtomNotNote(atom_uuid)),
         }
     }

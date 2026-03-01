@@ -6,7 +6,7 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_type_label`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `with_atom_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_folder_impl`, `workspace_create_note_ref_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
+// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_atom_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_folder_impl`, `workspace_create_note_ref_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `LogDartEventFfiError`, `NotesFfiError`, `WorkspaceFfiError`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
@@ -152,7 +152,7 @@ Future<AtomItemResponse> noteGet({required String atomId}) =>
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - Returns only `AtomType::Note` rows.
+/// - Returns only `ViewHint::Note` rows.
 /// - Limit normalization: default 10, max 50.
 Future<AtomListResponse> notesList({String? tag, int? limit, int? offset}) =>
     RustLib.instance.api.crateApiNotesList(
@@ -391,8 +391,14 @@ class AtomListItem {
   /// Stable atom ID in string form.
   final String atomId;
 
-  /// Atom projection kind (`note|task|event`).
-  final String kind;
+  /// Atom view hint (`note|task|event`).
+  final String viewHint;
+
+  /// User-facing title derived from content.
+  final String title;
+
+  /// Content format indicator (e.g. `markdown`).
+  final String contentType;
 
   /// Raw markdown content.
   final String content;
@@ -420,7 +426,9 @@ class AtomListItem {
 
   const AtomListItem({
     required this.atomId,
-    required this.kind,
+    required this.viewHint,
+    required this.title,
+    required this.contentType,
     required this.content,
     this.previewText,
     this.previewImage,
@@ -434,7 +442,9 @@ class AtomListItem {
   @override
   int get hashCode =>
       atomId.hashCode ^
-      kind.hashCode ^
+      viewHint.hashCode ^
+      title.hashCode ^
+      contentType.hashCode ^
       content.hashCode ^
       previewText.hashCode ^
       previewImage.hashCode ^
@@ -450,7 +460,9 @@ class AtomListItem {
       other is AtomListItem &&
           runtimeType == other.runtimeType &&
           atomId == other.atomId &&
-          kind == other.kind &&
+          viewHint == other.viewHint &&
+          title == other.title &&
+          contentType == other.contentType &&
           content == other.content &&
           previewText == other.previewText &&
           previewImage == other.previewImage &&
@@ -541,20 +553,25 @@ class EntrySearchItem {
   /// Stable atom ID in string form.
   final String atomId;
 
-  /// Atom projection kind (`note|task|event`).
-  final String kind;
+  /// Atom view hint (`note|task|event`).
+  final String viewHint;
+
+  /// User-facing title derived from content.
+  final String title;
 
   /// Short snippet summary for result display.
   final String snippet;
 
   const EntrySearchItem({
     required this.atomId,
-    required this.kind,
+    required this.viewHint,
+    required this.title,
     required this.snippet,
   });
 
   @override
-  int get hashCode => atomId.hashCode ^ kind.hashCode ^ snippet.hashCode;
+  int get hashCode =>
+      atomId.hashCode ^ viewHint.hashCode ^ title.hashCode ^ snippet.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -562,7 +579,8 @@ class EntrySearchItem {
       other is EntrySearchItem &&
           runtimeType == other.runtimeType &&
           atomId == other.atomId &&
-          kind == other.kind &&
+          viewHint == other.viewHint &&
+          title == other.title &&
           snippet == other.snippet;
 }
 

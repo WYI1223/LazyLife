@@ -98,7 +98,9 @@ All APIs are use-case level and async.
 ### Notes Payload (AtomListItem)
 
 - `atom_id`
-- `kind`
+- `view_hint` — rendering hint (`note` | `task` | `event`)
+- `title` — user-facing title derived from content (PR-RB-02)
+- `content_type` — content format indicator, e.g. `markdown` (PR-RB-02)
 - `content`
 - `preview_text`
 - `preview_image`
@@ -368,7 +370,9 @@ All APIs are use-case level and async.
 **`AtomListItem`** — full atom projection for section queries:
 
 - `atom_id: String` — stable UUID
-- `kind: String` — `"note"` | `"task"` | `"event"` (rendering hint)
+- `view_hint: String` — `"note"` | `"task"` | `"event"` (rendering hint)
+- `title: String` — user-facing title derived from content (PR-RB-02)
+- `content_type: String` — content format indicator, e.g. `"markdown"` (PR-RB-02)
 - `content: String` — markdown body
 - `preview_text: String?` — derived plain-text summary
 - `preview_image: String?` — derived first image path

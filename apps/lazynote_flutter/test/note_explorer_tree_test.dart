@@ -11,7 +11,9 @@ rust_api.AtomListItem _note({
   required int updatedAt,
 }) {
   return rust_api.AtomListItem(
-    kind: 'note',
+    viewHint: 'note',
+    title: '',
+    contentType: 'markdown',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -274,7 +276,9 @@ void main() {
       noteUpdateInvoker: ({required atomId, required content}) async {
         final existing = store[atomId]!;
         final updated = rust_api.AtomListItem(
-          kind: 'note',
+          viewHint: 'note',
+          title: '',
+          contentType: 'markdown',
           atomId: existing.atomId,
           content: content,
           previewText: null,

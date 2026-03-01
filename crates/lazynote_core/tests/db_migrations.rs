@@ -12,6 +12,9 @@ fn open_db_in_memory_applies_all_migrations() {
     assert_table_exists(&conn, "tags");
     assert_table_exists(&conn, "atom_tags");
     assert_table_exists(&conn, "external_mappings");
+    assert_column_exists(&conn, "atoms", "view_hint");
+    assert_column_exists(&conn, "atoms", "title");
+    assert_column_exists(&conn, "atoms", "content_type");
     assert_column_exists(&conn, "atoms", "preview_text");
     assert_column_exists(&conn, "atoms", "preview_image");
     assert_column_exists(&conn, "atoms", "start_at");
@@ -24,7 +27,7 @@ fn migrated_preview_columns_accept_read_write_values() {
     let conn = open_db_in_memory().unwrap();
     let atom_id = Uuid::new_v4().to_string();
     conn.execute(
-        "INSERT INTO atoms (uuid, type, content, preview_text, preview_image)
+        "INSERT INTO atoms (uuid, view_hint, content, preview_text, preview_image)
          VALUES (?1, 'note', 'body', 'summary', 'cover.png');",
         [atom_id.as_str()],
     )
@@ -119,7 +122,7 @@ fn atoms_reject_invalid_event_window() {
     let conn = open_db_in_memory().unwrap();
 
     let result = conn.execute(
-        "INSERT INTO atoms (uuid, type, content, start_at, end_at)
+        "INSERT INTO atoms (uuid, view_hint, content, start_at, end_at)
          VALUES (?1, 'event', 'invalid', 200, 100);",
         [Uuid::new_v4().to_string()],
     );
@@ -133,7 +136,7 @@ fn deleting_atom_cascades_atom_tags() {
     let atom_id = Uuid::new_v4().to_string();
 
     conn.execute(
-        "INSERT INTO atoms (uuid, type, content) VALUES (?1, 'note', 'hello');",
+        "INSERT INTO atoms (uuid, view_hint, content) VALUES (?1, 'note', 'hello');",
         [atom_id.as_str()],
     )
     .unwrap();
@@ -166,12 +169,12 @@ fn external_mappings_enforce_unique_provider_external_id() {
     let atom_b = Uuid::new_v4().to_string();
 
     conn.execute(
-        "INSERT INTO atoms (uuid, type, content) VALUES (?1, 'event', 'a');",
+        "INSERT INTO atoms (uuid, view_hint, content) VALUES (?1, 'event', 'a');",
         [atom_a.as_str()],
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO atoms (uuid, type, content) VALUES (?1, 'event', 'b');",
+        "INSERT INTO atoms (uuid, view_hint, content) VALUES (?1, 'event', 'b');",
         [atom_b.as_str()],
     )
     .unwrap();
@@ -292,8 +295,8 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
 
 #[test]
 fn migration_9_backfill_sql_is_idempotent_on_replay() {
-    let mut conn = Connection::open_in_memory().unwrap();
-    migrate_to_v8(&conn);
+    let conn = Connection::open_in_memory().unwrap();
+    migrate_to_v9(&conn);
 
     let note_missing = Uuid::new_v4().to_string();
     conn.execute(
@@ -302,9 +305,13 @@ fn migration_9_backfill_sql_is_idempotent_on_replay() {
     )
     .unwrap();
 
-    apply_migrations(&mut conn).unwrap();
+    // First run of migration 9 SQL (backfill)
+    conn.execute_batch(include_str!(
+        "../src/db/migrations/0009_workspace_note_ref_backfill.sql"
+    ))
+    .unwrap();
 
-    let count_after_migration: i64 = conn
+    let count_after_first: i64 = conn
         .query_row(
             "SELECT COUNT(*)
              FROM workspace_nodes
@@ -316,6 +323,7 @@ fn migration_9_backfill_sql_is_idempotent_on_replay() {
         )
         .unwrap();
 
+    // Replay — should not create duplicates
     conn.execute_batch(include_str!(
         "../src/db/migrations/0009_workspace_note_ref_backfill.sql"
     ))
@@ -333,7 +341,7 @@ fn migration_9_backfill_sql_is_idempotent_on_replay() {
         )
         .unwrap();
 
-    assert_eq!(count_after_migration, 1);
+    assert_eq!(count_after_first, 1);
     assert_eq!(count_after_replay, 1);
 }
 
@@ -369,6 +377,15 @@ fn migrate_to_v8(conn: &Connection) {
         conn.execute_batch(&format!("PRAGMA user_version = {version};"))
             .unwrap();
     }
+}
+
+fn migrate_to_v9(conn: &Connection) {
+    migrate_to_v8(conn);
+    conn.execute_batch(include_str!(
+        "../src/db/migrations/0009_workspace_note_ref_backfill.sql"
+    ))
+    .unwrap();
+    conn.execute_batch("PRAGMA user_version = 9;").unwrap();
 }
 
 fn schema_version(conn: &Connection) -> u32 {

@@ -309,15 +309,7 @@ class _UpcomingRow extends StatelessWidget {
   };
 }
 
-/// Extracts display text from an atom list item.
-///
-/// Prefers preview_text over raw content, falls back to first line.
+/// Extracts display text from an atom list item using the title field.
 String _displayText(rust_api.AtomListItem item) {
-  if (item.previewText case final preview? when preview.trim().isNotEmpty) {
-    return preview;
-  }
-  final firstLine = item.content
-      .split(RegExp(r'\r?\n'))
-      .firstWhere((line) => line.trim().isNotEmpty, orElse: () => 'Untitled');
-  return firstLine.replaceFirst(RegExp(r'^#+\s*'), '').trim();
+  return item.title.isNotEmpty ? item.title : 'Untitled';
 }
