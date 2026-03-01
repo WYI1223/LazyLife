@@ -33,7 +33,7 @@ Notes:
 ### P1 - Canonical linking rules (avoid drift)
 
 - [x] Rule: internal doc links should point to canonical paths (`docs/...`), not translations.
-- [ ] Rule: architecture decisions (ADR) are canonical-only (no full translation requirement).
+- [ ] Rule: architecture decisions (Ruling) are canonical-only (no full translation requirement).
 
 ### P1 - Translation mechanism (later, but plan now)
 

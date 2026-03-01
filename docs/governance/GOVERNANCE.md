@@ -9,7 +9,7 @@
 当前采用轻量治理（Minimum Viable Governance）：
 
 - 先保证交付效率与工程质量。
-- 重要决策可追踪（Issue/PR/ADR）。
+- 重要决策可追踪（Issue/PR/Ruling）。
 - 随项目规模增长再升级治理复杂度。
 
 ## Roles
@@ -43,7 +43,7 @@
 涉及架构边界、跨模块影响、版本计划变更：
 
 1. 先开 Issue 讨论方案。
-2. 必要时补 ADR（`docs/architecture/adr/`）。
+2. 必要时补 Ruling（`docs/architecture/rulings/`）。
 3. Maintainer 达成共识后执行；无法达成时由 Owner 决策。
 
 ## Merge And Review Policy

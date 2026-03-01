@@ -10,7 +10,7 @@
 **LazyNote** is a local-first personal productivity app (Windows-first MVP).
 Stack: **Flutter UI → Flutter-Rust Bridge (FRB) FFI → Rust Core → SQLite**.
 
-Current status: **Post-v0.2 baseline.** Notes + tags are functional. Tasks views (Inbox/Today/Upcoming) with status update are functional. Calendar (weekly view + create/edit) is functional. Workspace tree (hierarchical folders + note references) is functional. Extension kernel and sync provider SPI are declaration-only (contracts defined, no runtime loading). Localization supports English and Chinese. Reminders (local notifications) are integrated.
+Current status: **Post-v0.2.5 baseline.** Notes + tags are functional. Tasks views (Inbox/Today/Upcoming) with status update are functional. Calendar (weekly view + create/edit) is functional. Workspace tree (hierarchical folders + note references) is functional. Extension kernel and sync provider SPI are declaration-only (contracts defined, no runtime loading). Localization supports English and Chinese. Reminders (local notifications) are integrated.
 
 ---
 
@@ -96,7 +96,7 @@ Flutter app. All data operations go through FFI calls. No domain state is stored
 | `lib/core/diagnostics/` | `DartEventLogger` — Dart-side structured event logging |
 | `lib/features/entry/` | Single-entry search/command panel, `CommandParser`, `CommandRouter`, `CommandRegistry`, workbench shell layout |
 | `lib/features/notes/` | Coordinator + 6 managers (tab, draft, save, list, tag, tree), editor, explorer tree, tab strip |
-| `lib/features/tags/` | `TagFilter` widget |
+| `lib/shared/` | `TagFilter` widget, `ui_tokens.dart` shared color constants |
 | `lib/features/search/` | Search results view |
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
 | `lib/features/calendar/` | Weekly calendar: mini month sidebar, week grid, event blocks, create/edit dialog |
@@ -154,13 +154,13 @@ flutter build windows --debug                        # Windows build
 
 ## Architecture Rules (Mandatory — from `docs/architecture/engineering-standards.md`)
 
-These are the baseline constraints. **Changing any Rule A–F requires an ADR** (Architecture Decision Record) filed in `docs/architecture/adr/`.
+These are the baseline constraints. **Changing any Rule A–F requires a Ruling** filed in `docs/architecture/rulings/`.
 
 | Rule | Constraint |
 |------|-----------|
 | **A** | Invariants, validation, persistence, indexing, sync → `crates/lazynote_core`. Flutter may contain interaction parsing and display-derived state; it must not contain domain invariants or persistence logic. |
 | **B** | `crates/lazynote_ffi` exposes use-case APIs (e.g., `create_note`, `search`), **never** raw DB operations. Exception: `debug_*` / `experimental_*` prefixed functions may expose lower-level hooks for diagnostics only; they carry no stability guarantee. |
-| **C** | All entities use stable UUIDs (never reused). **Business-path deletion is soft-delete only** (`is_deleted` flag). Maintenance tools (vacuum, retention purge) may hard-delete with an ADR documenting the rationale. |
+| **C** | All entities use stable UUIDs (never reused). **Business-path deletion is soft-delete only** (`is_deleted` flag). Maintenance tools (vacuum, retention purge) may hard-delete with a Ruling documenting the rationale. |
 | **D** | External sync mappings (e.g., Google Calendar) live in Core, never in Flutter. |
 | **E** | Flutter `features/<name>` modules must **not** import each other's internals. Cross-feature UI primitives go to `lib/shared/`; cross-feature domain operations go through Core API. `lib/core/` infrastructure is exempt from this rule (S7 ruling). |
 | **F** | Default runtime root: `%APPDATA%/LazyLife/` (Windows), `<app_support>/LazyLife/` (other platforms). The root and DB path may be overridden via `settings.json` or `configure_entry_db_path()`; all path resolution is coordinated by Core. |
@@ -367,7 +367,7 @@ NotesCoordinator (orchestrator)
 └── WorkspaceTreeManager — explorer tree operations
 ```
 
-`WorkspaceProvider` remains separate, managing pane layout state (split/close/activate pane). The coordinator currently reads some tab state from `WorkspaceProvider` in multi-pane mode — this dual-state pattern is targeted for elimination in PR-0258.
+`WorkspaceProvider` remains separate, managing pane layout state (split/close/activate pane). The dual-state pattern between coordinator and `WorkspaceProvider` was eliminated in PR-0258.
 
 ### Other Controllers
 
@@ -426,7 +426,7 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 | Extension kernel | `docs/architecture/extension-kernel.md` | Plugin architecture contracts |
 | Provider SPI | `docs/architecture/provider-spi.md` | Sync provider interface |
 | UI extension slots | `docs/architecture/ui-extension-slots.md` | UI extensibility system |
-| Semantic rulings | `docs/architecture/rulings/README.md` | S1-S8 structural and semantic rulings registry |
+| Semantic rulings | `docs/architecture/rulings/README.md` | S1-S9 structural and semantic rulings registry |
 | FFI contracts | `docs/api/ffi-contracts.md` | Consolidated FFI API specs |
 | Error codes | `docs/api/error-codes.md` | Stable error code registry |
 | API compatibility | `docs/governance/API_COMPATIBILITY.md` | Breaking change policy |
@@ -444,7 +444,7 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 - **Never edit `lib/core/bindings/*.dart`** — also auto-generated.
 - **Do not add business logic to `lazynote_ffi`** — only thin FFI wrappers belong there.
 - **Do not add domain invariants or persistence logic to Flutter** — validation rules and all storage go in `lazynote_core`. Interaction parsing and display-derived state in Flutter are acceptable (see Rule A).
-- **Soft delete in business paths** — never issue `DELETE FROM atoms` in feature code. Set `is_deleted = 1`. Hard-delete is only permitted in maintenance/purge tooling, with an ADR.
+- **Soft delete in business paths** — never issue `DELETE FROM atoms` in feature code. Set `is_deleted = 1`. Hard-delete is only permitted in maintenance/purge tooling, with a Ruling.
 - **Atom fields are currently public** — this is known tech debt. Do not rely on direct field mutation as a stable pattern.
 - **FRB bindings must be regenerated** after any change to `api.rs`. Do not skip `gen_bindings.ps1`.
 - **Tags are lowercased** by the repo layer; pass normalized lowercase tags from the service layer.

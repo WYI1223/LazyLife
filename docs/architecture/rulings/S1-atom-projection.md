@@ -2,7 +2,9 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Deferred** — v0.3 实现 |
+| 状态 | **Accepted** — v0.3 PR-RB-02/03 实现 |
+| 引入版本 | v0.2.5 (PR-0256) |
+| 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
 | 关联 PR | PR-0301（递归布局）、PR-0308（task-calendar 投影） |
 
@@ -57,7 +59,7 @@ Core 层统一将 `content` 视为 opaque string 存储，不区分格式。渲�
 
 **双结构策略**：v0.2.5–v0.4 期间，markdown 和 canvas 使用完全独立的内容结构，互不影响。v0.5+ 评估是否参考 AFFiNE/BlockSuite 统一为 block tree（markdown 块可选获得空间属性）。当前不做统一。
 
-**content_type 扩展策略**：上述四项为当前正式枚举。新增 content_type（如未来可能的 `block_document` 等）须通过 ruling 或 ADR 注册到本枚举，并同步更新 EditorResolver 注册和 FFI 契约。各设计文档中以"如 `xxx`"形式出现的 content_type 均为占位命名，不构成正式定义。
+**content_type 扩展策略**：上述四项为当前正式枚举。新增 content_type（如未来可能的 `block_document` 等）须通过 Ruling 注册到本枚举，并同步更新 EditorResolver 注册和 FFI 契约。各设计文档中以"如 `xxx`"形式出现的 content_type 均为占位命名，不构成正式定义。
 
 ### R3: view_hint 自动推导
 
@@ -407,7 +409,7 @@ lib/features/workspace/
 
 ### R14: Sidecar Overlay 持久化模型
 
-**冻结** — 语义已定义（DI-4 Q1 补充裁决），实现排入 v0.4+。完整方案见 [`docs/product/idea_temp/rich-block-editing-architecture.md`](../../product/idea_temp/rich-block-editing-architecture.md)。
+**冻结** — 语义已定义（DI-4 Q1 补充裁决），实现排入 v0.4+。完整方案见 [`docs/product/ideas/rich-block-editing-architecture.md`](../../product/ideas/rich-block-editing-architecture.md)。
 
 **定位**：Block WYSIWYG 编辑模式下，`Atom.content`（markdown 字符串）保持为持久化层 source of truth，Block 元数据以独立 overlay 表存储，不侵入主 content。
 

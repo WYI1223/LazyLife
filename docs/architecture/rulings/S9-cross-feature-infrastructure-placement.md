@@ -2,7 +2,9 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Deferred** — v0.3 实施 |
+| 状态 | **Accepted** — v0.3 PR-RB-05 实现 |
+| 引入版本 | v0.2.5 (PR-0256) |
+| 废弃者 | — |
 | 裁决日期 | 2026-02-28 |
 | 关联 PR | PR-0301B（EditorShellService 提取）、PR-0300D（WorkspaceTreeService 提取） |
 

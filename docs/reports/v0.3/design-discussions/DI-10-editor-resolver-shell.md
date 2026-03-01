@@ -166,7 +166,7 @@ EditorResolver 与 EditorShellService 同属 workbench 级编辑器基础设施�
 
 ### View Mode 扩展（占位 — v0.4+ 多编辑范式）
 
-> 来源：DI-4 Q1 补充讨论（编辑范式兼容性）。完整方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`。
+> 来源：DI-4 Q1 补充讨论（编辑范式兼容性）。完整方案见 `docs/product/ideas/rich-block-editing-architecture.md`。
 
 当前 `resolve(contentType)` 返回唯一 builder。多编辑范式（源码 / Block WYSIWYG / Inline WYSIWYG / 渲染预览）意味着同一 content_type 可有多种视图：
 

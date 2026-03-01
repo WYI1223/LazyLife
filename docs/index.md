@@ -19,8 +19,8 @@ Translation header template (for future localized pages):
 
 - `README.md`
 - `docs/governance/CONTRIBUTING.md`
-- `docs/releases/v0.2.5/README.md` (current baseline)
-- `docs/releases/v0.3/README.md` (next release)
+- `docs/releases/v0.3/README.md` (current release — v0.3)
+- `docs/releases/v0.2.5/README.md` (previous baseline — v0.2.5)
 
 ## Architecture
 
@@ -28,7 +28,8 @@ Translation header template (for future localized pages):
 - `docs/architecture/data-model.md`
 - `docs/architecture/note-schema.md`
 - `docs/architecture/engineering-standards.md`
-- `docs/architecture/rulings/README.md` — S1-S8 semantic rulings registry
+- `docs/architecture/rulings/README.md` — S1-S9 semantic rulings + E1 engineering ruling
+- `docs/architecture/modules/README.md` — module boundary definitions
 
 ## API
 
@@ -41,7 +42,16 @@ Translation header template (for future localized pages):
 - `docs/product/vision.md`
 - `docs/product/roadmap.md`
 - `docs/product/milestones.md`
-- `docs/releases/v0.2/README.md`
+- `docs/releases/v0.3/README.md` (v0.3 — in progress)
+- `docs/releases/v0.2.5/README.md` (v0.2.5 — completed)
+- `docs/releases/v0.2/README.md` (v0.2 — completed)
+
+## Reports
+
+- `docs/reports/v0.2.5/architecture-baseline/` — architecture baseline analysis
+- `docs/reports/v0.2.5/frontend-review/` — frontend TL review (9 reports)
+- `docs/reports/v0.3/design-discussions/` — v0.3 design discussions (DI-1 to DI-10)
+- `docs/reports/v0.3/pr-spec-review-resolution.md` — spec review R1/R2
 
 ## Governance and Compliance
 
@@ -55,5 +65,4 @@ Translation header template (for future localized pages):
 ## Development
 
 - `docs/development/windows-quickstart.md`
-- `docs/development/windows.md`
 - `docs/development/bug-archive.md`

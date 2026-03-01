@@ -160,7 +160,7 @@ fn your_ffi_function_impl(...) -> YourResponse {
 | **E** | No cross-feature imports | `notes/` importing `tasks/` internals |
 | **F** | Unified app root path | Writing files outside `%APPDATA%/LazyLife/` |
 
-Changing any Rule A-F requires an ADR in `docs/architecture/adr/`.
+Changing any Rule A-F requires a Ruling in `docs/architecture/rulings/`.
 
 ---
 
@@ -290,7 +290,7 @@ Note editing uses debounced autosave (1500ms) with pending-save tracking. Tab cl
 
 ## Project Status Summary
 
-**Current phase:** Post-v0.2 baseline (Windows-first MVP).
+**Current phase:** Post-v0.2.5 baseline (Windows-first MVP).
 
 **Implemented:** Notes + Tags + FTS search + Single Entry + Tasks (Inbox/Today/Upcoming) + Calendar (weekly) + Workspace tree + Reminders + Localization (en/zh) + Diagnostics + Extension/Sync contracts (declaration-only).
 

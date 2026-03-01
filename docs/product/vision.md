@@ -236,7 +236,7 @@ v0.1 剩余收口聚焦在 notes 流程 + diagnostics 可读性基线：`PR-0010
 │  │  ├─ roadmap.md
 │  │  └─ milestones.md
 │  ├─ development/
-│  │  └─ windows.md
+│  │  └─ windows-quickstart.md
 │  ├─ releases/                # 版本计划与每版目标（v0.1/v0.2/v0.3/v1.0）
 │  │  ├─ v0.1/
 │  │  │  ├─ README.md
@@ -283,9 +283,7 @@ v0.1 剩余收口聚焦在 notes 流程 + diagnostics 可读性基线：`PR-0010
 
 当前可直接使用：
 
-- Windows 极简上手：`docs/development/windows-quickstart.md`
-- Windows 详细开发说明：`docs/development/windows.md`
-- PR-0007 搜索复现手册：`docs/development/windows-pr0007-search-smoke.md`
+- Windows 开发环境：`docs/development/windows-quickstart.md`
 - 设置文件契约：`docs/architecture/settings-config.md`
 - API 合约总览：`docs/api/README.md`
 - API 兼容策略：`docs/governance/API_COMPATIBILITY.md`
