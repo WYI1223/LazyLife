@@ -1,7 +1,7 @@
 # PR-RB-01: S8 DTO 统一
 
 - Proposed title: `refactor(ffi): PR-RB-01 unify notes API to AtomListItem, deprecate NoteItem`
-- Status: In Progress
+- Status: Merged
 
 ## Goal
 
@@ -303,13 +303,13 @@ Exit: **≥ 333 pass / 0 fail**（测试数量不减少，mock 构造更新不�
 
 ## Acceptance Criteria
 
-- [ ] Rust FFI 中 `NoteItem`/`NoteResponse`/`NotesListResponse` 三个 struct 已删除
-- [ ] `AtomItemResponse` 新增并被 `note_create`/`note_update`/`note_get`/`note_set_tags` 使用
-- [ ] `notes_list` 返回 `AtomListResponse`
-- [ ] `NoteRecord` 包含 `kind`/`start_at`/`end_at`/`task_status` 字段
-- [ ] Flutter 手写代码中 `NoteItem` 引用归零（`lib/core/bindings/` 除外）
-- [ ] `architecture_check.dart` 包含 NoteItem 归零检查
-- [ ] 全部 Rust tests 通过
-- [ ] 全部 Flutter tests 通过（≥ 333）
-- [ ] `ffi-contracts.md` 和 `API_COMPATIBILITY.md` 已更新
-- [ ] CI green（format + analyze + test + architecture check）
+- [x] Rust FFI 中 `NoteItem`/`NoteResponse`/`NotesListResponse` 三个 struct 已删除
+- [x] `AtomItemResponse` 新增并被 `note_create`/`note_update`/`note_get`/`note_set_tags` 使用
+- [x] `notes_list` 返回 `AtomListResponse`
+- [x] `NoteRecord` 包含 `kind`/`start_at`/`end_at`/`task_status` 字段
+- [x] Flutter 手写代码中 `NoteItem` 引用归零（`lib/core/bindings/` 除外）
+- [x] `architecture_check.dart` 包含 NoteItem 归零检查
+- [x] 全部 Rust tests 通过（191 pass）
+- [x] 全部 Flutter tests 通过（333 pass）
+- [x] `ffi-contracts.md` 和 `API_COMPATIBILITY.md` 已更新
+- [x] CI green（format + analyze + test + architecture check）
