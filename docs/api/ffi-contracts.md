@@ -386,12 +386,6 @@ All APIs are use-case level and async.
 - `message: String` — human-readable status text
 - `total_count: u32?` — total matching records (before pagination)
 
-**Migration note (S8 ruling, v0.2.5)**: `notes_list` and `tags_list` will migrate from `NoteItem`/`NotesListResponse`
-to `AtomListItem`/`AtomListResponse` in **v0.3** when list views are unified. Both type families
-coexist until then. Rationale: `NoteItem` actively discards time/status fields at the FFI boundary,
-preventing Notes views from rendering Atom scheduling state. Unified `AtomListItem` gives all
-consumers the full Atom projection. See `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S8.
-
 ### Section Queries
 
 - `tasks_list_inbox() -> AtomListResponse`

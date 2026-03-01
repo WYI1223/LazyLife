@@ -2030,6 +2030,56 @@ mod tests {
     }
 
     #[test]
+    fn note_get_returns_s8_fields_for_pure_note() {
+        let _guard = acquire_test_db_lock();
+        let created = note_create_impl("s8 field check".to_string());
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created
+            .item
+            .as_ref()
+            .expect("note payload")
+            .atom_id
+            .clone();
+
+        let loaded = note_get_impl(atom_id);
+        assert!(loaded.ok, "{}", loaded.message);
+        let item = loaded.item.as_ref().expect("loaded payload");
+        assert_eq!(item.kind, "note", "kind must be 'note'");
+        assert!(item.start_at.is_none(), "pure note has no start_at");
+        assert!(item.end_at.is_none(), "pure note has no end_at");
+        assert!(
+            item.task_status.is_none(),
+            "pure note has no task_status"
+        );
+    }
+
+    #[test]
+    fn calendar_list_returns_s8_fields_for_event() {
+        let _guard = acquire_test_db_lock();
+        let start = 1_700_000_000_000_i64;
+        let end = 1_700_003_600_000_i64;
+        let scheduled =
+            entry_schedule_impl("s8 event".to_string(), start, Some(end));
+        assert!(scheduled.ok, "{}", scheduled.message);
+
+        let list = calendar_list_by_range_impl(start, end, Some(50), Some(0));
+        assert!(list.ok, "{}", list.message);
+
+        let event = list
+            .items
+            .iter()
+            .find(|i| i.content == "s8 event")
+            .expect("event must appear in calendar range");
+        assert_eq!(event.kind, "event", "kind must be 'event'");
+        assert_eq!(event.start_at, Some(start), "start_at must match");
+        assert_eq!(event.end_at, Some(end), "end_at must match");
+        assert!(
+            event.task_status.is_none(),
+            "event has no task_status"
+        );
+    }
+
+    #[test]
     fn note_update_uses_full_replace_and_updates_preview() {
         let _guard = acquire_test_db_lock();
         let created = note_create_impl("first body".to_string());
