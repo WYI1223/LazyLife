@@ -45,7 +45,7 @@ class ExplorerDragController {
     if (!isStableNodeId) {
       return false;
     }
-    return node.kind == 'folder' || node.kind == 'note_ref';
+    return node.kind == 'folder' || node.kind == 'atom_ref';
   }
 
   /// Resolves row-drop to one move plan (or null when invalid by policy).

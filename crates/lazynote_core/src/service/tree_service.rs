@@ -2,14 +2,14 @@
 //!
 //! # Responsibility
 //! - Validate tree hierarchy invariants above repository layer.
-//! - Provide folder/note_ref create, rename, move, and list operations.
+//! - Provide folder/atom_ref create, rename, move, and list operations.
 //!
 //! # Invariants
 //! - Parent node must exist and be a folder when provided.
 //! - Move operations must not create parent-child cycles.
-//! - `note_ref` must target an active note atom (`view_hint = 'note'`).
+//! - `atom_ref` must target an active atom (any view_hint).
 
-use crate::model::atom::{AtomId, ViewHint};
+use crate::model::atom::AtomId;
 use crate::repo::tree_repo::{
     TreeRepoError, TreeRepository, WorkspaceNode, WorkspaceNodeId, WorkspaceNodeKind,
 };
@@ -22,7 +22,7 @@ use std::fmt::{Display, Formatter};
 pub enum FolderDeleteMode {
     /// Delete folder node only and move direct children to root.
     Dissolve,
-    /// Delete folder subtree and soft-delete note atoms with no remaining refs.
+    /// Delete folder subtree and soft-delete atoms with no remaining refs.
     DeleteAll,
 }
 
@@ -39,10 +39,8 @@ pub enum TreeServiceError {
     ParentMustBeFolder(WorkspaceNodeId),
     /// Target node exists but is not folder kind.
     NodeMustBeFolder(WorkspaceNodeId),
-    /// Target note atom does not exist or is soft-deleted.
+    /// Target atom does not exist or is soft-deleted.
     AtomNotFound(AtomId),
-    /// Target atom exists but is not note type.
-    AtomNotNote(AtomId),
     /// Move operation would create a cycle.
     CycleDetected {
         node_uuid: WorkspaceNodeId,
@@ -63,7 +61,6 @@ impl Display for TreeServiceError {
             }
             Self::NodeMustBeFolder(id) => write!(f, "workspace node must be folder: {id}"),
             Self::AtomNotFound(id) => write!(f, "atom not found: {id}"),
-            Self::AtomNotNote(id) => write!(f, "atom is not a note: {id}"),
             Self::CycleDetected {
                 node_uuid,
                 parent_uuid,
@@ -121,8 +118,8 @@ impl<R: TreeRepository> TreeService<R> {
             .map_err(Into::into)
     }
 
-    /// Creates one note_ref under optional parent.
-    pub fn create_note_ref(
+    /// Creates one atom_ref under optional parent.
+    pub fn create_atom_ref(
         &self,
         parent_uuid: Option<WorkspaceNodeId>,
         atom_uuid: AtomId,
@@ -131,15 +128,15 @@ impl<R: TreeRepository> TreeService<R> {
         if let Some(parent_uuid) = parent_uuid {
             self.ensure_parent_is_folder(parent_uuid)?;
         }
-        self.ensure_atom_is_note(atom_uuid)?;
+        self.ensure_atom_exists(atom_uuid)?;
 
         let normalized = match display_name {
             Some(value) => normalize_display_name(value)?,
-            None => "Untitled note".to_string(),
+            None => "Untitled".to_string(),
         };
 
         self.repo
-            .create_note_ref(parent_uuid, atom_uuid, normalized.as_str())
+            .create_atom_ref(parent_uuid, atom_uuid, normalized.as_str())
             .map_err(Into::into)
     }
 
@@ -240,11 +237,10 @@ impl<R: TreeRepository> TreeService<R> {
         Ok(())
     }
 
-    fn ensure_atom_is_note(&self, atom_uuid: AtomId) -> Result<(), TreeServiceError> {
+    fn ensure_atom_exists(&self, atom_uuid: AtomId) -> Result<(), TreeServiceError> {
         match self.repo.atom_view_hint(atom_uuid)? {
             None => Err(TreeServiceError::AtomNotFound(atom_uuid)),
-            Some(ViewHint::Note) => Ok(()),
-            Some(_) => Err(TreeServiceError::AtomNotNote(atom_uuid)),
+            Some(_) => Ok(()),
         }
     }
 

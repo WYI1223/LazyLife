@@ -33,7 +33,7 @@ typedef ExplorerFolderCreateInvoker =
       String? parentNodeId,
     );
 
-/// Async note-create callback that also links note_ref under optional parent.
+/// Async note-create callback that also links atom_ref under optional parent.
 typedef ExplorerNoteCreateInFolderInvoker =
     Future<rust_api.WorkspaceActionResponse> Function(String? parentNodeId);
 
@@ -1134,7 +1134,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
         targetKind: ExplorerContextTargetKind.noteRef,
         canCreateNote: false,
         canCreateFolder: false,
-        // v0.2 policy freeze: note_ref alias rename is not exposed.
+        // v0.2 policy freeze: atom_ref alias rename is not exposed.
         canRename: false,
         canMove:
             widget.onMoveNodeRequested != null &&

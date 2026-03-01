@@ -191,7 +191,7 @@ class ExplorerTreeBuilder {
         continue;
       }
 
-      if (item.kind != 'note_ref') {
+      if (item.kind != 'atom_ref') {
         continue;
       }
       final noteId = item.atomId;
@@ -341,7 +341,7 @@ class ExplorerTreeBuilder {
           key: Key('notes_tree_legacy_note_row_$noteId'),
           node: rust_api.WorkspaceNodeItem(
             nodeId: 'legacy_note_$noteId',
-            kind: 'note_ref',
+            kind: 'atom_ref',
             parentNodeId: node.id,
             atomId: noteId,
             displayName: callbacks.titleForTab(noteId),

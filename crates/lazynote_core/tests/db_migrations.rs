@@ -240,11 +240,12 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
 
     assert_eq!(schema_version(&conn), latest_version());
 
+    // After migration 11, note_ref → atom_ref and tasks get backfilled.
     let existing_count: i64 = conn
         .query_row(
             "SELECT COUNT(*)
              FROM workspace_nodes
-             WHERE kind = 'note_ref'
+             WHERE kind = 'atom_ref'
                AND atom_uuid = ?1
                AND is_deleted = 0;",
             [note_existing.as_str()],
@@ -255,7 +256,7 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
         .query_row(
             "SELECT COUNT(*)
              FROM workspace_nodes
-             WHERE kind = 'note_ref'
+             WHERE kind = 'atom_ref'
                AND atom_uuid = ?1
                AND is_deleted = 0;",
             [note_missing.as_str()],
@@ -266,7 +267,7 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
         .query_row(
             "SELECT COUNT(*)
              FROM workspace_nodes
-             WHERE kind = 'note_ref'
+             WHERE kind = 'atom_ref'
                AND atom_uuid = ?1
                AND is_deleted = 0;",
             [task_atom.as_str()],
@@ -276,13 +277,14 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
 
     assert_eq!(existing_count, 1);
     assert_eq!(missing_count, 1);
-    assert_eq!(task_count, 0);
+    // Migration 11 backfills task atoms with root-level atom_ref.
+    assert_eq!(task_count, 1);
 
     let backfilled_parent: Option<String> = conn
         .query_row(
             "SELECT parent_uuid
              FROM workspace_nodes
-             WHERE kind = 'note_ref'
+             WHERE kind = 'atom_ref'
                AND atom_uuid = ?1
                AND is_deleted = 0
              LIMIT 1;",
@@ -345,6 +347,127 @@ fn migration_9_backfill_sql_is_idempotent_on_replay() {
     assert_eq!(count_after_replay, 1);
 }
 
+#[test]
+fn migration_11_upgrades_note_ref_to_atom_ref_and_backfills_tasks() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrate_to_v10(&conn);
+
+    let note_id = Uuid::new_v4().to_string();
+    let task_id = Uuid::new_v4().to_string();
+    let event_id = Uuid::new_v4().to_string();
+    let deleted_task_id = Uuid::new_v4().to_string();
+
+    // Create atoms of different types.
+    conn.execute(
+        "INSERT INTO atoms (uuid, view_hint, title, content) VALUES (?1, 'note', 'Note', 'n');",
+        [note_id.as_str()],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO atoms (uuid, view_hint, title, content) VALUES (?1, 'task', 'Task', 't');",
+        [task_id.as_str()],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO atoms (uuid, view_hint, title, content) VALUES (?1, 'event', 'Event', 'e');",
+        [event_id.as_str()],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO atoms (uuid, view_hint, title, content, is_deleted) VALUES (?1, 'task', 'Del', 'd', 1);",
+        [deleted_task_id.as_str()],
+    )
+    .unwrap();
+
+    // Note already has a note_ref.
+    let note_ref_id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO workspace_nodes (node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order)
+         VALUES (?1, 'note_ref', NULL, ?2, 'Note', 0);",
+        [&note_ref_id, &note_id],
+    )
+    .unwrap();
+
+    // Run migration 11.
+    apply_migrations(&mut conn).unwrap();
+    assert_eq!(schema_version(&conn), latest_version());
+
+    // Verify: no note_ref kind remains.
+    let note_ref_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM workspace_nodes WHERE kind = 'note_ref';",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(note_ref_count, 0);
+
+    // Verify: existing note ref migrated to atom_ref.
+    let note_atom_ref: String = conn
+        .query_row(
+            "SELECT kind FROM workspace_nodes WHERE node_uuid = ?1;",
+            [note_ref_id.as_str()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(note_atom_ref, "atom_ref");
+
+    // Verify: task got backfilled with root-level atom_ref.
+    let task_ref_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM workspace_nodes WHERE kind = 'atom_ref' AND atom_uuid = ?1 AND is_deleted = 0;",
+            [task_id.as_str()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(task_ref_count, 1);
+
+    // Verify: event got backfilled.
+    let event_ref_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM workspace_nodes WHERE kind = 'atom_ref' AND atom_uuid = ?1 AND is_deleted = 0;",
+            [event_id.as_str()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(event_ref_count, 1);
+
+    // Verify: deleted task did NOT get backfilled.
+    let deleted_ref_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM workspace_nodes WHERE atom_uuid = ?1 AND is_deleted = 0;",
+            [deleted_task_id.as_str()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(deleted_ref_count, 0);
+
+    // Verify: new trigger allows atom_ref for task atoms.
+    let new_task_id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO atoms (uuid, view_hint, title, content) VALUES (?1, 'task', 'New', 'new');",
+        [new_task_id.as_str()],
+    )
+    .unwrap();
+    let new_ref_id = Uuid::new_v4().to_string();
+    let insert_result = conn.execute(
+        "INSERT INTO workspace_nodes (node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order)
+         VALUES (?1, 'atom_ref', NULL, ?2, 'New Task', 0);",
+        [&new_ref_id, &new_task_id],
+    );
+    assert!(insert_result.is_ok(), "atom_ref should accept task atoms");
+
+    // Verify: trigger rejects atom_ref pointing to deleted atom.
+    let ghost_id = Uuid::new_v4().to_string();
+    let ghost_ref_id = Uuid::new_v4().to_string();
+    let bad_insert = conn.execute(
+        "INSERT INTO workspace_nodes (node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order)
+         VALUES (?1, 'atom_ref', NULL, ?2, 'Ghost', 0);",
+        [&ghost_ref_id, &ghost_id],
+    );
+    assert!(bad_insert.is_err(), "atom_ref should reject non-existent atom");
+}
+
 fn migrate_to_v8(conn: &Connection) {
     let migrations = [
         (1u32, include_str!("../src/db/migrations/0001_init.sql")),
@@ -386,6 +509,15 @@ fn migrate_to_v9(conn: &Connection) {
     ))
     .unwrap();
     conn.execute_batch("PRAGMA user_version = 9;").unwrap();
+}
+
+fn migrate_to_v10(conn: &Connection) {
+    migrate_to_v9(conn);
+    conn.execute_batch(include_str!(
+        "../src/db/migrations/0010_s1_core_fields.sql"
+    ))
+    .unwrap();
+    conn.execute_batch("PRAGMA user_version = 10;").unwrap();
 }
 
 fn schema_version(conn: &Connection) -> u32 {

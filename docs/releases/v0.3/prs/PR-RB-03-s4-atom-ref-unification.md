@@ -1,13 +1,69 @@
 # PR-RB-03: S4 + S1 R5/R6 创建路径统一
 
 - Proposed title: `feat(core): PR-RB-03 unify creation paths with atom_ref forced accompaniment`
-- Status: Draft
+- Status: In Review
 
 ## Goal
 
 将 `note_ref` 语义升级为 `atom_ref`（Migration 0011），使所有 Atom 类型（note/task/event）都能拥有 workspace 引用。统一全部创建 API：创建 Atom 时原子性地同时创建 `atom_ref`，路由到指定目标文件夹或 root。消除 "创建了 Atom 但无 workspace 引用" 的 orphan 状态。
 
 前置条件：PR-RB-02（`view_hint` 列已存在，`type` 已重命名）
+
+## Design Decisions (Resolved)
+
+### D1: Workspace Tree 展示所有类型 atom_ref
+
+**决策**：选项 B — workspace tree 展示所有类型（note/task/event）的 atom_ref。
+
+**依据**：atom_ref 是统一的 workspace 引用，不应按 atom 类型过滤可见性。用户创建的 task/event 必须在 workspace tree 中可见。
+
+**影响分析**：改动量低于预期。`workspace_tree_children_loader.dart` 的投射逻辑在 `_noteById(atomId)` 返回 null 时已有 fallback（使用 `item.displayName`），task/event 的 atom_ref 通过 workspace tree 自身数据（`workspace_list_children` FFI 返回值）展示，不依赖 `NoteListManager`。核心改动仅为 `'note_ref'` → `'atom_ref'` 字符串替换。
+
+### D2: v0.3 designated_folders 全部为 null — 所有 atom_ref 落在 root
+
+**决策**：v0.3 全部 11 个 PR 中无任何 PR 实现 designated folder 配置 UI 或路由。`designated_folders.tasks` / `.calendar` 始终为 null，所有 atom_ref 一律落在 root → 出现在 "Uncategorized" 虚拟文件夹。
+
+**依据**：v0.3 rebaseline 计划明确将 designated folder 配置 UI 推迟到 v0.4。当前行为正确：root = "uncategorized"（S4 定义）。task/event 仍可通过 Inbox/Today/Upcoming/Calendar 视图访问。
+
+**路由实现**：FFI 创建 API 添加 `parent_node_id: Option<String>` 参数，Flutter 侧读取 settings 后传入。v0.3 实际效果：全部传 null → 全部 root。
+
+### D3: 新建 `CreationService` composite service（Core service 层）
+
+**决策**：新建 `crates/lazynote_core/src/service/creation_service.rs`，持有 `NoteRepository` + `AtomRepository` + `TreeRepository` 三个 repo 在同一 `Connection` 上。
+
+**裁决依据**：
+- S4 原文："Core service 层统一创建 API"（v0.3 待实施）
+- S1 R5 原文："创建 API（`note_create`, `entry_create_note` 等）统一在 Core service 层同时创建 Atom + atom_ref"
+- Engineering Standards Rule A：业务不变量归 Core
+- Engineering Standards Rule B：FFI 只暴露用例 API
+
+**替代方案排除**：
+- 扩展 `AtomService` 持有 `TreeRepository` — 违反单一职责，让 AtomService 膨胀
+- FFI 层直接组合 — 违反 Rule A，业务逻辑不应在 FFI 层
+
+**实现形状**：
+
+```rust
+// crates/lazynote_core/src/service/creation_service.rs
+pub struct CreationService<'conn> {
+    note_repo: SqliteNoteRepository<'conn>,
+    atom_repo: SqliteAtomRepository<'conn>,
+    tree_repo: SqliteTreeRepository<'conn>,
+}
+
+impl<'conn> CreationService<'conn> {
+    /// 创建 note + root-level atom_ref（或指定文件夹）
+    pub fn create_note_with_ref(&mut self, content, parent_node_id) -> Result<(NoteRecord, WorkspaceNode)>
+
+    /// 创建 task + atom_ref
+    pub fn create_task_with_ref(&self, content, parent_node_id) -> Result<(AtomId, WorkspaceNodeId)>
+
+    /// 创建 event + atom_ref
+    pub fn create_event_with_ref(&self, request, parent_node_id) -> Result<(AtomId, WorkspaceNodeId)>
+}
+```
+
+FFI 层新增 `with_creation_service` helper，共享单一 `Connection`。SQLite 隐式事务保证原子性。
 
 ## Execution Contract (Canonical Inputs)
 
@@ -133,24 +189,57 @@ BEGIN
 END;
 ```
 
-### Core 层：统一创建服务
+### Core 层：统一创建服务（D3 决策：CreationService）
 
-引入 `AtomCreationCoordinator`（或在现有 service 中添加方法），在单一事务内完成 Atom + atom_ref 创建：
+新建 `CreationService` composite service（见 D3 决策），在同一 `Connection` 上持有三个 repo，保证 Atom + atom_ref 原子性创建：
 
 ```rust
-/// 在同一事务内创建 Atom 并附加 atom_ref
-pub fn create_atom_with_ref(
-    conn: &Connection,
-    atom: Atom,
-    parent_node_id: Option<WorkspaceNodeId>,  // None = root level
-) -> Result<(AtomId, WorkspaceNodeId), Error> {
-    // 1. INSERT atom
-    // 2. INSERT workspace_nodes (atom_ref)
-    // 3. 返回 (atom_id, node_uuid)
+// crates/lazynote_core/src/service/creation_service.rs
+pub struct CreationService<'conn> {
+    note_repo: SqliteNoteRepository<'conn>,
+    atom_repo: SqliteAtomRepository<'conn>,
+    tree_repo: SqliteTreeRepository<'conn>,
+}
+
+impl<'conn> CreationService<'conn> {
+    pub fn create_note_with_ref(
+        &mut self,
+        content: impl Into<String>,
+        parent_node_id: Option<WorkspaceNodeId>,
+    ) -> Result<(NoteRecord, WorkspaceNode), CreationServiceError> {
+        // 1. NoteRepository::create_note (INSERT atom + derive title/preview)
+        // 2. TreeRepository::create_atom_ref (INSERT workspace_nodes)
+        // 3. 返回 (NoteRecord, WorkspaceNode)
+    }
+
+    pub fn create_task_with_ref(
+        &self,
+        content: impl Into<String>,
+        parent_node_id: Option<WorkspaceNodeId>,
+    ) -> Result<(AtomId, WorkspaceNode), CreationServiceError> { ... }
+
+    pub fn create_event_with_ref(
+        &self,
+        request: &ScheduleEventRequest,
+        parent_node_id: Option<WorkspaceNodeId>,
+    ) -> Result<(AtomId, WorkspaceNode), CreationServiceError> { ... }
 }
 ```
 
-各创建路径委托到此方法，传入 `parent_node_id`：
+FFI 层新增 `with_creation_service` helper：
+
+```rust
+fn with_creation_service<T>(
+    f: impl FnOnce(&mut CreationService) -> Result<T, CreationServiceError>
+) -> Result<T, CreationFfiError> {
+    let db_path = resolve_entry_db_path();
+    let mut conn = open_db(&db_path)?;
+    let service = CreationService::try_new(&mut conn)?;
+    f(&mut service).map_err(map_creation_error)
+}
+```
+
+各创建路径委托到 `CreationService`，传入 `parent_node_id`：
 - Header button / `note_create` / `entry_create_note` → `parent_node_id = None`（root）
 - `entry_create_task` → `parent_node_id = tasks_designated_folder()`（无配置时 = None）
 - `entry_schedule` → `parent_node_id = calendar_designated_folder()`（无配置时 = None）
@@ -228,9 +317,9 @@ Out of scope:
 | Task | 内容 | 文件 | 变更 | 依赖 |
 |------|------|------|------|------|
 | T6 | `TreeService`：`create_note_ref` → `create_atom_ref`，`ensure_atom_is_note` → `ensure_atom_exists`，移除 `AtomNotNote` 错误 | `crates/lazynote_core/src/service/tree_service.rs` | 编辑 | T4 |
-| T7 | 实现统一创建方法 `create_atom_with_ref(conn, atom, parent_node_id)` | `crates/lazynote_core/src/service/atom_service.rs`（或新文件） | 新增 ~40 行 | T4, T6 |
-| T8 | `AtomService` 各 `create_*` 方法调用统一创建（传入路由目标） | `crates/lazynote_core/src/service/atom_service.rs` | 编辑 | T7 |
-| T9 | `NoteService::create_note` 调用统一创建 | `crates/lazynote_core/src/service/note_service.rs` | 编辑 | T7 |
+| T7 | 新建 `CreationService` composite service（D3 决策） | `crates/lazynote_core/src/service/creation_service.rs` | 新文件 ~120 行 | T4, T6 |
+| T8 | `CreationService` 实现 `create_note_with_ref` / `create_task_with_ref` / `create_event_with_ref` | `crates/lazynote_core/src/service/creation_service.rs` | 编辑 | T7 |
+| T9 | 注册 `creation_service` 模块到 `service/mod.rs` | `crates/lazynote_core/src/service/mod.rs` | 编辑 | T7 |
 
 ### Phase 4: FFI 层
 
@@ -277,8 +366,8 @@ T14 无依赖，可并行
 - `[edit]` `crates/lazynote_core/src/db/migrations/mod.rs`
 - `[edit]` `crates/lazynote_core/src/repo/tree_repo.rs`
 - `[edit]` `crates/lazynote_core/src/service/tree_service.rs`
-- `[edit]` `crates/lazynote_core/src/service/atom_service.rs`
-- `[edit]` `crates/lazynote_core/src/service/note_service.rs`
+- `[add]` `crates/lazynote_core/src/service/creation_service.rs`（D3 决策：composite service）
+- `[edit]` `crates/lazynote_core/src/service/mod.rs`
 
 ### Rust FFI
 - `[edit]` `crates/lazynote_ffi/src/api.rs`
@@ -366,6 +455,8 @@ Exit: **≥ PR-RB-02 count + 新增统一创建测试**
 - [ ] Tasks inline create 使用 `entry_create_task`（非 `entry_create_note`）
 - [ ] `settings.json` 支持 `designated_folders` 配置
 - [ ] Core 和 Flutter 中 `note_ref`/`NoteRef` 引用归零
+- [ ] Workspace tree 展示所有类型 atom_ref（D1 决策：note/task/event 均可见）
+- [ ] `CreationService` composite service 位于 Core service 层（D3 决策）
 - [ ] 全部 Rust tests 通过
 - [ ] 全部 Flutter tests 通过
 - [ ] CI green

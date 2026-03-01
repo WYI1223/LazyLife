@@ -59,6 +59,7 @@ The single source of truth for domain rules, data models, persistence, indexing,
 | `service` | `src/service/note_service.rs` | `NoteService<R>` — note create/update/list, markdown preview derivation, tag management |
 | `service` | `src/service/task_service.rs` | `TaskService` — section queries (inbox/today/upcoming), status update, time-range queries, event time update |
 | `service` | `src/service/tree_service.rs` | `TreeService<R>` — workspace tree operations with cycle detection, folder delete modes (dissolve/delete-all) |
+| `service` | `src/service/creation_service.rs` | `CreationService` — unified atom creation with mandatory `atom_ref` accompaniment (S4 ruling); routes to designated folder or root |
 | `search` | `src/search/fts.rs` | FTS5 `search_all(conn, query)` returning `Vec<SearchHit>` with snippet extraction |
 | `logging` | `src/logging.rs` | `flexi_logger` rolling-file logger with 7-day retention; `init_logging()` idempotent via `OnceCell`; `log_dart_event()` for Dart-side structured events |
 | `extension` | `src/extension/` | Declaration-only: `ExtensionManifest` validation, `ExtensionRegistry` trait, `RuntimeCapability` enum, `FirstPartyExtensionAdapter` (no runtime loading yet) |
@@ -205,9 +206,9 @@ pub struct Atom {
 ```rust
 pub struct WorkspaceNode {
     pub node_uuid: WorkspaceNodeId,          // UUIDv4
-    pub kind: WorkspaceNodeKind,             // Folder | NoteRef
+    pub kind: WorkspaceNodeKind,             // Folder | AtomRef
     pub parent_uuid: Option<WorkspaceNodeId>,// NULL = root level
-    pub atom_uuid: Option<AtomId>,           // Set for NoteRef, NULL for Folder
+    pub atom_uuid: Option<AtomId>,           // Set for AtomRef, NULL for Folder
     pub display_name: String,
     pub sort_order: i64,
     pub is_deleted: bool,
@@ -226,7 +227,7 @@ pub struct WorkspaceNode {
 
 ## Database Schema
 
-10 migrations tracked via `PRAGMA user_version` in `crates/lazynote_core/src/db/migrations/`.
+11 migrations tracked via `PRAGMA user_version` in `crates/lazynote_core/src/db/migrations/`.
 
 | Version | File | Description |
 |---------|------|-------------|
@@ -240,6 +241,7 @@ pub struct WorkspaceNode {
 | 8 | `0008_workspace_tree_delete_policy.sql` | Cascade delete policy for workspace trees |
 | 9 | `0009_workspace_note_ref_backfill.sql` | Backfill workspace note references |
 | 10 | `0010_s1_core_fields.sql` | Add `title`, `content_type`; rename `type`→`view_hint`; rebuild FTS5 with title |
+| 11 | `0011_atom_ref_upgrade.sql` | `note_ref` → `atom_ref` workspace node kind, task/event backfill, S4 triggers |
 
 **Never** modify existing migrations after they are applied. Add a new numbered SQL file for schema changes.
 
@@ -316,7 +318,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 | Function | Returns |
 |----------|---------|
 | `workspace_create_folder(parent_node_id?, name)` | `WorkspaceNodeResponse` |
-| `workspace_create_note_ref(parent_node_id?, atom_id, display_name?)` | `WorkspaceNodeResponse` |
+| `workspace_create_atom_ref(parent_node_id?, atom_id, display_name?)` | `WorkspaceNodeResponse` |
 | `workspace_list_children(parent_node_id?)` | `WorkspaceListChildrenResponse` |
 | `workspace_rename_node(node_id, new_name)` | `WorkspaceNodeResponse` |
 | `workspace_move_node(node_id, new_parent_id?, target_order?)` | `WorkspaceActionResponse` |
@@ -344,7 +346,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 ## Adding a Database Migration
 
-1. Create `crates/lazynote_core/src/db/migrations/000N_description.sql` (next sequential number, currently next = 10).
+1. Create `crates/lazynote_core/src/db/migrations/000N_description.sql` (next sequential number, currently next = 12).
 2. Register it in `crates/lazynote_core/src/db/migrations/mod.rs` in the `MIGRATIONS` constant array.
 3. **Never modify existing migration files** — only add new ones. Pre-v1.0 squash is allowed with documented process.
 4. Update `docs/architecture/data-model.md` to reflect schema changes.
@@ -455,7 +457,7 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 - **`event_start`/`event_end` are renamed** to `start_at`/`end_at` in Migration 6. Do not reference the old column names.
 - **Section classification uses time fields, not `ViewHint`**. `view_hint` is a rendering hint only.
 - **`type` column is renamed to `view_hint`** in Migration 10. `AtomType` enum is renamed to `ViewHint` in Rust code. Do not reference the old names.
-- **10 migrations exist** (not 5 or 9). Migrations 7-9 add workspace tree support; migration 10 adds S1 core fields.
+- **11 migrations exist** (not 5 or 9). Migrations 7-9 add workspace tree support; migration 10 adds S1 core fields; migration 11 adds S4 atom_ref upgrade.
 - **Extension and sync modules are declaration-only** — contracts/types are defined but no runtime loading or sync execution exists yet.
 - **Navigation is in-place section switching** — all routes map to `EntryShellPage` with different `initialSection` values, not separate page widgets.
 - **Settings loaded before first frame** — `LocalSettingsStore.ensureInitialized()` is synchronous and blocks app start to prevent locale/theme janking.

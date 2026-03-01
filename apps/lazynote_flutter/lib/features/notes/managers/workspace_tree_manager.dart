@@ -21,7 +21,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
   WorkspaceTreeManager({
     required WorkspaceDeleteFolderInvoker workspaceDeleteFolderInvoker,
     required WorkspaceCreateFolderInvoker workspaceCreateFolderInvoker,
-    required WorkspaceCreateNoteRefInvoker workspaceCreateNoteRefInvoker,
+    required WorkspaceCreateAtomRefInvoker workspaceCreateAtomRefInvoker,
     required WorkspaceRenameNodeInvoker workspaceRenameNodeInvoker,
     required WorkspaceMoveNodeInvoker workspaceMoveNodeInvoker,
     required WorkspaceListChildrenInvoker workspaceListChildrenInvoker,
@@ -33,7 +33,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
     required WorkspaceListItemsReader listItems,
   }) : _workspaceDeleteFolderInvoker = workspaceDeleteFolderInvoker,
        _workspaceCreateFolderInvoker = workspaceCreateFolderInvoker,
-       _workspaceCreateNoteRefInvoker = workspaceCreateNoteRefInvoker,
+       _workspaceCreateAtomRefInvoker = workspaceCreateAtomRefInvoker,
        _workspaceRenameNodeInvoker = workspaceRenameNodeInvoker,
        _workspaceMoveNodeInvoker = workspaceMoveNodeInvoker,
        _prepare = prepare,
@@ -49,7 +49,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
 
   final WorkspaceDeleteFolderInvoker _workspaceDeleteFolderInvoker;
   final WorkspaceCreateFolderInvoker _workspaceCreateFolderInvoker;
-  final WorkspaceCreateNoteRefInvoker _workspaceCreateNoteRefInvoker;
+  final WorkspaceCreateAtomRefInvoker _workspaceCreateAtomRefInvoker;
   final WorkspaceRenameNodeInvoker _workspaceRenameNodeInvoker;
   final WorkspaceMoveNodeInvoker _workspaceMoveNodeInvoker;
   final WorkspacePrepare _prepare;
@@ -206,7 +206,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
       }
 
       await _prepare();
-      final linkResponse = await _workspaceCreateNoteRefInvoker(
+      final linkResponse = await _workspaceCreateAtomRefInvoker(
         parentNodeId: parentForCreateRef,
         atomId: atomId,
         displayName: null,

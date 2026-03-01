@@ -188,6 +188,55 @@ atom_create(request)
 3. `item` 返回是否必填（性能 vs 一次请求闭环）。
 4. 旧 API 的弃用窗口长度与版本策略（v0.4.x 内是否保留）。
 
+### H. Pending 语义统一（2026-03-01 新增共识）
+
+为避免 Tasks 与 Calendar 的中间态心智割裂，新增统一口径：
+
+1. **Pending 不是类型，而是视图中的中间状态容器**。
+2. **字段决定可见性，`atom_ref` 决定组织位置**。
+3. **Explorer 是两类 Pending 的共同桥梁**：通过 `atom_ref` 维持强链接与可追溯路径。
+
+#### H1. Tasks Pending（对应当前 Tasks Inbox）
+
+建议语义名：`Tasks Pending`（UI 可保留 `Inbox` 文案，文档层标注其语义）。
+
+建议判定规则：
+
+```sql
+task_status IS NOT NULL
+AND task_status NOT IN ('done', 'cancelled')
+AND start_at IS NULL
+AND end_at IS NULL
+```
+
+含义：活跃任务但尚未排入具体时间锚点。
+
+#### H2. Calendar Pending（对应当前待排期池）
+
+沿用 S1 既有定义：Calendar 工作域内、未设置时间锚点的条目进入待排期池。
+
+建议判定规则（语义草案）：
+
+```sql
+in_calendar_designated_scope = true
+AND start_at IS NULL
+AND end_at IS NULL
+```
+
+说明：`in_calendar_designated_scope` 在实现层可由 designated folder 映射 + `atom_ref` 路径判定达成。
+
+#### H3. 与 Archive 的边界
+
+1. `Tasks Pending` 与 `Tasks Archive` 不同层级语义：前者是“待安排”，后者是“已结束历史”。
+2. `Tasks Archive`（如后续显式化）建议由 `task_status IN ('done', 'cancelled')` 定义。
+3. 不应将 `Calendar Pending` 与 `Tasks Archive` 合并为同一容器。
+
+#### H4. 对 `atom_create` 的影响
+
+1. 在 Tasks/Calendar 相关入口调用 `atom_create` 时，是否进入 Pending 由字段状态决定，不由 API 名称决定。
+2. `parent_node_id` 仅承载组织路径，不承担语义类型推导职责。
+3. 这与 S4“视图-文件夹正交”保持一致。
+
 ## 影响面统计
 
 | 层 | 影响项 | 估计处数 |

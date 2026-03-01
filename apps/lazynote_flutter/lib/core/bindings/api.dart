@@ -6,7 +6,7 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_atom_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_folder_impl`, `workspace_create_note_ref_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
+// These functions are ignored because they are not marked as `pub`: `atom_list_failure`, `atom_update_status_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_creation_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_atom_ref_impl`, `workspace_create_folder_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `LogDartEventFfiError`, `NotesFfiError`, `WorkspaceFfiError`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
@@ -203,16 +203,16 @@ Future<WorkspaceNodeResponse> workspaceCreateFolder({
   name: name,
 );
 
-/// Creates one workspace note_ref under optional parent.
+/// Creates one workspace atom_ref under optional parent.
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - `atom_id` must be UUID string of a note atom.
-Future<WorkspaceNodeResponse> workspaceCreateNoteRef({
+/// - `atom_id` must be UUID string of an active atom (any type).
+Future<WorkspaceNodeResponse> workspaceCreateAtomRef({
   String? parentNodeId,
   required String atomId,
   String? displayName,
-}) => RustLib.instance.api.crateApiWorkspaceCreateNoteRef(
+}) => RustLib.instance.api.crateApiWorkspaceCreateAtomRef(
   parentNodeId: parentNodeId,
   atomId: atomId,
   displayName: displayName,
@@ -364,16 +364,24 @@ class AtomItemResponse {
   /// Returned atom item payload on success.
   final AtomListItem? item;
 
+  /// Optional workspace node ID for the created atom_ref (S4, create-only).
+  final String? nodeUuid;
+
   const AtomItemResponse({
     required this.ok,
     this.errorCode,
     required this.message,
     this.item,
+    this.nodeUuid,
   });
 
   @override
   int get hashCode =>
-      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ item.hashCode;
+      ok.hashCode ^
+      errorCode.hashCode ^
+      message.hashCode ^
+      item.hashCode ^
+      nodeUuid.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -383,7 +391,8 @@ class AtomItemResponse {
           ok == other.ok &&
           errorCode == other.errorCode &&
           message == other.message &&
-          item == other.item;
+          item == other.item &&
+          nodeUuid == other.nodeUuid;
 }
 
 /// Atom list item returned by section queries (Inbox/Today/Upcoming).
@@ -526,17 +535,22 @@ class EntryActionResponse {
   /// Optional created atom ID.
   final String? atomId;
 
+  /// Optional workspace node ID for the created atom_ref (S4).
+  final String? nodeUuid;
+
   /// Human-readable response message for diagnostics/UI.
   final String message;
 
   const EntryActionResponse({
     required this.ok,
     this.atomId,
+    this.nodeUuid,
     required this.message,
   });
 
   @override
-  int get hashCode => ok.hashCode ^ atomId.hashCode ^ message.hashCode;
+  int get hashCode =>
+      ok.hashCode ^ atomId.hashCode ^ nodeUuid.hashCode ^ message.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -545,6 +559,7 @@ class EntryActionResponse {
           runtimeType == other.runtimeType &&
           ok == other.ok &&
           atomId == other.atomId &&
+          nodeUuid == other.nodeUuid &&
           message == other.message;
 }
 
@@ -766,13 +781,13 @@ class WorkspaceNodeItem {
   /// Stable workspace node id.
   final String nodeId;
 
-  /// Node kind label (`folder|note_ref`).
+  /// Node kind label (`folder|atom_ref`).
   final String kind;
 
   /// Parent node id for non-root nodes.
   final String? parentNodeId;
 
-  /// Target note atom id for note_ref nodes.
+  /// Target atom id for atom_ref nodes.
   final String? atomId;
 
   /// User-facing display name.
