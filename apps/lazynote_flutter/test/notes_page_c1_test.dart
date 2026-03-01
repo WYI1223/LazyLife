@@ -20,7 +20,9 @@ void main() {
     String? previewText,
   }) {
     return rust_api.AtomListItem(
-      kind: 'note',
+      viewHint: 'note',
+      title: '',
+      contentType: 'markdown',
       atomId: atomId,
       content: content,
       previewText: previewText,

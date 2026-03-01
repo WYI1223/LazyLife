@@ -254,7 +254,9 @@ fn create_minimal_atoms_table(conn: &Connection) {
     conn.execute_batch(
         "CREATE TABLE atoms (
             uuid TEXT PRIMARY KEY NOT NULL,
-            type TEXT NOT NULL,
+            view_hint TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            content_type TEXT DEFAULT 'markdown',
             content TEXT NOT NULL,
             preview_text TEXT NULL,
             preview_image TEXT NULL,

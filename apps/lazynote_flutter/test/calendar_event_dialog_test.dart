@@ -60,7 +60,9 @@ void main() {
   ) async {
     final existing = rust_api.AtomListItem(
       atomId: 'evt-edit-1',
-      kind: 'event',
+      viewHint: 'event',
+      title: 'Team standup',
+      contentType: 'markdown',
       content: 'Team standup\nWith agenda notes',
       previewText: 'Team standup',
       tags: const [],

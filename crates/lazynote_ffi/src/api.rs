@@ -15,10 +15,10 @@ use lazynote_core::db::open_db;
 use lazynote_core::{
     core_version as core_version_inner, init_logging as init_logging_inner,
     log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId, AtomService,
-    AtomType, FolderDeleteMode, LogDartEventError, NoteRecord, NoteService, NoteServiceError,
+    FolderDeleteMode, LogDartEventError, NoteRecord, NoteService, NoteServiceError,
     ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository, SqliteNoteRepository,
     SqliteTreeRepository, TaskService, TaskServiceError, TreeRepoError, TreeService,
-    TreeServiceError, WorkspaceNode, WorkspaceNodeKind,
+    TreeServiceError, ViewHint, WorkspaceNode, WorkspaceNodeKind,
 };
 use log::error;
 use std::path::PathBuf;
@@ -262,8 +262,10 @@ fn map_log_dart_event_error(err: LogDartEventError) -> LogDartEventFfiError {
 pub struct EntrySearchItem {
     /// Stable atom ID in string form.
     pub atom_id: String,
-    /// Atom projection kind (`note|task|event`).
-    pub kind: String,
+    /// Atom view hint (`note|task|event`).
+    pub view_hint: String,
+    /// User-facing title derived from content.
+    pub title: String,
     /// Short snippet summary for result display.
     pub snippet: String,
 }
@@ -531,7 +533,7 @@ fn entry_search_impl(
 
     let query = SearchQuery {
         text: query_text,
-        kind: parsed_kind,
+        view_hint: parsed_kind,
         limit: normalized_limit,
         raw_fts_syntax: false,
     };
@@ -565,7 +567,7 @@ fn entry_search_impl(
     }
 }
 
-fn parse_entry_search_kind(raw: Option<String>) -> Result<Option<AtomType>, String> {
+fn parse_entry_search_kind(raw: Option<String>) -> Result<Option<ViewHint>, String> {
     let Some(value) = raw else {
         return Ok(None);
     };
@@ -577,9 +579,9 @@ fn parse_entry_search_kind(raw: Option<String>) -> Result<Option<AtomType>, Stri
         return Ok(None);
     }
     match normalized.as_str() {
-        "note" => Ok(Some(AtomType::Note)),
-        "task" => Ok(Some(AtomType::Task)),
-        "event" => Ok(Some(AtomType::Event)),
+        "note" => Ok(Some(ViewHint::Note)),
+        "task" => Ok(Some(ViewHint::Task)),
+        "event" => Ok(Some(ViewHint::Event)),
         _ => Err(format!(
             "invalid kind `{value}`; expected one of all|note|task|event"
         )),
@@ -741,7 +743,7 @@ fn note_get_impl(atom_id: String) -> AtomItemResponse {
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - Returns only `AtomType::Note` rows.
+/// - Returns only `ViewHint::Note` rows.
 /// - Limit normalization: default 10, max 50.
 #[flutter_rust_bridge::frb]
 pub async fn notes_list(
@@ -1162,7 +1164,9 @@ fn parse_note_id(raw: &str) -> Result<AtomId, NotesFfiError> {
 fn to_atom_list_item_from_note(nr: NoteRecord) -> AtomListItem {
     AtomListItem {
         atom_id: nr.atom_id.to_string(),
-        kind: nr.kind,
+        view_hint: nr.view_hint,
+        title: nr.title,
+        content_type: nr.content_type,
         content: nr.content,
         preview_text: nr.preview_text,
         preview_image: nr.preview_image,
@@ -1349,16 +1353,17 @@ fn is_db_busy(err: &lazynote_core::db::DbError) -> bool {
 fn to_entry_search_item(hit: lazynote_core::SearchHit) -> EntrySearchItem {
     EntrySearchItem {
         atom_id: hit.atom_id.to_string(),
-        kind: atom_type_label(hit.kind).to_string(),
+        view_hint: view_hint_label(hit.view_hint).to_string(),
+        title: hit.title,
         snippet: hit.snippet,
     }
 }
 
-fn atom_type_label(kind: AtomType) -> &'static str {
-    match kind {
-        AtomType::Note => "note",
-        AtomType::Task => "task",
-        AtomType::Event => "event",
+fn view_hint_label(hint: ViewHint) -> &'static str {
+    match hint {
+        ViewHint::Note => "note",
+        ViewHint::Task => "task",
+        ViewHint::Event => "event",
     }
 }
 
@@ -1371,8 +1376,12 @@ fn atom_type_label(kind: AtomType) -> &'static str {
 pub struct AtomListItem {
     /// Stable atom ID in string form.
     pub atom_id: String,
-    /// Atom projection kind (`note|task|event`).
-    pub kind: String,
+    /// Atom view hint (`note|task|event`).
+    pub view_hint: String,
+    /// User-facing title derived from content.
+    pub title: String,
+    /// Content format indicator (e.g. `markdown`).
+    pub content_type: String,
     /// Raw markdown content.
     pub content: String,
     /// Derived plain-text preview.
@@ -1492,7 +1501,9 @@ fn normalize_section_limit(limit: Option<u32>) -> u32 {
 fn to_atom_list_item(sa: SectionAtom) -> AtomListItem {
     AtomListItem {
         atom_id: sa.atom.uuid.to_string(),
-        kind: atom_type_label(sa.atom.kind).to_string(),
+        view_hint: view_hint_label(sa.atom.view_hint).to_string(),
+        title: sa.atom.title,
+        content_type: sa.atom.content_type,
         content: sa.atom.content,
         preview_text: sa.atom.preview_text,
         preview_image: sa.atom.preview_image,
@@ -1926,12 +1937,18 @@ mod tests {
         let note_response = entry_search_impl(token.clone(), Some("note".to_string()), Some(50));
         assert!(note_response.ok, "{}", note_response.message);
         assert!(!note_response.items.is_empty());
-        assert!(note_response.items.iter().all(|item| item.kind == "note"));
+        assert!(note_response
+            .items
+            .iter()
+            .all(|item| item.view_hint == "note"));
 
         let task_response = entry_search_impl(token, Some("task".to_string()), Some(50));
         assert!(task_response.ok, "{}", task_response.message);
         assert!(!task_response.items.is_empty());
-        assert!(task_response.items.iter().all(|item| item.kind == "task"));
+        assert!(task_response
+            .items
+            .iter()
+            .all(|item| item.view_hint == "task"));
     }
 
     #[test]
@@ -1948,12 +1965,18 @@ mod tests {
         let note_response = entry_search_impl(token.clone(), Some("NOTE".to_string()), Some(50));
         assert!(note_response.ok, "{}", note_response.message);
         assert!(!note_response.items.is_empty());
-        assert!(note_response.items.iter().all(|item| item.kind == "note"));
+        assert!(note_response
+            .items
+            .iter()
+            .all(|item| item.view_hint == "note"));
 
         let task_response = entry_search_impl(token, Some("Task".to_string()), Some(50));
         assert!(task_response.ok, "{}", task_response.message);
         assert!(!task_response.items.is_empty());
-        assert!(task_response.items.iter().all(|item| item.kind == "task"));
+        assert!(task_response
+            .items
+            .iter()
+            .all(|item| item.view_hint == "task"));
     }
 
     #[test]
@@ -1966,7 +1989,7 @@ mod tests {
         let conn = open_db(super::resolve_entry_db_path()).expect("open db");
         let (kind, status): (String, Option<String>) = conn
             .query_row(
-                "SELECT type, task_status FROM atoms WHERE uuid = ?1",
+                "SELECT view_hint, task_status FROM atoms WHERE uuid = ?1",
                 [atom_id.as_str()],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -1986,7 +2009,7 @@ mod tests {
         let conn = open_db(super::resolve_entry_db_path()).expect("open db");
         let (kind, start, end): (String, Option<i64>, Option<i64>) = conn
             .query_row(
-                "SELECT type, start_at, end_at FROM atoms WHERE uuid = ?1",
+                "SELECT view_hint, start_at, end_at FROM atoms WHERE uuid = ?1",
                 [atom_id.as_str()],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
@@ -2034,23 +2057,15 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let created = note_create_impl("s8 field check".to_string());
         assert!(created.ok, "{}", created.message);
-        let atom_id = created
-            .item
-            .as_ref()
-            .expect("note payload")
-            .atom_id
-            .clone();
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
 
         let loaded = note_get_impl(atom_id);
         assert!(loaded.ok, "{}", loaded.message);
         let item = loaded.item.as_ref().expect("loaded payload");
-        assert_eq!(item.kind, "note", "kind must be 'note'");
+        assert_eq!(item.view_hint, "note", "view_hint must be 'note'");
         assert!(item.start_at.is_none(), "pure note has no start_at");
         assert!(item.end_at.is_none(), "pure note has no end_at");
-        assert!(
-            item.task_status.is_none(),
-            "pure note has no task_status"
-        );
+        assert!(item.task_status.is_none(), "pure note has no task_status");
     }
 
     #[test]
@@ -2058,8 +2073,7 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let start = 1_700_000_000_000_i64;
         let end = 1_700_003_600_000_i64;
-        let scheduled =
-            entry_schedule_impl("s8 event".to_string(), start, Some(end));
+        let scheduled = entry_schedule_impl("s8 event".to_string(), start, Some(end));
         assert!(scheduled.ok, "{}", scheduled.message);
 
         let list = calendar_list_by_range_impl(start, end, Some(50), Some(0));
@@ -2070,13 +2084,10 @@ mod tests {
             .iter()
             .find(|i| i.content == "s8 event")
             .expect("event must appear in calendar range");
-        assert_eq!(event.kind, "event", "kind must be 'event'");
+        assert_eq!(event.view_hint, "event", "view_hint must be 'event'");
         assert_eq!(event.start_at, Some(start), "start_at must match");
         assert_eq!(event.end_at, Some(end), "end_at must match");
-        assert!(
-            event.task_status.is_none(),
-            "event has no task_status"
-        );
+        assert!(event.task_status.is_none(), "event has no task_status");
     }
 
     #[test]

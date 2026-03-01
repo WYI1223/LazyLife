@@ -13,7 +13,7 @@
 
 use crate::db::migrations::latest_version;
 use crate::db::DbError;
-use crate::model::atom::{Atom, AtomId, AtomType, AtomValidationError, TaskStatus};
+use crate::model::atom::{Atom, AtomId, AtomValidationError, TaskStatus, ViewHint};
 use log::{error, info, warn};
 use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, Row};
@@ -24,7 +24,9 @@ use uuid::Uuid;
 
 const ATOM_SELECT_SQL: &str = "SELECT
     uuid,
-    type,
+    view_hint,
+    title,
+    content_type,
     content,
     preview_text,
     preview_image,
@@ -134,7 +136,9 @@ pub struct SectionAtomRow {
 /// SELECT columns for section queries (adds `updated_at` on top of ATOM_SELECT_SQL).
 const SECTION_SELECT_SQL: &str = "SELECT
     uuid,
-    type,
+    view_hint,
+    title,
+    content_type,
     content,
     preview_text,
     preview_image,
@@ -150,8 +154,8 @@ FROM atoms";
 /// Query options for listing atoms.
 #[derive(Debug, Clone, Default)]
 pub struct AtomListQuery {
-    /// Optional filter by atom kind.
-    pub kind: Option<AtomType>,
+    /// Optional filter by view hint.
+    pub view_hint: Option<ViewHint>,
     /// Whether soft-deleted rows should be included.
     pub include_deleted: bool,
     /// Maximum rows to return. When `None`, no explicit limit is applied.
@@ -249,9 +253,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         let started_at = Instant::now();
         if let Err(err) = atom.validate() {
             warn!(
-                "event=atom_create module=repo status=error atom_id={} atom_type={} duration_ms={} error_code=validation_error",
+                "event=atom_create module=repo status=error atom_id={} view_hint={} duration_ms={} error_code=validation_error",
                 atom.uuid,
-                atom_type_to_db(atom.kind),
+                view_hint_to_db(atom.view_hint),
                 started_at.elapsed().as_millis()
             );
             return Err(err.into());
@@ -260,7 +264,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         if let Err(err) = self.conn.execute(
             "INSERT INTO atoms (
                 uuid,
-                type,
+                view_hint,
+                title,
+                content_type,
                 content,
                 preview_text,
                 preview_image,
@@ -270,10 +276,12 @@ impl AtomRepository for SqliteAtomRepository<'_> {
                 recurrence_rule,
                 hlc_timestamp,
                 is_deleted
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);",
             params![
                 atom.uuid.to_string(),
-                atom_type_to_db(atom.kind),
+                view_hint_to_db(atom.view_hint),
+                atom.title.as_str(),
+                atom.content_type.as_str(),
                 atom.content.as_str(),
                 atom.preview_text.as_deref(),
                 atom.preview_image.as_deref(),
@@ -286,9 +294,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
             ],
         ) {
             error!(
-                "event=atom_create module=repo status=error atom_id={} atom_type={} duration_ms={} error_code=db_write_failed error={}",
+                "event=atom_create module=repo status=error atom_id={} view_hint={} duration_ms={} error_code=db_write_failed error={}",
                 atom.uuid,
-                atom_type_to_db(atom.kind),
+                view_hint_to_db(atom.view_hint),
                 started_at.elapsed().as_millis(),
                 err
             );
@@ -296,9 +304,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         }
 
         info!(
-            "event=atom_create module=repo status=ok atom_id={} atom_type={} duration_ms={}",
+            "event=atom_create module=repo status=ok atom_id={} view_hint={} duration_ms={}",
             atom.uuid,
-            atom_type_to_db(atom.kind),
+            view_hint_to_db(atom.view_hint),
             started_at.elapsed().as_millis()
         );
 
@@ -309,9 +317,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         let started_at = Instant::now();
         if let Err(err) = atom.validate() {
             warn!(
-                "event=atom_update module=repo status=error atom_id={} atom_type={} duration_ms={} error_code=validation_error",
+                "event=atom_update module=repo status=error atom_id={} view_hint={} duration_ms={} error_code=validation_error",
                 atom.uuid,
-                atom_type_to_db(atom.kind),
+                view_hint_to_db(atom.view_hint),
                 started_at.elapsed().as_millis()
             );
             return Err(err.into());
@@ -320,20 +328,24 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         let changed = match self.conn.execute(
             "UPDATE atoms
              SET
-                type = ?1,
-                content = ?2,
-                preview_text = ?3,
-                preview_image = ?4,
-                task_status = ?5,
-                start_at = ?6,
-                end_at = ?7,
-                recurrence_rule = ?8,
-                hlc_timestamp = ?9,
-                is_deleted = ?10,
+                view_hint = ?1,
+                title = ?2,
+                content_type = ?3,
+                content = ?4,
+                preview_text = ?5,
+                preview_image = ?6,
+                task_status = ?7,
+                start_at = ?8,
+                end_at = ?9,
+                recurrence_rule = ?10,
+                hlc_timestamp = ?11,
+                is_deleted = ?12,
                 updated_at = (strftime('%s', 'now') * 1000)
-             WHERE uuid = ?11;",
+             WHERE uuid = ?13;",
             params![
-                atom_type_to_db(atom.kind),
+                view_hint_to_db(atom.view_hint),
+                atom.title.as_str(),
+                atom.content_type.as_str(),
                 atom.content.as_str(),
                 atom.preview_text.as_deref(),
                 atom.preview_image.as_deref(),
@@ -349,9 +361,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
             Ok(changed) => changed,
             Err(err) => {
                 error!(
-                    "event=atom_update module=repo status=error atom_id={} atom_type={} duration_ms={} error_code=db_write_failed error={}",
+                    "event=atom_update module=repo status=error atom_id={} view_hint={} duration_ms={} error_code=db_write_failed error={}",
                     atom.uuid,
-                    atom_type_to_db(atom.kind),
+                    view_hint_to_db(atom.view_hint),
                     started_at.elapsed().as_millis(),
                     err
                 );
@@ -361,18 +373,18 @@ impl AtomRepository for SqliteAtomRepository<'_> {
 
         if changed == 0 {
             warn!(
-                "event=atom_update module=repo status=error atom_id={} atom_type={} duration_ms={} error_code=not_found",
+                "event=atom_update module=repo status=error atom_id={} view_hint={} duration_ms={} error_code=not_found",
                 atom.uuid,
-                atom_type_to_db(atom.kind),
+                view_hint_to_db(atom.view_hint),
                 started_at.elapsed().as_millis()
             );
             return Err(RepoError::NotFound(atom.uuid));
         }
 
         info!(
-            "event=atom_update module=repo status=ok atom_id={} atom_type={} duration_ms={}",
+            "event=atom_update module=repo status=ok atom_id={} view_hint={} duration_ms={}",
             atom.uuid,
-            atom_type_to_db(atom.kind),
+            view_hint_to_db(atom.view_hint),
             started_at.elapsed().as_millis()
         );
 
@@ -402,9 +414,9 @@ impl AtomRepository for SqliteAtomRepository<'_> {
             sql.push_str(" AND is_deleted = 0");
         }
 
-        if let Some(kind) = query.kind {
-            sql.push_str(" AND type = ?");
-            bind_values.push(Value::Text(atom_type_to_db(kind).to_string()));
+        if let Some(hint) = query.view_hint {
+            sql.push_str(" AND view_hint = ?");
+            bind_values.push(Value::Text(view_hint_to_db(hint).to_string()));
         }
 
         sql.push_str(" ORDER BY updated_at DESC, uuid ASC");
@@ -560,9 +572,15 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         let started_at = Instant::now();
         let status_db = status.map(task_status_to_db);
 
+        // Why: re-derive view_hint atomically (mirrors derive_view_hint in note_service.rs).
         let changed = match self.conn.execute(
             "UPDATE atoms
              SET task_status = ?1,
+                 view_hint = CASE
+                     WHEN ?1 IS NOT NULL THEN 'task'
+                     WHEN start_at IS NOT NULL OR end_at IS NOT NULL THEN 'event'
+                     ELSE 'note'
+                 END,
                  updated_at = (strftime('%s', 'now') * 1000)
              WHERE uuid = ?2
                AND is_deleted = 0;",
@@ -642,10 +660,16 @@ impl AtomRepository for SqliteAtomRepository<'_> {
             ));
         }
 
+        // Why: re-derive view_hint atomically (mirrors derive_view_hint in note_service.rs).
         let changed = match self.conn.execute(
             "UPDATE atoms
              SET start_at = ?1,
                  end_at = ?2,
+                 view_hint = CASE
+                     WHEN task_status IS NOT NULL THEN 'task'
+                     WHEN ?1 IS NOT NULL OR ?2 IS NOT NULL THEN 'event'
+                     ELSE 'note'
+                 END,
                  updated_at = (strftime('%s', 'now') * 1000)
              WHERE uuid = ?3
                AND is_deleted = 0;",
@@ -696,9 +720,11 @@ fn parse_atom_row(row: &Row<'_>) -> RepoResult<Atom> {
         RepoError::InvalidData(format!("invalid uuid value `{uuid_text}` in atoms.uuid"))
     })?;
 
-    let type_text: String = row.get("type")?;
-    let kind = parse_atom_type(&type_text).ok_or_else(|| {
-        RepoError::InvalidData(format!("invalid atom type `{type_text}` in atoms.type"))
+    let hint_text: String = row.get("view_hint")?;
+    let view_hint = parse_view_hint(&hint_text).ok_or_else(|| {
+        RepoError::InvalidData(format!(
+            "invalid view_hint `{hint_text}` in atoms.view_hint"
+        ))
     })?;
 
     let task_status = match row.get::<_, Option<String>>("task_status")? {
@@ -722,7 +748,9 @@ fn parse_atom_row(row: &Row<'_>) -> RepoResult<Atom> {
 
     let atom = Atom {
         uuid,
-        kind,
+        view_hint,
+        title: row.get("title")?,
+        content_type: row.get("content_type")?,
         content: row.get("content")?,
         preview_text: row.get("preview_text")?,
         preview_image: row.get("preview_image")?,
@@ -737,19 +765,19 @@ fn parse_atom_row(row: &Row<'_>) -> RepoResult<Atom> {
     Ok(atom)
 }
 
-pub(crate) fn atom_type_to_db(kind: AtomType) -> &'static str {
-    match kind {
-        AtomType::Note => "note",
-        AtomType::Task => "task",
-        AtomType::Event => "event",
+pub(crate) fn view_hint_to_db(hint: ViewHint) -> &'static str {
+    match hint {
+        ViewHint::Note => "note",
+        ViewHint::Task => "task",
+        ViewHint::Event => "event",
     }
 }
 
-fn parse_atom_type(value: &str) -> Option<AtomType> {
+fn parse_view_hint(value: &str) -> Option<ViewHint> {
     match value {
-        "note" => Some(AtomType::Note),
-        "task" => Some(AtomType::Task),
-        "event" => Some(AtomType::Event),
+        "note" => Some(ViewHint::Note),
+        "task" => Some(ViewHint::Task),
+        "event" => Some(ViewHint::Event),
         _ => None,
     }
 }
@@ -808,7 +836,9 @@ fn ensure_connection_ready(conn: &Connection) -> RepoResult<()> {
 
     for column in [
         "uuid",
-        "type",
+        "view_hint",
+        "title",
+        "content_type",
         "content",
         "preview_text",
         "preview_image",

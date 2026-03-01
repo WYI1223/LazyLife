@@ -1,8 +1,8 @@
 use lazynote_core::db::migrations::latest_version;
 use lazynote_core::db::open_db_in_memory;
 use lazynote_core::{
-    Atom, AtomListQuery, AtomRepository, AtomService, AtomType, RepoError, SqliteAtomRepository,
-    TaskStatus,
+    Atom, AtomListQuery, AtomRepository, AtomService, RepoError, SqliteAtomRepository, TaskStatus,
+    ViewHint,
 };
 use rusqlite::Connection;
 use std::collections::HashSet;
@@ -13,12 +13,12 @@ fn create_and_get_roundtrip() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let atom = Atom::new(AtomType::Note, "first note");
+    let atom = Atom::new(ViewHint::Note, "first note");
     let id = repo.create_atom(&atom).unwrap();
 
     let loaded = repo.get_atom(id, false).unwrap().unwrap();
     assert_eq!(loaded.uuid, atom.uuid);
-    assert_eq!(loaded.kind, AtomType::Note);
+    assert_eq!(loaded.view_hint, ViewHint::Note);
     assert_eq!(loaded.content, "first note");
     assert!(!loaded.is_deleted);
 }
@@ -28,7 +28,7 @@ fn create_and_get_roundtrip_preserves_preview_fields() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let mut atom = Atom::new(AtomType::Note, "preview body");
+    let mut atom = Atom::new(ViewHint::Note, "preview body");
     atom.preview_text = Some("preview text".to_string());
     atom.preview_image = Some("cover.png".to_string());
     let id = repo.create_atom(&atom).unwrap();
@@ -43,16 +43,16 @@ fn update_existing_atom() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let mut atom = Atom::new(AtomType::Note, "draft");
+    let mut atom = Atom::new(ViewHint::Note, "draft");
     repo.create_atom(&atom).unwrap();
 
-    atom.kind = AtomType::Task;
+    atom.view_hint = ViewHint::Task;
     atom.content = "updated task".to_string();
     atom.task_status = Some(TaskStatus::InProgress);
     repo.update_atom(&atom).unwrap();
 
     let loaded = repo.get_atom(atom.uuid, false).unwrap().unwrap();
-    assert_eq!(loaded.kind, AtomType::Task);
+    assert_eq!(loaded.view_hint, ViewHint::Task);
     assert_eq!(loaded.content, "updated task");
     assert_eq!(loaded.task_status, Some(TaskStatus::InProgress));
 }
@@ -62,7 +62,7 @@ fn update_atom_updates_preview_fields() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let mut atom = Atom::new(AtomType::Note, "draft");
+    let mut atom = Atom::new(ViewHint::Note, "draft");
     repo.create_atom(&atom).unwrap();
 
     atom.preview_text = Some("updated preview".to_string());
@@ -79,7 +79,7 @@ fn update_not_found_returns_not_found() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let atom = Atom::new(AtomType::Note, "missing");
+    let atom = Atom::new(ViewHint::Note, "missing");
     let err = repo.update_atom(&atom).unwrap_err();
     assert!(matches!(err, RepoError::NotFound(id) if id == atom.uuid));
 }
@@ -89,8 +89,8 @@ fn list_excludes_deleted_by_default_and_can_include_them() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let atom_a = Atom::new(AtomType::Note, "active");
-    let atom_b = Atom::new(AtomType::Task, "deleted later");
+    let atom_a = Atom::new(ViewHint::Note, "active");
+    let atom_b = Atom::new(ViewHint::Task, "deleted later");
     repo.create_atom(&atom_a).unwrap();
     repo.create_atom(&atom_b).unwrap();
     repo.soft_delete_atom(atom_b.uuid).unwrap();
@@ -112,7 +112,7 @@ fn soft_delete_is_idempotent() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let atom = Atom::new(AtomType::Event, "weekly sync");
+    let atom = Atom::new(ViewHint::Event, "weekly sync");
     repo.create_atom(&atom).unwrap();
 
     repo.soft_delete_atom(atom.uuid).unwrap();
@@ -128,14 +128,14 @@ fn validation_failure_blocks_create_and_update() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let mut invalid = Atom::new(AtomType::Event, "bad range");
+    let mut invalid = Atom::new(ViewHint::Event, "bad range");
     invalid.start_at = Some(300);
     invalid.end_at = Some(100);
 
     let create_err = repo.create_atom(&invalid).unwrap_err();
     assert!(matches!(create_err, RepoError::Validation(_)));
 
-    let mut valid = Atom::new(AtomType::Event, "good range");
+    let mut valid = Atom::new(ViewHint::Event, "good range");
     valid.start_at = Some(100);
     valid.end_at = Some(200);
     repo.create_atom(&valid).unwrap();
@@ -150,15 +150,15 @@ fn list_filters_by_atom_type() {
     let conn = open_db_in_memory().unwrap();
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
 
-    let note = Atom::new(AtomType::Note, "note");
-    let task = Atom::new(AtomType::Task, "task");
-    let event = Atom::new(AtomType::Event, "event");
+    let note = Atom::new(ViewHint::Note, "note");
+    let task = Atom::new(ViewHint::Task, "task");
+    let event = Atom::new(ViewHint::Event, "event");
     repo.create_atom(&note).unwrap();
     repo.create_atom(&task).unwrap();
     repo.create_atom(&event).unwrap();
 
     let query = AtomListQuery {
-        kind: Some(AtomType::Task),
+        view_hint: Some(ViewHint::Task),
         include_deleted: true,
         ..AtomListQuery::default()
     };
@@ -174,7 +174,7 @@ fn service_wraps_repository_calls() {
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
     let service = AtomService::new(repo);
 
-    let atom = Atom::new(AtomType::Note, "from service");
+    let atom = Atom::new(ViewHint::Note, "from service");
     let id = service.create_atom(&atom).unwrap();
 
     let fetched = service.get_atom(id, false).unwrap().unwrap();
@@ -223,7 +223,9 @@ fn repository_rejects_connection_missing_required_atoms_column() {
     conn.execute_batch(
         "CREATE TABLE atoms (
             uuid TEXT PRIMARY KEY NOT NULL,
-            type TEXT NOT NULL,
+            view_hint TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            content_type TEXT DEFAULT 'markdown',
             content TEXT NOT NULL,
             is_deleted INTEGER NOT NULL DEFAULT 0
         );",
@@ -298,5 +300,5 @@ fn list_pagination_with_offset_only_path_is_stable() {
 }
 
 fn atom_with_fixed_id(id: &str, content: &str) -> Atom {
-    Atom::with_id(Uuid::parse_str(id).unwrap(), AtomType::Note, content).unwrap()
+    Atom::with_id(Uuid::parse_str(id).unwrap(), ViewHint::Note, content).unwrap()
 }

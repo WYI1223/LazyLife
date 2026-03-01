@@ -31,7 +31,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
     required WorkspaceDeleteSuccessHook onDeleteSuccess,
     required WorkspaceNoteById noteById,
     required WorkspaceListItemsReader listItems,
-    required WorkspaceTitleResolver titleFromContent,
   }) : _workspaceDeleteFolderInvoker = workspaceDeleteFolderInvoker,
        _workspaceCreateFolderInvoker = workspaceCreateFolderInvoker,
        _workspaceCreateNoteRefInvoker = workspaceCreateNoteRefInvoker,
@@ -46,7 +45,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
          listChildrenInvoker: workspaceListChildrenInvoker,
          noteById: noteById,
          listItems: listItems,
-         titleFromContent: titleFromContent,
        );
 
   final WorkspaceDeleteFolderInvoker _workspaceDeleteFolderInvoker;

@@ -21,7 +21,9 @@ void main() {
   }) {
     return rust_api.AtomListItem(
       atomId: id,
-      kind: 'event',
+      viewHint: 'event',
+      title: content.split('\n').first,
+      contentType: 'markdown',
       content: content,
       previewText: previewText,
       tags: const [],

@@ -1,12 +1,12 @@
-use lazynote_core::{Atom, AtomType, AtomValidationError, TaskStatus};
+use lazynote_core::{Atom, AtomValidationError, TaskStatus, ViewHint};
 use uuid::Uuid;
 
 #[test]
 fn atom_new_sets_defaults() {
-    let atom = Atom::new(AtomType::Note, "hello");
+    let atom = Atom::new(ViewHint::Note, "hello");
 
     assert!(!atom.uuid.is_nil());
-    assert_eq!(atom.kind, AtomType::Note);
+    assert_eq!(atom.view_hint, ViewHint::Note);
     assert_eq!(atom.content, "hello");
     assert_eq!(atom.task_status, None);
     assert_eq!(atom.start_at, None);
@@ -17,7 +17,7 @@ fn atom_new_sets_defaults() {
 
 #[test]
 fn soft_delete_and_restore_work() {
-    let mut atom = Atom::new(AtomType::Task, "todo");
+    let mut atom = Atom::new(ViewHint::Task, "todo");
 
     atom.soft_delete();
     assert!(atom.is_deleted);
@@ -31,7 +31,7 @@ fn soft_delete_and_restore_work() {
 #[test]
 fn atom_serialization_uses_expected_wire_fields() {
     let atom_id = Uuid::parse_str("11111111-2222-4333-8444-555555555555").unwrap();
-    let mut atom = Atom::with_id(atom_id, AtomType::Task, "- [ ] ship PR-0004").unwrap();
+    let mut atom = Atom::with_id(atom_id, ViewHint::Task, "- [ ] ship PR-0004").unwrap();
     atom.task_status = Some(TaskStatus::InProgress);
     atom.start_at = Some(1_700_000_000_000);
     atom.end_at = Some(1_700_000_360_000);
@@ -39,7 +39,7 @@ fn atom_serialization_uses_expected_wire_fields() {
 
     let json = serde_json::to_value(&atom).unwrap();
     assert_eq!(json["uuid"], atom_id.to_string());
-    assert_eq!(json["type"], "task");
+    assert_eq!(json["view_hint"], "task");
     assert_eq!(json["task_status"], "in_progress");
     assert_eq!(json["start_at"], 1_700_000_000_000_i64);
     assert_eq!(json["end_at"], 1_700_000_360_000_i64);
@@ -52,13 +52,13 @@ fn atom_serialization_uses_expected_wire_fields() {
 
 #[test]
 fn with_id_rejects_nil_uuid() {
-    let err = Atom::with_id(Uuid::nil(), AtomType::Note, "invalid").unwrap_err();
+    let err = Atom::with_id(Uuid::nil(), ViewHint::Note, "invalid").unwrap_err();
     assert_eq!(err, AtomValidationError::NilUuid);
 }
 
 #[test]
 fn validate_rejects_reversed_event_window() {
-    let mut atom = Atom::new(AtomType::Event, "meeting");
+    let mut atom = Atom::new(ViewHint::Event, "meeting");
     atom.start_at = Some(1_700_000_000_000);
     atom.end_at = Some(1_699_999_999_000);
 
@@ -76,7 +76,7 @@ fn validate_rejects_reversed_event_window() {
 fn deserialize_rejects_invalid_event_window() {
     let value = serde_json::json!({
         "uuid": "11111111-2222-4333-8444-555555555555",
-        "type": "event",
+        "view_hint": "event",
         "content": "bad event",
         "task_status": null,
         "start_at": 200,

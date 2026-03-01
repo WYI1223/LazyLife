@@ -11,7 +11,9 @@ rust_api.AtomListItem _note({
   String? previewText,
 }) {
   return rust_api.AtomListItem(
-    kind: 'note',
+    viewHint: 'note',
+    title: '',
+    contentType: 'markdown',
     atomId: atomId,
     content: content,
     previewText: previewText,
@@ -78,7 +80,9 @@ NotesCoordinator _buildController({
             );
           }
           final updated = rust_api.AtomListItem(
-            kind: 'note',
+            viewHint: 'note',
+            title: '',
+            contentType: 'markdown',
             atomId: atomId,
             content: content,
             previewText: current.previewText,

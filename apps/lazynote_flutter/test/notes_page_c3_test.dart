@@ -17,7 +17,9 @@ void main() {
     required int updatedAt,
   }) {
     return rust_api.AtomListItem(
-      kind: 'note',
+      viewHint: 'note',
+      title: '',
+      contentType: 'markdown',
       atomId: atomId,
       content: content,
       previewText: null,

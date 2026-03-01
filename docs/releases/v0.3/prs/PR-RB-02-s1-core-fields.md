@@ -1,7 +1,7 @@
 # PR-RB-02: S1 核心字段落地
 
 - Proposed title: `feat(core): PR-RB-02 add title/content_type/view_hint fields with auto-derivation`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 
@@ -64,7 +64,7 @@
 |------|---------|------|
 | `Atom.title: String` | 不存在 | 添加字段 |
 | `Atom.content_type: String` | 不存在 | 添加字段，默认 `"markdown"` |
-| `Atom.kind` → `Atom.view_hint` | `kind: AtomType` enum | 字段重命名 |
+| `Atom.kind` → `Atom.view_hint` | `kind: AtomType` enum | 字段重命名 + 枚举 `AtomType` → `ViewHint`（D1） |
 | `derive_title()` 函数 | 不存在 | 新增 |
 | `derive_view_hint()` 函数 | 隐式存在于各 `create_*` 方法 | 显式提取 |
 | `title` 自动推导（create/update） | 不存在 | `AtomService`/`NoteService` 创建和更新路径 |
@@ -80,6 +80,17 @@
 | `EntrySearchItem.title` | 不存在 | 添加字段 |
 | `EntrySearchItem.kind` → `.view_hint` | `kind: String` | 重命名 |
 | `entry_search` 函数 `kind` 参数 | 按 `type` 列过滤 | 内部改为按 `view_hint` 列过滤，参数名保持 `kind`（DI-9 v0.4 重设计） |
+
+## Design Decisions
+
+以下决策在实施前确认，来源为 S1 ruling 文档和人工裁定：
+
+| # | 决策 | 结论 | 来源 |
+|---|------|------|------|
+| D1 | `AtomType` 枚举重命名 | `AtomType` → `ViewHint`，与字段名 `view_hint`、DB 列名 `view_hint` 保持一致。影响面见 [DI-11](../../reports/v0.3/design-discussions/DI-11-atomtype-rename-impact.md) | 人工裁定 |
+| D2 | `preview_text` 与 `title` 关系 | 并存。`title` = "叫什么"（标题），`preview_text` = "长什么样"（摘要）。本 PR 不变更 `preview_text` | S1 R8 |
+| D3 | CHECK 约束处理 | 信任 SQLite 3.25+ `RENAME COLUMN` 自动更新 CHECK 约束。补 Rust 测试断言非法 `view_hint` 被拒绝 | 人工裁定 |
+| D4 | `SearchHit.kind` 重命名 | 同步重命名为 `SearchHit.view_hint`，全局一致 | S1 R3 |
 
 ## Scope
 
@@ -357,15 +368,15 @@ Exit: **≥ PR-RB-01 count**（测试数量不减少；可能新增 `derive_titl
 
 ## Acceptance Criteria
 
-- [ ] Migration 0010 成功执行：`title`/`content_type` 列存在，`type` 已重命名为 `view_hint`
-- [ ] 现有数据 `title` 回填完成（非空 content 的 atom 有非空 title）
-- [ ] FTS5 索引 `title`，搜索标题可命中
-- [ ] `derive_title()` 函数实现：markdown 内容自动提取首行标题
-- [ ] `derive_view_hint()` 函数实现：基于 task_status + 时间字段自动推导
-- [ ] 创建/更新路径自动调用推导（不需要调用方显式传入 title/view_hint）
-- [ ] `AtomListItem` 包含 `title`/`content_type`/`view_hint` 字段
-- [ ] `EntrySearchItem` 包含 `title`/`view_hint` 字段
-- [ ] Flutter 侧使用 `title` 字段显示标题
-- [ ] 全部 Rust tests 通过
-- [ ] 全部 Flutter tests 通过
-- [ ] CI green
+- [x] Migration 0010 成功执行：`title`/`content_type` 列存在，`type` 已重命名为 `view_hint`
+- [x] 现有数据 `title` 回填完成（非空 content 的 atom 有非空 title）
+- [x] FTS5 索引 `title`，搜索标题可命中
+- [x] `derive_title()` 函数实现：markdown 内容自动提取首行标题
+- [x] `derive_view_hint()` 函数实现：基于 task_status + 时间字段自动推导
+- [x] 创建/更新路径自动调用推导（不需要调用方显式传入 title/view_hint）
+- [x] `AtomListItem` 包含 `title`/`content_type`/`view_hint` 字段
+- [x] `EntrySearchItem` 包含 `title`/`view_hint` 字段
+- [x] Flutter 侧使用 `title` 字段显示标题
+- [x] 全部 Rust tests 通过（204 passed）
+- [x] 全部 Flutter tests 通过（333 passed）
+- [x] CI green（fmt + clippy + analyze clean）

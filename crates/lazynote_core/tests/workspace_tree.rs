@@ -1,7 +1,7 @@
 use lazynote_core::db::open_db_in_memory;
 use lazynote_core::{
-    Atom, AtomRepository, AtomType, FolderDeleteMode, SqliteAtomRepository, SqliteTreeRepository,
-    TreeService, TreeServiceError, WorkspaceNodeKind,
+    Atom, AtomRepository, FolderDeleteMode, SqliteAtomRepository, SqliteTreeRepository,
+    TreeService, TreeServiceError, ViewHint, WorkspaceNodeKind,
 };
 use uuid::Uuid;
 
@@ -74,7 +74,7 @@ fn create_note_ref_requires_active_note_atom() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
-    let task_atom = Atom::new(AtomType::Task, "Task row");
+    let task_atom = Atom::new(ViewHint::Task, "Task row");
     insert_atom(&conn, &task_atom);
 
     let err = service
@@ -89,7 +89,7 @@ fn create_note_ref_success_for_note_atom() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
-    let note_atom = Atom::new(AtomType::Note, "Note row");
+    let note_atom = Atom::new(ViewHint::Note, "Note row");
     insert_atom(&conn, &note_atom);
 
     let folder = service.create_folder(None, "Notes").unwrap();
@@ -132,7 +132,7 @@ fn move_rejects_note_ref_parent() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
-    let note_atom = Atom::new(AtomType::Note, "Note row");
+    let note_atom = Atom::new(ViewHint::Note, "Note row");
     insert_atom(&conn, &note_atom);
 
     let folder = service.create_folder(None, "Folder").unwrap();
@@ -185,9 +185,9 @@ fn move_target_order_uses_visible_sibling_index_only() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
-    let note_hidden = Atom::new(AtomType::Note, "hidden");
-    let note_a = Atom::new(AtomType::Note, "a");
-    let note_b = Atom::new(AtomType::Note, "b");
+    let note_hidden = Atom::new(ViewHint::Note, "hidden");
+    let note_a = Atom::new(ViewHint::Note, "a");
+    let note_b = Atom::new(ViewHint::Note, "b");
     insert_atom(&conn, &note_hidden);
     insert_atom(&conn, &note_a);
     insert_atom(&conn, &note_b);
@@ -252,7 +252,7 @@ fn deleted_note_reference_is_filtered_and_restores_on_atom_restore() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let tree_service = TreeService::new(tree_repo);
 
-    let note_atom = Atom::new(AtomType::Note, "note");
+    let note_atom = Atom::new(ViewHint::Note, "note");
     insert_atom(&conn, &note_atom);
     let root = tree_service.create_folder(None, "Root").unwrap();
     let note_ref = tree_service
@@ -286,8 +286,8 @@ fn delete_folder_dissolve_moves_direct_children_to_root() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
-    let note_a = Atom::new(AtomType::Note, "A");
-    let note_b = Atom::new(AtomType::Note, "B");
+    let note_a = Atom::new(ViewHint::Note, "A");
+    let note_b = Atom::new(ViewHint::Note, "B");
     insert_atom(&conn, &note_a);
     insert_atom(&conn, &note_b);
 
@@ -332,8 +332,8 @@ fn delete_folder_delete_all_soft_deletes_unique_atoms_only() {
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
-    let note_only_in_target = Atom::new(AtomType::Note, "target-only");
-    let note_shared = Atom::new(AtomType::Note, "shared");
+    let note_only_in_target = Atom::new(ViewHint::Note, "target-only");
+    let note_shared = Atom::new(ViewHint::Note, "shared");
     insert_atom(&conn, &note_only_in_target);
     insert_atom(&conn, &note_shared);
 

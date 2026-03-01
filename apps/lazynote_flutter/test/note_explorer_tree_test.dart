@@ -9,9 +9,12 @@ rust_api.AtomListItem _note({
   required String atomId,
   required String content,
   required int updatedAt,
+  String title = '',
 }) {
   return rust_api.AtomListItem(
-    kind: 'note',
+    viewHint: 'note',
+    title: title,
+    contentType: 'markdown',
     atomId: atomId,
     content: content,
     previewText: null,
@@ -274,7 +277,9 @@ void main() {
       noteUpdateInvoker: ({required atomId, required content}) async {
         final existing = store[atomId]!;
         final updated = rust_api.AtomListItem(
-          kind: 'note',
+          viewHint: 'note',
+          title: '',
+          contentType: 'markdown',
           atomId: existing.atomId,
           content: content,
           previewText: null,
@@ -1161,7 +1166,12 @@ void main() {
     WidgetTester tester,
   ) async {
     final store = <String, rust_api.AtomListItem>{
-      'note-1': _note(atomId: 'note-1', content: '# Old Title', updatedAt: 1),
+      'note-1': _note(
+        atomId: 'note-1',
+        content: '# Old Title',
+        updatedAt: 1,
+        title: 'Old Title',
+      ),
     };
     final controller = _controllerWithStore(
       store,
@@ -1197,6 +1207,7 @@ void main() {
         atomId: 'note-1',
         content: '# Old Folder Title',
         updatedAt: 1,
+        title: 'Old Folder Title',
       ),
     };
     final controller = _controllerWithStore(

@@ -13,7 +13,7 @@
 //! # See also
 //! - docs/architecture/note-schema.md
 
-use crate::model::atom::{Atom, AtomId, AtomType};
+use crate::model::atom::{Atom, AtomId, TaskStatus, ViewHint};
 use crate::repo::atom_repo::{RepoError, RepoResult};
 use crate::repo::note_repo::{
     normalize_note_limit, normalize_tag, normalize_tags, NoteListQuery, NoteRecord, NoteRepository,
@@ -109,7 +109,9 @@ impl<R: NoteRepository> NoteService<R> {
         let started_at = Instant::now();
         let content = content.into();
         let preview = derive_markdown_preview(content.as_str());
-        let mut atom = Atom::new(AtomType::Note, content);
+        let title = derive_title(content.as_str(), "markdown");
+        let mut atom = Atom::new(ViewHint::Note, content);
+        atom.title = title;
         atom.preview_text = preview.preview_text.clone();
         atom.preview_image = preview.preview_image.clone();
 
@@ -162,9 +164,11 @@ impl<R: NoteRepository> NoteService<R> {
         let started_at = Instant::now();
         let content = content.into();
         let preview = derive_markdown_preview(content.as_str());
+        let title = derive_title(content.as_str(), "markdown");
         if let Err(err) = self.repo.update_note_full(
             atom_id,
             content.as_str(),
+            title.as_str(),
             preview.preview_text.as_deref(),
             preview.preview_image.as_deref(),
         ) {
@@ -265,6 +269,42 @@ impl<R: NoteRepository> NoteService<R> {
     }
 }
 
+/// Derives an atom title from content using content-type-specific rules.
+///
+/// Rules:
+/// - `markdown`: first non-empty line, strip leading `#` chars, trim, max 50 chars.
+/// - Other content types: returns empty string (user-named, not auto-derived).
+pub fn derive_title(content: &str, content_type: &str) -> String {
+    match content_type {
+        "markdown" => content
+            .lines()
+            .find(|line| !line.trim().is_empty())
+            .map(|line| {
+                let stripped = line.trim_start_matches('#').trim();
+                stripped.chars().take(50).collect::<String>()
+            })
+            .unwrap_or_default(),
+        _ => String::new(),
+    }
+}
+
+/// Derives the rendering view hint from atom fields.
+///
+/// Priority: `task_status` present → Task; time fields present → Event; else → Note.
+pub fn derive_view_hint(
+    task_status: Option<&TaskStatus>,
+    start_at: Option<i64>,
+    end_at: Option<i64>,
+) -> ViewHint {
+    if task_status.is_some() {
+        ViewHint::Task
+    } else if start_at.is_some() || end_at.is_some() {
+        ViewHint::Event
+    } else {
+        ViewHint::Note
+    }
+}
+
 /// Derives note preview fields from markdown content.
 ///
 /// Rules:
@@ -296,7 +336,8 @@ pub fn derive_markdown_preview(content: &str) -> MarkdownPreview {
 
 #[cfg(test)]
 mod tests {
-    use super::derive_markdown_preview;
+    use super::{derive_markdown_preview, derive_title, derive_view_hint};
+    use crate::model::atom::{TaskStatus, ViewHint};
 
     #[test]
     fn preview_extracts_first_image_path() {
@@ -344,5 +385,69 @@ Paragraph with [ref](https://example.com/path?q=1) and **bold** + `code`.
         let preview = derive_markdown_preview("### *** ``` ~~ []() ![]()");
         assert!(preview.preview_text.is_none());
         assert!(preview.preview_image.is_none());
+    }
+
+    // --- derive_title tests ---
+
+    #[test]
+    fn title_strips_heading_prefix() {
+        assert_eq!(derive_title("# Hello World", "markdown"), "Hello World");
+        assert_eq!(derive_title("## Sub Heading", "markdown"), "Sub Heading");
+        assert_eq!(derive_title("### Deep", "markdown"), "Deep");
+    }
+
+    #[test]
+    fn title_uses_first_non_empty_line() {
+        assert_eq!(
+            derive_title("\n\n  Content here", "markdown"),
+            "Content here"
+        );
+    }
+
+    #[test]
+    fn title_truncates_at_50_chars() {
+        let long = "A".repeat(80);
+        let title = derive_title(&long, "markdown");
+        assert_eq!(title.len(), 50);
+    }
+
+    #[test]
+    fn title_returns_empty_for_empty_content() {
+        assert_eq!(derive_title("", "markdown"), "");
+        assert_eq!(derive_title("   \n  \n  ", "markdown"), "");
+    }
+
+    #[test]
+    fn title_returns_empty_for_non_markdown() {
+        assert_eq!(derive_title("# Hello", "canvas"), "");
+    }
+
+    // --- derive_view_hint tests ---
+
+    #[test]
+    fn view_hint_task_when_status_set() {
+        assert_eq!(
+            derive_view_hint(Some(&TaskStatus::Todo), None, None),
+            ViewHint::Task
+        );
+        assert_eq!(
+            derive_view_hint(Some(&TaskStatus::Done), Some(100), Some(200)),
+            ViewHint::Task
+        );
+    }
+
+    #[test]
+    fn view_hint_event_when_time_set() {
+        assert_eq!(derive_view_hint(None, Some(100), None), ViewHint::Event);
+        assert_eq!(derive_view_hint(None, None, Some(200)), ViewHint::Event);
+        assert_eq!(
+            derive_view_hint(None, Some(100), Some(200)),
+            ViewHint::Event
+        );
+    }
+
+    #[test]
+    fn view_hint_note_by_default() {
+        assert_eq!(derive_view_hint(None, None, None), ViewHint::Note);
     }
 }

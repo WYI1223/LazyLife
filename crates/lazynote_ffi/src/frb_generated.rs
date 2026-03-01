@@ -1121,7 +1121,9 @@ impl SseDecode for crate::api::AtomListItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_atomId = <String>::sse_decode(deserializer);
-        let mut var_kind = <String>::sse_decode(deserializer);
+        let mut var_viewHint = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_contentType = <String>::sse_decode(deserializer);
         let mut var_content = <String>::sse_decode(deserializer);
         let mut var_previewText = <Option<String>>::sse_decode(deserializer);
         let mut var_previewImage = <Option<String>>::sse_decode(deserializer);
@@ -1132,7 +1134,9 @@ impl SseDecode for crate::api::AtomListItem {
         let mut var_updatedAt = <i64>::sse_decode(deserializer);
         return crate::api::AtomListItem {
             atom_id: var_atomId,
-            kind: var_kind,
+            view_hint: var_viewHint,
+            title: var_title,
+            content_type: var_contentType,
             content: var_content,
             preview_text: var_previewText,
             preview_image: var_previewImage,
@@ -1188,11 +1192,13 @@ impl SseDecode for crate::api::EntrySearchItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_atomId = <String>::sse_decode(deserializer);
-        let mut var_kind = <String>::sse_decode(deserializer);
+        let mut var_viewHint = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
         let mut var_snippet = <String>::sse_decode(deserializer);
         return crate::api::EntrySearchItem {
             atom_id: var_atomId,
-            kind: var_kind,
+            view_hint: var_viewHint,
+            title: var_title,
             snippet: var_snippet,
         };
     }
@@ -1539,7 +1545,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::AtomListItem {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.atom_id.into_into_dart().into_dart(),
-            self.kind.into_into_dart().into_dart(),
+            self.view_hint.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.content_type.into_into_dart().into_dart(),
             self.content.into_into_dart().into_dart(),
             self.preview_text.into_into_dart().into_dart(),
             self.preview_image.into_into_dart().into_dart(),
@@ -1606,7 +1614,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::EntrySearchItem {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.atom_id.into_into_dart().into_dart(),
-            self.kind.into_into_dart().into_dart(),
+            self.view_hint.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
             self.snippet.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -1798,7 +1807,9 @@ impl SseEncode for crate::api::AtomListItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.atom_id, serializer);
-        <String>::sse_encode(self.kind, serializer);
+        <String>::sse_encode(self.view_hint, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.content_type, serializer);
         <String>::sse_encode(self.content, serializer);
         <Option<String>>::sse_encode(self.preview_text, serializer);
         <Option<String>>::sse_encode(self.preview_image, serializer);
@@ -1841,7 +1852,8 @@ impl SseEncode for crate::api::EntrySearchItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.atom_id, serializer);
-        <String>::sse_encode(self.kind, serializer);
+        <String>::sse_encode(self.view_hint, serializer);
+        <String>::sse_encode(self.title, serializer);
         <String>::sse_encode(self.snippet, serializer);
     }
 }

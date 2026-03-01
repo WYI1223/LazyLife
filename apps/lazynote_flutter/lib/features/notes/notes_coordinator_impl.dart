@@ -149,7 +149,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       onDeleteSuccess: _handleWorkspaceDeleteSuccess,
       noteById: noteById,
       listItems: () => _noteListManager.items,
-      titleFromContent: _titleFromContent,
     );
     _workspaceTreeManager.addListener(_handleWorkspaceTreeManagerChanged);
   }
@@ -506,7 +505,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     if (item == null) {
       return 'Untitled';
     }
-    return _titleFromContent(item.content);
+    return item.title.isNotEmpty ? item.title : 'Untitled';
   }
 
   /// Loads notes baseline and tag catalog on initial page entry.
@@ -1311,9 +1310,20 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     rust_api.AtomListItem current,
     String content,
   ) {
+    // Derive title for draft projection (display-derived state per Rule A).
+    final firstLine = content
+        .split('\n')
+        .firstWhere((line) => line.trim().isNotEmpty, orElse: () => '');
+    final draftTitle = firstLine
+        .trim()
+        .replaceFirst(RegExp(r'^#+\s*'), '')
+        .trim();
+
     return rust_api.AtomListItem(
       atomId: current.atomId,
-      kind: current.kind,
+      viewHint: current.viewHint,
+      title: draftTitle.isNotEmpty ? draftTitle : current.title,
+      contentType: current.contentType,
       content: content,
       previewText: current.previewText,
       previewImage: current.previewImage,
@@ -1414,19 +1424,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       return '[$errorCode] $fallback';
     }
     return '[$errorCode] $normalized';
-  }
-
-  String _titleFromContent(String content) {
-    final lines = content.split(RegExp(r'\r?\n'));
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) {
-        continue;
-      }
-      final withoutHeading = trimmed.replaceFirst(RegExp(r'^#+\s*'), '').trim();
-      return withoutHeading.isEmpty ? trimmed : withoutHeading;
-    }
-    return 'Untitled';
   }
 }
 

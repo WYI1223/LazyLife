@@ -23,7 +23,9 @@ void main() {
   }) {
     return rust_api.AtomListItem(
       atomId: atomId,
-      kind: 'note',
+      viewHint: 'note',
+      title: content.split('\n').first,
+      contentType: 'markdown',
       content: content,
       previewText: previewText,
       previewImage: null,

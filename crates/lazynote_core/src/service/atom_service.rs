@@ -8,9 +8,9 @@
 //! - Service APIs never bypass repository validation/persistence contracts.
 //! - Service layer remains storage-agnostic.
 
-use crate::model::atom::{Atom, AtomId, AtomType, TaskStatus};
+use crate::model::atom::{Atom, AtomId, TaskStatus, ViewHint};
 use crate::repo::atom_repo::{AtomListQuery, AtomRepository, RepoResult};
-use crate::service::note_service::derive_markdown_preview;
+use crate::service::note_service::{derive_markdown_preview, derive_title};
 
 /// Use-case service wrapper for atom CRUD operations.
 pub struct AtomService<R: AtomRepository> {
@@ -42,12 +42,14 @@ impl<R: AtomRepository> AtomService<R> {
     /// Creates a note atom from single-entry command input.
     ///
     /// # Contract
-    /// - Uses `AtomType::Note`.
+    /// - Uses `ViewHint::Note`.
     /// - Returns created stable atom ID.
     pub fn create_note(&self, content: impl Into<String>) -> RepoResult<AtomId> {
         let content = content.into();
         let preview = derive_markdown_preview(content.as_str());
-        let mut atom = Atom::new(AtomType::Note, content);
+        let title = derive_title(content.as_str(), "markdown");
+        let mut atom = Atom::new(ViewHint::Note, content);
+        atom.title = title;
         atom.preview_text = preview.preview_text;
         atom.preview_image = preview.preview_image;
         self.repo.create_atom(&atom)
@@ -56,11 +58,14 @@ impl<R: AtomRepository> AtomService<R> {
     /// Creates a task atom with default status `todo`.
     ///
     /// # Contract
-    /// - Uses `AtomType::Task`.
+    /// - Uses `ViewHint::Task`.
     /// - Sets `task_status = Some(TaskStatus::Todo)`.
     /// - Returns created stable atom ID.
     pub fn create_task(&self, content: impl Into<String>) -> RepoResult<AtomId> {
-        let mut atom = Atom::new(AtomType::Task, content);
+        let content = content.into();
+        let title = derive_title(content.as_str(), "markdown");
+        let mut atom = Atom::new(ViewHint::Task, content);
+        atom.title = title;
         atom.task_status = Some(TaskStatus::Todo);
         self.repo.create_atom(&atom)
     }
@@ -68,12 +73,14 @@ impl<R: AtomRepository> AtomService<R> {
     /// Schedules an event atom using point or range semantics.
     ///
     /// # Contract
-    /// - Uses `AtomType::Event`.
+    /// - Uses `ViewHint::Event`.
     /// - Point event: `end_epoch_ms = None`.
     /// - Range event: `end_epoch_ms = Some(end)`.
     /// - Returns created stable atom ID.
     pub fn schedule_event(&self, request: &ScheduleEventRequest) -> RepoResult<AtomId> {
-        let mut atom = Atom::new(AtomType::Event, request.title.clone());
+        let title = derive_title(request.title.as_str(), "markdown");
+        let mut atom = Atom::new(ViewHint::Event, request.title.clone());
+        atom.title = title;
         atom.start_at = Some(request.start_epoch_ms);
         atom.end_at = request.end_epoch_ms;
         self.repo.create_atom(&atom)

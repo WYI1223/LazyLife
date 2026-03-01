@@ -5,7 +5,9 @@ void main() {
   test('AtomListItem supports nullable preview fields', () {
     const item = AtomListItem(
       atomId: 'atom-1',
-      kind: 'note',
+      viewHint: 'note',
+      title: '',
+      contentType: 'markdown',
       content: 'content',
       previewText: null,
       previewImage: null,
@@ -21,7 +23,9 @@ void main() {
   test('AtomItemResponse carries preview fields when present', () {
     const note = AtomListItem(
       atomId: 'atom-2',
-      kind: 'note',
+      viewHint: 'note',
+      title: '',
+      contentType: 'markdown',
       content: '# title',
       previewText: 'title',
       previewImage: 'cover.png',
@@ -50,7 +54,9 @@ void main() {
       items: [
         AtomListItem(
           atomId: 'atom-a',
-          kind: 'note',
+          viewHint: 'note',
+          title: '',
+          contentType: 'markdown',
           content: 'a',
           previewText: 'summary a',
           previewImage: null,
@@ -59,7 +65,9 @@ void main() {
         ),
         AtomListItem(
           atomId: 'atom-b',
-          kind: 'note',
+          viewHint: 'note',
+          title: '',
+          contentType: 'markdown',
           content: 'b',
           previewText: null,
           previewImage: 'b.png',

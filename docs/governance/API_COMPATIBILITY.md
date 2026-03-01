@@ -87,6 +87,22 @@ carry full atom metadata (`kind`, `start_at`, `end_at`, `task_status`) that the 
 This was a **non-breaking additive change** in v0.1.5 (new types only). The v0.3 PR-RB-01
 completed the endpoint unification as documented.
 
+### S1 Core Fields (v0.3 PR-RB-02)
+
+`AtomListItem` and `EntrySearchItem` gain new required fields as part of S1 ruling implementation:
+
+- `title: String` — user-facing title auto-derived from content first line.
+- `content_type: String` — content format indicator (currently always `"markdown"`).
+
+Rust Core and FFI model changes:
+- `AtomType` enum renamed to `ViewHint` (Rust internal).
+- DB column `type` renamed to `view_hint` in Migration 10.
+- FFI field `kind` renamed to `view_hint` on `AtomListItem` and `EntrySearchItem`.
+- `derive_title()` and `derive_view_hint()` functions auto-derive fields on create/update.
+
+This is a **breaking change** for any code that references `AtomListItem.kind` or `EntrySearchItem.kind` — the field is now `view_hint`. Flutter Dart callers use `.viewHint` after codegen.
+Breaking for any code that directly constructs `AtomListItem` or `EntrySearchItem` (Flutter test helpers updated).
+
 ### Calendar APIs (PR-0012A)
 
 Two new FFI functions added as **non-breaking additive changes**:

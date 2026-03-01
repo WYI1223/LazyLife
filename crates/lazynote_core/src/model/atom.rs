@@ -22,13 +22,13 @@ use uuid::Uuid;
 /// Kept as a type alias to make semantic intent explicit in signatures.
 pub type AtomId = Uuid;
 
-/// Unified category for all Atom projections.
+/// Rendering hint for Atom projections.
 ///
-/// A single Atom can be rendered by different views, but still keeps one
-/// canonical identity and lifecycle in Core.
+/// Determines which UI shape (note editor, task checkbox, calendar block)
+/// a view should use. Does **not** define the Atom's identity or lifecycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum AtomType {
+pub enum ViewHint {
     /// Free-form markdown note.
     Note,
     /// Actionable task with status metadata.
@@ -37,7 +37,7 @@ pub enum AtomType {
     Event,
 }
 
-/// Task lifecycle state for `AtomType::Task`.
+/// Task lifecycle state (meaningful when `view_hint == ViewHint::Task`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
@@ -67,9 +67,12 @@ pub enum TaskStatus {
 pub struct Atom {
     /// Stable global ID used for linking, sync mapping and auditing.
     pub uuid: AtomId,
-    /// Serialized as `type` to match external schema naming.
-    #[serde(rename = "type")]
-    pub kind: AtomType,
+    /// Rendering hint that selects the UI shape (note / task / event).
+    pub view_hint: ViewHint,
+    /// User-facing title derived from content (first non-empty line for markdown).
+    pub title: String,
+    /// Content format indicator. Currently always `"markdown"`.
+    pub content_type: String,
     /// Markdown body (or plain text fallback for simple inputs).
     pub content: String,
     /// Derived plain-text summary from markdown content.
@@ -81,7 +84,7 @@ pub struct Atom {
     ///
     /// This field is a projection cache and not the source of truth.
     pub preview_image: Option<String>,
-    /// Meaningful only when `kind == AtomType::Task`.
+    /// Meaningful only when `view_hint == ViewHint::Task`.
     pub task_status: Option<TaskStatus>,
     /// Unix epoch milliseconds. Drives section classification (Inbox/Today/Upcoming).
     pub start_at: Option<i64>,
@@ -120,8 +123,11 @@ impl Error for AtomValidationError {}
 #[derive(Debug, Deserialize)]
 struct AtomDe {
     uuid: AtomId,
-    #[serde(rename = "type")]
-    kind: AtomType,
+    view_hint: ViewHint,
+    #[serde(default)]
+    title: String,
+    #[serde(default = "default_content_type")]
+    content_type: String,
     content: String,
     preview_text: Option<String>,
     preview_image: Option<String>,
@@ -133,13 +139,19 @@ struct AtomDe {
     is_deleted: bool,
 }
 
+fn default_content_type() -> String {
+    "markdown".to_string()
+}
+
 impl TryFrom<AtomDe> for Atom {
     type Error = AtomValidationError;
 
     fn try_from(value: AtomDe) -> Result<Self, Self::Error> {
         let atom = Self {
             uuid: value.uuid,
-            kind: value.kind,
+            view_hint: value.view_hint,
+            title: value.title,
+            content_type: value.content_type,
             content: value.content,
             preview_text: value.preview_text,
             preview_image: value.preview_image,
@@ -161,10 +173,12 @@ impl Atom {
     /// # Invariants
     /// - Optional projection fields are initialized to `None`.
     /// - `is_deleted` starts as `false`.
-    pub fn new(kind: AtomType, content: impl Into<String>) -> Self {
+    pub fn new(view_hint: ViewHint, content: impl Into<String>) -> Self {
         Self {
             uuid: Uuid::new_v4(),
-            kind,
+            view_hint,
+            title: String::new(),
+            content_type: "markdown".to_string(),
             content: content.into(),
             preview_text: None,
             preview_image: None,
@@ -179,10 +193,10 @@ impl Atom {
 
     /// Creates a new atom with generated stable ID and validates invariants.
     pub fn try_new(
-        kind: AtomType,
+        view_hint: ViewHint,
         content: impl Into<String>,
     ) -> Result<Self, AtomValidationError> {
-        let atom = Self::new(kind, content);
+        let atom = Self::new(view_hint, content);
         atom.validate()?;
         Ok(atom)
     }
@@ -196,12 +210,14 @@ impl Atom {
     /// - `uuid` must not be nil.
     pub fn with_id(
         uuid: AtomId,
-        kind: AtomType,
+        view_hint: ViewHint,
         content: impl Into<String>,
     ) -> Result<Self, AtomValidationError> {
         let atom = Self {
             uuid,
-            kind,
+            view_hint,
+            title: String::new(),
+            content_type: "markdown".to_string(),
             content: content.into(),
             preview_text: None,
             preview_image: None,

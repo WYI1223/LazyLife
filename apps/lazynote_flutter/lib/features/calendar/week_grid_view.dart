@@ -254,7 +254,7 @@ class _GridBody extends StatelessWidget {
 
         final left = dayIndex * columnWidth + 2;
         final blockWidth = columnWidth - 4;
-        final title = item.previewText ?? item.content.split('\n').first;
+        final title = item.title;
 
         blocks.add(
           Positioned(

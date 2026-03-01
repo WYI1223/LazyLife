@@ -11,7 +11,7 @@
 
 use crate::db::migrations::latest_version;
 use crate::db::DbError;
-use crate::model::atom::{AtomId, AtomType};
+use crate::model::atom::{AtomId, ViewHint};
 use rusqlite::{params, Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -172,7 +172,7 @@ pub trait TreeRepository {
     /// Deletes one folder subtree and conditionally soft-deletes note atoms.
     fn delete_folder_delete_all(&self, folder_uuid: WorkspaceNodeId) -> TreeRepoResult<()>;
     /// Loads atom type for active atom, if present.
-    fn atom_kind(&self, atom_uuid: AtomId) -> TreeRepoResult<Option<AtomType>>;
+    fn atom_view_hint(&self, atom_uuid: AtomId) -> TreeRepoResult<Option<ViewHint>>;
 }
 
 /// SQLite-backed workspace tree repository.
@@ -280,7 +280,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                AND n.is_deleted = 0
                AND (
                  n.kind = 'folder'
-                 OR (n.kind = 'note_ref' AND a.type = 'note' AND a.is_deleted = 0)
+                 OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
                );"
         };
         let mut stmt = self.conn.prepare(sql)?;
@@ -344,7 +344,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                    AND n.is_deleted = 0
                    AND (
                      n.kind = 'folder'
-                     OR (n.kind = 'note_ref' AND a.type = 'note' AND a.is_deleted = 0)
+                     OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
                    )
                  ORDER BY n.sort_order ASC, n.node_uuid ASC;"
             }
@@ -365,7 +365,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                    AND n.is_deleted = 0
                    AND (
                      n.kind = 'folder'
-                     OR (n.kind = 'note_ref' AND a.type = 'note' AND a.is_deleted = 0)
+                     OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
                    )
                  ORDER BY n.sort_order ASC, n.node_uuid ASC;"
             }
@@ -505,7 +505,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                  SET is_deleted = 1,
                      updated_at = (strftime('%s', 'now') * 1000)
                  WHERE uuid = ?1
-                   AND type = 'note'
+                   AND view_hint = 'note'
                    AND is_deleted = 0;",
                 [atom_uuid.to_string()],
             )?;
@@ -515,11 +515,11 @@ impl TreeRepository for SqliteTreeRepository<'_> {
         Ok(())
     }
 
-    fn atom_kind(&self, atom_uuid: AtomId) -> TreeRepoResult<Option<AtomType>> {
+    fn atom_view_hint(&self, atom_uuid: AtomId) -> TreeRepoResult<Option<ViewHint>> {
         let value: Option<String> = self
             .conn
             .query_row(
-                "SELECT type
+                "SELECT view_hint
                  FROM atoms
                  WHERE uuid = ?1
                    AND is_deleted = 0;",
@@ -530,11 +530,11 @@ impl TreeRepository for SqliteTreeRepository<'_> {
 
         match value.as_deref() {
             None => Ok(None),
-            Some("note") => Ok(Some(AtomType::Note)),
-            Some("task") => Ok(Some(AtomType::Task)),
-            Some("event") => Ok(Some(AtomType::Event)),
+            Some("note") => Ok(Some(ViewHint::Note)),
+            Some("task") => Ok(Some(ViewHint::Task)),
+            Some("event") => Ok(Some(ViewHint::Event)),
             Some(other) => Err(TreeRepoError::InvalidData(format!(
-                "invalid atom type `{other}` in atoms.type"
+                "invalid view_hint `{other}` in atoms.view_hint"
             ))),
         }
     }
@@ -615,7 +615,7 @@ fn list_visible_child_ids(
                AND n.is_deleted = 0
                AND (
                  n.kind = 'folder'
-                 OR (n.kind = 'note_ref' AND a.type = 'note' AND a.is_deleted = 0)
+                 OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
                )
              ORDER BY n.sort_order ASC, n.node_uuid ASC;",
         )?;
@@ -633,7 +633,7 @@ fn list_visible_child_ids(
                AND n.is_deleted = 0
                AND (
                  n.kind = 'folder'
-                 OR (n.kind = 'note_ref' AND a.type = 'note' AND a.is_deleted = 0)
+                 OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
                )
              ORDER BY n.sort_order ASC, n.node_uuid ASC;",
         )?;
