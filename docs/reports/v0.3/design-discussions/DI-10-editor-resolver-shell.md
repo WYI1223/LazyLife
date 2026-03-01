@@ -164,6 +164,26 @@ EditorResolver 与 EditorShellService 同属 workbench 级编辑器基础设施�
 
 ## 开放设计项
 
+### View Mode 扩展（占位 — v0.4+ 多编辑范式）
+
+> 来源：DI-4 Q1 补充讨论（编辑范式兼容性）。完整方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`。
+
+当前 `resolve(contentType)` 返回唯一 builder。多编辑范式（源码 / Block WYSIWYG / Inline WYSIWYG / 渲染预览）意味着同一 content_type 可有多种视图：
+
+```dart
+// v0.4+ 扩展方向
+resolver.resolve('markdown', viewMode: ViewMode.source)   // → MarkdownSourceEditor
+resolver.resolve('markdown', viewMode: ViewMode.block)    // → MarkdownBlockEditor
+resolver.resolve('markdown', viewMode: ViewMode.inline)   // → MarkdownInlineEditor
+resolver.resolve('markdown', viewMode: ViewMode.preview)  // → MarkdownPreviewPane (只读)
+```
+
+配套需求：
+
+- `TabEntry` 扩展 `viewMode` 字段（EditorGroupModel / DI-1）
+- 编辑模式是 per-pane 视图选择，不是 content_type 属性
+- v0.3 不实现——`resolve(contentType)` 签名不变，只有 source editor
+
 ### EditBuffer 桥接模式（占位 — 待 DI-4 裁决后细化）
 
 所有 EditorPane（无论 markdown / canvas / conversation）都需要处理同一个问题：**与 EditBuffer 的桥接**。

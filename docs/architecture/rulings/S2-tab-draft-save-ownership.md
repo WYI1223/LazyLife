@@ -4,7 +4,8 @@
 |------|-----|
 | 状态 | **Phase 1 Landed** (v0.2.5 PR-0258) — Phase 2/3 Deferred to v0.3 |
 | 裁决日期 | 2026-02-26 |
-| 关联 PR | PR-0258（已完成）、PR-0301（递归布局）、PR-0303（buffer 同步）、PR-0304（tab 模型） |
+| 关联 PR | PR-0258（已完成）、PR-0301（递归布局）、PR-0303（buffer 同步）、PR-0304（tab 模型）、PR-0305（间接 — buffer 同步性能） |
+| 关联 DI | DI-1（RESOLVED）、DI-2（RESOLVED）、DI-3（RESOLVED）、DI-4（Q1+Q1补充 RESOLVED，Q2-Q5 OPEN）、DI-10（RESOLVED） |
 
 ---
 
@@ -77,6 +78,8 @@ Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom
 - `saveState` 为 getter（从字段派生），不存储
 - `persistFn` 闭包注入：Coordinator 提供 FFI 保存回调，EditBuffer 不知道 FFI 的存在
 - 引用计数：closeTab 时检查 atomId 是否还在其他 group 中，无则 flush + dispose
+- `_rev: int`：单调递增版本号（DI-4 Q1 补充裁决）。**统一 DI-1 的 `_editVersion`**——两者均在每次 `edit()` 时自增，语义等价，合并为 `_rev`。用途：(1) 防陈旧保存（debounce timer 触发时检查）；(2) 同步协议版本（EditOp.baseRev）；(3) overlay stale 判定
+- `edit(String newContent, {EditOp? op})`：v0.3 调用方不传 `op`（等效全量替换）。接口预留三路 EditOp 通道：`SnapshotReplace` / `TextDelta` / `StructuredOp`（详见 DI-4 Q1 补充裁决）
 
 **NoteTabStrip（UI widget）**：
 
@@ -150,6 +153,8 @@ class EditorResolver {
 
 **文件位置**：`lib/core/editor/editor_resolver.dart`，与 EditorShellService 同目录。
 
+**View Mode 扩展（v0.4+ 占位）**：同一 content_type 可有多种编辑视图（source / block WYSIWYG / inline WYSIWYG / preview）。编辑模式是 per-pane 视图选择，不是 content_type 属性。v0.3 不实现——`resolve(contentType)` 签名不变，仅源码编辑。v0.4+ 扩展为 `resolve(contentType, viewMode: ViewMode.source)`。配套需求：TabEntry 扩展 `viewMode` 字段（EditorGroupModel）。详见 DI-10 开放设计项、DI-4 Q1 补充裁决。
+
 **三层职责分离**：
 
 | 层 | 职责 | 组件 |
@@ -186,8 +191,8 @@ VSCode EditorService 三层分离验证了此模型：
 | 项目 | 状态 |
 |------|------|
 | Phase 1：消除双状态 | **已完成** — PR-0258，WP 664→166 行 |
-| Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED） |
-| Phase 3：EditorResolver | v0.3 待实施（**设计完成** — DI-10 RESOLVED） |
+| Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED，DI-4 Q1 RESOLVED + Q1 补充 RESOLVED） |
+| Phase 3：EditorResolver | v0.3 待实施（**设计完成** — DI-10 RESOLVED，含 View Mode 占位） |
 
 ---
 
@@ -195,4 +200,7 @@ VSCode EditorService 三层分离验证了此模型：
 
 - ~~Phase 2 的 `EditorGroupModel` 状态机细节（group 创建/销毁/合并生命周期）~~ — **已由 DI-1 Q1+Q2 回答**
 - ~~Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现）~~ — **已由 DI-10 回答**（静态 Map + register()）
-- Phase 3 的 EditBuffer 桥接模式（EditorPane 共享的 buffer 监听/同步逻辑） — 待 DI-4 裁决后细化
+- ~~DI-1 `_editVersion` 与 DI-4 `_rev` 统一~~ — **已统一为 `_rev`**（本文 EditBuffer 节已更新；DI-1 后续实现时同步重命名）
+- Phase 3 的 EditBuffer 桥接模式（EditorPane 共享的 buffer 监听/同步逻辑） — DI-4 Q3 OPEN（桥接机制初步建议已出，待细化裁决）
+- 多编辑范式（source / block WYSIWYG / inline WYSIWYG）架构预留 — DI-4 Q1 补充已裁决协议层；实现延后至 v0.4+。完整方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`
+- View Mode per-pane 选择 + DI-3 布局持久化 viewMode 字段 — v0.4+ schema_version 升级时处理

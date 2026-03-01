@@ -57,6 +57,8 @@ Core 层统一将 `content` 视为 opaque string 存储，不区分格式。渲�
 
 **双结构策略**：v0.2.5–v0.4 期间，markdown 和 canvas 使用完全独立的内容结构，互不影响。v0.5+ 评估是否参考 AFFiNE/BlockSuite 统一为 block tree（markdown 块可选获得空间属性）。当前不做统一。
 
+**content_type 扩展策略**：上述四项为当前正式枚举。新增 content_type（如未来可能的 `block_document` 等）须通过 ruling 或 ADR 注册到本枚举，并同步更新 EditorResolver 注册和 FFI 契约。各设计文档中以"如 `xxx`"形式出现的 content_type 均为占位命名，不构成正式定义。
+
 ### R3: view_hint 自动推导
 
 `type`/`kind` 重命名为 `view_hint`，由 Core service 在创建/更新时自动推导。**task_status 优先**：
