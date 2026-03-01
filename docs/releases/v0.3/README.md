@@ -1,5 +1,9 @@
 # v0.3 Release Plan
 
+> 2026-03-01 rebaseline: execution baseline has been superseded by
+> `docs/releases/v0.3/v0.3-pr-spec-rebaseline-2026-03-01.md`.
+> Keep this file as historical planning context.
+
 ## Positioning
 
 v0.3 delivers the IDE-grade workspace interaction model on top of the v0.2.5 semantic and architecture baseline.
