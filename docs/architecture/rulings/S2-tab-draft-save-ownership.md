@@ -204,5 +204,5 @@ VSCode EditorService 三层分离验证了此模型：
 - ~~Phase 3 的 EditorResolver 注册协议（静态注册 vs 动态发现）~~ — **已由 DI-10 回答**（静态 Map + register()）
 - ~~DI-1 `_editVersion` 与 DI-4 `_rev` 统一~~ — **已统一为 `_rev`**（本文 EditBuffer 节已更新；DI-1 后续实现时同步重命名）
 - ~~Phase 3 的 EditBuffer 桥接模式（EditorPane 共享的 buffer 监听/同步逻辑）~~ — **已由 DI-4 Q3 裁决（D12：Manual listener + 字符串比较守卫，v0.3 inline 在 MarkdownEditorPane，v0.4+ 提取 EditorBufferBridge mixin）**
-- 多编辑范式（source / block WYSIWYG / inline WYSIWYG）架构预留 — DI-4 Q1 补充已裁决协议层；实现延后至 v0.4+。完整方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`
+- 多编辑范式（source / block WYSIWYG / inline WYSIWYG）架构预留 — DI-4 Q1 补充已裁决协议层；实现延后至 v0.4+。完整方案见 `docs/product/ideas/rich-block-editing-architecture.md`
 - View Mode per-pane 选择 + DI-3 布局持久化 viewMode 字段 — v0.4+ schema_version 升级时处理

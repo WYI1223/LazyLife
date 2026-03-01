@@ -131,7 +131,7 @@ DI-5 原文「同步频率（即时 vs debounce）」已由 DI-4 Q1 解构为两
 
 | 项 | 归属 | 说明 |
 |---|------|------|
-| Undo/Redo 跨 pane 语义 | 独立设计项 | 已有 `docs/product/idea_temp/undo-redo-architecture.md` 占位 |
+| Undo/Redo 跨 pane 语义 | 独立设计项 | 已有 `docs/product/ideas/undo-redo-architecture.md` 占位 |
 | Scroll position 独立性 | UI 实现细节 | 必然独立（split 核心价值 = 看不同位置），不需裁决 |
 
 ---
@@ -141,7 +141,7 @@ DI-5 原文「同步频率（即时 vs debounce）」已由 DI-4 Q1 解构为两
 - ← DI-4（D10/D11 同步模型和粒度，Q1 排除共享 controller，Q3 桥接机制）
 - ← DI-1（Q3 EditBuffer 统一 draft + save）
 - ← 01 审计报告 §4.3
-- → `docs/product/idea_temp/undo-redo-architecture.md`（开放项）
+- → `docs/product/ideas/undo-redo-architecture.md`（开放项）
 
 ---
 

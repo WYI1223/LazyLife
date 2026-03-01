@@ -443,7 +443,7 @@ Layer 2: Block Model（可选，按需加载）
 
 DI-4 的 Q3 桥接机制已在下文裁决（D12）。
 
-> 完整的多编辑范式架构方案见 `docs/product/idea_temp/rich-block-editing-architecture.md`。
+> 完整的多编辑范式架构方案见 `docs/product/ideas/rich-block-editing-architecture.md`。
 
 ---
 

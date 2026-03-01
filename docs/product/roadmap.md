@@ -37,7 +37,7 @@
 | Tasks views | v0.1 `PR-0011` | v0.1.5 |
 | Calendar minimal | v0.1 `PR-0012` | v0.2 |
 | Reminders (Windows) | v0.1 `PR-0013` | v0.2 |
-| Local task-calendar projection | v0.1 `PR-0014` | v0.3 `PR-RB-08` |
-| Google Calendar provider | v0.1 `PR-0015` | v0.3 `PR-RB-09` |
+| Local task-calendar projection | v0.1 `PR-0014` | v0.3 `PR-RB-03`/`04` (partial, superseded from `PR-0308`) |
+| Google Calendar provider | v0.1 `PR-0015` | v0.3 `PR-RB-12` (conditional, runtime deferred to v0.4+) |
 | Export/import | v0.1 `PR-0016` | Deferred (v1.0+) |
 | Notes delete lifecycle | v0.1 | Deferred (v1.0+) |

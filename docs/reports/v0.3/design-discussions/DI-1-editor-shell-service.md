@@ -546,7 +546,7 @@ FFI note_update (save) → 新的 AtomListItem.title
 1. **维度不匹配**：Tab 是 per-atom 的（一个 Atom 一个 tab），display_name 是 per-ref 的（同一 Atom 可有多个 atom_ref，各有不同 display_name）。若 Tab 跟 display_name 走，多引用场景下无法自洽
 2. **S1 R8 明确定义**：Tab 栏消费规则 = `atom.title`
 3. **默认情况无困惑**：display_name 未设置（大多数情况）时，Explorer 也显示 atom.title → 与 Tab 自然一致
-4. **display_name 设置后的残余困惑**：用户在 Explorer 看到别名 "Q1会议纪要" 但 Tab 显示本名 "Meeting Notes" — 可通过 UI 层缓解手段解决（见 `idea_temp/tab-explorer-name-consistency.md`）
+4. **display_name 设置后的残余困惑**：用户在 Explorer 看到别名 "Q1会议纪要" 但 Tab 显示本名 "Meeting Notes" — 可通过 UI 层缓解手段解决（见 `ideas/tab-explorer-name-consistency.md`）
 
 **EditorGroupModel 对应调整**：
 
