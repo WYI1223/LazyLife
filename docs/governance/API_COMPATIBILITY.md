@@ -94,12 +94,13 @@ completed the endpoint unification as documented.
 - `title: String` — user-facing title auto-derived from content first line.
 - `content_type: String` — content format indicator (currently always `"markdown"`).
 
-Rust Core model changes:
-- `AtomType` enum renamed to `ViewHint` (Rust internal only; FFI `kind` string field unchanged).
+Rust Core and FFI model changes:
+- `AtomType` enum renamed to `ViewHint` (Rust internal).
 - DB column `type` renamed to `view_hint` in Migration 10.
+- FFI field `kind` renamed to `view_hint` on `AtomListItem` and `EntrySearchItem`.
 - `derive_title()` and `derive_view_hint()` functions auto-derive fields on create/update.
 
-This is a **non-breaking additive change** for consumers that read FFI response objects.
+This is a **breaking change** for any code that references `AtomListItem.kind` or `EntrySearchItem.kind` — the field is now `view_hint`. Flutter Dart callers use `.viewHint` after codegen.
 Breaking for any code that directly constructs `AtomListItem` or `EntrySearchItem` (Flutter test helpers updated).
 
 ### Calendar APIs (PR-0012A)

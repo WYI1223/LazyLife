@@ -1,7 +1,7 @@
 # PR-RB-02: S1 核心字段落地
 
 - Proposed title: `feat(core): PR-RB-02 add title/content_type/view_hint fields with auto-derivation`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 
@@ -377,6 +377,6 @@ Exit: **≥ PR-RB-01 count**（测试数量不减少；可能新增 `derive_titl
 - [x] `AtomListItem` 包含 `title`/`content_type`/`view_hint` 字段
 - [x] `EntrySearchItem` 包含 `title`/`view_hint` 字段
 - [x] Flutter 侧使用 `title` 字段显示标题
-- [x] 全部 Rust tests 通过（199 passed）
+- [x] 全部 Rust tests 通过（204 passed）
 - [x] 全部 Flutter tests 通过（333 passed）
 - [x] CI green（fmt + clippy + analyze clean）

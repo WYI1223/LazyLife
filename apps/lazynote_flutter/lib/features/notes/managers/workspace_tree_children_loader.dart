@@ -15,8 +15,6 @@ typedef WorkspaceChildrenNoteById =
 
 typedef WorkspaceChildrenItemsReader = List<rust_api.AtomListItem> Function();
 
-typedef WorkspaceChildrenTitleResolver = String Function(String content);
-
 class WorkspaceTreeChildrenLoader {
   static const String uncategorizedFolderNodeId = '__uncategorized__';
   static const String uncategorizedFolderDisplayName = 'Uncategorized';
@@ -26,18 +24,15 @@ class WorkspaceTreeChildrenLoader {
     required WorkspaceChildrenListInvoker listChildrenInvoker,
     required WorkspaceChildrenNoteById noteById,
     required WorkspaceChildrenItemsReader listItems,
-    required WorkspaceChildrenTitleResolver titleFromContent,
   }) : _prepare = prepare,
        _listChildrenInvoker = listChildrenInvoker,
        _noteById = noteById,
-       _listItems = listItems,
-       _titleFromContent = titleFromContent;
+       _listItems = listItems;
 
   final WorkspaceChildrenPrepare _prepare;
   final WorkspaceChildrenListInvoker _listChildrenInvoker;
   final WorkspaceChildrenNoteById _noteById;
   final WorkspaceChildrenItemsReader _listItems;
-  final WorkspaceChildrenTitleResolver _titleFromContent;
 
   Future<rust_api.WorkspaceListChildrenResponse> listWorkspaceChildren({
     String? parentNodeId,
@@ -160,7 +155,9 @@ class WorkspaceTreeChildrenLoader {
         final note = _noteById(atomId);
         final projectedDisplayName = note == null
             ? (item.displayName.trim().isEmpty ? 'Untitled' : item.displayName)
-            : _titleFromContent(note.content);
+            : note.title.isNotEmpty
+            ? note.title
+            : 'Untitled';
         projectedRows.add(
           _ProjectedUncategorizedRow(
             nodeId: item.nodeId,
@@ -183,7 +180,7 @@ class WorkspaceTreeChildrenLoader {
           _ProjectedUncategorizedRow(
             nodeId: 'note_ref_uncategorized_${note.atomId}',
             atomId: atomId,
-            displayName: _titleFromContent(note.content),
+            displayName: note.title.isNotEmpty ? note.title : 'Untitled',
             updatedAt: note.updatedAt,
           ),
         );
@@ -242,7 +239,7 @@ class WorkspaceTreeChildrenLoader {
           kind: 'note_ref',
           parentNodeId: uncategorizedFolderNodeId,
           atomId: note.atomId,
-          displayName: _titleFromContent(note.content),
+          displayName: note.title.isNotEmpty ? note.title : 'Untitled',
           sortOrder: index,
         ),
       );
@@ -311,7 +308,7 @@ class WorkspaceTreeChildrenLoader {
             kind: 'note_ref',
             parentNodeId: 'notes',
             atomId: item.atomId,
-            displayName: _titleFromContent(item.content),
+            displayName: item.title.isNotEmpty ? item.title : 'Untitled',
             sortOrder: order,
           ),
         );

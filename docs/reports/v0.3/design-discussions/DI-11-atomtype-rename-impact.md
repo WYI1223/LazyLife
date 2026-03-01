@@ -75,6 +75,119 @@ DI-11 本身聚焦命名与语义收敛（`AtomType` → `ViewHint`），但需�
 4. `note_*` 迁移策略：包装层保留周期、调用链收敛路径、弃用节奏。
 5. API 兼容策略：v0.3/v0.4 过渡期的调用方稳定性与文档口径。
 
+## v0.4 规范入口裁决草案（Atom Create）
+
+> 本节用于固化 2026-03-01 讨论结果，作为 v0.4 实施基线。  
+> 讨论前提：全部以 **v0.3 完成态** 为起点，不以当前未完成代码为约束。
+
+### A. 总体立场（已确认）
+
+1. **语义不妥协，迁移可分阶段**：`atom_create` 作为规范入口是目标，不再维持长期的 feature 创建分裂。
+2. **monorepo 一体化落地**：Rust Core / FFI / Flutter / tests / docs 必须一次定义、分层实施，避免只改某一层导致语义漂移。
+3. **统一的是“创建事务内核”，不是丢弃业务意图**：`note/task/event` 仍可作为意图输入存在，但不再绑定为不同创建 API。
+
+### B. v0.3 完成态下 `note_create` 与 `entry_create_*` 的关系定位
+
+在 v0.3 完成态语义中：
+
+1. 四类创建入口（`note_create` / `entry_create_note` / `entry_create_task` / `entry_schedule`）应共享同一事务内核：`Atom + atom_ref` 原子创建。
+2. 差异仅保留在“默认意图与路由策略”，不保留在“是否原子创建”。
+3. 这意味着 v0.4 可将四者收敛为 `atom_create`，其余入口若保留，仅作为兼容包装层。
+
+### C. `atom_create` 规范契约（草案）
+
+### 请求模型（建议）
+
+```text
+atom_create(request)
+```
+
+`request` 字段建议：
+
+1. `content: String`（必填）
+2. `content_type: Option<String>`（默认 `markdown`）
+3. `intent: Option<note|task|event>`（用于补默认值，不是强制覆盖）
+4. `task_status: Option<String>`
+5. `start_at: Option<i64>`
+6. `end_at: Option<i64>`
+7. `parent_node_id: Option<String>`（决定创建位置；`None` = root）
+8. `tags: Option<Vec<String>>`（支持 Notes 上下文创建时一次性应用标签）
+
+### 语义规则（必须）
+
+1. **字段优先于 intent**：`intent` 只补默认值，不覆盖调用方显式字段。
+2. **view_hint 最终由字段推导**：`task_status` > `start_at/end_at` > `note`（S1 R3）。
+3. **组织与语义正交**：`parent_node_id` 只决定 ref 位置，不能隐式把 note 改写成 task/event（S4 正交原则）。
+4. **强制伴随不变**：创建成功必须同时有有效 `atom_ref`（S1 R5）。
+
+### 返回模型（建议统一）
+
+`AtomCreateResponse`：
+
+1. `ok`
+2. `error_code`
+3. `message`
+4. `atom_id`
+5. `node_uuid`
+6. `item: Option<AtomListItem>`
+
+说明：当前 `note_create`（偏 item）与 `entry_create_*`（偏 action）的返回差异属于历史分层产物，v0.4 应统一为单一创建返回契约。
+
+### D. 场景映射（从 feature 入口到统一入口）
+
+| 业务场景 | 统一调用语义 |
+|---|---|
+| Notes 头部“新建” | `atom_create(intent=note, parent_node_id=None)` |
+| Explorer 在文件夹中创建 | `atom_create(intent=note, parent_node_id=Some(folder))` |
+| Single Entry: `> note ...` | `atom_create(intent=note, parent_node_id=route(note))` |
+| Single Entry: `> task ...` | `atom_create(intent=task, parent_node_id=route(task))` |
+| Single Entry: `> schedule ...` | `atom_create(intent=event, start/end..., parent_node_id=route(calendar))` |
+| Tasks inline create | `atom_create(intent=task, parent_node_id=route(task))`（禁止再走 note 入口） |
+
+### E. monorepo 实施清单（v0.4）
+
+### E1. Rust Core（`crates/lazynote_core`）
+
+1. 引入统一创建服务（建议 `create_atom_with_ref` 或 `AtomCreationService`）。
+2. 在单事务中完成：`insert atom` + `insert atom_ref`。
+3. 将 `derive_title` / `derive_markdown_preview` / `derive_view_hint` 收敛到可复用位置，避免 `note_service` 私有逻辑扩散。
+4. 提供 `atom_get` / `atom_update_content` 通用路径（`atom_update_content` 需定义字段重算规则）。
+5. `note_service` 改为调用统一内核（若保留）。
+
+### E2. FFI（`crates/lazynote_ffi/src/api.rs`）
+
+1. 新增 `atom_create` / `atom_get` / `atom_update_content`。
+2. 统一创建响应 envelope（`atom_id + node_uuid + item`）。
+3. `note_create`、`entry_create_*` 改为薄包装或标记 deprecated。
+4. 更新错误码映射与契约注释。
+
+### E3. Flutter（`apps/lazynote_flutter`）
+
+1. Notes 创建链路改调 `atomCreate`。
+2. Entry controller 的 create note/task/schedule 全部改调 `atomCreate(intent=...)`。
+3. Tasks inline create 改为 `intent=task`，禁止 `entryCreateNote` 路径。
+4. Explorer 文件夹创建直接传 `parentNodeId` 给统一入口，移除“两次 FFI 调用”。
+5. 统一 invoker typedef，减少 feature 级创建 API 分裂。
+
+### E4. Tests + Docs
+
+1. Rust：原子性、推导优先级、组织-语义正交、错误码回归。
+2. Flutter：notes/entry/tasks/calendar 四入口创建回归一致性。
+3. 文档同步：`S1`、`S4`、`ffi-contracts.md`、DI-11。
+
+### F. 迁移策略（建议）
+
+1. **阶段 1（引入）**：新增 `atom_create`，旧入口改为内部委托。
+2. **阶段 2（切流）**：Flutter 全量改调 `atom_create`。
+3. **阶段 3（收口）**：旧入口标记 deprecated（或按版本策略移除）。
+
+### G. 待细化问题（下一轮讨论）
+
+1. `atom_update_content` 是否允许同请求内更新 `content_type`。
+2. `tags` 在 `atom_create` 中是同步写入还是后置异步补写。
+3. `item` 返回是否必填（性能 vs 一次请求闭环）。
+4. 旧 API 的弃用窗口长度与版本策略（v0.4.x 内是否保留）。
+
 ## 影响面统计
 
 | 层 | 影响项 | 估计处数 |

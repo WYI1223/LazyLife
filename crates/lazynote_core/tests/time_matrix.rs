@@ -294,3 +294,104 @@ fn section_queries_include_tags() {
     assert_eq!(inbox.len(), 1);
     assert_eq!(inbox[0].tags, vec!["work".to_string()]);
 }
+
+// ---------------------------------------------------------------------------
+// view_hint re-derivation on status / time updates (S1 R3)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn update_status_re_derives_view_hint_to_task() {
+    let conn = setup();
+    let note = make_atom(ViewHint::Note, "promote to task", None, None);
+    insert_atom(&conn, &note);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+
+    // Initially note
+    let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Note);
+
+    // Set status → view_hint must become Task
+    svc.update_status(note.uuid, Some(TaskStatus::Todo))
+        .unwrap();
+    let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Task);
+}
+
+#[test]
+fn clear_status_re_derives_view_hint_back_to_note() {
+    let conn = setup();
+    let note = make_atom(ViewHint::Note, "demote back", None, None);
+    insert_atom(&conn, &note);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+
+    // Promote to task
+    svc.update_status(note.uuid, Some(TaskStatus::Done))
+        .unwrap();
+    let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Task);
+
+    // Clear status → should go back to Note (no time fields)
+    svc.update_status(note.uuid, None).unwrap();
+    let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Note);
+}
+
+#[test]
+fn clear_status_on_timed_atom_re_derives_to_event() {
+    let conn = setup();
+    // Atom with time fields AND status
+    let mut atom = make_atom(ViewHint::Task, "timed task", Some(1000), Some(2000));
+    atom.task_status = Some(TaskStatus::Todo);
+    insert_atom(&conn, &atom);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+
+    // Initially task (status takes priority)
+    let loaded = repo.get_atom(atom.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Task);
+
+    // Clear status → time fields present → Event
+    svc.update_status(atom.uuid, None).unwrap();
+    let loaded = repo.get_atom(atom.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Event);
+}
+
+#[test]
+fn update_event_times_re_derives_view_hint_to_event() {
+    let conn = setup();
+    let note = make_atom(ViewHint::Note, "will become event", None, None);
+    insert_atom(&conn, &note);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+
+    // Initially note
+    let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Note);
+
+    // Set time fields → view_hint must become Event
+    svc.update_event_times(note.uuid, 5000, 6000).unwrap();
+    let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Event);
+}
+
+#[test]
+fn update_event_times_preserves_task_when_status_set() {
+    let conn = setup();
+    let mut atom = make_atom(ViewHint::Task, "task with times", None, None);
+    atom.task_status = Some(TaskStatus::Todo);
+    insert_atom(&conn, &atom);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+
+    // Set time fields — but task_status is set, so view_hint stays Task
+    svc.update_event_times(atom.uuid, 5000, 6000).unwrap();
+    let loaded = repo.get_atom(atom.uuid, false).unwrap().unwrap();
+    assert_eq!(loaded.view_hint, ViewHint::Task);
+}

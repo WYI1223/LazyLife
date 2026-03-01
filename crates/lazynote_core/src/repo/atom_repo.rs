@@ -572,9 +572,15 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         let started_at = Instant::now();
         let status_db = status.map(task_status_to_db);
 
+        // Why: re-derive view_hint atomically (mirrors derive_view_hint in note_service.rs).
         let changed = match self.conn.execute(
             "UPDATE atoms
              SET task_status = ?1,
+                 view_hint = CASE
+                     WHEN ?1 IS NOT NULL THEN 'task'
+                     WHEN start_at IS NOT NULL OR end_at IS NOT NULL THEN 'event'
+                     ELSE 'note'
+                 END,
                  updated_at = (strftime('%s', 'now') * 1000)
              WHERE uuid = ?2
                AND is_deleted = 0;",
@@ -654,10 +660,16 @@ impl AtomRepository for SqliteAtomRepository<'_> {
             ));
         }
 
+        // Why: re-derive view_hint atomically (mirrors derive_view_hint in note_service.rs).
         let changed = match self.conn.execute(
             "UPDATE atoms
              SET start_at = ?1,
                  end_at = ?2,
+                 view_hint = CASE
+                     WHEN task_status IS NOT NULL THEN 'task'
+                     WHEN ?1 IS NOT NULL OR ?2 IS NOT NULL THEN 'event'
+                     ELSE 'note'
+                 END,
                  updated_at = (strftime('%s', 'now') * 1000)
              WHERE uuid = ?3
                AND is_deleted = 0;",
