@@ -1,0 +1,5 @@
+# Docs link allowlist — paths that are known broken but acceptable.
+# Used by architecture_check.dart Check 4.
+
+# Artifacts purged by pre-execution git hygiene (baseline reports still reference them).
+- pattern: "docs/reports/**/artifacts/"

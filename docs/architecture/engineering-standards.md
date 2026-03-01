@@ -20,7 +20,7 @@
 
 - 所有核心实体必须使用稳定 ID（`uuid` / `atom_id`）。
 - **业务路径**删除必须走软删除字段（`is_deleted`），以支持同步、恢复与审计。
-- 例外：维护工具（vacuum、retention purge）可硬删除，但需有 ADR 记录原因。
+- 例外：维护工具（vacuum、retention purge）可硬删除，但需有 Ruling 记录原因。
 
 ### Rule D: External sync must use mapping/version fields
 
@@ -93,5 +93,5 @@
 若需偏离本标准，必须：
 
 1. 在对应 PR 中明确说明偏离原因与影响面。
-2. 关联一个 ADR 或 Issue 记录。
+2. 关联一个 Ruling 或 Issue 记录。
 3. 经 Maintainer 明确批准后方可合并。

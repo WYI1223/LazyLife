@@ -5,6 +5,7 @@
 /// 2. File size — warning >1,500 lines, failure >2,200 lines
 /// 3. Structural layer — managers must not import widgets, coordinator
 ///    must not import FFI bindings directly
+/// 4. Docs cross-reference — broken markdown links in `docs/`
 ///
 /// Usage (from `apps/lazynote_flutter/`):
 ///   dart run ../../tools/ci/architecture_check.dart
@@ -37,7 +38,9 @@ const int _failLineThreshold = 2200;
 
 Future<void> main() async {
   if (!_featuresDir.existsSync()) {
-    stderr.writeln('ERROR: features directory not found at ${_featuresDir.path}');
+    stderr.writeln(
+      'ERROR: features directory not found at ${_featuresDir.path}',
+    );
     exit(1);
   }
 
@@ -57,8 +60,7 @@ Future<void> main() async {
     hasFailure = true;
   }
 
-  final allowedCount =
-      _countAllowlisted(ruleEAllowlist);
+  final allowedCount = _countAllowlisted(ruleEAllowlist);
   stdout.writeln(
     'Rule E result: ${violations.length} violation(s), '
     '$allowedCount allowlisted exemption(s)',
@@ -87,6 +89,19 @@ Future<void> main() async {
   }
   stdout.writeln(
     'Structural layer result: ${structuralViolations.length} violation(s)',
+  );
+
+  // ── Check 4: Docs cross-reference ──────────────────────────────────────
+  stdout.writeln('\n=== Docs cross-reference check ===');
+  final docsLinkAllowlist = _loadDocsLinkAllowlist();
+  final docsResult = _checkDocsCrossReferences(docsLinkAllowlist);
+  if (docsResult.failures > 0) {
+    hasFailure = true;
+  }
+  stdout.writeln(
+    'Docs link result: ${docsResult.failures} broken link(s), '
+    '${docsResult.warnings} warning(s), '
+    '${docsResult.allowlisted} allowlisted',
   );
 
   // ── Summary ────────────────────────────────────────────────────────────
@@ -130,10 +145,7 @@ final _legalPrefixes = [
 
 List<_RuleEViolation> _checkRuleE(Map<String, Set<String>> allowlist) {
   final violations = <_RuleEViolation>[];
-  final featureDirs = _featuresDir
-      .listSync()
-      .whereType<Directory>()
-      .toList();
+  final featureDirs = _featuresDir.listSync().whereType<Directory>().toList();
 
   for (final featureDir in featureDirs) {
     final featureName = featureDir.path.split('/').last.split(r'\').last;
@@ -159,7 +171,8 @@ List<_RuleEViolation> _checkRuleE(Map<String, Set<String>> allowlist) {
         if (_isLegalImport(importPath, featureName, file.path)) continue;
 
         // Check if it's a cross-feature import (package: or resolved relative).
-        final targetFeature = _extractTargetFeature(importPath) ??
+        final targetFeature =
+            _extractTargetFeature(importPath) ??
             _extractTargetFeatureFromRelative(file.path, importPath);
         if (targetFeature == null) continue;
         if (targetFeature == featureName) continue;
@@ -169,12 +182,14 @@ List<_RuleEViolation> _checkRuleE(Map<String, Set<String>> allowlist) {
         if (allowlist.containsKey(pair)) continue;
 
         final relPath = _relativePath(file.path);
-        violations.add(_RuleEViolation(
-          file: relPath,
-          importPath: importPath,
-          sourceFeature: featureName,
-          targetFeature: targetFeature,
-        ));
+        violations.add(
+          _RuleEViolation(
+            file: relPath,
+            importPath: importPath,
+            sourceFeature: featureName,
+            targetFeature: targetFeature,
+          ),
+        );
       }
     }
   }
@@ -190,11 +205,7 @@ String? _extractImportPath(String line) {
   return match?.group(1);
 }
 
-bool _isLegalImport(
-  String importPath,
-  String featureName,
-  String filePath,
-) {
+bool _isLegalImport(String importPath, String featureName, String filePath) {
   for (final prefix in _legalPrefixes) {
     if (importPath.startsWith(prefix)) return true;
   }
@@ -211,7 +222,9 @@ bool _isLegalImport(
     return true;
   }
   // Same-feature package imports are legal.
-  if (importPath.startsWith('package:lazynote_flutter/features/$featureName/')) {
+  if (importPath.startsWith(
+    'package:lazynote_flutter/features/$featureName/',
+  )) {
     return true;
   }
   // Third-party packages (not lazynote_flutter) are legal.
@@ -263,10 +276,7 @@ String? _extractTargetFeatureFromPath(String resolvedPath) {
 }
 
 /// Extracts a target feature from a relative import by resolving it first.
-String? _extractTargetFeatureFromRelative(
-  String filePath,
-  String importPath,
-) {
+String? _extractTargetFeatureFromRelative(String filePath, String importPath) {
   final resolved = _resolveRelativeImport(filePath, importPath);
   if (resolved == null) return null;
   return _extractTargetFeatureFromPath(resolved);
@@ -337,13 +347,13 @@ List<String> _checkStructuralLayer() {
   final violations = <String>[];
 
   // Rule: managers/ files must not import Flutter widgets.
-  final managersDir =
-      Directory('${_featuresDir.path}/notes/managers');
+  final managersDir = Directory('${_featuresDir.path}/notes/managers');
   if (managersDir.existsSync()) {
-    for (final file in managersDir
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))) {
+    for (final file
+        in managersDir
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart'))) {
       final lines = file.readAsLinesSync();
       for (final line in lines) {
         final trimmed = line.trim();
@@ -389,6 +399,163 @@ List<String> _checkStructuralLayer() {
   }
 
   return violations;
+}
+
+// ---------------------------------------------------------------------------
+// Docs cross-reference check (Check 4)
+// ---------------------------------------------------------------------------
+
+final Directory _repoRoot = () {
+  final scriptDir = File(Platform.script.toFilePath()).parent;
+  return scriptDir.parent.parent;
+}();
+
+final Directory _docsDir = Directory('${_repoRoot.path}/docs');
+
+/// Regex to extract markdown links: [text](path)
+/// Captures the path portion, ignoring anchor fragments.
+final RegExp _mdLinkPattern = RegExp(r'\[([^\]]*)\]\(([^)#\s]+)');
+
+class _DocsLinkResult {
+  int failures = 0;
+  int warnings = 0;
+  int allowlisted = 0;
+}
+
+_DocsLinkResult _checkDocsCrossReferences(List<String> allowlistPatterns) {
+  final result = _DocsLinkResult();
+
+  if (!_docsDir.existsSync()) {
+    stderr.writeln('WARNING: docs/ directory not found, skipping Check 4');
+    return result;
+  }
+
+  final mdFiles = _docsDir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.md'));
+
+  for (final file in mdFiles) {
+    final filePath = file.path.replaceAll(r'\', '/');
+    final fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+    final lines = file.readAsLinesSync();
+
+    for (var i = 0; i < lines.length; i++) {
+      for (final match in _mdLinkPattern.allMatches(lines[i])) {
+        final linkTarget = match.group(2)!;
+
+        // Skip external URLs, mailto, and file: protocol.
+        if (linkTarget.startsWith('http://') ||
+            linkTarget.startsWith('https://') ||
+            linkTarget.startsWith('mailto:') ||
+            linkTarget.startsWith('file:')) {
+          continue;
+        }
+
+        // Skip bare placeholder words (no path separator or extension).
+        // These appear in template/example markdown like [text](url).
+        if (!linkTarget.contains('/') && !linkTarget.contains('.')) {
+          continue;
+        }
+
+        // Resolve relative path from the file's directory.
+        final resolved = _resolveDocsPath(fileDir, linkTarget);
+        if (resolved == null) continue;
+
+        // Check allowlist patterns.
+        if (_isAllowlisted(resolved, allowlistPatterns)) {
+          result.allowlisted++;
+          continue;
+        }
+
+        // Check if target exists.
+        final targetFile = File(resolved);
+        final targetDir = Directory(resolved);
+        if (targetFile.existsSync() || targetDir.existsSync()) {
+          continue;
+        }
+
+        // For PR specs under releases/ referencing apps/ or lib/ code paths,
+        // emit warning instead of failure (code may not exist yet).
+        final relFile = _repoRelativePath(filePath);
+        final relTarget = _repoRelativePath(resolved);
+        if (relFile.startsWith('docs/releases/') &&
+            (relTarget.startsWith('apps/') || relTarget.startsWith('lib/'))) {
+          stdout.writeln(
+            '  WARNING: $relFile:${i + 1} → $relTarget (code path, may not exist yet)',
+          );
+          result.warnings++;
+          continue;
+        }
+
+        stderr.writeln('  BROKEN: $relFile:${i + 1} → $relTarget');
+        result.failures++;
+      }
+    }
+  }
+
+  return result;
+}
+
+/// Resolves a relative link path from a file's directory to an absolute path.
+String? _resolveDocsPath(String fileDir, String linkTarget) {
+  final segments = '$fileDir/$linkTarget'.split('/');
+  final resolved = <String>[];
+  for (final seg in segments) {
+    if (seg == '.' || seg.isEmpty) continue;
+    if (seg == '..') {
+      if (resolved.isNotEmpty) resolved.removeLast();
+    } else {
+      resolved.add(seg);
+    }
+  }
+  if (resolved.isEmpty) return null;
+  return resolved.join('/');
+}
+
+/// Checks if a resolved path matches any allowlist glob pattern.
+bool _isAllowlisted(String resolvedPath, List<String> patterns) {
+  final relPath = _repoRelativePath(resolvedPath);
+  for (final pattern in patterns) {
+    if (_globMatch(relPath, pattern)) return true;
+  }
+  return false;
+}
+
+/// Simple glob matching supporting ** (any path segments) and * (single segment).
+bool _globMatch(String path, String pattern) {
+  // Convert glob to regex.
+  var regexStr = '^';
+  for (var i = 0; i < pattern.length; i++) {
+    if (pattern[i] == '*' && i + 1 < pattern.length && pattern[i + 1] == '*') {
+      regexStr += '.*';
+      // Skip the next * and optional following /
+      i++;
+      if (i + 1 < pattern.length && pattern[i + 1] == '/') i++;
+    } else if (pattern[i] == '*') {
+      regexStr += '[^/]*';
+    } else if (pattern[i] == '.') {
+      regexStr += r'\.';
+    } else {
+      regexStr += pattern[i];
+    }
+  }
+  // Allow matching files within directory patterns (e.g., pattern ending with /).
+  if (pattern.endsWith('/')) {
+    regexStr += '.*';
+  }
+  regexStr += r'$';
+  return RegExp(regexStr).hasMatch(path);
+}
+
+/// Returns path relative to repo root.
+String _repoRelativePath(String absolutePath) {
+  final normalized = absolutePath.replaceAll(r'\', '/');
+  final root = _repoRoot.path.replaceAll(r'\', '/');
+  if (normalized.startsWith('$root/')) {
+    return normalized.substring(root.length + 1);
+  }
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
@@ -439,6 +606,24 @@ Set<String> _loadFileSizeExemptions() {
     if (trimmed.startsWith('- path:')) {
       final path = _stripYamlString(trimmed.substring('- path:'.length));
       if (path.isNotEmpty) result.add(path);
+    }
+  }
+  return result;
+}
+
+/// Parses docs_link_allowlist.yaml — expects lines like:
+///   - pattern: "docs/reports/**/artifacts/"
+List<String> _loadDocsLinkAllowlist() {
+  final scriptDir = File(Platform.script.toFilePath()).parent;
+  final file = File('${scriptDir.path}/docs_link_allowlist.yaml');
+  if (!file.existsSync()) return [];
+
+  final result = <String>[];
+  for (final line in file.readAsLinesSync()) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith('- pattern:')) {
+      final pattern = _stripYamlString(trimmed.substring('- pattern:'.length));
+      if (pattern.isNotEmpty) result.add(pattern);
     }
   }
   return result;

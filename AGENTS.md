@@ -160,7 +160,7 @@ fn your_ffi_function_impl(...) -> YourResponse {
 | **E** | No cross-feature imports | `notes/` importing `tasks/` internals |
 | **F** | Unified app root path | Writing files outside `%APPDATA%/LazyLife/` |
 
-Changing any Rule A-F requires an ADR in `docs/architecture/adr/`.
+Changing any Rule A-F requires a Ruling in `docs/architecture/rulings/`.
 
 ---
 

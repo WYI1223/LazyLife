@@ -23,23 +23,31 @@
 ## M3.5 - v0.1.5 (Atom Time-Matrix)
 
 - PR0011
-- Status: Planned (gate: M3 must close first)
+- Status: Completed
 - Spec: `docs/releases/v0.1.5/README.md`
 
 ## M4 - Post-v0.1.5 Deferred Backlog
 
 - PR0012, PR0013, PR0014, PR0015, PR0016
-- Status: Deferred (replanned into v0.3+ tracks)
+- Status: Distributed (items replanned into v0.2 and v0.3 tracks)
 
 ## M5 - v0.2 Workspace Foundation
 
 - PR0201-PR0218
-- Status: Planned
+- Status: Completed
+- Spec: `docs/releases/v0.2/README.md`
+
+## M5.5 - v0.2.5 (Debt Paydown & Semantic Freeze)
+
+- PR-0252 to PR-0259
+- Status: Completed (2026-02-27)
+- Spec: `docs/releases/v0.2.5/README.md`
 
 ## M6 - v0.3 Recursive Workspace
 
-- PR0301-PR0310
-- Status: Planned
+- PR-RB-00 to PR-RB-11
+- Status: In Progress
+- Spec: `docs/releases/v0.3/README.md`
 
 ## M7 - v1.0 Production Hardening
 

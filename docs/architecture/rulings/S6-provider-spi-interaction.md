@@ -2,7 +2,9 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Documented** — v0.3 实现 |
+| 状态 | **Accepted** — v0.3 scope (Google Calendar) |
+| 引入版本 | v0.2.5 (PR-0256) |
+| 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
 | 关联 PR | PR-0309（Google Calendar Provider，v0.3） |
 

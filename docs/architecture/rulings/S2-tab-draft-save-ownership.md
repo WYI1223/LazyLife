@@ -2,7 +2,9 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Phase 1 Landed** (v0.2.5 PR-0258) — Phase 2/3 Deferred to v0.3 |
+| 状态 | **Accepted** — Phase 1 Landed (PR-0258), Phase 2/3 v0.3 PR-RB-06 |
+| 引入版本 | v0.2.5 (PR-0256) |
+| 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
 | 关联 PR | PR-0258（已完成）、PR-0301（递归布局）、PR-0303（buffer 同步）、PR-0304（tab 模型）、PR-0305（间接 — buffer 同步性能） |
 | 关联 DI | DI-1（RESOLVED）、DI-2（RESOLVED）、DI-3（RESOLVED）、DI-4（RESOLVED — D10、D11、D12）、DI-10（RESOLVED） |

@@ -21,21 +21,23 @@
    - focus PRs: `PR-0252` to `PR-0259`, `PR-0253` closure (PR-0251 superseded by PR-0256)
    - plan: `docs/releases/v0.2.5/README.md`
    - gate: v0.2 closure must be green before v0.2.5 closure handoff
-3. v0.3 (IDE-grade recursive workspace)
+3. v0.3 (IDE-grade recursive workspace) — **in progress**
    - scope: recursive split, drag-to-split, cross-pane coherence, perf gate, links/index/open foundation, workspace launcher experience, local task-calendar projection, Google Calendar provider pluginization, Windows global hotkey quick-entry
-   - focus PRs: `PR-0301` to `PR-0311` (plus `PR-0306A`)
+   - focus PRs: `PR-RB-00` to `PR-RB-11` (rebaselined from original `PR-030X` series, see `docs/releases/v0.3/v0.3-pr-spec-rebaseline-2026-03-01.md`)
    - plan: `docs/releases/v0.3/README.md`
 4. v1.0 (production hardening)
    - scope: reliability, recovery, security, release readiness, cross-platform launcher policy parity, plugin sandbox/distribution/compatibility gates
    - candidate PRs: `PR-1001` to `PR-1009`
    - plan: `docs/releases/v1.0/README.md`
 
-## Deferred from v0.1
+## Deferred Items Tracker
 
-- `PR-0011` tasks views → **replanned to v0.1.5** (Atom Time-Matrix, PR-0011)
-- `PR-0012` calendar minimal
-- `PR-0013` reminders (Windows)
-- `PR-0014` local task-calendar projection baseline
-- `PR-0015` Google Calendar provider plugin track
-- `PR-0016` export/import
-- notes delete lifecycle (soft-delete policy, restore path, and permanent delete UX)
+| Item | Original | Delivered In |
+|------|----------|-------------|
+| Tasks views | v0.1 `PR-0011` | v0.1.5 |
+| Calendar minimal | v0.1 `PR-0012` | v0.2 |
+| Reminders (Windows) | v0.1 `PR-0013` | v0.2 |
+| Local task-calendar projection | v0.1 `PR-0014` | v0.3 `PR-RB-08` |
+| Google Calendar provider | v0.1 `PR-0015` | v0.3 `PR-RB-09` |
+| Export/import | v0.1 `PR-0016` | Deferred (v1.0+) |
+| Notes delete lifecycle | v0.1 | Deferred (v1.0+) |

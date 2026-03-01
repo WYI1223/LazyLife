@@ -102,7 +102,7 @@ Non-responsibilities:
 
 - `lib/features/entry/`: workbench/shell, command parser, command router, section registry
 - `lib/features/notes/`: coordinator + managers (list, tag, tree), editor, explorer tree, tab strip. **v0.3: tab/draft/save managers extracted to `lib/core/editor/`**
-- `lib/features/tags/`: tag filter widget
+- `lib/shared/`: tag filter widget, shared UI tokens
 - `lib/features/search/`: search results view
 - `lib/features/tasks/`: tasks dashboard (Inbox/Today/Upcoming)
 - `lib/features/calendar/`: weekly calendar with event create/edit

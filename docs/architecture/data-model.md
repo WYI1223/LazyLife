@@ -316,7 +316,7 @@ Code reference: `crates/lazynote_core/src/search/fts.rs`.
 
 - Business-path deletion: soft-delete only (`is_deleted = 1`).
 - Search and list APIs exclude `is_deleted = 1` rows.
-- Maintenance/purge hard-delete requires an ADR (see `engineering-standards.md` Rule C).
+- Maintenance/purge hard-delete requires a Ruling (see `engineering-standards.md` Rule C).
 
 ---
 

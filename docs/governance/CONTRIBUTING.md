@@ -8,7 +8,7 @@
 
 1. 先阅读 `docs/index.md`（文档入口）、`README.md`、`VERSIONING.md`、`docs/releases/` 下的当前版本计划。
 2. 新功能或较大改动请先开 Issue（或在已有 Issue 下认领）。
-3. 涉及架构决策时，请同步更新 `docs/architecture/adr/`。
+3. 涉及架构决策时，请同步更新 `docs/architecture/rulings/`。
 4. 必须遵循 `docs/architecture/engineering-standards.md`。
 5. 注释与代码可读性必须遵循 `docs/architecture/code-comment-standards.md`。
 6. 涉及 API 合约改动时，必须同步更新 `docs/api/*`、`docs/governance/API_COMPATIBILITY.md`、`docs/governance/api-lifecycle-policy.md`。
