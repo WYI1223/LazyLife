@@ -26,8 +26,8 @@
 | DI-5 | [DI-5-cursor-and-conflict.md](DI-5-cursor-and-conflict.md) | 光标独立性 + 冲突处理 | D12+D13 | RESOLVED |
 | DI-6 | [DI-6-cross-track-dependencies.md](DI-6-cross-track-dependencies.md) | 跨 Track 隐藏依赖 + 增量交付 | §5.3+§5.4 | RESOLVED |
 | DI-7 | [DI-7-gates-perf-testing.md](DI-7-gates-perf-testing.md) | Gate 验证标准 + 性能基线 + 测试策略 | §5.1+§5.2+§5.5 | RESOLVED |
-| DI-8 | [DI-8-spi-verification.md](DI-8-spi-verification.md) | PR-0309 SPI 验证方式 | §5.6 | OPEN |
-| DI-9 | — | Entry Search 查询语义重设计 | S1 R3 | OPEN |
+| DI-8 | [DI-8-spi-verification.md](DI-8-spi-verification.md) | PR-0309 SPI 验证方式 | §5.6 | DEFERRED v0.4 |
+| DI-9 | — | Entry Search 查询语义重设计 | S1 R3 | DEFERRED v0.4 |
 | DI-10 | [DI-10-editor-resolver-shell.md](DI-10-editor-resolver-shell.md) | EditorResolver 壳设计 | S2 Phase 3 | RESOLVED |
 
 ---
