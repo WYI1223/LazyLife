@@ -1,7 +1,7 @@
 # PR-RB-00: 文档前置修复与基础设施
 
 - Proposed title: `docs(v0.3): PR-RB-00 doc fixes, orphan cleanup, docs linter, ruling lifecycle headers`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 

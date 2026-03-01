@@ -77,6 +77,7 @@ dart run ../../tools/ci/architecture_check.dart
 
 - [ ] [binary criterion — pass/fail, no ambiguity]
 - [ ] [binary criterion]
+- [ ] PR spec Status updated to Merged
 ```
 
 ---
