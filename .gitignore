@@ -37,4 +37,16 @@ Thumbs.db
 *.log
 *.tmp
 .claude/settings.local.json
-how-ref --heads --tags
+
+# -----------------------------
+# Binary documents (not source)
+# -----------------------------
+*.docx
+*.doc
+*.xlsx
+*.pptx
+
+# -----------------------------
+# Generated analysis artifacts
+# -----------------------------
+docs/reports/**/artifacts/
