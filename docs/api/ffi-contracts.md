@@ -448,6 +448,17 @@ See full registry: `docs/api/error-codes.md`.
 
 ---
 
+## Timed Atoms Query (PR-RB-04)
+
+- `atoms_list_timed() -> AtomListResponse`
+  - Returns all non-deleted atoms that have at least one time field set (`start_at IS NOT NULL OR end_at IS NOT NULL`)
+  - Excludes done/cancelled atoms (`task_status NOT IN ('done', 'cancelled')`)
+  - Used by startup recovery to bulk-schedule reminders
+  - Order: `COALESCE(start_at, end_at) ASC, updated_at DESC`
+  - No pagination parameters — returns all matching atoms
+
+---
+
 ## Calendar APIs (PR-0012A)
 
 All APIs are use-case level and async.

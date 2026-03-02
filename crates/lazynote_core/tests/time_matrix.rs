@@ -395,3 +395,116 @@ fn update_event_times_preserves_task_when_status_set() {
     let loaded = repo.get_atom(atom.uuid, false).unwrap().unwrap();
     assert_eq!(loaded.view_hint, ViewHint::Task);
 }
+
+// ---------------------------------------------------------------------------
+// fetch_timed — startup reminder recovery (PR-RB-04 / S7)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn fetch_timed_returns_atoms_with_any_time_field() {
+    let conn = setup();
+
+    // Timeless note — should NOT appear
+    let note = make_atom(ViewHint::Note, "pure note", None, None);
+    insert_atom(&conn, &note);
+
+    // DDL task (end_at only) — SHOULD appear
+    let ddl = make_atom(ViewHint::Task, "deadline", None, Some(2_000_000_000_000));
+    insert_atom(&conn, &ddl);
+
+    // Ongoing task (start_at only) — SHOULD appear
+    let ongoing = make_atom(ViewHint::Task, "ongoing", Some(1_000_000_000_000), None);
+    insert_atom(&conn, &ongoing);
+
+    // Timed event (both) — SHOULD appear
+    let event = make_atom(
+        ViewHint::Event,
+        "meeting",
+        Some(1_000_000_000_000),
+        Some(1_000_003_600_000),
+    );
+    insert_atom(&conn, &event);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+    let timed = svc.fetch_timed().unwrap();
+
+    assert_eq!(timed.len(), 3);
+    let ids: Vec<_> = timed.iter().map(|s| s.atom.uuid).collect();
+    assert!(ids.contains(&ddl.uuid));
+    assert!(ids.contains(&ongoing.uuid));
+    assert!(ids.contains(&event.uuid));
+    assert!(!ids.contains(&note.uuid));
+}
+
+#[test]
+fn fetch_timed_excludes_done_and_cancelled() {
+    let conn = setup();
+
+    let mut done_task = make_atom(ViewHint::Task, "done", None, Some(2_000_000_000_000));
+    done_task.task_status = Some(TaskStatus::Done);
+    insert_atom(&conn, &done_task);
+
+    let mut cancelled_task = make_atom(ViewHint::Task, "cancelled", None, Some(2_000_000_000_000));
+    cancelled_task.task_status = Some(TaskStatus::Cancelled);
+    insert_atom(&conn, &cancelled_task);
+
+    let active_task = make_atom(ViewHint::Task, "active", None, Some(2_000_000_000_000));
+    insert_atom(&conn, &active_task);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+    let timed = svc.fetch_timed().unwrap();
+
+    assert_eq!(timed.len(), 1);
+    assert_eq!(timed[0].atom.uuid, active_task.uuid);
+}
+
+#[test]
+fn fetch_timed_excludes_soft_deleted() {
+    let conn = setup();
+
+    let task = make_atom(
+        ViewHint::Task,
+        "will be deleted",
+        None,
+        Some(2_000_000_000_000),
+    );
+    insert_atom(&conn, &task);
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    repo.soft_delete_atom(task.uuid).unwrap();
+
+    let svc = TaskService::new(&repo, &conn);
+    let timed = svc.fetch_timed().unwrap();
+    assert!(timed.is_empty());
+}
+
+#[test]
+fn fetch_timed_includes_tags() {
+    let conn = setup();
+
+    let task = make_atom(ViewHint::Task, "tagged task", None, Some(2_000_000_000_000));
+    insert_atom(&conn, &task);
+
+    // Add a tag
+    conn.execute("INSERT INTO tags (name) VALUES ('urgent');", [])
+        .unwrap();
+    let tag_id: i64 = conn
+        .query_row("SELECT id FROM tags WHERE name = 'urgent'", [], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    conn.execute(
+        "INSERT INTO atom_tags (atom_uuid, tag_id) VALUES (?1, ?2);",
+        rusqlite::params![task.uuid.to_string(), tag_id],
+    )
+    .unwrap();
+
+    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
+    let svc = TaskService::new(&repo, &conn);
+    let timed = svc.fetch_timed().unwrap();
+
+    assert_eq!(timed.len(), 1);
+    assert_eq!(timed[0].tags, vec!["urgent".to_string()]);
+}

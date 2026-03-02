@@ -1708,6 +1708,34 @@ fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActi
     }
 }
 
+/// Returns all non-deleted, non-completed atoms that have at least one time field set.
+/// Used for startup reminder recovery.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - No pagination: returns all matching rows (timed atom count is bounded in practice).
+/// - Excludes done/cancelled atoms.
+#[flutter_rust_bridge::frb]
+pub async fn atoms_list_timed() -> AtomListResponse {
+    atoms_list_timed_impl()
+}
+
+fn atoms_list_timed_impl() -> AtomListResponse {
+    match with_task_service(|svc| svc.fetch_timed()) {
+        Ok(items) => {
+            let count = items.len();
+            AtomListResponse {
+                ok: true,
+                error_code: None,
+                message: format!("Loaded {} timed atom(s).", count),
+                items: items.into_iter().map(to_atom_list_item).collect(),
+                applied_limit: count as u32,
+            }
+        }
+        Err(err) => atom_list_failure(err, 0),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Calendar APIs (PR-0012A)
 // ---------------------------------------------------------------------------
@@ -1788,9 +1816,9 @@ fn calendar_update_event_impl(atom_id: String, start_ms: i64, end_ms: i64) -> En
 #[cfg(test)]
 mod tests {
     use super::{
-        calendar_list_by_range_impl, calendar_update_event_impl, configure_entry_db_path,
-        core_version, entry_create_note_impl, entry_create_task_impl, entry_schedule_impl,
-        entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
+        atoms_list_timed_impl, calendar_list_by_range_impl, calendar_update_event_impl,
+        configure_entry_db_path, core_version, entry_create_note_impl, entry_create_task_impl,
+        entry_schedule_impl, entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
         map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
         note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
         workspace_create_atom_ref_impl, workspace_create_folder_impl, workspace_delete_folder_impl,

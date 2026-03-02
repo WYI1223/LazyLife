@@ -144,6 +144,13 @@ impl<'conn, R: AtomRepository> TaskService<'conn, R> {
         Ok(())
     }
 
+    /// Returns all non-deleted, non-completed atoms that have at least one time field set.
+    /// Used for startup reminder recovery.
+    pub fn fetch_timed(&self) -> Result<Vec<SectionAtom>, TaskServiceError> {
+        let rows = self.repo.fetch_timed()?;
+        self.enrich_with_tags(rows)
+    }
+
     fn enrich_with_tags(
         &self,
         rows: Vec<SectionAtomRow>,

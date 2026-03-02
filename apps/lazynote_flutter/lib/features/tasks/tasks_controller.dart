@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/core/reminders/reminder_scheduler.dart'
-    as reminders;
+import 'package:lazynote_flutter/core/reminders/reminder_lifecycle.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 
 /// Async section list loader returning [rust_api.AtomListResponse].
@@ -69,12 +68,14 @@ class TasksController extends ChangeNotifier {
     AtomUpdateStatusInvoker? statusInvoker,
     InboxCreateInvoker? createInvoker,
     TasksPrepare? prepare,
+    ReminderLifecycle? reminderLifecycle,
   }) : _inboxInvoker = inboxInvoker ?? _defaultInboxInvoker,
        _todayInvoker = todayInvoker ?? _defaultTodayInvoker,
        _upcomingInvoker = upcomingInvoker ?? _defaultUpcomingInvoker,
        _statusInvoker = statusInvoker ?? _defaultStatusInvoker,
        _createInvoker = createInvoker ?? _defaultCreateInvoker,
-       _prepare = prepare ?? _defaultPrepare;
+       _prepare = prepare ?? _defaultPrepare,
+       _reminderLifecycle = reminderLifecycle ?? ReminderLifecycle.instance;
 
   final TasksListInboxInvoker _inboxInvoker;
   final TasksListTodayInvoker _todayInvoker;
@@ -82,6 +83,7 @@ class TasksController extends ChangeNotifier {
   final AtomUpdateStatusInvoker _statusInvoker;
   final InboxCreateInvoker _createInvoker;
   final TasksPrepare _prepare;
+  final ReminderLifecycle _reminderLifecycle;
 
   // -- Inbox state --
   TasksPhase _inboxPhase = TasksPhase.idle;
@@ -125,8 +127,6 @@ class TasksController extends ChangeNotifier {
   /// Loads all three sections in parallel.
   Future<void> loadAll() async {
     await Future.wait([_loadInbox(), _loadToday(), _loadUpcoming()]);
-    // Schedule reminders for Today section after load completes
-    await _scheduleReminders();
   }
 
   /// Reloads all three sections.
@@ -134,8 +134,9 @@ class TasksController extends ChangeNotifier {
 
   /// Toggles an atom's status between null/done.
   ///
-  /// When `currentStatus` is `"done"`, clears status (demote).
-  /// Otherwise sets status to `"done"`.
+  /// When `currentStatus` is `"done"`, clears status (demote) and
+  /// re-schedules the reminder. Otherwise sets status to `"done"` and
+  /// cancels the reminder.
   /// On success, immediately removes the item from its section list.
   Future<bool> toggleStatus(String atomId, String? currentStatus) async {
     final nextStatus = currentStatus == 'done' ? null : 'done';
@@ -147,6 +148,18 @@ class TasksController extends ChangeNotifier {
       }
       _removeItemFromAllSections(atomId);
       notifyListeners();
+
+      // Lifecycle hook: cancel on done/cancelled, re-schedule on clear
+      try {
+        if (nextStatus == 'done' || nextStatus == 'cancelled') {
+          await _reminderLifecycle.onCancel(atomId);
+        } else {
+          await _reminderLifecycle.onSchedule(atomId);
+        }
+      } catch (_) {
+        // Reminder delivery must not break status toggle.
+      }
+
       return true;
     } catch (_) {
       return false;
@@ -187,15 +200,6 @@ class TasksController extends ChangeNotifier {
       _createError = 'Create failed: $error';
       notifyListeners();
       return false;
-    }
-  }
-
-  /// Schedule reminders for Today section atoms via the process-level singleton.
-  Future<void> _scheduleReminders() async {
-    try {
-      await reminders.ReminderScheduler.scheduleRemindersForAtoms(_todayItems);
-    } catch (_) {
-      // Reminder delivery must not break section rendering.
     }
   }
 

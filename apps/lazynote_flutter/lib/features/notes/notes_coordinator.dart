@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/core/reminders/reminder_lifecycle.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_draft_manager.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_list_manager.dart';
@@ -48,5 +49,6 @@ class NotesCoordinator extends _NotesCoordinatorImpl {
     super.prepare,
     super.listLimit = 50,
     super.autosaveDebounce = const Duration(milliseconds: 1500),
+    super.reminderLifecycle,
   });
 }
