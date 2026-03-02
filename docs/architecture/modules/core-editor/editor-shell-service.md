@@ -48,6 +48,12 @@ bool get hasPendingSaveWork
 // 布局操作（委托给 GroupLayout）
 splitGroup(String groupId, Axis axis)
 closeGroup(String groupId)
+resizeAt(List<int> path, double newFraction)
+
+// 查询
+EditorGroupModel? get activeGroup
+EditBuffer? bufferFor(String atomId)
+LayoutResolveResult resolveLayout(Size containerSize)
 ```
 
 ---
@@ -110,6 +116,17 @@ service = EditorShellService(
 - **不知 FFI**：通过闭包注入隔离，对 FFI 细节无感知
 - **泛型 Tab**：Tab 列表接受任意 Atom UUID，不限于 note 类型（S2 规则 3）
 - **状态不双写**：禁止两个组件同时维护相同状态的副本（S2 规则 2）
+
+---
+
+## 实施状态 `[PR-RB-06 新增]`
+
+| 阶段 | 状态 | PR |
+|------|------|-----|
+| Service + groups + buffers + layout 组合 | PR-RB-06 待实施 | PR-RB-06（v0.3） |
+| Coordinator 提取（tab/draft/save → Service） | PR-RB-06 待实施 | PR-RB-06（v0.3） |
+| 布局持久化集成（LayoutPersistence） | PR-RB-07 待实施 | PR-RB-07（v0.3，DI-3） |
+| EditorResolver 集成 | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
 
 ---
 

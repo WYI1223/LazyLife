@@ -193,8 +193,8 @@ VSCode EditorService 三层分离验证了此模型：
 | 项目 | 状态 |
 |------|------|
 | Phase 1：消除双状态 | **已完成** — PR-0258，WP 664→166 行 |
-| Phase 2：EditorShellService | v0.3 待实施（**设计完成** — DI-1 Q1-Q5 RESOLVED，DI-4 Q1-Q5 全部 RESOLVED（D10、D11、D12）） |
-| Phase 3：EditorResolver | v0.3 待实施（**设计完成** — DI-10 RESOLVED，含 View Mode 占位） |
+| Phase 2：EditorShellService | v0.3 PR-RB-06 待实施（**设计完成 + spec 已定稿** — DI-1 Q1-Q5 RESOLVED，DI-4 Q1-Q5 全部 RESOLVED；含 TRANSIENT 文件删除 + GroupLayout toJson/fromJson 前向兼容） |
+| Phase 3：EditorResolver | v0.3 PR-RB-09 待实施（**设计完成** — DI-10 RESOLVED，含 View Mode 占位） |
 
 ---
 

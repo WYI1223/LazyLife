@@ -72,9 +72,9 @@ Non-responsibilities:
 3. `EntryShellPage` renders workbench with section switching (notes, tasks, calendar, settings, diagnostics).
 4. UI interacts with core use-cases via FFI (notes CRUD, task sections, calendar range queries, workspace tree operations).
 5. Notes feature uses coordinator architecture:
-   - `NotesCoordinator` orchestrates tab/draft/save lifecycle
-   - Delegates to extracted managers (NoteTabStateManager, NoteDraftManager, NoteSaveTracker, NoteListManager, NoteTagManager) and `WorkspaceTreeService` (`lib/core/workspace/`, PR-RB-05 S9 extraction)
-   - `WorkspaceProvider` manages pane layout state (split/close/activate) — now in `lib/core/workspace/` (TRANSIENT, PR-RB-06 absorbs into `core/editor/`)
+   - `NotesCoordinator` orchestrates note-specific concerns (list, tags, detail selection)
+   - Delegates to `NoteListManager`, `NoteTagManager`, `WorkspaceTreeService` (`lib/core/workspace/`, PR-RB-05)
+   - Tab/draft/save/layout managed by `EditorShellService` (`lib/core/editor/`, PR-RB-06 S2 Phase 2) — replaces NoteTabStateManager, NoteDraftManager, NoteSaveTracker, and WorkspaceProvider
 6. Reminders scheduled via `flutter_local_notifications` (in `lib/core/reminders/`, S7 ruling: platform infrastructure).
 
 ## Data Plane
@@ -111,7 +111,8 @@ Non-responsibilities:
 
 ### Flutter Core Infrastructure
 
-- `lib/core/workspace/`: WorkspaceTreeService (tree CRUD infrastructure, PR-RB-05 S9 extraction) + WorkspaceProvider/WorkspaceModels (pane layout, TRANSIENT — PR-RB-06 absorbs into `core/editor/`)
+- `lib/core/editor/`: EditorShellService + EditorGroupModel + EditBuffer + GroupLayout (workbench editor infrastructure, PR-RB-06 S2 Phase 2 extraction)
+- `lib/core/workspace/`: WorkspaceTreeService (tree CRUD infrastructure, PR-RB-05 S9 extraction; TRANSIENT pane layout files deleted by PR-RB-06)
 - `lib/core/rust_bridge.dart`: RustBridge facade (3-stage init)
 - `lib/core/bindings/`: auto-generated FRB Dart wrappers (do not edit)
 - `lib/core/settings/`: LocalSettingsStore (JSON persistence)
@@ -126,39 +127,41 @@ Non-responsibilities:
 Cross-feature infrastructure modules are placed in `lib/core/` per [S9 ruling](rulings/S9-cross-feature-infrastructure-placement.md):
 
 ```
-lib/core/editor/                        ← EditorShellService (S2 Phase 2/3)
-├── editor_shell_service.dart           ← Main service (singleton)
-├── editor_group_model.dart             ← EditorGroupModel + TabEntry
-├── edit_buffer.dart                    ← EditBuffer (per-atom state machine)
-├── group_layout.dart                   ← GroupLayout (recursive layout tree)
-├── layout_persistence.dart             ← Layout file I/O + debounce (DI-3)
-└── editor_resolver.dart                ← content_type → EditorPane (DI-10)
+lib/core/editor/                        ← EditorShellService (S2 Phase 2/3, PR-RB-06)
+├── editor_shell_service.dart           ← Main service (singleton) — PR-RB-06
+├── editor_group_model.dart             ← EditorGroupModel + TabEntry — PR-RB-06
+├── edit_buffer.dart                    ← EditBuffer (per-atom state machine) — PR-RB-06
+├── group_layout.dart                   ← GroupLayout (recursive layout tree, absorbs WorkspaceProvider) — PR-RB-06
+├── layout_persistence.dart             ← Layout file I/O + debounce (DI-3) — PR-RB-07
+└── editor_resolver.dart                ← content_type → EditorPane (DI-10) — PR-RB-09
 
-lib/core/workspace/                     ← PR-RB-05 S9 extraction (6 files)
+lib/core/workspace/                     ← PR-RB-05 S9 extraction (4 permanent files after PR-RB-06)
 ├── workspace_tree_service.dart         ← From features/notes/managers/workspace_tree_manager.dart (renamed)
 ├── workspace_tree_types.dart           ← From features/notes/managers/
 ├── workspace_tree_children_loader.dart ← From features/notes/managers/
-├── workspace_tree_error_utils.dart     ← From features/notes/managers/
-├── workspace_provider.dart             ← From features/workspace/ [TRANSIENT → core/editor/ in PR-RB-06]
-└── workspace_models.dart               ← From features/workspace/ [TRANSIENT → core/editor/ in PR-RB-06]
+└── workspace_tree_error_utils.dart     ← From features/notes/managers/
+    (workspace_provider.dart)           ← Deleted by PR-RB-06 (layout absorbed into core/editor/group_layout.dart)
+    (workspace_models.dart)             ← Deleted by PR-RB-06 (types replaced by GroupLayout + Axis)
 ```
 
 ## Notes Coordinator Architecture (Post-PR-0252)
 
-PR-0252 decomposed the monolithic `NotesController` into a coordinator + manager pattern:
+PR-0252 decomposed the monolithic `NotesController` into a coordinator + manager pattern. PR-RB-06 (S2 Phase 2) extracts tab/draft/save/layout into workbench-level `EditorShellService`:
 
 ```
-NotesCoordinator (orchestrator)
-├── NoteTabStateManager  — tab open/close/activate state
-├── NoteDraftManager     — draft buffer lifecycle
-├── NoteSaveTracker      — save state, debounce, retry
+NotesCoordinator (orchestrator) — post PR-RB-06: ~400-600 lines
 ├── NoteListManager      — note list queries + pagination
 ├── NoteTagManager       — tag operations
-└── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05)
+├── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05)
+└── → EditorShellService — tab/draft/save/layout delegation (lib/core/editor/, PR-RB-06)
+
+EditorShellService (workbench singleton, lib/core/editor/)
+├── EditorGroupModel[]   — per-pane tab state (extracted from NoteTabStateManager)
+├── EditBuffer[]         — per-atom content state machine (unified NoteDraftManager + NoteSaveTracker)
+└── GroupLayout          — recursive pane layout tree (from WorkspaceProvider, binary tree model)
 ```
 
-WorkspaceProvider remains separate, managing pane layout only (split/close/activate pane).
-PR-0258 eliminated the dual-state pattern — NotesCoordinator is now the sole source of tab/draft/save state. WorkspaceProvider was reduced from 664 to 166 lines.
+PR-0258 eliminated the dual-state pattern — NotesCoordinator became the sole source of tab/draft/save state. WorkspaceProvider was reduced from 664 to 166 lines. PR-RB-06 further extracts tab/draft/save/layout into `EditorShellService`; WorkspaceProvider is deleted (layout absorbed into `GroupLayout`).
 
 ## v0.3 Editor Workbench Architecture (S2 Phase 2/3)
 
