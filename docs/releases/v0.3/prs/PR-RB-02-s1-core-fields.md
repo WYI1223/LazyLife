@@ -87,7 +87,7 @@
 
 | # | 决策 | 结论 | 来源 |
 |---|------|------|------|
-| D1 | `AtomType` 枚举重命名 | `AtomType` → `ViewHint`，与字段名 `view_hint`、DB 列名 `view_hint` 保持一致。影响面见 [DI-11](../../reports/v0.3/design-discussions/DI-11-atomtype-rename-impact.md) | 人工裁定 |
+| D1 | `AtomType` 枚举重命名 | `AtomType` → `ViewHint`，与字段名 `view_hint`、DB 列名 `view_hint` 保持一致。影响面见 [DI-11](../../../reports/v0.3/design-discussions/DI-11-atomtype-rename-impact.md) | 人工裁定 |
 | D2 | `preview_text` 与 `title` 关系 | 并存。`title` = "叫什么"（标题），`preview_text` = "长什么样"（摘要）。本 PR 不变更 `preview_text` | S1 R8 |
 | D3 | CHECK 约束处理 | 信任 SQLite 3.25+ `RENAME COLUMN` 自动更新 CHECK 约束。补 Rust 测试断言非法 `view_hint` 被拒绝 | 人工裁定 |
 | D4 | `SearchHit.kind` 重命名 | 同步重命名为 `SearchHit.view_hint`，全局一致 | S1 R3 |

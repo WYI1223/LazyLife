@@ -225,6 +225,4 @@ Exit: **= 入口 count**（纯移动，无测试删减或新增）
 - [ ] `features/notes/managers/` 中无 workspace 文件
 - [ ] `WorkspaceTreeManager` 已重命名为 `WorkspaceTreeService`
 - [ ] `architecture_check.dart` Rule E allowlist 不含 `notes → workspace`
-- [ ] `flutter analyze` 零 error/warning
-- [ ] 全部 Flutter tests 通过（count 不变）
-- [ ] CI green
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）

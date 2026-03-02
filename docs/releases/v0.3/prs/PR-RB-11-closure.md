@@ -288,6 +288,6 @@ test -f docs/releases/v0.3/v0.3-release-evidence.md
 - [ ] `tools/ci/gate_checks.dart` 已创建，Gate A/B 验证逻辑为单一事实来源
 - [ ] Gate A 全部通过（`dart run gate_checks.dart --gate-a` 零 violation）
 - [ ] Gate B 全部通过（`dart run gate_checks.dart --gate-b` 零 violation）
-- [ ] Release Gate 全部通过（Rust + Flutter CI green + architecture check pass）
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
 - [ ] S5 合规校验通过
 - [ ] `v0.3-release-evidence.md` 已撰写

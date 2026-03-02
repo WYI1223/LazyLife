@@ -141,4 +141,4 @@ rg "workspaceLayoutFileName" apps/lazynote_flutter/lib/core/local_paths.dart
 - [ ] 启动时 Phase 1 恢复正确重建 layout + tabs（无 content）
 - [ ] `schema_version` > 当前版本时不覆写文件
 - [ ] JSON round-trip 测试通过
-- [ ] CI green
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）

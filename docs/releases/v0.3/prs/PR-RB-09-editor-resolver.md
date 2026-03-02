@@ -141,4 +141,4 @@ ls apps/lazynote_flutter/lib/core/editor/
 - [ ] 未知 content_type → error placeholder（非 fallback）
 - [ ] `MarkdownEditorPane` 仅依赖 `EditBuffer`（无 coordinator 引用）
 - [ ] `lib/core/editor/` 完整包含 v0.3 全部 6 个模块文件
-- [ ] CI green
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
