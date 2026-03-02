@@ -203,4 +203,4 @@ dart run ../../tools/ci/architecture_check.dart
 - [ ] P1 eager loading + P2 lazy loading 正常
 - [ ] Loading failure gracefully handled
 - [ ] Buffer sync 100KB <40ms（CI guard）
-- [ ] CI green
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）

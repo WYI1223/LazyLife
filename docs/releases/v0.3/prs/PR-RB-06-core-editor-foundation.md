@@ -432,5 +432,4 @@ Exit: **≥ 入口 count + 新增 GroupLayout/EditBuffer/Service 测试**（旧 
 - [ ] M1 milestone：多 pane split/close/resize 可用
 - [ ] DI-0 命名冲突消除
 - [ ] DI-1/2 所有裁决落地
-- [ ] 全部 Flutter tests 通过
-- [ ] CI green
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）

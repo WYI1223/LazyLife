@@ -209,4 +209,4 @@ test -f apps/lazynote_flutter/lib/shared/tag_results_panel.dart
 - [ ] Explorer 树在 tag 过滤期间保持完整不变
 - [ ] 点击结果行在编辑器中打开对应 Atom
 - [ ] breadcrumb_builder 和 TagResultsPanel 位于 `lib/shared/`（不引用 features/ 内部）
-- [ ] CI green
+- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
