@@ -311,6 +311,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 | Function | Returns |
 |----------|---------|
 | `atoms_list_timed()` | `AtomListResponse` |
+| `atom_get(atom_id)` | `AtomItemResponse` |
 
 **Calendar (async):**
 

@@ -27,7 +27,7 @@ Future<void> main() async {
       onSchedule: (atomId) async {
         try {
           await RustBridge.init();
-          final response = await rust_api.noteGet(atomId: atomId);
+          final response = await rust_api.atomGet(atomId: atomId);
           if (response.ok && response.item != null) {
             await ReminderScheduler.scheduleReminderForAtom(response.item!);
           }

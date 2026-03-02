@@ -91,4 +91,4 @@ App 启动
 |------|------|------|
 | Q1: 清除完成状态（un-complete）是否 re-schedule？ | **是** — `toggleStatus` 清除 done/cancelled 时调用 `onSchedule` | 恢复活跃状态的 timed atom 应重新获得提醒 |
 | Q2: `workspace_delete_folder(delete_all)` cancel hook | **延期至 v0.4 `PR-0401`（DI-12 单根化）** | 依赖 workspace tree 结构变更，避免遍历逻辑重复改造；当前启动恢复已覆盖重启后场景（软删除 atom 不被 `fetch_timed` 选中） |
-| Q3: Hook 数据来源（mutation 响应不含时间字段时如何获取完整 atom） | **复用 `note_get`** — 不新增 `atom_get` | `note_get` 返回 `AtomItemResponse` 已包含完整 `AtomListItem`（含时间字段），语义等价；避免增加 FFI 表面积 |
+| Q3: Hook 数据来源（mutation 响应不含时间字段时如何获取完整 atom） | **新增 `atom_get`** — `note_get` 仅返回 `view_hint='note'` 行，task/event 静默失败 | `atom_get` 通过 `TaskService.get_atom_record` 查询任意类型 atom（无 view_hint 过滤），返回标准 `AtomItemResponse`；初版使用 `note_get` 的 bug 已在同 PR 修复 |
