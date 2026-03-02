@@ -14,13 +14,6 @@ typedef WorkspaceCreateFolderInvoker =
       required String name,
     });
 
-typedef WorkspaceCreateAtomRefInvoker =
-    Future<rust_api.WorkspaceNodeResponse> Function({
-      String? parentNodeId,
-      required String atomId,
-      String? displayName,
-    });
-
 typedef WorkspaceRenameNodeInvoker =
     Future<rust_api.WorkspaceActionResponse> Function({
       required String nodeId,
@@ -41,7 +34,15 @@ typedef WorkspaceListChildrenInvoker =
 
 typedef WorkspacePrepare = Future<void> Function();
 
-typedef WorkspaceCreateNoteAndGetAtomId = Future<String?> Function();
+/// Result from workspace note creation, carrying error details for transparency.
+typedef WorkspaceCreateNoteResult = ({
+  String? atomId,
+  String? errorCode,
+  String? errorMessage,
+});
+
+typedef WorkspaceCreateNoteAndGetAtomId =
+    Future<WorkspaceCreateNoteResult> Function({String? parentNodeId});
 
 typedef WorkspaceFlushPendingSave = Future<bool> Function();
 

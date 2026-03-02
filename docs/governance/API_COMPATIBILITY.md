@@ -129,4 +129,9 @@ New error code: `invalid_time_range` — additive, no impact on existing callers
 **`CreationService` unified creation** (v0.3 PR-RB-03):
 - New `CreationService` in Rust Core unifies all creation paths (entry commands, note create, task create, event schedule).
 - Guarantees mandatory `atom_ref` accompaniment (S1 R5): every Atom gets a workspace reference at creation time.
-- This is an **internal refactor** — external FFI signatures are unchanged (except the additions above).
+- All three creation methods are wrapped in IMMEDIATE transactions for atomicity.
+
+**`note_create` signature extension** (v0.3 PR-RB-03):
+- `note_create(content)` → `note_create(content, parent_node_id?)`.
+- New optional `parent_node_id: Option<String>` places the auto-created `atom_ref` under the specified workspace folder. `None` / empty / omitted → root level (preserves previous behavior).
+- This is a **non-breaking additive change** — existing callers that pass only `content` are unaffected.

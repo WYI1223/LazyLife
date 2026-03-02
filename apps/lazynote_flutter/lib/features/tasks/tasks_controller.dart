@@ -32,7 +32,7 @@ typedef AtomUpdateStatusInvoker =
       String? status,
     });
 
-/// Async note creator for inline inbox creation.
+/// Async task creator for inline inbox creation.
 typedef InboxCreateInvoker =
     Future<rust_api.EntryActionResponse> Function({required String content});
 
@@ -153,7 +153,7 @@ class TasksController extends ChangeNotifier {
     }
   }
 
-  /// Creates a new inbox note with the given content.
+  /// Creates a new inbox task with the given content.
   ///
   /// On success, reloads inbox to reflect the new item.
   Future<bool> createInboxItem(String content) async {
@@ -377,7 +377,7 @@ Future<rust_api.EntryActionResponse> _defaultStatusInvoker({
 Future<rust_api.EntryActionResponse> _defaultCreateInvoker({
   required String content,
 }) {
-  return rust_api.entryCreateNote(content: content);
+  return rust_api.entryCreateTask(content: content);
 }
 
 Future<void> _defaultPrepare() async {

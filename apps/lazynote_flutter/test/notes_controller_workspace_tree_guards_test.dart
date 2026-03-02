@@ -28,7 +28,6 @@ NotesCoordinator _buildController({
   NoteCreateInvoker? noteCreateInvoker,
   WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
-  WorkspaceCreateAtomRefInvoker? workspaceCreateAtomRefInvoker,
   WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
   WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
@@ -63,7 +62,6 @@ NotesCoordinator _buildController({
     },
     workspaceDeleteFolderInvoker: workspaceDeleteFolderInvoker,
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
-    workspaceCreateAtomRefInvoker: workspaceCreateAtomRefInvoker,
     workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
     workspaceMoveNodeInvoker: workspaceMoveNodeInvoker,
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
@@ -246,7 +244,8 @@ void main() {
       };
       final controller = _buildController(
         store: store,
-        noteCreateInvoker: ({required content}) async {
+        noteCreateInvoker: ({required content, parentNodeId}) async {
+          linkedParentNodeId = parentNodeId;
           store[created.atomId] = created;
           return rust_api.AtomItemResponse(
             ok: true,
@@ -255,16 +254,6 @@ void main() {
             item: created,
           );
         },
-        workspaceCreateAtomRefInvoker:
-            ({parentNodeId, required atomId, displayName}) async {
-              linkedParentNodeId = parentNodeId;
-              return const rust_api.WorkspaceNodeResponse(
-                ok: true,
-                errorCode: null,
-                message: 'ok',
-                node: null,
-              );
-            },
       );
       addTearDown(controller.dispose);
       await controller.loadNotes();

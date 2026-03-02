@@ -96,3 +96,14 @@
 
 - 指定默认路径的持久化方式（settings.json vs 数据库配置表）
 - 待排期池（`/Pending/`）的具体实现方案
+
+---
+
+## v0.4 Addendum（DI-11 / DI-12，规划态）
+
+> 本节仅作为 v0.4 规划输入，不覆盖 v0.3 进行中的执行基线。
+
+1. 创建入口收敛目标：以 `atom_create` 作为规范入口，`note_create` 与 `entry_create_*` 作为兼容包装层。
+2. 创建事务内核不变：始终为 `insert atom` + `insert atom_ref`（同事务）。
+3. 路由口径规划：显式 `parent_node_id` > 意图上下文（task/calendar）> 默认兜底节点。
+4. DI-12 落地后，默认兜底与视图系统路由将从“root/null + designated mapping”收敛到“单根树 + 固定系统节点”。

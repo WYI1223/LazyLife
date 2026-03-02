@@ -16,7 +16,10 @@ typedef NoteGetInvoker =
 
 /// Async creator for one new note atom.
 typedef NoteCreateInvoker =
-    Future<rust_api.AtomItemResponse> Function({required String content});
+    Future<rust_api.AtomItemResponse> Function({
+      required String content,
+      String? parentNodeId,
+    });
 
 /// Async updater for persisted note content.
 typedef NoteUpdateInvoker =

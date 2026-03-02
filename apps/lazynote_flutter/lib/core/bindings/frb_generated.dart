@@ -127,7 +127,10 @@ abstract class RustLibApi extends BaseApi {
     required String message,
   });
 
-  Future<AtomItemResponse> crateApiNoteCreate({required String content});
+  Future<AtomItemResponse> crateApiNoteCreate({
+    required String content,
+    String? parentNodeId,
+  });
 
   Future<AtomItemResponse> crateApiNoteGet({required String atomId});
 
@@ -560,12 +563,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<AtomItemResponse> crateApiNoteCreate({required String content}) {
+  Future<AtomItemResponse> crateApiNoteCreate({
+    required String content,
+    String? parentNodeId,
+  }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(content, serializer);
+          sse_encode_opt_String(parentNodeId, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -578,14 +585,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: null,
         ),
         constMeta: kCrateApiNoteCreateConstMeta,
-        argValues: [content],
+        argValues: [content, parentNodeId],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiNoteCreateConstMeta =>
-      const TaskConstMeta(debugName: 'note_create', argNames: ['content']);
+  TaskConstMeta get kCrateApiNoteCreateConstMeta => const TaskConstMeta(
+    debugName: 'note_create',
+    argNames: ['content', 'parentNodeId'],
+  );
 
   @override
   Future<AtomItemResponse> crateApiNoteGet({required String atomId}) {

@@ -30,7 +30,7 @@
 | DI-9 | — | Entry Search 查询语义重设计 | S1 R3 | DEFERRED v0.4 |
 | DI-10 | [DI-10-editor-resolver-shell.md](DI-10-editor-resolver-shell.md) | EditorResolver 壳设计 | S2 Phase 3 | RESOLVED |
 | DI-11 | [DI-11-atomtype-rename-impact.md](DI-11-atomtype-rename-impact.md) | AtomType → ViewHint 枚举重命名影响 | S1 R3, PR-RB-02 D1 | RESOLVED |
-| DI-12 | [DI-12-workspace-tree-single-root.md](DI-12-workspace-tree-single-root.md) | Workspace Tree 单根化与系统语义锚点 | S1 R5/R6, S4 | OPEN |
+| DI-12 | [DI-12-workspace-tree-single-root.md](DI-12-workspace-tree-single-root.md) | Workspace Tree 单根化与系统语义锚点 | S1 R5/R6, S4 | RESOLVED |
 
 ---
 

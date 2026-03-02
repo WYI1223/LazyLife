@@ -488,12 +488,14 @@ fn wire__crate__api__note_create_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_content = <String>::sse_decode(&mut deserializer);
+            let api_parent_node_id = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, ()>(
                     (move || async move {
-                        let output_ok =
-                            Result::<_, ()>::Ok(crate::api::note_create(api_content).await)?;
+                        let output_ok = Result::<_, ()>::Ok(
+                            crate::api::note_create(api_content, api_parent_node_id).await,
+                        )?;
                         Ok(output_ok)
                     })()
                     .await,

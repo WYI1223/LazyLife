@@ -75,7 +75,7 @@ This PR integrates selected Dart call sites and does not change FFI shape.
 
 All APIs are use-case level and async.
 
-- `note_create(content)`
+- `note_create(content, parent_node_id?)`
 - `note_update(atom_id, content)` (full replace)
 - `note_get(atom_id)`
 - `notes_list(tag?, limit?, offset?)`
@@ -251,7 +251,7 @@ This milestone extends explorer interactions while reusing existing contracts.
 - no new FFI stable error-code namespace
 - uses existing workspace/note APIs for action execution:
   - folder create: `workspace_create_folder(parent_node_id?, name)`
-  - note create in folder: `note_create(content)` + `workspace_create_atom_ref(parent_node_id?, atom_id, display_name?)`
+  - note create in folder: `note_create(content, parent_node_id?)` (single call — atom + atom_ref created atomically)
   - rename (folder-only in v0.2 policy): `workspace_rename_node(node_id, new_name)`
   - move: `workspace_move_node(node_id, new_parent_id?, target_order?)`
 - UI-local guard rules (M1 frozen):
