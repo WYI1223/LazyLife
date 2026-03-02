@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_manager.dart';
+import 'package:lazynote_flutter/features/notes/managers/note_tag_manager_types.dart';
 
 rust_api.AtomListItem _note({
   required String atomId,

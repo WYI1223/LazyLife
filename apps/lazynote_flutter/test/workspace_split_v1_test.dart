@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/core/workspace/workspace_provider.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_page.dart';
 
@@ -24,16 +23,13 @@ rust_api.AtomListItem _note({
   );
 }
 
-NotesCoordinator _buildController({
-  required WorkspaceProvider workspaceProvider,
-}) {
+NotesCoordinator _buildController() {
   final store = <String, rust_api.AtomListItem>{
     'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 2),
     'note-2': _note(atomId: 'note-2', content: '# two', updatedAt: 1),
     'note-3': _note(atomId: 'note-3', content: '# three', updatedAt: 0),
   };
   return NotesCoordinator(
-    workspaceProvider: workspaceProvider,
     prepare: () async {},
     notesListInvoker: ({tag, limit, offset}) async {
       return rust_api.AtomListResponse(
@@ -63,10 +59,8 @@ void main() {
   testWidgets('split commands are wired and show success feedback', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -86,36 +80,8 @@ void main() {
     await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
     await tester.pump();
 
-    expect(workspaceProvider.layoutState.paneOrder.length, 2);
+    expect(controller.editorShellService.paneCount, 2);
     expect(find.text('Split created. 2 panes ready.'), findsOneWidget);
-  });
-
-  testWidgets('split rejects mixed direction with explicit feedback', (
-    WidgetTester tester,
-  ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
-    addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
-
-    await tester.pumpWidget(
-      _wrapWithMaterial(NotesPage(controller: controller)),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
-    await tester.pump();
-    expect(workspaceProvider.layoutState.paneOrder.length, 2);
-
-    await tester.tap(find.byKey(const Key('notes_split_vertical_button')));
-    await tester.pump();
-
-    expect(workspaceProvider.layoutState.paneOrder.length, 2);
-    expect(
-      find.text('Cannot split: v0.2 keeps one split direction per workspace.'),
-      findsOneWidget,
-    );
   });
 
   testWidgets('split rejects when min-size would be violated', (
@@ -128,10 +94,8 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -142,7 +106,7 @@ void main() {
     await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
     await tester.pump();
 
-    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.editorShellService.paneCount, 1);
     expect(
       find.text('Cannot split: each pane must stay at least 200px.'),
       findsOneWidget,
@@ -152,10 +116,8 @@ void main() {
   testWidgets('next pane command switches visible tab routing', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -188,10 +150,8 @@ void main() {
   testWidgets('next pane command on single-pane shows no-op feedback', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -199,24 +159,22 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.editorShellService.paneCount, 1);
     expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('notes_next_pane_button')));
     await tester.pump();
 
     expect(find.text('Only one pane is available.'), findsOneWidget);
-    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.editorShellService.paneCount, 1);
     expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
   });
 
   testWidgets('close pane command on single-pane shows blocked feedback', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -224,7 +182,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.editorShellService.paneCount, 1);
     await tester.tap(find.byKey(const Key('notes_close_pane_button')));
     await tester.pump();
 
@@ -232,16 +190,14 @@ void main() {
       find.text('Cannot close pane: only one pane is available.'),
       findsOneWidget,
     );
-    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.editorShellService.paneCount, 1);
   });
 
   testWidgets('close pane command merges active pane into adjacent pane', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -252,7 +208,7 @@ void main() {
     await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
     await tester.pump();
     await tester.pump();
-    expect(workspaceProvider.layoutState.paneOrder.length, 2);
+    expect(controller.editorShellService.paneCount, 2);
 
     await tester.tap(find.byKey(const Key('notes_list_item_note-2')));
     await tester.pump();
@@ -263,7 +219,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(workspaceProvider.layoutState.paneOrder.length, 1);
+    expect(controller.editorShellService.paneCount, 1);
     expect(controller.activeNoteId, 'note-2');
     expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
     expect(find.text('Pane closed. 1 remaining.'), findsOneWidget);
@@ -272,10 +228,8 @@ void main() {
   testWidgets('Ctrl+Tab stays pane-local in split mode', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -314,10 +268,8 @@ void main() {
   testWidgets('Ctrl+Shift+Tab stays pane-local in split mode', (
     WidgetTester tester,
   ) async {
-    final workspaceProvider = WorkspaceProvider();
-    final controller = _buildController(workspaceProvider: workspaceProvider);
+    final controller = _buildController();
     addTearDown(controller.dispose);
-    addTearDown(workspaceProvider.dispose);
 
     await tester.pumpWidget(
       _wrapWithMaterial(NotesPage(controller: controller)),
@@ -333,19 +285,20 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(controller.activeNoteId, 'note-2');
-    expect(controller.workspaceProvider.activePaneId, isNot('pane.primary'));
+    final editor = controller.editorShellService;
+    expect(editor.activeGroupId, isNot(editor.primaryGroupId));
 
     await tester.tap(find.byKey(const Key('notes_next_pane_button')));
     await tester.pump();
     await tester.pump();
-    expect(controller.workspaceProvider.activePaneId, 'pane.primary');
+    expect(editor.activeGroupId, editor.primaryGroupId);
     expect(controller.activeNoteId, 'note-1');
 
     await tester.tap(find.byKey(const Key('notes_list_item_note-3')));
     await tester.pump();
     await tester.pump();
     expect(controller.activeNoteId, 'note-3');
-    expect(controller.workspaceProvider.activePaneId, 'pane.primary');
+    expect(editor.activeGroupId, editor.primaryGroupId);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -356,7 +309,7 @@ void main() {
     await tester.pump();
 
     // Why: reverse tab cycle should stay within active-pane tab set.
-    expect(controller.workspaceProvider.activePaneId, 'pane.primary');
+    expect(editor.activeGroupId, editor.primaryGroupId);
     expect(controller.activeNoteId, 'note-1');
     expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
   });

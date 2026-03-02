@@ -2,22 +2,9 @@ part of 'notes_coordinator.dart';
 
 /// Stateful controller for Notes page list/detail baseline.
 ///
-/// Contract:
-/// - Owns list + detail lifecycle state for Notes shell.
-/// - Handles tab-open/activate/close operations in-memory.
-/// - Calls [notifyListeners] after every externally visible state transition.
+/// PR-RB-06: tab/draft/save state extracted into [EditorShellService].
+/// Coordinator retains list, tag, workspace-tree, and detail orchestration.
 class _NotesCoordinatorImpl extends ChangeNotifier {
-  /// Creates controller with injectable bridge hooks for testability.
-  ///
-  /// Input semantics:
-  /// - [notesListInvoker]: loads list snapshot (`notes_list` contract).
-  /// - [noteGetInvoker]: loads one note detail (`note_get` contract).
-  /// - [noteCreateInvoker]: creates one new note (`note_create` contract).
-  /// - [noteUpdateInvoker]: persists full content replacement (`note_update`).
-  /// - [debounceTimerFactory]: timer scheduler used by autosave debounce.
-  /// - [prepare]: prerequisite hook before each bridge request.
-  /// - [listLimit]: requested list page size for C1 baseline.
-  /// - [autosaveDebounce]: quiet window before autosave starts.
   _NotesCoordinatorImpl({
     NotesListInvoker? notesListInvoker,
     NoteGetInvoker? noteGetInvoker,
@@ -30,23 +17,22 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
     WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
     WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
-    WorkspaceProvider? workspaceProvider,
     DebounceTimerFactory? debounceTimerFactory,
     NotesPrepare? prepare,
     this.listLimit = 50,
-    this.autosaveDebounce = const Duration(milliseconds: 1500),
     ReminderLifecycle? reminderLifecycle,
+    Duration? autosaveDebounce,
   }) : _noteCreateInvoker = noteCreateInvoker ?? _defaultNoteCreateInvoker,
        _noteUpdateInvoker = noteUpdateInvoker ?? _defaultNoteUpdateInvoker,
        _noteSetTagsInvoker = noteSetTagsInvoker ?? _defaultNoteSetTagsInvoker,
+       _noteGetInvoker = noteGetInvoker ?? _defaultNoteGetInvoker,
        _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
+       _autosaveDebounce = autosaveDebounce,
        _reminderLifecycle = reminderLifecycle ?? ReminderLifecycle.instance,
        _prepare = prepare ?? _defaultPrepare {
     final resolvedNotesListInvoker =
         notesListInvoker ?? _defaultNotesListInvoker;
-    final resolvedNoteGetInvoker = noteGetInvoker ?? _defaultNoteGetInvoker;
     final resolvedTagsListInvoker = tagsListInvoker ?? _defaultTagsListInvoker;
-    final resolvedNoteSetTagsInvoker = _noteSetTagsInvoker;
     final resolvedWorkspaceDeleteFolderInvoker =
         workspaceDeleteFolderInvoker ?? _defaultWorkspaceDeleteFolderInvoker;
     final resolvedWorkspaceCreateFolderInvoker =
@@ -58,57 +44,39 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     final resolvedWorkspaceListChildrenInvoker =
         workspaceListChildrenInvoker ?? _defaultWorkspaceListChildrenInvoker;
 
-    _workspaceProvider = workspaceProvider ?? WorkspaceProvider();
-    _ownsWorkspaceProvider = workspaceProvider == null;
-    _noteSaveTracker = NoteSaveTracker(timerFactory: _debounceTimerFactory);
-    _noteSaveTracker.addListener(_handleNoteSaveTrackerChanged);
     _noteListManager = NoteListManager(
       notesListInvoker: resolvedNotesListInvoker,
-      noteGetInvoker: resolvedNoteGetInvoker,
+      noteGetInvoker: _noteGetInvoker,
       prepare: _prepare,
       envelopeError: _envelopeError,
       selectedTag: () => selectedTag,
-      shouldIncludeInVisibleList: _shouldIncludeInVisibleList,
+      shouldIncludeInVisibleList: (note) =>
+          _noteTagManager.shouldIncludeInVisibleList(note),
       isDirty: _isDirty,
-      syncPersistedSnapshot: _syncPersistedSnapshot,
+      syncPersistedSnapshot:
+          ({
+            required String atomId,
+            required String content,
+            required bool wasDirty,
+          }) {
+            // EditBuffer is the single source of truth for content once opened.
+            // No sync needed — buffer initializes with content when tab opens.
+          },
     );
     _noteListManager.addListener(_handleNoteListManagerChanged);
-    _noteDraftManager = NoteDraftManager(
-      noteUpdateInvoker: _noteUpdateInvoker,
-      prepare: _prepare,
-      activeNoteId: () => _activeNoteId,
-      noteById: _noteListManager.cachedNoteById,
-      withContent: _withContent,
-      upsertNote: _noteListManager.upsertNote,
-      envelopeError: _envelopeError,
-      applySaveState: _setSaveState,
-      setSaveError: (message) =>
-          _noteSaveTracker.setErrorMessage(message, notify: false),
-      onActiveSaveSuccess: (atomId) {
-        _selectedNote = _noteListManager.cachedNoteById(atomId);
-        _switchBlockErrorMessage = null;
-      },
+
+    _editorShellService = EditorShellService(
+      loadContentFn: _loadNoteContentFromFFI,
+      persistFn: _persistNoteContent,
+      onBufferSaved: _handleBufferSaved,
       timerFactory: _debounceTimerFactory,
-      autosaveDebounce: autosaveDebounce,
+      autosaveDebounce: _autosaveDebounce,
     );
-    _noteDraftManager.addListener(_handleNoteDraftManagerChanged);
-    _noteTabManager = NoteTabStateManager(
-      initialPaneId: _workspaceProvider.activePaneId,
-      canReuseSelection: _canReuseSelection,
-      activeNoteId: () => _activeNoteId,
-      activateSelection: _activateSelection,
-      clearSelection: _clearSelection,
-      loadSelectedDetail: (atomId) => _loadSelectedDetail(atomId: atomId),
-      flushPendingSave: flushPendingSave,
-      hasPendingSaveFor: _hasPendingSaveFor,
-      evictNoteState: _evictNoteState,
-      scopedOpenNoteIds: () => openNoteIds,
-      scopedActiveNoteId: () => activeNoteId,
-    );
-    _noteTabManager.addListener(_handleNoteTabManagerChanged);
+    _editorShellService.addListener(_handleEditorShellChanged);
+
     _noteTagManager = NoteTagManager(
       tagsListInvoker: resolvedTagsListInvoker,
-      noteSetTagsInvoker: resolvedNoteSetTagsInvoker,
+      noteSetTagsInvoker: _noteSetTagsInvoker,
       prepare: _prepare,
       envelopeError: _envelopeError,
       flushPendingSave: flushPendingSave,
@@ -121,20 +89,21 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
             );
             return _noteListManager.listPhase != NotesListPhase.error;
           },
-      activeNoteId: () => _activeNoteId,
+      activeNoteId: () => activeNoteId,
       noteById: (atomId) => _noteListManager.noteById(atomId) ?? _selectedNote,
       upsertNote: _noteListManager.upsertNote,
       isDirty: _isDirty,
       setSaveState: _setSaveState,
-      setSaveError: (message) =>
-          _noteSaveTracker.setErrorMessage(message, notify: false),
+      setSaveError: (message) {
+        _saveErrorMessage = message;
+      },
       onActiveNoteUpdated: ({required atomId, required note}) {
         _selectedNote = note;
-        _activeDraftContent = _draftContentByAtomId[atomId] ?? note.content;
         _switchBlockErrorMessage = null;
       },
     );
     _noteTagManager.addListener(_handleNoteTagManagerChanged);
+
     _workspaceTreeService = WorkspaceTreeService(
       workspaceDeleteFolderInvoker: resolvedWorkspaceDeleteFolderInvoker,
       workspaceCreateFolderInvoker: resolvedWorkspaceCreateFolderInvoker,
@@ -151,368 +120,477 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _workspaceTreeService.addListener(_handleWorkspaceTreeServiceChanged);
   }
 
+  // ── Injected closures ──────────────────────────────────────────────
+
   final NoteCreateInvoker _noteCreateInvoker;
   final NoteUpdateInvoker _noteUpdateInvoker;
   final NoteSetTagsInvoker _noteSetTagsInvoker;
+  final NoteGetInvoker _noteGetInvoker;
   final DebounceTimerFactory _debounceTimerFactory;
+  final Duration? _autosaveDebounce;
   final ReminderLifecycle _reminderLifecycle;
   final NotesPrepare _prepare;
-  late final WorkspaceProvider _workspaceProvider;
-  late final bool _ownsWorkspaceProvider;
-  late final NoteSaveTracker _noteSaveTracker;
+
+  // ── Composed services ──────────────────────────────────────────────
+
+  late final EditorShellService _editorShellService;
   late final NoteListManager _noteListManager;
-  late final NoteDraftManager _noteDraftManager;
-  late final NoteTabStateManager _noteTabManager;
   late final NoteTagManager _noteTagManager;
   late final WorkspaceTreeService _workspaceTreeService;
 
   /// Requested list limit for C1 list baseline.
   final int listLimit;
 
-  /// Debounce window used by autosave pipeline.
-  final Duration autosaveDebounce;
+  // ── Detail state ───────────────────────────────────────────────────
 
   rust_api.AtomListItem? _selectedNote;
   bool _detailLoading = false;
   String? _detailErrorMessage;
+
+  // ── Create state ───────────────────────────────────────────────────
+
   bool _creatingNote = false;
   String? _createErrorCode;
   String? _createErrorMessage;
   String? _createWarningMessage;
   Future<void>? _createTagApplyFuture;
 
-  String? _activeNoteId;
-  final Map<String, String?> _activeNoteIdByPane = <String, String?>{};
+  // ── Save state (coordinator-level for badge + tag integration) ─────
+
+  NoteSaveState _noteSaveState = NoteSaveState.clean;
+  String? _saveErrorMessage;
+  bool _showSavedBadge = false;
+  Timer? _savedBadgeTimer;
+
+  // ── Misc state ─────────────────────────────────────────────────────
+
   int _editorFocusRequestId = 0;
   String? _switchBlockErrorMessage;
-
   int _detailRequestId = 0;
   bool _disposed = false;
 
-  /// Current list phase.
+  // ── Public getters: list ───────────────────────────────────────────
+
   NotesListPhase get listPhase => _noteListManager.listPhase;
-
-  /// Current list items from `notes_list`.
   List<rust_api.AtomListItem> get items => _noteListManager.items;
-
-  /// Current list-level error message.
   String? get listErrorMessage => _noteListManager.listErrorMessage;
 
-  /// Whether tag catalog request is currently in flight.
+  // ── Public getters: tags ───────────────────────────────────────────
+
   bool get tagsLoading => _noteTagManager.tagsLoading;
-
-  /// Normalized tags sorted alphabetically for filter UI.
   List<String> get availableTags => _noteTagManager.availableTags;
-
-  /// Current tag catalog failure message.
   String? get tagsErrorMessage => _noteTagManager.tagsErrorMessage;
-
-  /// Currently selected single-tag filter (`null` means unfiltered).
   String? get selectedTag => _noteTagManager.selectedTag;
 
-  /// Currently selected note atom id.
-  String? get selectedAtomId => _activeNoteId;
+  // ── Public getters: tabs (derived from EditorShellService) ─────────
 
-  /// Currently active tab note id.
-  String? get activeNoteId => _activeNoteId;
+  String? get activeNoteId => _editorShellService.activeGroup?.activeAtomId;
 
-  /// Current preview tab id (replaced by next explorer-open unless pinned).
-  String? get previewTabId => _noteTabManager.previewTabId;
+  String? get selectedAtomId => activeNoteId;
 
-  /// Currently opened tab ids in order (reads from NoteTabStateManager).
   List<String> get openNoteIds {
-    return _noteTabManager.openNoteIdsForPane(_workspaceProvider.activePaneId);
+    final group = _editorShellService.activeGroup;
+    if (group == null) return const [];
+    return group.tabs.map((t) => t.atomId).toList();
   }
 
-  /// Whether one tab is currently marked as preview.
-  bool isPreviewTab(String atomId) => _noteTabManager.isPreviewTab(atomId);
+  String? get previewTabId => _editorShellService.activeGroup?.previewTabId;
 
-  /// Selected note detail payload used by right pane.
+  bool isPreviewTab(String atomId) => previewTabId == atomId;
+
+  // ── Public getters: detail ─────────────────────────────────────────
+
   rust_api.AtomListItem? get selectedNote => _selectedNote;
-
-  /// Whether selected-note detail load is in flight.
   bool get detailLoading => _detailLoading;
-
-  /// Current selected-note detail load error.
   String? get detailErrorMessage => _detailErrorMessage;
 
-  /// Whether a create-note request is currently in flight.
+  // ── Public getters: create ─────────────────────────────────────────
+
   bool get creatingNote => _creatingNote;
-
-  /// Current create-note failure message.
   String? get createErrorMessage => _createErrorMessage;
-
-  /// Non-fatal create warning (e.g. contextual tag apply failed).
   String? get createWarningMessage => _createWarningMessage;
-
-  /// Whether contextual create-tag apply is currently in flight.
   bool get createTagApplyInFlight => _createTagApplyFuture != null;
 
-  /// Whether workspace folder delete request is currently in flight.
-  bool get workspaceDeleteInFlight =>
-      _workspaceTreeService.workspaceDeleteInFlight;
+  // ── Public getters: save state ─────────────────────────────────────
 
-  /// Last workspace folder delete failure message.
-  String? get workspaceDeleteErrorMessage =>
-      _workspaceTreeService.workspaceDeleteErrorMessage;
-
-  /// Whether workspace folder create request is currently in flight.
-  bool get workspaceCreateFolderInFlight =>
-      _workspaceTreeService.workspaceCreateFolderInFlight;
-
-  /// Last workspace folder create failure message.
-  String? get workspaceCreateFolderErrorMessage =>
-      _workspaceTreeService.workspaceCreateFolderErrorMessage;
-
-  /// Whether workspace node mutation request is currently in flight.
-  bool get workspaceNodeMutationInFlight =>
-      _workspaceTreeService.workspaceNodeMutationInFlight;
-
-  /// Last workspace node mutation failure message.
-  String? get workspaceNodeMutationErrorMessage =>
-      _workspaceTreeService.workspaceNodeMutationErrorMessage;
-
-  /// Monotonic revision bump for explorer tree refresh triggers.
-  int get workspaceTreeRevision => _workspaceTreeService.workspaceTreeRevision;
-
-  /// Workspace state owner used by Notes bridge (M2).
-  WorkspaceProvider get workspaceProvider => _workspaceProvider;
-
-  /// Splits current active pane and keeps controller/editor routing aligned.
-  WorkspaceSplitResult splitActivePane({
-    required WorkspaceSplitDirection direction,
-    required double containerExtent,
-  }) {
-    _activeNoteIdByPane[_workspaceProvider.activePaneId] = _activeNoteId;
-    final result = _workspaceProvider.splitActivePane(
-      direction: direction,
-      containerExtent: containerExtent,
-    );
-    if (result != WorkspaceSplitResult.ok) {
-      return result;
-    }
-    final newPaneId = _workspaceProvider.activePaneId;
-    _noteTabManager.addPane(newPaneId);
-    _noteTabManager.switchPane(newPaneId);
-    _adoptWorkspaceActivePaneState(loadDetail: false);
-    notifyListeners();
-    return result;
-  }
-
-  /// Closes active pane and merges it into adjacent pane.
-  WorkspaceMergeResult closeActivePane() {
-    final closingPaneId = _workspaceProvider.activePaneId;
-    final closingActiveId = _activeNoteId;
-    final result = _workspaceProvider.closeActivePane();
-    if (result != WorkspaceMergeResult.ok) {
-      return result;
-    }
-    final targetPaneId = _workspaceProvider.activePaneId;
-    _activeNoteIdByPane.remove(closingPaneId);
-    // Carry closing pane's active note into target pane so it stays active
-    // after merge (matches old WP merge behavior).
-    if (closingActiveId != null) {
-      _activeNoteIdByPane[targetPaneId] = closingActiveId;
-    }
-    _noteTabManager.removePane(closingPaneId, mergeToPaneId: targetPaneId);
-    _noteTabManager.switchPane(targetPaneId);
-    _adoptWorkspaceActivePaneState(loadDetail: false);
-    notifyListeners();
-    return result;
-  }
-
-  /// Switches active pane pointer and refreshes active editor target.
-  bool switchActivePane(String paneId) {
-    if (!_workspaceProvider.layoutState.paneOrder.contains(paneId)) {
-      return false;
-    }
-    _activeNoteIdByPane[_workspaceProvider.activePaneId] = _activeNoteId;
-    _workspaceProvider.switchActivePane(paneId);
-    _noteTabManager.switchPane(paneId);
-    _adoptWorkspaceActivePaneState();
-    return true;
-  }
-
-  /// Cycles active pane focus in layout order.
-  void activateNextPane() {
-    final order = _workspaceProvider.layoutState.paneOrder;
-    if (order.length <= 1) {
-      return;
-    }
-    final currentIndex = order.indexOf(_workspaceProvider.activePaneId);
-    if (currentIndex < 0) {
-      return;
-    }
-    final nextPaneId = order[(currentIndex + 1) % order.length];
-    switchActivePane(nextPaneId);
-  }
-
-  /// Returns and clears the latest non-fatal create warning.
-  String? takeCreateWarningMessage() {
-    final warning = _createWarningMessage;
-    _createWarningMessage = null;
-    return warning;
-  }
-
-  /// Save lifecycle state for active note.
-  NoteSaveState get noteSaveState => _noteSaveTracker.noteSaveState;
-
-  /// Last save error message for active note.
-  String? get saveErrorMessage => _noteSaveTracker.saveErrorMessage;
-
-  /// Whether success badge should be visible for active note.
-  bool get showSavedBadge => _noteSaveTracker.showSavedBadge;
-
-  /// Banner message shown when note switch is blocked by flush failure.
+  NoteSaveState get noteSaveState => _noteSaveState;
+  String? get saveErrorMessage => _saveErrorMessage;
+  bool get showSavedBadge => _showSavedBadge;
   String? get switchBlockErrorMessage => _switchBlockErrorMessage;
 
-  /// Whether active note has pending save work before app close.
-  ///
-  /// Includes dirty drafts and in-flight save requests for all open tabs.
+  // ── Public getters: workspace ──────────────────────────────────────
+
+  bool get workspaceDeleteInFlight =>
+      _workspaceTreeService.workspaceDeleteInFlight;
+  String? get workspaceDeleteErrorMessage =>
+      _workspaceTreeService.workspaceDeleteErrorMessage;
+  bool get workspaceCreateFolderInFlight =>
+      _workspaceTreeService.workspaceCreateFolderInFlight;
+  String? get workspaceCreateFolderErrorMessage =>
+      _workspaceTreeService.workspaceCreateFolderErrorMessage;
+  bool get workspaceNodeMutationInFlight =>
+      _workspaceTreeService.workspaceNodeMutationInFlight;
+  String? get workspaceNodeMutationErrorMessage =>
+      _workspaceTreeService.workspaceNodeMutationErrorMessage;
+  int get workspaceTreeRevision => _workspaceTreeService.workspaceTreeRevision;
+
+  // ── Public getters: editor service ─────────────────────────────────
+
+  EditorShellService get editorShellService => _editorShellService;
+
   bool get hasPendingSaveWork {
-    if (_createTagApplyFuture != null) {
-      return true;
-    }
-    if (_activeNoteId case final active?) {
-      if (_hasPendingSaveFor(active)) {
-        return true;
-      }
-    }
-    for (final atomId in _noteTabManager.allOpenNoteIds) {
-      if (_hasPendingSaveFor(atomId)) {
-        return true;
-      }
+    if (_createTagApplyFuture != null) return true;
+    if (_editorShellService.hasPendingSaveWork) return true;
+    if (activeNoteId case final active?) {
+      if (_noteTagManager.hasPendingTagWorkFor(active)) return true;
     }
     return false;
   }
 
-  /// Monotonic token used by UI to request editor focus.
   int get editorFocusRequestId => _editorFocusRequestId;
 
-  /// In-memory draft content for active editor instance.
   String get activeDraftContent {
-    if (_activeNoteId == null) {
-      return '';
-    }
-    final atomId = _activeNoteId!;
-    if (_draftContentByAtomId[atomId] case final draft?) {
-      return draft;
-    }
-    if (_activeDraftAtomId == atomId) {
-      return _activeDraftContent;
-    }
-    return _selectedNote?.content ?? '';
+    final atomId = activeNoteId;
+    if (atomId == null) return '';
+    return _editorShellService.bufferFor(atomId)?.content ??
+        _selectedNote?.content ??
+        '';
   }
 
-  /// Returns one cached/list note by id when available.
-  rust_api.AtomListItem? noteById(String atomId) {
-    return _noteListManager.noteById(atomId);
-  }
+  rust_api.AtomListItem? noteById(String atomId) =>
+      _noteListManager.noteById(atomId);
 
-  Map<String, String> get _draftContentByAtomId =>
-      _noteDraftManager.draftContentByAtomId;
-
-  Map<String, String> get _persistedContentByAtomId =>
-      _noteDraftManager.persistedContentByAtomId;
-
-  Map<String, int> get _draftVersionByAtomId =>
-      _noteDraftManager.draftVersionByAtomId;
-
-  Map<String, Future<bool>> get _saveFutureByAtomId =>
-      _noteDraftManager.saveFutureByAtomId;
-
-  Map<String, bool> get _saveQueuedByAtomId =>
-      _noteDraftManager.saveQueuedByAtomId;
-
-  String? get _activeDraftAtomId => _noteDraftManager.activeDraftAtomId;
-  set _activeDraftAtomId(String? value) {
-    _noteDraftManager.activeDraftAtomId = value;
-  }
-
-  String get _activeDraftContent => _noteDraftManager.activeDraftContent;
-  set _activeDraftContent(String value) {
-    _noteDraftManager.activeDraftContent = value;
-  }
-
-  Timer? get _autosaveTimer => _noteDraftManager.autosaveTimer;
-
-  void _handleNoteSaveTrackerChanged() {
-    if (_disposed) {
-      return;
-    }
-    notifyListeners();
-  }
-
-  void _handleNoteListManagerChanged() {
-    if (_disposed) {
-      return;
-    }
-    notifyListeners();
-  }
-
-  void _handleNoteDraftManagerChanged() {
-    if (_disposed) {
-      return;
-    }
-    notifyListeners();
-  }
-
-  void _handleNoteTabManagerChanged() {
-    if (_disposed) {
-      return;
-    }
-    notifyListeners();
-  }
-
-  void _handleNoteTagManagerChanged() {
-    if (_disposed) {
-      return;
-    }
-    notifyListeners();
-  }
-
-  void _handleWorkspaceTreeServiceChanged() {
-    if (_disposed) {
-      return;
-    }
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    _noteListManager.removeListener(_handleNoteListManagerChanged);
-    _noteDraftManager.removeListener(_handleNoteDraftManagerChanged);
-    _noteTabManager.removeListener(_handleNoteTabManagerChanged);
-    _noteTagManager.removeListener(_handleNoteTagManagerChanged);
-    _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
-    _workspaceTreeService.removeListener(_handleWorkspaceTreeServiceChanged);
-    _noteListManager.dispose();
-    _noteDraftManager.dispose();
-    _noteTabManager.dispose();
-    _noteTagManager.dispose();
-    _workspaceTreeService.dispose();
-    _noteSaveTracker.dispose();
-    if (_ownsWorkspaceProvider) {
-      _workspaceProvider.dispose();
-    }
-    super.dispose();
-  }
-
-  /// Tab title projection used by tab manager.
   String titleForTab(String atomId) {
     final item = noteById(atomId);
-    if (item == null) {
-      return 'Untitled';
-    }
+    if (item == null) return 'Untitled';
     return item.title.isNotEmpty ? item.title : 'Untitled';
   }
 
-  /// Loads notes baseline and tag catalog on initial page entry.
-  ///
-  /// Side effects:
-  /// - Resets existing tab/detail state before reloading.
-  /// - Opens first loaded note as active tab when available.
+  // ── Tab operations ─────────────────────────────────────────────────
+
+  Future<bool> selectNote(String atomId) async {
+    if (_canReuseSelection(atomId)) return true;
+    if (activeNoteId case final currentId? when currentId != atomId) {
+      final flushed = await flushPendingSave();
+      if (!flushed) return false;
+    }
+    _openAndActivateTab(atomId);
+    notifyListeners();
+    await _loadSelectedDetail(atomId: atomId);
+    return true;
+  }
+
+  Future<bool> activateOpenNote(String atomId) => selectNote(atomId);
+
+  Future<void> activateNextOpenNote() async {
+    final ids = openNoteIds;
+    final current = activeNoteId;
+    if (ids.length <= 1 || current == null) return;
+    final index = ids.indexOf(current);
+    if (index < 0) return;
+    await activateOpenNote(ids[(index + 1) % ids.length]);
+  }
+
+  Future<void> activatePreviousOpenNote() async {
+    final ids = openNoteIds;
+    final current = activeNoteId;
+    if (ids.length <= 1 || current == null) return;
+    final index = ids.indexOf(current);
+    if (index < 0) return;
+    await activateOpenNote(ids[(index - 1 + ids.length) % ids.length]);
+  }
+
+  Future<bool> closeOpenNote(String atomId) async {
+    final group = _editorShellService.activeGroup;
+    if (group == null || !group.containsAtom(atomId)) return false;
+    if (activeNoteId == atomId) {
+      final flushed = await flushPendingSave();
+      if (!flushed) return false;
+    }
+
+    final groupId = _editorShellService.activeGroupId;
+    await _editorShellService.closeTab(groupId, atomId);
+
+    // If we closed the active note, adopt the new active tab
+    final newActiveId = _editorShellService.activeGroup?.activeAtomId;
+    if (newActiveId != null && newActiveId != atomId) {
+      _selectedNote = noteById(newActiveId);
+      _updateSaveStateFromBuffer();
+      _requestEditorFocus();
+      notifyListeners();
+      await _loadSelectedDetail(atomId: newActiveId);
+    } else if (newActiveId == null) {
+      _clearSelection();
+      notifyListeners();
+    }
+    return true;
+  }
+
+  Future<bool> closeOtherOpenNotes(String atomId) async {
+    final group = _editorShellService.activeGroup;
+    if (group == null || !group.containsAtom(atomId)) return false;
+    final switched = await activateOpenNote(atomId);
+    if (!switched) return false;
+
+    final groupId = _editorShellService.activeGroupId;
+    final toClose = group.tabs
+        .where((t) => t.atomId != atomId)
+        .map((t) => t.atomId)
+        .toList();
+    for (final id in toClose) {
+      await _editorShellService.closeTab(groupId, id);
+    }
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> closeOpenNotesToRight(String atomId) async {
+    final group = _editorShellService.activeGroup;
+    if (group == null) return false;
+    final tabs = group.tabs;
+    final index = tabs.indexWhere((t) => t.atomId == atomId);
+    if (index < 0 || index == tabs.length - 1) return true;
+
+    final willPruneActive =
+        activeNoteId != null &&
+        tabs.indexWhere((t) => t.atomId == activeNoteId) > index;
+    if (willPruneActive) {
+      final flushed = await flushPendingSave();
+      if (!flushed) return false;
+    }
+
+    final groupId = _editorShellService.activeGroupId;
+    final toClose = tabs.sublist(index + 1).map((t) => t.atomId).toList();
+    for (final id in toClose) {
+      await _editorShellService.closeTab(groupId, id);
+    }
+    if (willPruneActive) {
+      _openAndActivateTab(atomId);
+      notifyListeners();
+      await _loadSelectedDetail(atomId: atomId);
+    } else {
+      notifyListeners();
+    }
+    return true;
+  }
+
+  Future<bool> openNoteFromExplorer(String atomId) async {
+    final group = _editorShellService.activeGroup;
+    if (group == null) return false;
+    final alreadyOpened = group.containsAtom(atomId);
+
+    if (!alreadyOpened) {
+      final previousPreviewId = group.previewTabId;
+      if (previousPreviewId != null && previousPreviewId != atomId) {
+        if (!_hasPendingSaveFor(previousPreviewId)) {
+          return _selectFromExplorerByReplacingPreview(
+            atomId: atomId,
+            previewId: previousPreviewId,
+          );
+        }
+        group.pinPreviewTab(previousPreviewId);
+      }
+    }
+
+    if (!alreadyOpened) {
+      // Flush current draft before activating new tab, because
+      // _openAndActivateTab changes activeNoteId and selectNote's
+      // flush check uses activeNoteId.
+      if (activeNoteId case final currentId? when currentId != atomId) {
+        final flushed = await flushPendingSave();
+        if (!flushed) return false;
+      }
+      _openAndActivateTab(atomId);
+      group.setPreviewTab(atomId);
+    }
+    final switched = await selectNote(atomId);
+    if (!switched && !alreadyOpened) {
+      group.pinPreviewTab(atomId);
+    }
+    return switched;
+  }
+
+  Future<bool> openNoteFromExplorerPinned(String atomId) async {
+    if (activeNoteId == atomId) {
+      _editorShellService.activeGroup?.pinPreviewTab(atomId);
+      return true;
+    }
+    final group = _editorShellService.activeGroup;
+    if (group != null && group.containsAtom(atomId)) {
+      final switched = await selectNote(atomId);
+      if (!switched) return false;
+      group.pinPreviewTab(atomId);
+      return true;
+    }
+    final opened = await openNoteFromExplorer(atomId);
+    if (!opened) return false;
+    _editorShellService.activeGroup?.pinPreviewTab(atomId);
+    return true;
+  }
+
+  void pinPreviewTab(String atomId) {
+    _editorShellService.activeGroup?.pinPreviewTab(atomId);
+    notifyListeners();
+  }
+
+  // ── Pane operations ────────────────────────────────────────────────
+
+  PaneSplitResult splitActivePane({
+    required Axis direction,
+    required double containerExtent,
+  }) {
+    final groupId = _editorShellService.activeGroupId;
+    final containerSize = direction == Axis.horizontal
+        ? Size(containerExtent, minPaneExtent)
+        : Size(minPaneExtent, containerExtent);
+    if (!_editorShellService.layout.canSplit(
+      groupId,
+      direction,
+      containerSize,
+    )) {
+      // Distinguish max-panes from min-size
+      if (_editorShellService.layout.allGroupIds.length >= maxPaneCount) {
+        return PaneSplitResult.maxPanesReached;
+      }
+      return PaneSplitResult.minSizeBlocked;
+    }
+    _editorShellService.splitGroup(groupId, direction);
+    notifyListeners();
+    return PaneSplitResult.ok;
+  }
+
+  PaneCloseResult closeActivePane() {
+    if (_editorShellService.paneCount <= 1) {
+      return PaneCloseResult.lastPaneBlocked;
+    }
+    final closingGroupId = _editorShellService.activeGroupId;
+    final closingGroup = _editorShellService.activeGroup;
+    final activeAtomId = closingGroup?.activeAtomId;
+
+    // Merge unique tabs from the closing group into the primary group so the
+    // user's active note survives the pane close.
+    final primaryGroup =
+        _editorShellService.groups[_editorShellService.primaryGroupId];
+    if (closingGroup != null && primaryGroup != null) {
+      for (final tab in closingGroup.tabs) {
+        if (!primaryGroup.containsAtom(tab.atomId)) {
+          primaryGroup.addTab(tab);
+        }
+      }
+    }
+
+    unawaited(_editorShellService.closeGroup(closingGroupId));
+
+    // Activate the previously-active note in the surviving primary group.
+    if (activeAtomId != null && primaryGroup != null) {
+      if (primaryGroup.containsAtom(activeAtomId)) {
+        _editorShellService.switchTab(
+          _editorShellService.primaryGroupId,
+          activeAtomId,
+        );
+        _selectedNote = noteById(activeAtomId);
+      }
+    }
+    _updateSaveStateFromBuffer();
+    notifyListeners();
+    return PaneCloseResult.ok;
+  }
+
+  bool switchActivePane(String groupId) {
+    if (!_editorShellService.groups.containsKey(groupId)) return false;
+    if (_editorShellService.activeGroupId == groupId) return true;
+    _editorShellService.switchActiveGroup(groupId);
+    _selectedNote = activeNoteId != null ? noteById(activeNoteId!) : null;
+    _updateSaveStateFromBuffer();
+    _requestEditorFocus();
+    notifyListeners();
+    return true;
+  }
+
+  void activateNextPane() {
+    final groupIds = _editorShellService.groups.keys.toList();
+    if (groupIds.length <= 1) return;
+    final currentIndex = groupIds.indexOf(_editorShellService.activeGroupId);
+    if (currentIndex < 0) return;
+    switchActivePane(groupIds[(currentIndex + 1) % groupIds.length]);
+  }
+
+  // ── Save operations ────────────────────────────────────────────────
+
+  Future<bool> flushPendingSave() async {
+    await _awaitCreateTagApply(timeout: const Duration(milliseconds: 800));
+    final atomId = activeNoteId;
+    if (atomId == null) return true;
+
+    await _noteTagManager.waitForAtomTagMutations(atomId);
+
+    final buffer = _editorShellService.bufferFor(atomId);
+    if (buffer == null || !buffer.isDirty) {
+      _switchBlockErrorMessage = null;
+      return true;
+    }
+
+    try {
+      await buffer.flush();
+      if (!buffer.isDirty) {
+        _switchBlockErrorMessage = null;
+        return true;
+      }
+    } catch (_) {}
+
+    _switchBlockErrorMessage = 'Save failed. Retry or back up content.';
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> retrySaveCurrentDraft() async {
+    final atomId = activeNoteId;
+    if (atomId == null) return false;
+    final buffer = _editorShellService.bufferFor(atomId);
+    if (buffer == null) return false;
+
+    try {
+      await buffer.flush();
+      if (!buffer.isDirty) {
+        _switchBlockErrorMessage = null;
+        notifyListeners();
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  void updateActiveDraft(String content) {
+    final atomId = activeNoteId;
+    if (atomId == null) return;
+
+    final buffer = _editorShellService.bufferFor(atomId);
+    if (buffer == null || buffer.phase != BufferPhase.ready) return;
+    if (buffer.content == content) return;
+
+    buffer.edit(content);
+
+    // Pin preview tab on edit to prevent surprise replacement
+    _editorShellService.activeGroup?.pinPreviewTab(atomId);
+
+    // Update title projection in list
+    final current = _noteListManager.cachedNoteById(atomId) ?? _selectedNote;
+    if (current != null) {
+      final updated = _withContent(current, content);
+      _selectedNote = updated;
+      _noteListManager.upsertNote(updated);
+      _editorShellService.updateTabTitle(
+        atomId,
+        updated.title.isNotEmpty ? updated.title : 'Untitled',
+      );
+    }
+
+    _updateSaveStateFromBuffer();
+    notifyListeners();
+  }
+
+  // ── List operations ────────────────────────────────────────────────
+
   Future<void> loadNotes() async {
     await _awaitCreateTagApply();
     await _noteTagManager.awaitPendingTagMutations();
@@ -523,7 +601,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     );
   }
 
-  /// Retries notes list for current filter without resetting opened tabs.
   Future<void> retryLoad() async {
     await _awaitCreateTagApply();
     await _noteTagManager.awaitPendingTagMutations();
@@ -534,271 +611,34 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     );
   }
 
-  /// Retries tag catalog request for filter UI.
   Future<void> retryTagLoad() => _noteTagManager.refreshAvailableTags();
 
-  /// Applies one normalized single-tag filter.
-  ///
-  /// Returns `false` when input is invalid or flush guard blocks transition.
-  Future<bool> applyTagFilter(String rawTag) {
-    return _noteTagManager.applyTagFilter(rawTag);
+  Future<bool> applyTagFilter(String rawTag) =>
+      _noteTagManager.applyTagFilter(rawTag);
+
+  Future<bool> clearTagFilter() => _noteTagManager.clearTagFilter();
+
+  // ── Tag operations ─────────────────────────────────────────────────
+
+  Future<bool> setActiveNoteTags(List<String> rawTags) =>
+      _noteTagManager.setActiveNoteTags(rawTags);
+
+  Future<bool> addTagToActiveNote(String tag) =>
+      _noteTagManager.addTagToActiveNote(tag);
+
+  Future<bool> removeTagFromActiveNote(String tag) =>
+      _noteTagManager.removeTagFromActiveNote(tag);
+
+  // ── Create operations ──────────────────────────────────────────────
+
+  String? takeCreateWarningMessage() {
+    final warning = _createWarningMessage;
+    _createWarningMessage = null;
+    return warning;
   }
 
-  /// Clears active single-tag filter and returns to full list.
-  ///
-  /// Returns `false` when flush guard blocks transition.
-  Future<bool> clearTagFilter() {
-    return _noteTagManager.clearTagFilter();
-  }
-
-  bool _canReuseSelection(String atomId) {
-    return _activeNoteId == atomId &&
-        _selectedNote != null &&
-        !_detailLoading &&
-        _detailErrorMessage == null;
-  }
-
-  void _activateSelection(String atomId) {
-    _activeNoteId = atomId;
-    _selectedNote = noteById(atomId);
-    _activeDraftAtomId = atomId;
-    _activeDraftContent =
-        _draftContentByAtomId[atomId] ?? _selectedNote?.content ?? '';
-    _refreshSaveStateForActive();
-    _requestEditorFocus();
-    _switchBlockErrorMessage = null;
-  }
-
-  void _clearSelection() {
-    _activeNoteId = null;
-    _selectedNote = null;
-    _detailLoading = false;
-    _detailErrorMessage = null;
-    _activeDraftAtomId = null;
-    _activeDraftContent = '';
-    _autosaveTimer?.cancel();
-    _setSaveState(NoteSaveState.clean);
-  }
-
-  /// Handles open-note request from explorer shell.
-  ///
-  /// Explorer emits open intent only. Preview/pinned semantics are owned by
-  /// tab model: explorer-open marks target as preview and may replace previous
-  /// clean preview tab.
-  Future<bool> openNoteFromExplorer(String atomId) async {
-    return _noteTabManager.openNoteFromExplorer(atomId);
-  }
-
-  /// Handles explicit pinned-open request from explorer double-click.
-  Future<bool> openNoteFromExplorerPinned(String atomId) async {
-    return _noteTabManager.openNoteFromExplorerPinned(atomId);
-  }
-
-  /// Pins one preview tab so it is not replaced by next explorer-open.
-  void pinPreviewTab(String atomId) {
-    _noteTabManager.pinPreviewTab(atomId);
-  }
-
-  /// Creates one workspace folder under root or one parent folder.
-  Future<rust_api.WorkspaceNodeResponse> createWorkspaceFolder({
-    required String name,
-    String? parentNodeId,
-  }) async {
-    return _workspaceTreeService.createWorkspaceFolder(
-      name: name,
-      parentNodeId: parentNodeId,
-    );
-  }
-
-  /// Creates one note and links it into workspace tree under optional parent.
-  ///
-  /// Contract:
-  /// - Parent id must be `null` or UUID (`__uncategorized__` is mapped to root).
-  /// - Uses single-call `note_create(content, parent_node_id)` — atom + atom_ref
-  ///   are created atomically by `CreationService`.
-  /// - On success, created note is active and tree revision is bumped.
-  Future<rust_api.WorkspaceActionResponse> createWorkspaceNoteInFolder({
-    String? parentNodeId,
-  }) async {
-    return _workspaceTreeService.createWorkspaceNoteInFolder(
-      parentNodeId: parentNodeId,
-    );
-  }
-
-  /// Renames one workspace node.
-  Future<rust_api.WorkspaceActionResponse> renameWorkspaceNode({
-    required String nodeId,
-    required String newName,
-  }) async {
-    return _workspaceTreeService.renameWorkspaceNode(
-      nodeId: nodeId,
-      newName: newName,
-    );
-  }
-
-  /// Moves one workspace node under optional target parent.
-  Future<rust_api.WorkspaceActionResponse> moveWorkspaceNode({
-    required String nodeId,
-    String? newParentNodeId,
-    int? targetOrder,
-  }) async {
-    return _workspaceTreeService.moveWorkspaceNode(
-      nodeId: nodeId,
-      newParentNodeId: newParentNodeId,
-      targetOrder: targetOrder,
-    );
-  }
-
-  /// Lists workspace tree children for explorer lazy rendering.
-  ///
-  /// Contract:
-  /// - Returns core FFI response when call succeeds.
-  /// - Synthetic `Uncategorized` children are projected as:
-  ///   - root-level `atom_ref` rows from workspace tree
-  ///   - legacy notes with no workspace `atom_ref` anywhere in tree
-  /// - Uses synthetic fallback only when bridge is unavailable (e.g. Rust bridge
-  ///   not initialized in test host).
-  /// - Returns explicit error envelope when bridge call throws so UI can render
-  ///   actionable error + retry state.
-  Future<rust_api.WorkspaceListChildrenResponse> listWorkspaceChildren({
-    String? parentNodeId,
-  }) async {
-    return _workspaceTreeService.listWorkspaceChildren(
-      parentNodeId: parentNodeId,
-    );
-  }
-
-  /// Deletes one workspace folder by explicit mode, then refreshes UI state.
-  ///
-  /// Contract:
-  /// - `mode` must be `dissolve` or `delete_all`.
-  /// - Flushes active draft before mutation to avoid local data loss.
-  /// - Refreshes list and reconciles open tabs after successful delete.
-  Future<rust_api.WorkspaceActionResponse> deleteWorkspaceFolder({
-    required String folderId,
-    required String mode,
-  }) async {
-    return _workspaceTreeService.deleteWorkspaceFolder(
-      folderId: folderId,
-      mode: mode,
-    );
-  }
-
-  Future<WorkspaceCreateNoteResult> _createNoteAndGetAtomId({
-    String? parentNodeId,
-  }) async {
-    final created = await createNote(parentNodeId: parentNodeId);
-    if (!created) {
-      return (
-        atomId: null,
-        errorCode: _createErrorCode,
-        errorMessage: _createErrorMessage,
-      );
-    }
-    final atomId = _activeNoteId?.trim();
-    if (atomId == null || atomId.isEmpty) {
-      return (
-        atomId: null,
-        errorCode: 'internal_error',
-        errorMessage: 'Created note is missing atom id.',
-      );
-    }
-    return (atomId: atomId, errorCode: null, errorMessage: null);
-  }
-
-  Future<void> _handleWorkspaceDeleteSuccess() async {
-    await _loadNotes(
-      resetSession: false,
-      preserveActiveWhenFilteredOut: true,
-      refreshTags: false,
-    );
-    await _reconcileOpenTabsAfterWorkspaceMutation();
-  }
-
-  /// Flushes pending save work for the currently active note.
-  ///
-  /// Contract:
-  /// - Returns `true` when no pending write exists or persistence succeeds.
-  /// - Returns `false` when latest draft cannot be persisted.
-  /// - Keeps in-memory draft unchanged on failure.
-  Future<bool> flushPendingSave() async {
-    await _awaitCreateTagApply(timeout: const Duration(milliseconds: 800));
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return true;
-    }
-    _autosaveTimer?.cancel();
-
-    while (true) {
-      await _noteTagManager.waitForAtomTagMutations(atomId);
-
-      final inflight = _saveFutureByAtomId[atomId];
-      if (inflight != null) {
-        await inflight;
-        if (!_isDirty(atomId)) {
-          _switchBlockErrorMessage = null;
-          return true;
-        }
-        continue;
-      }
-
-      if (!_isDirty(atomId)) {
-        _switchBlockErrorMessage = null;
-        return true;
-      }
-
-      final version = _draftVersionByAtomId[atomId] ?? 0;
-      final saved = await _saveDraft(atomId: atomId, version: version);
-      if (saved && !_isDirty(atomId)) {
-        _switchBlockErrorMessage = null;
-        return true;
-      }
-
-      if ((_draftVersionByAtomId[atomId] ?? 0) != version) {
-        continue;
-      }
-
-      _switchBlockErrorMessage = 'Save failed. Retry or back up content.';
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Retries saving current active draft immediately.
-  ///
-  /// Contract:
-  /// - Saves the latest in-memory draft (not stale snapshot).
-  /// - Returns `true` when active draft becomes persisted.
-  /// - Returns `false` when save still fails.
-  Future<bool> retrySaveCurrentDraft() async {
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return false;
-    }
-    _autosaveTimer?.cancel();
-    final version = _draftVersionByAtomId[atomId] ?? 0;
-    final saved = await _saveDraft(atomId: atomId, version: version);
-    if (saved && !_isDirty(atomId)) {
-      _switchBlockErrorMessage = null;
-      notifyListeners();
-      return true;
-    }
-    if ((_draftVersionByAtomId[atomId] ?? 0) != version) {
-      return false;
-    }
-    return false;
-  }
-
-  /// Creates one new empty note and activates editor on success.
-  ///
-  /// Side effects:
-  /// - Calls `note_create` with empty content in v0.1 C2.
-  /// - Inserts created note into list/cache without reloading full list.
-  /// - Sets created note as active tab and requests editor focus.
   Future<bool> createNote({String? parentNodeId}) async {
-    if (_creatingNote) {
-      return false;
-    }
+    if (_creatingNote) return false;
     _creatingNote = true;
     _createErrorCode = null;
     _createErrorMessage = null;
@@ -866,25 +706,18 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         updatePersisted: true,
       );
       _noteListManager.markListSuccess();
-      _activeNoteId = createdNote.atomId;
+      _openAndActivateTab(createdNote.atomId, initialContent: '');
       _selectedNote = createdNote;
-      _activeDraftAtomId = createdNote.atomId;
-      _activeDraftContent = _draftContentByAtomId[createdNote.atomId] ?? '';
       _detailErrorMessage = null;
-      _noteTabManager.addOpenNoteIfAbsent(createdNote.atomId);
       _creatingNote = false;
-      _autosaveTimer?.cancel();
       _setSaveState(NoteSaveState.clean);
       _requestEditorFocus();
       notifyListeners();
 
-      // Lifecycle hook: schedule reminder if atom has time fields
       if (createdNote.startAt != null || createdNote.endAt != null) {
         try {
           await _reminderLifecycle.onSchedule(createdNote.atomId);
-        } catch (_) {
-          // Reminder delivery must not break note creation flow.
-        }
+        } catch (_) {}
       }
 
       await _noteTagManager.refreshAvailableTags(showLoading: false);
@@ -901,227 +734,181 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     }
   }
 
-  /// Replaces the active note tag set using immediate-save semantics.
-  ///
-  /// Returns `false` when active note is missing or mutation fails.
-  Future<bool> setActiveNoteTags(List<String> rawTags) {
-    return _noteTagManager.setActiveNoteTags(rawTags);
+  // ── Workspace delegation ───────────────────────────────────────────
+
+  Future<rust_api.WorkspaceNodeResponse> createWorkspaceFolder({
+    required String name,
+    String? parentNodeId,
+  }) => _workspaceTreeService.createWorkspaceFolder(
+    name: name,
+    parentNodeId: parentNodeId,
+  );
+
+  Future<rust_api.WorkspaceActionResponse> createWorkspaceNoteInFolder({
+    String? parentNodeId,
+  }) => _workspaceTreeService.createWorkspaceNoteInFolder(
+    parentNodeId: parentNodeId,
+  );
+
+  Future<rust_api.WorkspaceActionResponse> renameWorkspaceNode({
+    required String nodeId,
+    required String newName,
+  }) => _workspaceTreeService.renameWorkspaceNode(
+    nodeId: nodeId,
+    newName: newName,
+  );
+
+  Future<rust_api.WorkspaceActionResponse> moveWorkspaceNode({
+    required String nodeId,
+    String? newParentNodeId,
+    int? targetOrder,
+  }) => _workspaceTreeService.moveWorkspaceNode(
+    nodeId: nodeId,
+    newParentNodeId: newParentNodeId,
+    targetOrder: targetOrder,
+  );
+
+  Future<rust_api.WorkspaceListChildrenResponse> listWorkspaceChildren({
+    String? parentNodeId,
+  }) => _workspaceTreeService.listWorkspaceChildren(parentNodeId: parentNodeId);
+
+  Future<rust_api.WorkspaceActionResponse> deleteWorkspaceFolder({
+    required String folderId,
+    required String mode,
+  }) => _workspaceTreeService.deleteWorkspaceFolder(
+    folderId: folderId,
+    mode: mode,
+  );
+
+  Future<void> refreshSelectedDetail() async {
+    final atomId = activeNoteId;
+    if (atomId == null) return;
+    await _loadSelectedDetail(atomId: atomId);
   }
 
-  /// Adds one tag to active note with normalization and de-duplication.
-  Future<bool> addTagToActiveNote(String tag) {
-    return _noteTagManager.addTagToActiveNote(tag);
-  }
+  // ── Internal: tab helpers ──────────────────────────────────────────
 
-  /// Removes one tag from active note with normalization.
-  Future<bool> removeTagFromActiveNote(String tag) {
-    return _noteTagManager.removeTagFromActiveNote(tag);
-  }
-
-  Future<void> _reconcileOpenTabsAfterWorkspaceMutation() async {
-    final allOpenIds = _noteTabManager.allOpenNoteIds;
-    if (allOpenIds.isEmpty) {
-      return;
-    }
-
-    final activePaneSnapshot = _noteTabManager.snapshotOpenNoteIds();
-    final removedAtomIds = <String>[];
-    for (final atomId in allOpenIds) {
-      try {
-        final response = await _noteListManager.loadNoteDetail(atomId: atomId);
-        if (!response.ok) {
-          if (response.errorCode == 'note_not_found') {
-            removedAtomIds.add(atomId);
-          }
-          continue;
-        }
-        if (response.item case final note?) {
-          _noteListManager.upsertNote(note, updatePersisted: true);
-        }
-      } catch (_) {
-        // Keep tab state unchanged when detail check fails unexpectedly.
-      }
-    }
-
-    if (removedAtomIds.isEmpty) {
-      return;
-    }
-
-    final previousActiveId = _activeNoteId;
-    final previousActiveIndex = previousActiveId == null
-        ? -1
-        : activePaneSnapshot.indexOf(previousActiveId);
-    final activeRemoved =
-        previousActiveId != null && removedAtomIds.contains(previousActiveId);
-
-    _noteTabManager.removeOpenNotesWhereAllPanes(removedAtomIds.contains);
-    for (final atomId in removedAtomIds) {
-      _evictNoteState(atomId);
-    }
-    _noteTabManager.reconcilePreviewTabState();
-
-    if (_noteTabManager.openNoteIds.isEmpty) {
-      _activeNoteId = null;
-      _selectedNote = null;
-      _detailLoading = false;
-      _detailErrorMessage = null;
-      _activeDraftAtomId = null;
-      _activeDraftContent = '';
-      _autosaveTimer?.cancel();
-      _setSaveState(NoteSaveState.clean);
-      notifyListeners();
-      return;
-    }
-
-    if (!activeRemoved) {
-      notifyListeners();
-      return;
-    }
-
-    final fallbackIndex = previousActiveIndex <= 0
-        ? 0
-        : (previousActiveIndex - 1).clamp(0, _noteTabManager.openNoteCount - 1);
-    final fallbackId = _noteTabManager.openNoteIdAt(fallbackIndex);
-    _activeNoteId = fallbackId;
-    _selectedNote = noteById(fallbackId);
-    _activeDraftAtomId = fallbackId;
-    _activeDraftContent =
-        _draftContentByAtomId[fallbackId] ?? _selectedNote?.content ?? '';
-    _refreshSaveStateForActive();
+  void _openAndActivateTab(String atomId, {String? initialContent}) {
+    final groupId = _editorShellService.activeGroupId;
+    final title = titleForTab(atomId);
+    final effectiveContent = initialContent ?? noteById(atomId)?.content;
+    _editorShellService.openTab(
+      groupId,
+      atomId,
+      initialContent: effectiveContent,
+      title: title,
+    );
+    _updateSaveStateFromBuffer();
     _requestEditorFocus();
-    notifyListeners();
-    await _loadSelectedDetail(atomId: fallbackId);
+    _switchBlockErrorMessage = null;
   }
 
-  void _evictNoteState(String atomId) {
-    _noteTabManager.clearPreviewForDeletedAtom(atomId);
-    _noteListManager.evictNoteState(atomId);
-    _draftContentByAtomId.remove(atomId);
-    _persistedContentByAtomId.remove(atomId);
-    _draftVersionByAtomId.remove(atomId);
-    _saveFutureByAtomId.remove(atomId);
-    _saveQueuedByAtomId.remove(atomId);
-    _noteTagManager.clearStateForDeletedAtom(atomId);
+  bool _canReuseSelection(String atomId) {
+    return activeNoteId == atomId &&
+        _selectedNote != null &&
+        _selectedNote!.atomId == atomId &&
+        !_detailLoading &&
+        _detailErrorMessage == null;
   }
 
-  Future<void> _awaitCreateTagApply({Duration? timeout}) async {
-    final pending = _createTagApplyFuture;
-    if (pending == null) {
-      return;
+  void _clearSelection() {
+    _selectedNote = null;
+    _detailLoading = false;
+    _detailErrorMessage = null;
+    _setSaveState(NoteSaveState.clean);
+  }
+
+  Future<bool> _selectFromExplorerByReplacingPreview({
+    required String atomId,
+    required String previewId,
+  }) async {
+    final group = _editorShellService.activeGroup;
+    if (group == null) return selectNote(atomId);
+    if (activeNoteId case final currentId? when currentId != atomId) {
+      final flushed = await flushPendingSave();
+      if (!flushed) return false;
     }
-    try {
-      if (timeout == null) {
-        await pending;
-      } else {
-        await pending.timeout(timeout, onTimeout: () {});
+
+    final groupId = _editorShellService.activeGroupId;
+    final title = titleForTab(atomId);
+    final replaced = group.replacePreviewTab(
+      TabEntry(atomId: atomId, title: title),
+    );
+    if (replaced != null) {
+      // Clean up buffer for replaced preview via service (prevents double-dispose)
+      final stillReferenced = _editorShellService.groups.values.any(
+        (g) => g.containsAtom(replaced),
+      );
+      if (!stillReferenced) {
+        _editorShellService.removeBuffer(replaced);
       }
-    } catch (_) {}
-  }
-
-  /// Selects one note and refreshes detail snapshot.
-  ///
-  /// Side effects:
-  /// - Flushes pending save for current active note before switching.
-  /// - Opens a new tab when [atomId] is not already opened.
-  /// - Keeps existing tabs unchanged when [atomId] is already opened.
-  ///
-  /// Returns:
-  /// - `true` when switch succeeds.
-  /// - `false` when switch is blocked by flush failure.
-  Future<bool> selectNote(String atomId) async {
-    return _noteTabManager.selectNote(atomId);
-  }
-
-  /// Activates an already opened note tab and refreshes its detail.
-  ///
-  /// Returns `false` when switch guard blocks the activation.
-  Future<bool> activateOpenNote(String atomId) async {
-    return _noteTabManager.activateOpenNote(atomId);
-  }
-
-  /// Moves active tab forward (Ctrl+Tab behavior).
-  ///
-  /// Split mode cycles inside active-pane tabs only.
-  Future<void> activateNextOpenNote() async {
-    await _noteTabManager.activateNextOpenNote();
-  }
-
-  /// Moves active tab backward (Ctrl+Shift+Tab behavior).
-  ///
-  /// Split mode cycles inside active-pane tabs only.
-  Future<void> activatePreviousOpenNote() async {
-    await _noteTabManager.activatePreviousOpenNote();
-  }
-
-  /// Closes one opened tab.
-  ///
-  /// Side effects:
-  /// - When closing active tab, selects deterministic fallback tab.
-  /// - Flushes active draft before close to avoid data loss.
-  /// - Clears selected detail state when the last tab is closed.
-  ///
-  /// Returns `false` when close is blocked by flush failure.
-  Future<bool> closeOpenNote(String atomId) async {
-    return _noteTabManager.closeOpenNote(atomId);
-  }
-
-  /// Closes all tabs except [atomId], then activates [atomId].
-  ///
-  /// Returns `false` when switch/close is blocked by flush failure.
-  Future<bool> closeOtherOpenNotes(String atomId) async {
-    return _noteTabManager.closeOtherOpenNotes(atomId);
-  }
-
-  /// Closes tabs to the right of [atomId].
-  ///
-  /// Side effects:
-  /// - Flushes active draft when active tab would be removed.
-  /// - Re-activates [atomId] if active tab was pruned by this operation.
-  ///
-  /// Returns `false` when close is blocked by flush failure.
-  Future<bool> closeOpenNotesToRight(String atomId) async {
-    return _noteTabManager.closeOpenNotesToRight(atomId);
-  }
-
-  /// Updates active note draft content in-memory.
-  ///
-  /// Side effects:
-  /// - Updates selected note cache and list snapshot title projection.
-  /// - Schedules debounced persistence through `note_update`.
-  void updateActiveDraft(String content) {
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return;
-    }
-    final previous = _draftContentByAtomId[atomId] ?? _activeDraftContent;
-    if (previous == content) {
-      return;
     }
 
-    _activeDraftAtomId = atomId;
-    _activeDraftContent = content;
-    _draftContentByAtomId[atomId] = content;
-    final version = (_draftVersionByAtomId[atomId] ?? 0) + 1;
-    _draftVersionByAtomId[atomId] = version;
-    final current = _noteListManager.cachedNoteById(atomId) ?? _selectedNote;
-    if (current != null) {
-      final updated = _withContent(current, content);
-      _selectedNote = updated;
-      _noteListManager.upsertNote(updated);
+    // Ensure buffer exists for new tab
+    if (_editorShellService.bufferFor(atomId) == null) {
+      final cachedContent = noteById(atomId)?.content;
+      _editorShellService.openTab(
+        groupId,
+        atomId,
+        initialContent: cachedContent,
+        title: title,
+      );
     }
-    // Why: once user edits preview content, replacing that tab on next open
-    // is surprising and risks hidden draft loss. Promote to pinned.
-    _noteTabManager.onDraftEdited(atomId);
-
-    if (_isDirty(atomId)) {
-      _setSaveState(NoteSaveState.dirty);
-      _scheduleAutosave(atomId: atomId, version: version);
-    } else {
-      _autosaveTimer?.cancel();
-      _setSaveState(NoteSaveState.clean);
-    }
+    _selectedNote = noteById(atomId);
+    _updateSaveStateFromBuffer();
+    _requestEditorFocus();
+    _switchBlockErrorMessage = null;
     notifyListeners();
+    await _loadSelectedDetail(atomId: atomId);
+    return true;
   }
+
+  // ── Internal: EditorShellService closures ──────────────────────────
+
+  Future<String> _loadNoteContentFromFFI(String atomId) async {
+    await _prepare();
+    final response = await _noteGetInvoker(atomId: atomId);
+    if (!response.ok || response.item == null) {
+      throw Exception(response.message);
+    }
+    return response.item!.content;
+  }
+
+  Future<bool> _persistNoteContent(String atomId, String content) async {
+    try {
+      await _prepare();
+      final response = await _noteUpdateInvoker(
+        atomId: atomId,
+        content: content,
+      );
+      if (!response.ok) return false;
+
+      final saved = response.item;
+      if (saved != null) {
+        _noteListManager.upsertNote(saved, updatePersisted: true);
+      } else {
+        final current = _noteListManager.cachedNoteById(atomId);
+        if (current != null) {
+          _noteListManager.upsertNote(
+            _withContent(current, content),
+            updatePersisted: true,
+          );
+        }
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _handleBufferSaved(String atomId, String content) {
+    if (activeNoteId == atomId) {
+      _selectedNote = _noteListManager.cachedNoteById(atomId) ?? _selectedNote;
+      _switchBlockErrorMessage = null;
+    }
+  }
+
+  // ── Internal: list operations ──────────────────────────────────────
 
   Future<void> _loadNotes({
     required bool resetSession,
@@ -1138,70 +925,42 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
     _switchBlockErrorMessage = null;
     final loadedItems = await _noteListManager.loadNotes(limit: listLimit);
-    if (loadedItems == null) {
-      return;
-    }
+    if (loadedItems == null) return;
 
+    final currentActiveId = activeNoteId;
     String? detailTargetId;
-    final activeId = _activeNoteId;
-    final activeInList =
-        activeId != null &&
-        _noteListManager.findLoadedItem(loadedItems, activeId) != null;
-    if (activeId == null) {
+
+    if (currentActiveId == null) {
       if (loadedItems.isNotEmpty) {
         final first = loadedItems.first;
-        _activeNoteId = first.atomId;
+        _openAndActivateTab(first.atomId, initialContent: first.content);
         _selectedNote = first;
-        _activeDraftAtomId = first.atomId;
-        _activeDraftContent =
-            _draftContentByAtomId[first.atomId] ?? first.content;
-        _noteTabManager.addOpenNoteIfAbsent(first.atomId);
         _setSaveState(NoteSaveState.clean);
         detailTargetId = first.atomId;
       } else {
-        _selectedNote = null;
-        _detailLoading = false;
-        _detailErrorMessage = null;
-        _activeDraftAtomId = null;
-        _activeDraftContent = '';
-        _setSaveState(NoteSaveState.clean);
+        _clearSelection();
       }
-    } else if (activeInList) {
-      _selectedNote =
-          _noteListManager.findLoadedItem(loadedItems, activeId) ??
-          _selectedNote;
-      _activeDraftAtomId = activeId;
-      _activeDraftContent =
-          _draftContentByAtomId[activeId] ?? _selectedNote?.content ?? '';
-      _refreshSaveStateForActive();
-    } else if (preserveActiveWhenFilteredOut) {
-      _selectedNote =
-          _noteListManager.cachedNoteById(activeId) ?? _selectedNote;
-      _activeDraftAtomId = activeId;
-      _activeDraftContent =
-          _draftContentByAtomId[activeId] ?? _selectedNote?.content ?? '';
-      _refreshSaveStateForActive();
-    } else if (loadedItems.isNotEmpty) {
-      final fallback = loadedItems.first;
-      _activeNoteId = fallback.atomId;
-      _selectedNote = fallback;
-      _activeDraftAtomId = fallback.atomId;
-      _activeDraftContent =
-          _draftContentByAtomId[fallback.atomId] ?? fallback.content;
-      _noteTabManager.addOpenNoteIfAbsent(fallback.atomId);
-      _refreshSaveStateForActive();
-      _requestEditorFocus();
-      detailTargetId = fallback.atomId;
     } else {
-      _activeNoteId = null;
-      _selectedNote = null;
-      _detailLoading = false;
-      _detailErrorMessage = null;
-      _activeDraftAtomId = null;
-      _activeDraftContent = '';
-      _setSaveState(NoteSaveState.clean);
+      final activeItem = _noteListManager.findLoadedItem(
+        loadedItems,
+        currentActiveId,
+      );
+      if (activeItem != null) {
+        _selectedNote = activeItem;
+      } else if (preserveActiveWhenFilteredOut) {
+        _selectedNote =
+            _noteListManager.cachedNoteById(currentActiveId) ?? _selectedNote;
+      } else if (loadedItems.isNotEmpty) {
+        final fallback = loadedItems.first;
+        _openAndActivateTab(fallback.atomId, initialContent: fallback.content);
+        _selectedNote = fallback;
+        _updateSaveStateFromBuffer();
+        _requestEditorFocus();
+        detailTargetId = fallback.atomId;
+      } else {
+        _clearSelection();
+      }
     }
-    _noteTabManager.reconcilePreviewTabState();
     notifyListeners();
 
     if (detailTargetId != null) {
@@ -1210,64 +969,44 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   }
 
   void _resetSessionForReload() {
+    _editorShellService.resetSession();
+    _noteListManager.resetSessionState();
+    _noteTagManager.resetMutationState();
     _selectedNote = null;
     _detailLoading = false;
     _detailErrorMessage = null;
-    _noteTabManager.clearOpenNotes();
-    _noteTabManager.reconcilePreviewTabState();
-    _noteListManager.resetSessionState();
-    _draftContentByAtomId.clear();
-    _persistedContentByAtomId.clear();
-    _draftVersionByAtomId.clear();
-    _saveFutureByAtomId.clear();
-    _saveQueuedByAtomId.clear();
-    _noteTagManager.resetMutationState();
-    _activeNoteId = null;
-    _activeDraftAtomId = null;
-    _activeDraftContent = '';
     _creatingNote = false;
     _createErrorCode = null;
     _createErrorMessage = null;
     _createWarningMessage = null;
     _createTagApplyFuture = null;
-    _autosaveTimer?.cancel();
-    _noteSaveTracker.reset(notify: false);
-  }
-
-  /// Retries loading current selected note detail.
-  Future<void> refreshSelectedDetail() async {
-    final atomId = _activeNoteId;
-    if (atomId == null) {
-      return;
-    }
-    await _loadSelectedDetail(atomId: atomId);
+    _savedBadgeTimer?.cancel();
+    _noteSaveState = NoteSaveState.clean;
+    _saveErrorMessage = null;
+    _showSavedBadge = false;
   }
 
   Future<void> _loadSelectedDetail({required String atomId}) async {
-    if (_disposed) {
-      return;
-    }
+    if (_disposed) return;
     final requestId = ++_detailRequestId;
     _detailLoading = true;
     _detailErrorMessage = null;
     _selectedNote = _noteListManager.findListItem(atomId) ?? _selectedNote;
-    if (_disposed) {
-      return;
-    }
+    if (_disposed) return;
     notifyListeners();
 
     try {
       await _prepare();
       if (_disposed ||
           requestId != _detailRequestId ||
-          atomId != _activeNoteId) {
+          atomId != activeNoteId) {
         return;
       }
 
       final response = await _noteListManager.loadNoteDetail(atomId: atomId);
       if (_disposed ||
           requestId != _detailRequestId ||
-          atomId != _activeNoteId) {
+          atomId != activeNoteId) {
         return;
       }
 
@@ -1278,59 +1017,176 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
           message: response.message,
           fallback: 'Failed to load note detail.',
         );
-        if (_disposed) {
-          return;
-        }
-        notifyListeners();
+        if (!_disposed) notifyListeners();
         return;
       }
 
       if (response.item case final note?) {
         _selectedNote = note;
         _noteListManager.upsertNote(note, updatePersisted: true);
-        _activeDraftAtomId = note.atomId;
-        _activeDraftContent =
-            _draftContentByAtomId[note.atomId] ?? note.content;
+        // Update buffer if it hasn't been edited yet
+        final buffer = _editorShellService.bufferFor(note.atomId);
+        if (buffer != null && buffer.phase == BufferPhase.loading) {
+          buffer.initialize(note.content);
+        }
         _detailLoading = false;
         _detailErrorMessage = null;
-        _refreshSaveStateForActive();
-        if (_disposed) {
-          return;
-        }
-        notifyListeners();
+        _updateSaveStateFromBuffer();
+        if (!_disposed) notifyListeners();
         return;
       }
 
       _detailLoading = false;
       _detailErrorMessage = 'Note detail is empty.';
-      if (_disposed) {
-        return;
-      }
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     } catch (error) {
       if (_disposed ||
           requestId != _detailRequestId ||
-          atomId != _activeNoteId) {
+          atomId != activeNoteId) {
         return;
       }
       _detailLoading = false;
       _detailErrorMessage = 'Note detail load failed unexpectedly: $error';
-      if (_disposed) {
-        return;
-      }
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
-  void _syncPersistedSnapshot({
-    required String atomId,
-    required String content,
-    required bool wasDirty,
+  // ── Internal: workspace helpers ────────────────────────────────────
+
+  Future<WorkspaceCreateNoteResult> _createNoteAndGetAtomId({
+    String? parentNodeId,
+  }) async {
+    final created = await createNote(parentNodeId: parentNodeId);
+    if (!created) {
+      return (
+        atomId: null,
+        errorCode: _createErrorCode,
+        errorMessage: _createErrorMessage,
+      );
+    }
+    final atomId = activeNoteId?.trim();
+    if (atomId == null || atomId.isEmpty) {
+      return (
+        atomId: null,
+        errorCode: 'internal_error',
+        errorMessage: 'Created note is missing atom id.',
+      );
+    }
+    return (atomId: atomId, errorCode: null, errorMessage: null);
+  }
+
+  Future<void> _handleWorkspaceDeleteSuccess() async {
+    await _loadNotes(
+      resetSession: false,
+      preserveActiveWhenFilteredOut: true,
+      refreshTags: false,
+    );
+    await _reconcileOpenTabsAfterWorkspaceMutation();
+  }
+
+  Future<void> _reconcileOpenTabsAfterWorkspaceMutation() async {
+    final group = _editorShellService.activeGroup;
+    if (group == null || group.tabs.isEmpty) return;
+
+    final allAtomIds = group.tabs.map((t) => t.atomId).toList();
+    final removedAtomIds = <String>[];
+    for (final atomId in allAtomIds) {
+      try {
+        final response = await _noteListManager.loadNoteDetail(atomId: atomId);
+        if (!response.ok && response.errorCode == 'note_not_found') {
+          removedAtomIds.add(atomId);
+        } else if (response.item case final note?) {
+          _noteListManager.upsertNote(note, updatePersisted: true);
+        }
+      } catch (_) {}
+    }
+
+    if (removedAtomIds.isEmpty) return;
+
+    final groupId = _editorShellService.activeGroupId;
+    for (final atomId in removedAtomIds) {
+      await _editorShellService.closeTab(groupId, atomId);
+      _noteTagManager.clearStateForDeletedAtom(atomId);
+    }
+
+    if (group.tabs.isEmpty) {
+      _clearSelection();
+      notifyListeners();
+      return;
+    }
+
+    final newActiveId = group.activeAtomId;
+    if (newActiveId != null) {
+      _selectedNote = noteById(newActiveId);
+      _updateSaveStateFromBuffer();
+      _requestEditorFocus();
+      notifyListeners();
+      await _loadSelectedDetail(atomId: newActiveId);
+    }
+  }
+
+  // ── Internal: state helpers ────────────────────────────────────────
+
+  void _requestEditorFocus() {
+    _editorFocusRequestId += 1;
+  }
+
+  bool _isDirty(String atomId) {
+    return _editorShellService.bufferFor(atomId)?.isDirty ?? false;
+  }
+
+  bool _hasPendingSaveFor(String atomId) {
+    final buffer = _editorShellService.bufferFor(atomId);
+    final bufferDirty =
+        buffer != null &&
+        (buffer.isDirty || buffer.saveState == SaveState.saving);
+    return bufferDirty || _noteTagManager.hasPendingTagWorkFor(atomId);
+  }
+
+  void _setSaveState(
+    NoteSaveState nextState, {
+    bool preserveError = false,
+    bool showSavedBadge = false,
   }) {
-    _persistedContentByAtomId[atomId] = content;
-    _draftVersionByAtomId.putIfAbsent(atomId, () => 0);
-    if (!_draftContentByAtomId.containsKey(atomId) || !wasDirty) {
-      _draftContentByAtomId[atomId] = content;
+    _noteSaveState = nextState;
+    if (!preserveError) _saveErrorMessage = null;
+    if (showSavedBadge) {
+      _showSavedBadge = true;
+      _savedBadgeTimer?.cancel();
+      _savedBadgeTimer = _debounceTimerFactory(const Duration(seconds: 3), () {
+        if (_noteSaveState != NoteSaveState.clean) return;
+        _showSavedBadge = false;
+        notifyListeners();
+      });
+    } else {
+      _savedBadgeTimer?.cancel();
+      _showSavedBadge = false;
+    }
+  }
+
+  void _updateSaveStateFromBuffer() {
+    final atomId = activeNoteId;
+    if (atomId == null) {
+      _setSaveState(NoteSaveState.clean);
+      return;
+    }
+    final buffer = _editorShellService.bufferFor(atomId);
+    if (buffer == null) {
+      _setSaveState(NoteSaveState.clean);
+      return;
+    }
+    switch (buffer.saveState) {
+      case SaveState.loading:
+      case SaveState.clean:
+        final wasSaving = _noteSaveState == NoteSaveState.saving;
+        _setSaveState(NoteSaveState.clean, showSavedBadge: wasSaving);
+      case SaveState.dirty:
+        _setSaveState(NoteSaveState.dirty);
+      case SaveState.saving:
+        _setSaveState(NoteSaveState.saving);
+      case SaveState.error:
+        _saveErrorMessage = buffer.errorMessage;
+        _setSaveState(NoteSaveState.error, preserveError: true);
     }
   }
 
@@ -1338,7 +1194,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     rust_api.AtomListItem current,
     String content,
   ) {
-    // Derive title for draft projection (display-derived state per Rule A).
     final firstLine = content
         .split('\n')
         .firstWhere((line) => line.trim().isNotEmpty, orElse: () => '');
@@ -1346,7 +1201,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         .trim()
         .replaceFirst(RegExp(r'^#+\s*'), '')
         .trim();
-
     return rust_api.AtomListItem(
       atomId: current.atomId,
       viewHint: current.viewHint,
@@ -1363,82 +1217,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     );
   }
 
-  void _requestEditorFocus() {
-    _editorFocusRequestId += 1;
-  }
-
-  bool _isDirty(String atomId) {
-    return _noteDraftManager.isDirty(atomId);
-  }
-
-  bool _hasPendingSaveFor(String atomId) {
-    return _isDirty(atomId) ||
-        _saveFutureByAtomId.containsKey(atomId) ||
-        _noteTagManager.hasPendingTagWorkFor(atomId);
-  }
-
-  bool _shouldIncludeInVisibleList(rust_api.AtomListItem note) {
-    return _noteTagManager.shouldIncludeInVisibleList(note);
-  }
-
-  void _scheduleAutosave({required String atomId, required int version}) {
-    _noteDraftManager.scheduleAutosave(atomId: atomId, version: version);
-  }
-
-  Future<bool> _saveDraft({required String atomId, required int version}) {
-    return _noteDraftManager.saveDraft(atomId: atomId, version: version);
-  }
-
-  void _refreshSaveStateForActive() {
-    _noteDraftManager.refreshSaveStateForActive(activeNoteId: _activeNoteId);
-  }
-
-  void _setSaveState(
-    NoteSaveState nextState, {
-    bool preserveError = false,
-    bool showSavedBadge = false,
-  }) {
-    _noteSaveTracker.setState(
-      nextState,
-      preserveError: preserveError,
-      showSavedBadge: showSavedBadge,
-      notify: false,
-    );
-  }
-
-  void _adoptWorkspaceActivePaneState({bool loadDetail = true}) {
-    final paneId = _workspaceProvider.activePaneId;
-    final paneActiveId = _activeNoteIdByPane[paneId];
-    _activeNoteId = paneActiveId;
-    if (paneActiveId == null) {
-      _selectedNote = null;
-      _activeDraftAtomId = null;
-      _activeDraftContent = '';
-      _detailLoading = false;
-      _detailErrorMessage = null;
-      _setSaveState(NoteSaveState.clean);
-      return;
-    }
-
-    final selected = _selectedNote?.atomId == paneActiveId
-        ? _selectedNote
-        : null;
-    final local =
-        _noteListManager.cachedNoteById(paneActiveId) ??
-        selected ??
-        _noteListManager.findListItem(paneActiveId);
-    _selectedNote = local;
-    _activeDraftAtomId = paneActiveId;
-    _activeDraftContent =
-        _draftContentByAtomId[paneActiveId] ?? local?.content ?? '';
-    _refreshSaveStateForActive();
-    _switchBlockErrorMessage = null;
-    _requestEditorFocus();
-    if (loadDetail) {
-      unawaited(_loadSelectedDetail(atomId: paneActiveId));
-    }
-  }
-
   String _envelopeError({
     required String? errorCode,
     required String message,
@@ -1448,12 +1226,64 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     if (errorCode == null || errorCode.trim().isEmpty) {
       return normalized.isEmpty ? fallback : normalized;
     }
-    if (normalized.isEmpty) {
-      return '[$errorCode] $fallback';
-    }
+    if (normalized.isEmpty) return '[$errorCode] $fallback';
     return '[$errorCode] $normalized';
   }
+
+  Future<void> _awaitCreateTagApply({Duration? timeout}) async {
+    final pending = _createTagApplyFuture;
+    if (pending == null) return;
+    try {
+      if (timeout == null) {
+        await pending;
+      } else {
+        await pending.timeout(timeout, onTimeout: () {});
+      }
+    } catch (_) {}
+  }
+
+  // ── Listener handlers ──────────────────────────────────────────────
+
+  void _handleEditorShellChanged() {
+    if (_disposed) return;
+    _updateSaveStateFromBuffer();
+    notifyListeners();
+  }
+
+  void _handleNoteListManagerChanged() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
+  void _handleNoteTagManagerChanged() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
+  void _handleWorkspaceTreeServiceChanged() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
+  // ── Dispose ────────────────────────────────────────────────────────
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _savedBadgeTimer?.cancel();
+    _noteListManager.removeListener(_handleNoteListManagerChanged);
+    _editorShellService.removeListener(_handleEditorShellChanged);
+    _noteTagManager.removeListener(_handleNoteTagManagerChanged);
+    _workspaceTreeService.removeListener(_handleWorkspaceTreeServiceChanged);
+    _noteListManager.dispose();
+    _editorShellService.dispose();
+    _noteTagManager.dispose();
+    _workspaceTreeService.dispose();
+    super.dispose();
+  }
 }
+
+// ── Default invokers ───────────────────────────────────────────────────
 
 Future<rust_api.AtomListResponse> _defaultNotesListInvoker({
   String? tag,

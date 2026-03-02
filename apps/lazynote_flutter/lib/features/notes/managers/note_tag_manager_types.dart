@@ -1,5 +1,23 @@
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
+
+/// Save lifecycle for active note draft persistence.
+///
+/// Moved from note_save_tracker.dart (PR-RB-06) — the tracker class was
+/// absorbed into EditBuffer, but this enum is still used by NoteTagManager
+/// and NoteContentArea.
+enum NoteSaveState {
+  /// Draft content matches persisted content.
+  clean,
+
+  /// Draft content has unsaved edits.
+  dirty,
+
+  /// Save call is currently in flight.
+  saving,
+
+  /// Last save attempt failed.
+  error,
+}
 
 typedef TagsListInvoker = Future<rust_api.TagsListResponse> Function();
 

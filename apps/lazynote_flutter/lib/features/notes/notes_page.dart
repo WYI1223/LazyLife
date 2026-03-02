@@ -7,11 +7,9 @@ import 'package:lazynote_flutter/app/ui_slots/first_party_ui_slots.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_host.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
-import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
-import 'package:lazynote_flutter/core/workspace/workspace_provider.dart';
 import 'package:lazynote_flutter/features/notes/note_content_area.dart';
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
-import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
+import 'package:lazynote_flutter/features/notes/note_tab_strip.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
@@ -294,20 +292,19 @@ class _NotesPageState extends State<NotesPage>
   }
 
   void _handleSplitCommand({
-    required WorkspaceSplitDirection direction,
+    required Axis direction,
     required double editorWidthExtent,
     required double editorHeightExtent,
   }) {
-    final containerExtent = direction == WorkspaceSplitDirection.horizontal
+    final containerExtent = direction == Axis.horizontal
         ? editorWidthExtent
         : editorHeightExtent;
     final result = _coordinator.splitActivePane(
       direction: direction,
       containerExtent: containerExtent,
     );
-    if (result == WorkspaceSplitResult.ok) {
-      final workspace = _coordinator.workspaceProvider;
-      final paneCount = workspace.layoutState.paneOrder.length;
+    if (result == PaneSplitResult.ok) {
+      final paneCount = _coordinator.editorShellService.paneCount;
       _showSplitFeedback(
         _l10nText(
           fallback: 'Split created. $paneCount panes ready.',
@@ -318,28 +315,16 @@ class _NotesPageState extends State<NotesPage>
     }
 
     final message = switch (result) {
-      WorkspaceSplitResult.paneNotFound => _l10nText(
-        fallback: 'Cannot split: active pane is unavailable.',
-        pick: (l10n) => l10n.notesSplitPaneUnavailable,
+      PaneSplitResult.maxPanesReached => _l10nText(
+        fallback: 'Cannot split: maximum pane count ($maxPaneCount) reached.',
+        pick: (l10n) => l10n.notesSplitMaxPaneReached(maxPaneCount),
       ),
-      WorkspaceSplitResult.maxPanesReached => _l10nText(
+      PaneSplitResult.minSizeBlocked => _l10nText(
         fallback:
-            'Cannot split: maximum pane count (${WorkspaceProvider.maxPaneCount}) reached.',
-        pick: (l10n) =>
-            l10n.notesSplitMaxPaneReached(WorkspaceProvider.maxPaneCount),
+            'Cannot split: each pane must stay at least ${minPaneExtent.toInt()}px.',
+        pick: (l10n) => l10n.notesSplitMinSizeBlocked(minPaneExtent.toInt()),
       ),
-      WorkspaceSplitResult.directionLocked => _l10nText(
-        fallback: 'Cannot split: v0.2 keeps one split direction per workspace.',
-        pick: (l10n) => l10n.notesSplitDirectionLocked,
-      ),
-      WorkspaceSplitResult.minSizeBlocked => _l10nText(
-        fallback:
-            'Cannot split: each pane must stay at least ${WorkspaceProvider.minPaneExtent.toInt()}px.',
-        pick: (l10n) => l10n.notesSplitMinSizeBlocked(
-          WorkspaceProvider.minPaneExtent.toInt(),
-        ),
-      ),
-      WorkspaceSplitResult.ok => _l10nText(
+      PaneSplitResult.ok => _l10nText(
         fallback: 'Split created.',
         pick: (l10n) => l10n.notesSplitCreatedSimple,
       ),
@@ -348,8 +333,8 @@ class _NotesPageState extends State<NotesPage>
   }
 
   void _handleActivateNextPane() {
-    final workspace = _coordinator.workspaceProvider;
-    if (workspace.layoutState.paneOrder.length <= 1) {
+    final editor = _coordinator.editorShellService;
+    if (editor.paneCount <= 1) {
       _showSplitFeedback(
         _l10nText(
           fallback: 'Only one pane is available.',
@@ -359,9 +344,8 @@ class _NotesPageState extends State<NotesPage>
       return;
     }
     _coordinator.activateNextPane();
-    final activeIndex = workspace.layoutState.paneOrder.indexOf(
-      workspace.activePaneId,
-    );
+    final groupIds = editor.groups.keys.toList();
+    final activeIndex = groupIds.indexOf(editor.activeGroupId);
     final paneOrdinal = activeIndex < 0 ? '?' : '${activeIndex + 1}';
     _showSplitFeedback(
       _l10nText(
@@ -373,9 +357,8 @@ class _NotesPageState extends State<NotesPage>
 
   void _handleCloseActivePane() {
     final result = _coordinator.closeActivePane();
-    if (result == WorkspaceMergeResult.ok) {
-      final paneCount =
-          _coordinator.workspaceProvider.layoutState.paneOrder.length;
+    if (result == PaneCloseResult.ok) {
+      final paneCount = _coordinator.editorShellService.paneCount;
       _showSplitFeedback(
         _l10nText(
           fallback: 'Pane closed. $paneCount remaining.',
@@ -386,15 +369,11 @@ class _NotesPageState extends State<NotesPage>
     }
 
     final message = switch (result) {
-      WorkspaceMergeResult.singlePaneBlocked => _l10nText(
+      PaneCloseResult.lastPaneBlocked => _l10nText(
         fallback: 'Cannot close pane: only one pane is available.',
         pick: (l10n) => l10n.notesClosePaneSingleBlocked,
       ),
-      WorkspaceMergeResult.paneNotFound => _l10nText(
-        fallback: 'Cannot close pane: active pane is unavailable.',
-        pick: (l10n) => l10n.notesClosePaneUnavailable,
-      ),
-      WorkspaceMergeResult.ok => _l10nText(
+      PaneCloseResult.ok => _l10nText(
         fallback: 'Pane closed.',
         pick: (l10n) => l10n.notesPaneClosedSimple,
       ),
@@ -406,7 +385,7 @@ class _NotesPageState extends State<NotesPage>
   Widget build(BuildContext context) {
     final mergedListenable = Listenable.merge([
       _coordinator,
-      _coordinator.workspaceProvider,
+      _coordinator.editorShellService,
     ]);
     return Shortcuts(
       shortcuts: const {
@@ -435,7 +414,7 @@ class _NotesPageState extends State<NotesPage>
           child: AnimatedBuilder(
             animation: mergedListenable,
             builder: (context, _) {
-              final workspace = _coordinator.workspaceProvider;
+              final editor = _coordinator.editorShellService;
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final compactHeader = constraints.maxWidth < 860;
@@ -454,12 +433,14 @@ class _NotesPageState extends State<NotesPage>
                       (constraints.maxWidth - explorerWidth - 1)
                           .clamp(0, constraints.maxWidth)
                           .toDouble();
-                  final activePaneIndex = workspace.layoutState.paneOrder
-                      .indexOf(workspace.activePaneId);
+                  final groupIds = editor.groups.keys.toList();
+                  final activePaneIndex = groupIds.indexOf(
+                    editor.activeGroupId,
+                  );
                   final paneOrdinal = activePaneIndex < 0
                       ? '?'
                       : '${activePaneIndex + 1}';
-                  final paneCount = workspace.layoutState.paneOrder.length;
+                  final paneCount = editor.paneCount;
 
                   return Column(
                     key: const Key('notes_page_root'),
@@ -537,7 +518,7 @@ class _NotesPageState extends State<NotesPage>
                             ),
                             onPressed: () {
                               _handleSplitCommand(
-                                direction: WorkspaceSplitDirection.horizontal,
+                                direction: Axis.horizontal,
                                 editorWidthExtent: editorWidthExtent,
                                 editorHeightExtent: paneHeight,
                               );
@@ -555,7 +536,7 @@ class _NotesPageState extends State<NotesPage>
                             ),
                             onPressed: () {
                               _handleSplitCommand(
-                                direction: WorkspaceSplitDirection.vertical,
+                                direction: Axis.vertical,
                                 editorWidthExtent: editorWidthExtent,
                                 editorHeightExtent: paneHeight,
                               );
@@ -794,7 +775,7 @@ class _NotesPageState extends State<NotesPage>
   Widget _buildEditorPane() {
     return Column(
       children: [
-        NoteTabManager(controller: _coordinator),
+        NoteTabStrip(controller: _coordinator),
         Expanded(child: NoteContentArea(controller: _coordinator)),
       ],
     );

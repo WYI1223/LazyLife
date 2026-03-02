@@ -34,3 +34,13 @@ typedef DebounceTimerFactory =
 
 /// Pre-load hook used to ensure bridge/db prerequisites.
 typedef NotesPrepare = Future<void> Function();
+
+/// Result codes for pane split operations (PR-RB-06).
+///
+/// Replaces `WorkspaceSplitResult` from deleted `workspace_models.dart`.
+enum PaneSplitResult { ok, maxPanesReached, minSizeBlocked }
+
+/// Result codes for pane close operations (PR-RB-06).
+///
+/// Replaces `WorkspaceMergeResult` from deleted `workspace_models.dart`.
+enum PaneCloseResult { ok, lastPaneBlocked }

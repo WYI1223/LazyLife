@@ -6,18 +6,18 @@ import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 enum _TabContextAction { close, closeOthers, closeRight }
 
-/// Top tab strip managing currently opened notes.
-class NoteTabManager extends StatefulWidget {
-  const NoteTabManager({super.key, required this.controller});
+/// Top tab strip managing currently opened notes (renamed from NoteTabManager).
+class NoteTabStrip extends StatefulWidget {
+  const NoteTabStrip({super.key, required this.controller});
 
   /// Shared notes controller that owns open-tab and active-tab state.
   final NotesCoordinator controller;
 
   @override
-  State<NoteTabManager> createState() => _NoteTabManagerState();
+  State<NoteTabStrip> createState() => _NoteTabStripState();
 }
 
-class _NoteTabManagerState extends State<NoteTabManager> {
+class _NoteTabStripState extends State<NoteTabStrip> {
   final ScrollController _scrollController = ScrollController();
   static const Duration _doubleTapThreshold = Duration(milliseconds: 280);
   String? _lastPrimaryTapNoteId;
@@ -98,7 +98,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
       child: ColoredBox(
         color: kNotesCanvasBackground,
         child: SizedBox(
-          key: const Key('note_tab_manager'),
+          key: const Key('note_tab_strip'),
           height: kNotesTopStripHeight,
           child: _buildTabStrip(context),
         ),
