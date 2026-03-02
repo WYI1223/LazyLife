@@ -747,3 +747,11 @@ NotesCoordinator (feature controller, lib/features/notes/)
 
 *前序议题：[DI-0 双版本 NoteTabManager](DI-0-dual-tab-manager.md)（RESOLVED）*
 *下一个议题：[DI-2 布局树节点结构](DI-2-layout-tree-structure.md)*
+
+---
+
+## 实施关联 `[PR-RB-06 新增]`
+
+Q1~Q5 全部裁决由 PR-RB-06 实施。EditorShellService + EditorGroupModel + EditBuffer 首次落地。
+
+See: `docs/releases/v0.3/prs/PR-RB-06-core-editor-foundation.md`
