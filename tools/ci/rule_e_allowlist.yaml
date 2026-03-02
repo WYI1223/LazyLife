@@ -6,8 +6,6 @@
 # All exemptions must have a tracking reason and target removal version.
 
 exemptions:
-  - pair: "notes → workspace"
-    reason: "Pane layout API dependency — eliminated in v0.3 Phase 2"
   - pair: "entry → search"
     reason: "SearchResultsView shared UI — moved to shared/ in v0.3"
   - pair: "entry → diagnostics"

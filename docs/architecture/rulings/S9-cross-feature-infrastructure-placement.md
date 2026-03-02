@@ -6,7 +6,7 @@
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-28 |
-| 关联 PR | PR-0301B（EditorShellService 提取）、PR-0300D（WorkspaceTreeService 提取） |
+| 关联 PR | PR-RB-06（EditorShellService 提取）、PR-RB-05（WorkspaceTreeService 提取）；旧编号：PR-0301B、PR-0300D |
 
 ---
 
@@ -95,7 +95,7 @@ lib/core/
 | 项目 | 状态 |
 |------|------|
 | ReminderScheduler → `core/reminders/` | **已完成** — PR-0259（S7） |
-| WorkspaceTreeService → `core/workspace/` | **v0.3 PR-RB-05 spec 已定稿**（6 文件迁移：4 tree 永久 + 2 pane layout TRANSIENT）— DI-1 Q4.3 |
+| WorkspaceTreeService → `core/workspace/` | **已完成** — v0.3 PR-RB-05（6 文件迁移：4 tree 永久 + 2 pane layout TRANSIENT）— DI-1 Q4.3 |
 | EditorShellService → `core/editor/` | v0.3 PR-RB-06 待实施（设计完成 — DI-1 Q5；依赖 PR-RB-05 pane layout 过渡位置） |
 
 ---

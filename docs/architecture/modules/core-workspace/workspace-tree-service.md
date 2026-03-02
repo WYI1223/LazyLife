@@ -107,8 +107,8 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 
 | 阶段 | 状态 | PR |
 |------|------|-----|
-| CRUD 层迁移到 `core/workspace/` | **spec 已定稿** | PR-RB-05（v0.3） |
-| Pane layout TRANSIENT 过渡 | **spec 已定稿** | PR-RB-05 移入 → PR-RB-06 吸收到 `core/editor/` |
+| CRUD 层迁移到 `core/workspace/` | **已完成** | PR-RB-05（v0.3） |
+| Pane layout TRANSIENT 过渡 | **已完成** | PR-RB-05 移入 → PR-RB-06 吸收到 `core/editor/` |
 | 状态管理提升（ExplorerTreeState） | 设计未收敛 | DI-14（v0.4） |
 | 单根树 + 系统节点 | 设计已收敛 | DI-12（v0.4） |
 

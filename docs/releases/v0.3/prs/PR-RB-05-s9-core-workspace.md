@@ -1,7 +1,7 @@
 # PR-RB-05: S9 core-workspace 抽取
 
 - Proposed title: `refactor(frontend): PR-RB-05 extract workspace tree and layout to lib/core/workspace/`
-- Status: **Ready for Implementation**
+- Status: **Implemented** — 2026-03-02
 - Branch: `feat/pr-rb-05-s9-core-workspace`
 
 ## Goal
@@ -33,18 +33,18 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| **DI-1** | [`DI-1-editor-shell-service.md`](../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) Q4.3, Q5 | workspace tree 作为 core 基础设施的定位裁决；Q4.3 确认 WorkspaceTreeManager 独立提取；Q5 确认 `lib/core/` 放置 |
-| **08b** | [`08b-semantic-decisions.md`](../../reports/v0.2.5/frontend-review/08b-semantic-decisions.md) S3 | Tag × Workspace 正交性确认 workspace tree 是独立维度，不从属于 notes feature |
-| **DI-6** | [`DI-6-cross-track-dependencies.md`](../../reports/v0.3/design-discussions/DI-6-cross-track-dependencies.md) | PR 重排依据：Stage 1（语义/契约 RB-00~RB-05）→ Stage 2（编辑器基础设施 RB-06~RB-09） |
+| **DI-1** | [`DI-1-editor-shell-service.md`](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) Q4.3, Q5 | workspace tree 作为 core 基础设施的定位裁决；Q4.3 确认 WorkspaceTreeManager 独立提取；Q5 确认 `lib/core/` 放置 |
+| **08b** | [`08b-semantic-decisions.md`](../../../reports/v0.2.5/frontend-review/08b-semantic-decisions.md) S3 | Tag × Workspace 正交性确认 workspace tree 是独立维度，不从属于 notes feature |
+| **DI-6** | [`DI-6-cross-track-dependencies.md`](../../../reports/v0.3/design-discussions/DI-6-cross-track-dependencies.md) | PR 重排依据：Stage 1（语义/契约 RB-00~RB-05）→ Stage 2（编辑器基础设施 RB-06~RB-09） |
 | **Rebaseline** | [`v0.3-pr-spec-rebaseline-2026-03-01.md`](../v0.3-pr-spec-rebaseline-2026-03-01.md) §4 PR-RB-05 | Scope + 依赖确认；§5 Gate A 边界（PR-RB-05 后闭合） |
-| **Acceptance Report** | [`09-acceptance-report.md`](../../reports/v0.2.5/frontend-review/09-acceptance-report.md) §7.1 | `coordinator_impl` 1,514 行减重背景 |
+| **Acceptance Report** | [`09-acceptance-report.md`](../../../reports/v0.2.5/frontend-review/09-acceptance-report.md) §7.1 | `coordinator_impl` 1,514 行减重背景 |
 
 ### 前向参照（v0.4 + 后续 PR）
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| **DI-12** | [`DI-12-workspace-tree-single-root.md`](../../reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md) | v0.4 单根树 + 系统节点；本 PR 建立的 core/workspace/ 是 DI-12 E1 执行位置 |
-| **DI-14** | [`DI-14-workspace-tree-core-promotion.md`](../../reports/v0.3/design-discussions/DI-14-workspace-tree-core-promotion.md) | v0.4 workspace tree 提升为 core first-class citizen；本 PR 的 CRUD 层迁移是 DI-14 Q0 Option B 的先决条件 |
+| **DI-12** | [`DI-12-workspace-tree-single-root.md`](../../../reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md) | v0.4 单根树 + 系统节点；本 PR 建立的 core/workspace/ 是 DI-12 E1 执行位置 |
+| **DI-14** | [`DI-14-workspace-tree-core-promotion.md`](../../../reports/v0.3/design-discussions/DI-14-workspace-tree-core-promotion.md) | v0.4 workspace tree 提升为 core first-class citizen；本 PR 的 CRUD 层迁移是 DI-14 Q0 Option B 的先决条件 |
 | **PR-RB-06** | [`PR-RB-06-core-editor-foundation.md`](PR-RB-06-core-editor-foundation.md) T15, Out-of-scope | PR-RB-06 预期 `workspace_provider.dart` 已在 `core/workspace/`，T15 从该位置提取 layout 逻辑到 `core/editor/group_layout.dart` |
 
 ---
@@ -527,19 +527,19 @@ Exit: **= 入口 count**（纯移动 + 重命名，无测试删减或新增）
 
 ## Acceptance Criteria
 
-- [ ] `lib/core/workspace/` 包含 6 个 `.dart` 文件
-- [ ] `lib/features/workspace/` 目录已删除
-- [ ] `features/notes/managers/` 中无 `workspace_tree_*` 文件
-- [ ] `WorkspaceTreeManager` 类名已全局替换为 `WorkspaceTreeService`（lib/ + test/ 零匹配）
-- [ ] `_workspaceTreeManager` 变量名已全局替换为 `_workspaceTreeService`
-- [ ] `workspace_provider.dart` 和 `workspace_models.dart` 包含 TRANSIENT 文件头注释
-- [ ] `rule_e_allowlist.yaml` 不含 `notes → workspace` 条目
-- [ ] DartEventLogger module 字符串更新为 `'core.workspace_tree_service'`
-- [ ] Re-export 链完整：`notes_coordinator.dart` 从 `core/workspace/workspace_tree_service.dart` 导出 `WorkspaceTreeService` + 5 个 Invoker typedef
-- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
-- [ ] §Verification Structural verification 11 项检查全部通过
-- [ ] S9 ruling 实施状态标注为 **已完成**
-- [ ] Module spec 更新标注 PR-RB-05 执行状态
+- [x] `lib/core/workspace/` 包含 6 个 `.dart` 文件
+- [x] `lib/features/workspace/` 目录已删除
+- [x] `features/notes/managers/` 中无 `workspace_tree_*` 文件
+- [x] `WorkspaceTreeManager` 类名已全局替换为 `WorkspaceTreeService`（lib/ + test/ 零匹配）
+- [x] `_workspaceTreeManager` 变量名已全局替换为 `_workspaceTreeService`
+- [x] `workspace_provider.dart` 和 `workspace_models.dart` 包含 TRANSIENT 文件头注释
+- [x] `rule_e_allowlist.yaml` 不含 `notes → workspace` 条目
+- [x] DartEventLogger module 字符串更新为 `'core.workspace_tree_service'`
+- [x] Re-export 链完整：`notes_coordinator.dart` 从 `core/workspace/workspace_tree_service.dart` 导出 `WorkspaceTreeService` + 5 个 Invoker typedef
+- [x] §Verification CI gates 全部通过（逐项执行并记录输出）
+- [x] §Verification Structural verification 11 项检查全部通过
+- [x] S9 ruling 实施状态标注为 **已完成**
+- [x] Module spec 更新标注 PR-RB-05 执行状态
 
 ---
 
@@ -564,3 +564,4 @@ Exit: **= 入口 count**（纯移动 + 重命名，无测试删减或新增）
 |------|------|------|
 | Draft | — | 初始草稿 |
 | **v1.0** | **2026-03-02** | **升级为可执行版本**：添加完整消费者审计、re-export 链分析、import 路径变更明细、TRANSIENT 标记方案、Forward Compatibility 承前启后分析（DI-12/DI-14/PR-RB-06）、S3 正交性语义背景、精确 Structural Verification（11 项检查）、Changelog |
+| **v1.1** | **2026-03-02** | **实施完成 + review 修复**：执行全部 5 Phase（T1-T22）；AC 13/13 通过；CI 4/4 通过（347 tests）。Review 修复：S9 ruling + module spec 状态 → 已完成；overview.md features/notes manager 列表移除 tree；workspace_tree_service.dart doc comment typo（WorkspaceTreeService → WorkspaceTreeManager）；PR status → Implemented；AC checkbox 回填；S9 关联 PR 编号体系统一（RB + 旧编号） |

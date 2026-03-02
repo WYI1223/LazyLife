@@ -73,8 +73,8 @@ Non-responsibilities:
 4. UI interacts with core use-cases via FFI (notes CRUD, task sections, calendar range queries, workspace tree operations).
 5. Notes feature uses coordinator architecture:
    - `NotesCoordinator` orchestrates tab/draft/save lifecycle
-   - Delegates to extracted managers (NoteTabStateManager, NoteDraftManager, NoteSaveTracker, NoteListManager, NoteTagManager, WorkspaceTreeManager)
-   - `WorkspaceProvider` manages pane layout state (split/close/activate)
+   - Delegates to extracted managers (NoteTabStateManager, NoteDraftManager, NoteSaveTracker, NoteListManager, NoteTagManager) and `WorkspaceTreeService` (`lib/core/workspace/`, PR-RB-05 S9 extraction)
+   - `WorkspaceProvider` manages pane layout state (split/close/activate) — now in `lib/core/workspace/` (TRANSIENT, PR-RB-06 absorbs into `core/editor/`)
 6. Reminders scheduled via `flutter_local_notifications` (in `lib/core/reminders/`, S7 ruling: platform infrastructure).
 
 ## Data Plane
@@ -101,17 +101,17 @@ Non-responsibilities:
 ### Flutter Features
 
 - `lib/features/entry/`: workbench/shell, command parser, command router, section registry
-- `lib/features/notes/`: coordinator + managers (list, tag, tree), editor, explorer tree, tab strip. **v0.3: tab/draft/save managers extracted to `lib/core/editor/`**
+- `lib/features/notes/`: coordinator + 5 managers (tab, draft, save, list, tag), editor, explorer tree, tab strip. **v0.3: tab/draft/save managers extracted to `lib/core/editor/`**
 - `lib/shared/`: tag filter widget, shared UI tokens
 - `lib/features/search/`: search results view
 - `lib/features/tasks/`: tasks dashboard (Inbox/Today/Upcoming)
 - `lib/features/calendar/`: weekly calendar with event create/edit
-- `lib/features/workspace/`: WorkspaceProvider (pane layout state). **v0.3: replaced by `lib/core/editor/group_layout.dart`**
 - `lib/features/settings/`: extension permissions UI
 - `lib/features/diagnostics/`: Rust health panel + live log viewer
 
 ### Flutter Core Infrastructure
 
+- `lib/core/workspace/`: WorkspaceTreeService (tree CRUD infrastructure, PR-RB-05 S9 extraction) + WorkspaceProvider/WorkspaceModels (pane layout, TRANSIENT — PR-RB-06 absorbs into `core/editor/`)
 - `lib/core/rust_bridge.dart`: RustBridge facade (3-stage init)
 - `lib/core/bindings/`: auto-generated FRB Dart wrappers (do not edit)
 - `lib/core/settings/`: LocalSettingsStore (JSON persistence)
@@ -134,9 +134,13 @@ lib/core/editor/                        ← EditorShellService (S2 Phase 2/3)
 ├── layout_persistence.dart             ← Layout file I/O + debounce (DI-3)
 └── editor_resolver.dart                ← content_type → EditorPane (DI-10)
 
-lib/core/workspace/                     ← WorkspaceTreeService extraction
-├── workspace_tree_service.dart         ← From features/notes/managers/
-└── workspace_models.dart               ← From features/workspace/
+lib/core/workspace/                     ← PR-RB-05 S9 extraction (6 files)
+├── workspace_tree_service.dart         ← From features/notes/managers/workspace_tree_manager.dart (renamed)
+├── workspace_tree_types.dart           ← From features/notes/managers/
+├── workspace_tree_children_loader.dart ← From features/notes/managers/
+├── workspace_tree_error_utils.dart     ← From features/notes/managers/
+├── workspace_provider.dart             ← From features/workspace/ [TRANSIENT → core/editor/ in PR-RB-06]
+└── workspace_models.dart               ← From features/workspace/ [TRANSIENT → core/editor/ in PR-RB-06]
 ```
 
 ## Notes Coordinator Architecture (Post-PR-0252)
@@ -150,7 +154,7 @@ NotesCoordinator (orchestrator)
 ├── NoteSaveTracker      — save state, debounce, retry
 ├── NoteListManager      — note list queries + pagination
 ├── NoteTagManager       — tag operations
-└── WorkspaceTreeManager — explorer tree operations
+└── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05)
 ```
 
 WorkspaceProvider remains separate, managing pane layout only (split/close/activate pane).

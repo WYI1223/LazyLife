@@ -96,12 +96,12 @@ Flutter app. All data operations go through FFI calls. No domain state is stored
 | `lib/core/debug/` | `LogReader` — reads rolling log files |
 | `lib/core/diagnostics/` | `DartEventLogger` — Dart-side structured event logging |
 | `lib/features/entry/` | Single-entry search/command panel, `CommandParser`, `CommandRouter`, `CommandRegistry`, workbench shell layout |
-| `lib/features/notes/` | Coordinator + 6 managers (tab, draft, save, list, tag, tree), editor, explorer tree, tab strip |
+| `lib/core/workspace/` | `WorkspaceTreeService` (tree CRUD infrastructure — PR-RB-05 S9 extraction), `WorkspaceProvider` + `WorkspaceModels` (pane layout — TRANSIENT, PR-RB-06 absorbs into `core/editor/`) |
+| `lib/features/notes/` | Coordinator + 5 managers (tab, draft, save, list, tag), editor, explorer tree, tab strip |
 | `lib/shared/` | `TagFilter` widget, `ui_tokens.dart` shared color constants |
 | `lib/features/search/` | Search results view |
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
 | `lib/features/calendar/` | Weekly calendar: mini month sidebar, week grid, event blocks, create/edit dialog |
-| `lib/features/workspace/` | `WorkspaceProvider` (pane layout state only — post-PR-0258), `WorkspaceModels` (TreeNode, etc.) |
 | `lib/core/reminders/` | `ReminderScheduler` + `ReminderService` + `ReminderLifecycle` — local notifications via `flutter_local_notifications`; lifecycle-driven triggers (S7 ruling: infrastructure, not feature) |
 | `lib/features/settings/` | Settings capability page (extension permissions UI) |
 | `lib/features/diagnostics/` | Rust health panel + live log viewer |
@@ -375,10 +375,10 @@ NotesCoordinator (orchestrator)
 ├── NoteSaveTracker      — save state, debounce, retry
 ├── NoteListManager      — note list queries + pagination
 ├── NoteTagManager       — tag operations
-└── WorkspaceTreeManager — explorer tree operations
+└── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05 S9 extraction)
 ```
 
-`WorkspaceProvider` remains separate, managing pane layout state (split/close/activate pane). The dual-state pattern between coordinator and `WorkspaceProvider` was eliminated in PR-0258.
+`WorkspaceProvider` remains separate (now in `lib/core/workspace/`, TRANSIENT — PR-RB-06 absorbs into `core/editor/`), managing pane layout state (split/close/activate pane). The dual-state pattern between coordinator and `WorkspaceProvider` was eliminated in PR-0258.
 
 ### Other Controllers
 

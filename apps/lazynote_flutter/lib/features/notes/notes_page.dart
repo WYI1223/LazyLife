@@ -7,13 +7,13 @@ import 'package:lazynote_flutter/app/ui_slots/first_party_ui_slots.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_host.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_provider.dart';
 import 'package:lazynote_flutter/features/notes/note_content_area.dart';
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
 import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
-import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
-import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 
