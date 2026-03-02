@@ -98,8 +98,8 @@ These fields will be added via new migrations in v0.3:
 3. `parent_uuid` may be `NULL` (root) or reference another `workspace_nodes.node_uuid`.
 4. Service layer rejects cycle-producing moves (`A -> ... -> A`).
 5. Core child listing order is deterministic for storage/replay: `sort_order ASC, node_uuid ASC`.
-6. Atom delete/type change is not blocked by existing `atom_ref`; references may become dangling.
-7. Tree read paths hide invalid `atom_ref` and only surface active references.
+6. Atom soft-delete and hard-delete are **blocked** by DB triggers when active `atom_ref` entries reference the atom (Migration 0011). Callers must delete or soft-delete referencing `atom_ref` nodes first.
+7. Tree read paths hide soft-deleted `atom_ref` and only surface active references.
 
 Code reference: `crates/lazynote_core/src/repo/tree_repo.rs`, `crates/lazynote_core/src/service/tree_service.rs`.
 

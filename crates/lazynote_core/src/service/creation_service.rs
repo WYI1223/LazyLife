@@ -5,8 +5,8 @@
 //! - Provide transactional create operations for note, task, and event atoms.
 //!
 //! # Invariants
-//! - Atom and atom_ref are created on the same `Connection` (implicit SQLite
-//!   transaction guarantees atomicity).
+//! - Atom and atom_ref are created inside an explicit IMMEDIATE transaction,
+//!   guaranteeing atomicity — if either step fails, both are rolled back.
 //! - New atoms receive a root-level atom_ref when `parent_node_id` is `None`.
 //!
 //! # See also
@@ -19,7 +19,7 @@ use crate::repo::note_repo::NoteRecord;
 use crate::repo::tree_repo::{SqliteTreeRepository, WorkspaceNode, WorkspaceNodeId};
 use crate::service::note_service::{derive_markdown_preview, derive_title};
 use crate::service::tree_service::{TreeService, TreeServiceError};
-use rusqlite::Connection;
+use rusqlite::{Connection, Transaction, TransactionBehavior};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
@@ -95,6 +95,9 @@ impl<'conn> CreationService<'conn> {
     }
 
     /// Creates a note atom + root-level (or parent-scoped) atom_ref.
+    ///
+    /// Wrapped in an IMMEDIATE transaction: if atom_ref creation fails,
+    /// the atom INSERT is rolled back.
     pub fn create_note_with_ref(
         &self,
         content: impl Into<String>,
@@ -109,28 +112,29 @@ impl<'conn> CreationService<'conn> {
         atom.preview_text = preview.preview_text;
         atom.preview_image = preview.preview_image;
 
-        // 1. Persist atom.
-        let atom_repo = SqliteAtomRepository::try_new(self.conn)?;
+        let display_name = if title.is_empty() { None } else { Some(title) };
+
+        let tx = begin_immediate(self.conn)?;
+
+        let atom_repo = SqliteAtomRepository::try_new(&tx)?;
         atom_repo.create_atom(&atom)?;
 
-        // 2. Create atom_ref.
-        let display_name = if title.is_empty() {
-            None
-        } else {
-            Some(title)
-        };
-        let node = self.create_atom_ref_for(atom.uuid, parent_node_id, display_name)?;
+        let tree_repo = SqliteTreeRepository::try_new(&tx)
+            .map_err(|e| CreationServiceError::Tree(TreeServiceError::from(e)))?;
+        let node =
+            TreeService::new(tree_repo).create_atom_ref(parent_node_id, atom.uuid, display_name)?;
 
-        // 3. Read-back NoteRecord (tags are always empty for a new note).
-        let record = read_back_note_record(self.conn, atom.uuid)?
-            .ok_or(CreationServiceError::InconsistentState(
-                "created note not found in read-back",
-            ))?;
+        let record = read_back_note_record(&tx, atom.uuid)?.ok_or(
+            CreationServiceError::InconsistentState("created note not found in read-back"),
+        )?;
 
+        commit(tx)?;
         Ok((record, node))
     }
 
     /// Creates a task atom + root-level (or parent-scoped) atom_ref.
+    ///
+    /// Wrapped in an IMMEDIATE transaction.
     pub fn create_task_with_ref(
         &self,
         content: impl Into<String>,
@@ -143,20 +147,25 @@ impl<'conn> CreationService<'conn> {
         atom.title = title.clone();
         atom.task_status = Some(TaskStatus::Todo);
 
-        let atom_repo = SqliteAtomRepository::try_new(self.conn)?;
+        let display_name = if title.is_empty() { None } else { Some(title) };
+
+        let tx = begin_immediate(self.conn)?;
+
+        let atom_repo = SqliteAtomRepository::try_new(&tx)?;
         atom_repo.create_atom(&atom)?;
 
-        let display_name = if title.is_empty() {
-            None
-        } else {
-            Some(title)
-        };
-        let node = self.create_atom_ref_for(atom.uuid, parent_node_id, display_name)?;
+        let tree_repo = SqliteTreeRepository::try_new(&tx)
+            .map_err(|e| CreationServiceError::Tree(TreeServiceError::from(e)))?;
+        let node =
+            TreeService::new(tree_repo).create_atom_ref(parent_node_id, atom.uuid, display_name)?;
 
+        commit(tx)?;
         Ok((atom.uuid, node))
     }
 
     /// Creates an event atom + root-level (or parent-scoped) atom_ref.
+    ///
+    /// Wrapped in an IMMEDIATE transaction.
     pub fn create_event_with_ref(
         &self,
         request: &CreateEventWithRefRequest,
@@ -169,33 +178,33 @@ impl<'conn> CreationService<'conn> {
         atom.start_at = Some(request.start_epoch_ms);
         atom.end_at = request.end_epoch_ms;
 
-        let atom_repo = SqliteAtomRepository::try_new(self.conn)?;
+        let display_name = if title.is_empty() { None } else { Some(title) };
+
+        let tx = begin_immediate(self.conn)?;
+
+        let atom_repo = SqliteAtomRepository::try_new(&tx)?;
         atom_repo.create_atom(&atom)?;
 
-        let display_name = if title.is_empty() {
-            None
-        } else {
-            Some(title)
-        };
-        let node = self.create_atom_ref_for(atom.uuid, parent_node_id, display_name)?;
+        let tree_repo = SqliteTreeRepository::try_new(&tx)
+            .map_err(|e| CreationServiceError::Tree(TreeServiceError::from(e)))?;
+        let node =
+            TreeService::new(tree_repo).create_atom_ref(parent_node_id, atom.uuid, display_name)?;
 
+        commit(tx)?;
         Ok((atom.uuid, node))
     }
+}
 
-    /// Shared helper: create workspace atom_ref via TreeService.
-    fn create_atom_ref_for(
-        &self,
-        atom_uuid: AtomId,
-        parent_node_id: Option<WorkspaceNodeId>,
-        display_name: Option<String>,
-    ) -> Result<WorkspaceNode, CreationServiceError> {
-        let tree_repo = SqliteTreeRepository::try_new(self.conn)
-            .map_err(|e| CreationServiceError::Tree(TreeServiceError::from(e)))?;
-        let tree_service = TreeService::new(tree_repo);
-        tree_service
-            .create_atom_ref(parent_node_id, atom_uuid, display_name)
-            .map_err(Into::into)
-    }
+/// Begins an IMMEDIATE transaction for atomic creation.
+fn begin_immediate(conn: &Connection) -> Result<Transaction<'_>, CreationServiceError> {
+    Transaction::new_unchecked(conn, TransactionBehavior::Immediate)
+        .map_err(|e| CreationServiceError::Repo(RepoError::from(e)))
+}
+
+/// Commits a creation transaction.
+fn commit(tx: Transaction<'_>) -> Result<(), CreationServiceError> {
+    tx.commit()
+        .map_err(|e| CreationServiceError::Repo(RepoError::from(e)))
 }
 
 /// Reads back a `NoteRecord` from the atoms table for a freshly created note.

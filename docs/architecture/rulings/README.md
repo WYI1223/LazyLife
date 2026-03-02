@@ -20,10 +20,10 @@
 
 | ID | 标题 | 状态 | 关联 v0.3 PR |
 |----|------|------|-------------|
-| [S1](S1-atom-projection.md) | Atom 投影语义 | Accepted — v0.3 PR-RB-02/03 | PR-RB-02, PR-RB-03 |
+| [S1](S1-atom-projection.md) | Atom 投影语义 | Landed — v0.3 基线 + v0.4 addendum(DI-11/12, planning) | PR-RB-02, PR-RB-03 |
 | [S2](S2-tab-draft-save-ownership.md) | Tab/Draft/Save 状态归属 | Accepted — Phase 1 Landed, Phase 2/3 v0.3 | PR-RB-06 |
 | [S3](S3-tag-workspace-orthogonality.md) | Tag × Workspace Tree 正交性 | Accepted — v0.3 | PR-RB-10 |
-| [S4](S4-creation-path-unification.md) | Note 创建入口统一 | Accepted — v0.3 | PR-RB-03 |
+| [S4](S4-creation-path-unification.md) | Note 创建入口统一 | Accepted — v0.3 基线 + v0.4 addendum(DI-11/12) | PR-RB-03 |
 | [S5](S5-extension-kernel-boundary.md) | Extension Kernel → Flutter 命令系统边界 | Landed | — |
 | [S6](S6-provider-spi-interaction.md) | Provider SPI → external_mappings 交互 | Accepted — v0.3 | PR-RB-12 (Conditional) |
 | [S7](S7-reminders-infrastructure.md) | Reminders 模块定位 | Landed | — |

@@ -45,7 +45,7 @@ void main() {
           items: [noteStore['note-1']!],
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,

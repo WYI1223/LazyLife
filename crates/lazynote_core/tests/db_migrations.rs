@@ -465,7 +465,10 @@ fn migration_11_upgrades_note_ref_to_atom_ref_and_backfills_tasks() {
          VALUES (?1, 'atom_ref', NULL, ?2, 'Ghost', 0);",
         [&ghost_ref_id, &ghost_id],
     );
-    assert!(bad_insert.is_err(), "atom_ref should reject non-existent atom");
+    assert!(
+        bad_insert.is_err(),
+        "atom_ref should reject non-existent atom"
+    );
 }
 
 fn migrate_to_v8(conn: &Connection) {
@@ -513,10 +516,8 @@ fn migrate_to_v9(conn: &Connection) {
 
 fn migrate_to_v10(conn: &Connection) {
     migrate_to_v9(conn);
-    conn.execute_batch(include_str!(
-        "../src/db/migrations/0010_s1_core_fields.sql"
-    ))
-    .unwrap();
+    conn.execute_batch(include_str!("../src/db/migrations/0010_s1_core_fields.sql"))
+        .unwrap();
     conn.execute_batch("PRAGMA user_version = 10;").unwrap();
 }
 

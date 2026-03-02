@@ -2,7 +2,7 @@
 
 > `lib/core/workspace/workspace_tree_service.dart`
 >
-> 设计来源：[DI-1 Q4.3](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings/S9-cross-feature-infrastructure-placement.md) · [S1 R5/R6](../../rulings/S1-atom-projection.md)
+> 设计来源：[DI-1 Q4.3](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings/S9-cross-feature-infrastructure-placement.md) · [S1 R5/R6](../../rulings/S1-atom-projection.md) · [DI-12](../../../reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md)
 
 ---
 
@@ -37,6 +37,7 @@ NotesCoordinator 中与 workspace tree 相关的协调逻辑（如 "在指定文
 
 - **S1 R5**：atom_ref 强制伴随 — 所有 Atom 创建走统一路径，WorkspaceTreeService 作为 atom_ref 创建的基础设施
 - **S1 R6**：指定默认路径模型 — Tasks/Calendar 创建时 atom_ref 路由到指定文件夹，需要跨 feature 访问 workspace tree
+- **DI-12（v0.4 规划）**：单根树 + 系统节点锚点（`ROOT`/`Inbox`/`Tasks`/`Calendar`）收敛
 - **S3**：Tag × Workspace 正交性 — workspace tree 是独立维度，不从属于 notes feature
 
 ---
@@ -80,3 +81,14 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 - ← `TasksController` — 消费者（tasks 视图创建时路由到指定文件夹）
 - ← `CalendarController` — 消费者（calendar 视图创建时路由到指定文件夹）
 - → [S1 R6 指定文件夹](../../rulings/S1-atom-projection.md) — 创建路径路由表
+
+---
+
+## v0.4 Addendum（DI-12，规划态）
+
+> 本节仅作为 v0.4 规划输入，不覆盖 v0.3 进行中的实现基线。
+
+1. 树结构将收敛到单根（隐藏 `ROOT`），并固化系统节点角色（`Inbox`/`Tasks`/`Calendar`）。
+2. `WorkspaceTreeService` 需补充系统节点保护语义：可移动/可重命名，不可删除。
+3. “重新指定默认路径”在实现层收敛为移动同一系统节点（role+uuid 不变），不做运行时映射重绑定。
+4. Tree/List/Spatial 读取同一结构源，模块层需保证跨视图一致性。

@@ -113,7 +113,7 @@ void main() {
           appliedLimit: 50,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-1',
           content: content,

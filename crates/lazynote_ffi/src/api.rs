@@ -17,9 +17,9 @@ use lazynote_core::{
     log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId,
     CreateEventWithRefRequest, CreationService, CreationServiceError, FolderDeleteMode,
     LogDartEventError, NoteRecord, NoteService, NoteServiceError, SearchQuery, SectionAtom,
-    SqliteAtomRepository, SqliteNoteRepository, SqliteTreeRepository,
-    TaskService, TaskServiceError, TreeRepoError, TreeService, TreeServiceError, ViewHint,
-    WorkspaceNode, WorkspaceNodeKind,
+    SqliteAtomRepository, SqliteNoteRepository, SqliteTreeRepository, TaskService,
+    TaskServiceError, TreeRepoError, TreeService, TreeServiceError, ViewHint, WorkspaceNode,
+    WorkspaceNodeKind,
 };
 use log::error;
 use std::path::PathBuf;
@@ -681,12 +681,24 @@ fn entry_schedule_impl(
 /// - Applies markdown preview hooks (`preview_text`, `preview_image`).
 /// - Returns typed envelope with stable error codes.
 #[flutter_rust_bridge::frb]
-pub async fn note_create(content: String) -> AtomItemResponse {
-    note_create_impl(content)
+pub async fn note_create(content: String, parent_node_id: Option<String>) -> AtomItemResponse {
+    note_create_impl(content, parent_node_id)
 }
 
-fn note_create_impl(content: String) -> AtomItemResponse {
-    match with_creation_service(|service| service.create_note_with_ref(content, None)) {
+fn note_create_impl(content: String, parent_node_id: Option<String>) -> AtomItemResponse {
+    let parsed_parent = match parse_optional_parent_node_id(parent_node_id) {
+        Ok(value) => value,
+        Err(err) => {
+            return AtomItemResponse {
+                ok: false,
+                error_code: Some(err.code().to_string()),
+                message: err.message().to_string(),
+                item: None,
+                node_uuid: None,
+            };
+        }
+    };
+    match with_creation_service(|service| service.create_note_with_ref(content, parsed_parent)) {
         Ok((note, node)) => AtomItemResponse {
             ok: true,
             error_code: None,
@@ -1781,8 +1793,7 @@ mod tests {
         entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
         map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
         note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
-        workspace_create_atom_ref_impl, workspace_create_folder_impl,
-        workspace_delete_folder_impl,
+        workspace_create_atom_ref_impl, workspace_create_folder_impl, workspace_delete_folder_impl,
         workspace_list_children_impl, workspace_move_node_impl, workspace_rename_node_impl,
         NotesFfiError, WorkspaceFfiError,
     };
@@ -2038,7 +2049,7 @@ mod tests {
     #[test]
     fn note_create_and_get_returns_typed_payload() {
         let _guard = acquire_test_db_lock();
-        let created = note_create_impl("# heading ![](first.png)".to_string());
+        let created = note_create_impl("# heading ![](first.png)".to_string(), None);
         assert!(created.ok, "{}", created.message);
         assert!(created.error_code.is_none());
         let atom_id = created
@@ -2063,7 +2074,7 @@ mod tests {
     #[test]
     fn note_get_returns_s8_fields_for_pure_note() {
         let _guard = acquire_test_db_lock();
-        let created = note_create_impl("s8 field check".to_string());
+        let created = note_create_impl("s8 field check".to_string(), None);
         assert!(created.ok, "{}", created.message);
         let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
 
@@ -2074,6 +2085,79 @@ mod tests {
         assert!(item.start_at.is_none(), "pure note has no start_at");
         assert!(item.end_at.is_none(), "pure note has no end_at");
         assert!(item.task_status.is_none(), "pure note has no task_status");
+    }
+
+    #[test]
+    fn note_create_with_parent_places_atom_ref_under_folder() {
+        let _guard = acquire_test_db_lock();
+
+        // Create a folder to serve as parent.
+        let folder = workspace_create_folder_impl(None, "target-folder".to_string());
+        assert!(folder.ok, "{}", folder.message);
+        let folder_id = folder.node.expect("folder node").node_id;
+
+        // Create note with parent_node_id pointing to the folder.
+        let created = note_create_impl("# child note".to_string(), Some(folder_id.clone()));
+        assert!(created.ok, "{}", created.message);
+        let node_uuid = created
+            .node_uuid
+            .expect("note_create should return node_uuid");
+
+        // List children of the folder — the atom_ref must be there.
+        let children = workspace_list_children_impl(Some(folder_id.clone()));
+        assert!(children.ok, "{}", children.message);
+        let child_ids: Vec<&str> = children.items.iter().map(|n| n.node_id.as_str()).collect();
+        assert!(
+            child_ids.contains(&node_uuid.as_str()),
+            "atom_ref should be under target folder, got: {:?}",
+            child_ids
+        );
+
+        // Root level must NOT contain a duplicate ref for the same atom.
+        let root_children = workspace_list_children_impl(None);
+        assert!(root_children.ok, "{}", root_children.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+        let root_refs_for_atom: Vec<_> = root_children
+            .items
+            .iter()
+            .filter(|n| n.atom_id.as_deref() == Some(atom_id.as_str()))
+            .collect();
+        assert!(
+            root_refs_for_atom.is_empty(),
+            "no duplicate root ref should exist; found {:?}",
+            root_refs_for_atom
+                .iter()
+                .map(|n| &n.node_id)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn note_create_without_parent_places_atom_ref_at_root() {
+        let _guard = acquire_test_db_lock();
+
+        let created = note_create_impl("# root note".to_string(), None);
+        assert!(created.ok, "{}", created.message);
+        let node_uuid = created
+            .node_uuid
+            .expect("note_create should return node_uuid");
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        // Root level must contain exactly one atom_ref for this atom.
+        let root_children = workspace_list_children_impl(None);
+        assert!(root_children.ok, "{}", root_children.message);
+        let root_refs: Vec<_> = root_children
+            .items
+            .iter()
+            .filter(|n| n.atom_id.as_deref() == Some(atom_id.as_str()))
+            .collect();
+        assert_eq!(
+            root_refs.len(),
+            1,
+            "exactly one root ref expected; found {}",
+            root_refs.len()
+        );
+        assert_eq!(root_refs[0].node_id, node_uuid);
     }
 
     #[test]
@@ -2101,7 +2185,7 @@ mod tests {
     #[test]
     fn note_update_uses_full_replace_and_updates_preview() {
         let _guard = acquire_test_db_lock();
-        let created = note_create_impl("first body".to_string());
+        let created = note_create_impl("first body".to_string(), None);
         assert!(created.ok, "{}", created.message);
         let atom_id = created
             .item
@@ -2124,10 +2208,10 @@ mod tests {
     #[test]
     fn notes_list_caps_limit_and_filters_single_tag() {
         let _guard = acquire_test_db_lock();
-        let first = note_create_impl("work note".to_string());
+        let first = note_create_impl("work note".to_string(), None);
         assert!(first.ok, "{}", first.message);
         let first_id = first.item.as_ref().expect("first note").atom_id.clone();
-        let second = note_create_impl("other note".to_string());
+        let second = note_create_impl("other note".to_string(), None);
         assert!(second.ok, "{}", second.message);
         let second_id = second.item.as_ref().expect("second note").atom_id.clone();
 
@@ -2151,7 +2235,7 @@ mod tests {
     #[test]
     fn notes_list_rejects_blank_tag_with_invalid_tag_error_code() {
         let _guard = acquire_test_db_lock();
-        let created = note_create_impl("blank tag filter source".to_string());
+        let created = note_create_impl("blank tag filter source".to_string(), None);
         assert!(created.ok, "{}", created.message);
 
         let response = notes_list_impl(Some("   ".to_string()), Some(20), Some(0));
@@ -2162,7 +2246,7 @@ mod tests {
     #[test]
     fn note_set_tags_normalizes_values_and_refreshes_updated_at() {
         let _guard = acquire_test_db_lock();
-        let created = note_create_impl("tag update target".to_string());
+        let created = note_create_impl("tag update target".to_string(), None);
         assert!(created.ok, "{}", created.message);
         let atom_id = created
             .item
@@ -2255,7 +2339,7 @@ mod tests {
     #[test]
     fn tags_list_returns_normalized_values() {
         let _guard = acquire_test_db_lock();
-        let created = note_create_impl("tag source".to_string());
+        let created = note_create_impl("tag source".to_string(), None);
         assert!(created.ok, "{}", created.message);
         let atom_id = created
             .item
@@ -2284,24 +2368,9 @@ mod tests {
     }
 
     fn create_workspace_atom_ref_node() -> String {
-        let created_note = note_create_impl("workspace note".to_string());
-        assert!(created_note.ok, "{}", created_note.message);
-        let atom_id = created_note
-            .item
-            .as_ref()
-            .expect("note payload")
-            .atom_id
-            .clone();
-        let parsed_atom_id = uuid::Uuid::parse_str(atom_id.as_str()).expect("parse atom id");
-
-        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
-        let repo = SqliteTreeRepository::try_new(&conn).expect("init tree repo");
-        let service = TreeService::new(repo);
-        service
-            .create_atom_ref(None, parsed_atom_id, Some("atom-ref".to_string()))
-            .expect("create workspace atom_ref")
-            .node_uuid
-            .to_string()
+        let response = note_create_impl("workspace note".to_string(), None);
+        assert!(response.ok, "{}", response.message);
+        response.node_uuid.expect("node_uuid from note_create")
     }
 
     fn create_workspace_folder_via_ffi(name: &str) -> String {
@@ -2403,7 +2472,11 @@ mod tests {
         assert!(created.ok, "{}", created.message);
         let atom_id = created.atom_id.expect("task atom id");
         let response = workspace_create_atom_ref_impl(None, atom_id, None);
-        assert!(response.ok, "atom_ref should accept task atoms: {}", response.message);
+        assert!(
+            response.ok,
+            "atom_ref should accept task atoms: {}",
+            response.message
+        );
         let node = response.node.expect("workspace node payload");
         assert_eq!(node.kind, "atom_ref");
     }

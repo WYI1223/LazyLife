@@ -23,7 +23,7 @@
 
 | Spec | 文件位置 | 设计来源 |
 |------|---------|---------|
-| [WorkspaceTreeService](core-workspace/workspace-tree-service.md) | `lib/core/workspace/workspace_tree_service.dart` | DI-1 Q4.3, S9, S1 R5/R6 |
+| [WorkspaceTreeService](core-workspace/workspace-tree-service.md) | `lib/core/workspace/workspace_tree_service.dart` | DI-1 Q4.3, S9, S1 R5/R6, DI-12(v0.4 addendum) |
 
 ### `core-reminders/` — 通知基础设施
 

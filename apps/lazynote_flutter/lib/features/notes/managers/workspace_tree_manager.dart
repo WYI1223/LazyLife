@@ -21,7 +21,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
   WorkspaceTreeManager({
     required WorkspaceDeleteFolderInvoker workspaceDeleteFolderInvoker,
     required WorkspaceCreateFolderInvoker workspaceCreateFolderInvoker,
-    required WorkspaceCreateAtomRefInvoker workspaceCreateAtomRefInvoker,
     required WorkspaceRenameNodeInvoker workspaceRenameNodeInvoker,
     required WorkspaceMoveNodeInvoker workspaceMoveNodeInvoker,
     required WorkspaceListChildrenInvoker workspaceListChildrenInvoker,
@@ -33,7 +32,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
     required WorkspaceListItemsReader listItems,
   }) : _workspaceDeleteFolderInvoker = workspaceDeleteFolderInvoker,
        _workspaceCreateFolderInvoker = workspaceCreateFolderInvoker,
-       _workspaceCreateAtomRefInvoker = workspaceCreateAtomRefInvoker,
        _workspaceRenameNodeInvoker = workspaceRenameNodeInvoker,
        _workspaceMoveNodeInvoker = workspaceMoveNodeInvoker,
        _prepare = prepare,
@@ -49,7 +47,6 @@ class WorkspaceTreeManager extends ChangeNotifier {
 
   final WorkspaceDeleteFolderInvoker _workspaceDeleteFolderInvoker;
   final WorkspaceCreateFolderInvoker _workspaceCreateFolderInvoker;
-  final WorkspaceCreateAtomRefInvoker _workspaceCreateAtomRefInvoker;
   final WorkspaceRenameNodeInvoker _workspaceRenameNodeInvoker;
   final WorkspaceMoveNodeInvoker _workspaceMoveNodeInvoker;
   final WorkspacePrepare _prepare;
@@ -194,33 +191,20 @@ class WorkspaceTreeManager extends ChangeNotifier {
     _workspaceNodeMutationErrorMessage = null;
     notifyListeners();
     try {
-      final atomId = await _createNoteAndGetAtomId();
-      if (atomId == null || atomId.trim().isEmpty) {
-        _workspaceNodeMutationErrorMessage =
-            'Created note is missing atom id for workspace linking.';
-        return const rust_api.WorkspaceActionResponse(
-          ok: false,
-          errorCode: 'internal_error',
-          message: 'Created note is missing atom id for workspace linking.',
-        );
-      }
-
-      await _prepare();
-      final linkResponse = await _workspaceCreateAtomRefInvoker(
+      final result = await _createNoteAndGetAtomId(
         parentNodeId: parentForCreateRef,
-        atomId: atomId,
-        displayName: null,
       );
-      if (!linkResponse.ok) {
+      if (result.atomId == null || result.atomId!.trim().isEmpty) {
+        final errorCode = result.errorCode ?? 'internal_error';
         final message = workspaceActionErrorMessage(
-          errorCode: linkResponse.errorCode,
-          message: linkResponse.message,
-          fallback: 'Note created, but linking into workspace failed.',
+          errorCode: result.errorCode,
+          message: result.errorMessage ?? '',
+          fallback: 'Created note is missing atom id for workspace linking.',
         );
         _workspaceNodeMutationErrorMessage = message;
         return rust_api.WorkspaceActionResponse(
           ok: false,
-          errorCode: linkResponse.errorCode,
+          errorCode: errorCode,
           message: message,
         );
       }

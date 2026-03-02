@@ -126,8 +126,13 @@ Future<EntryActionResponse> entrySchedule({
 /// - Async call, DB-backed execution.
 /// - Applies markdown preview hooks (`preview_text`, `preview_image`).
 /// - Returns typed envelope with stable error codes.
-Future<AtomItemResponse> noteCreate({required String content}) =>
-    RustLib.instance.api.crateApiNoteCreate(content: content);
+Future<AtomItemResponse> noteCreate({
+  required String content,
+  String? parentNodeId,
+}) => RustLib.instance.api.crateApiNoteCreate(
+  content: content,
+  parentNodeId: parentNodeId,
+);
 
 /// Fully replaces note content by stable id.
 ///

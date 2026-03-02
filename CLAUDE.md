@@ -290,7 +290,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 
 | Function | Returns |
 |----------|---------|
-| `note_create(content)` | `AtomItemResponse` |
+| `note_create(content, parent_node_id?)` | `AtomItemResponse` |
 | `note_update(atom_id, content)` | `AtomItemResponse` |
 | `note_get(atom_id)` | `AtomItemResponse` |
 | `notes_list(tag?, limit?, offset?)` | `AtomListResponse` |

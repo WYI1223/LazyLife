@@ -61,8 +61,9 @@ void main() {
             item: store[atomId],
           );
         },
-        noteCreateInvoker: ({required content}) async {
+        noteCreateInvoker: ({required content, parentNodeId}) async {
           noteCreateCalls += 1;
+          noteRefParents.add(parentNodeId);
           final created = note(
             atomId: 'note-${nextUpdatedAt + 10}',
             content: content,
@@ -125,23 +126,6 @@ void main() {
             message: 'ok',
           );
         },
-        workspaceCreateAtomRefInvoker:
-            ({parentNodeId, required atomId, displayName}) async {
-              noteRefParents.add(parentNodeId);
-              return rust_api.WorkspaceNodeResponse(
-                ok: true,
-                errorCode: null,
-                message: 'ok',
-                node: rust_api.WorkspaceNodeItem(
-                  nodeId: 'ref_$atomId',
-                  kind: 'atom_ref',
-                  parentNodeId: parentNodeId,
-                  atomId: atomId,
-                  displayName: displayName ?? atomId,
-                  sortOrder: 0,
-                ),
-              );
-            },
         workspaceRenameNodeInvoker:
             ({required nodeId, required newName}) async {
               renameCalls.add((nodeId, newName));

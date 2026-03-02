@@ -27,7 +27,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     NoteSetTagsInvoker? noteSetTagsInvoker,
     WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
     WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
-    WorkspaceCreateAtomRefInvoker? workspaceCreateAtomRefInvoker,
     WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
     WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
     WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
@@ -50,8 +49,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         workspaceDeleteFolderInvoker ?? _defaultWorkspaceDeleteFolderInvoker;
     final resolvedWorkspaceCreateFolderInvoker =
         workspaceCreateFolderInvoker ?? _defaultWorkspaceCreateFolderInvoker;
-    final resolvedWorkspaceCreateAtomRefInvoker =
-        workspaceCreateAtomRefInvoker ?? _defaultWorkspaceCreateAtomRefInvoker;
     final resolvedWorkspaceRenameNodeInvoker =
         workspaceRenameNodeInvoker ?? _defaultWorkspaceRenameNodeInvoker;
     final resolvedWorkspaceMoveNodeInvoker =
@@ -139,7 +136,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _workspaceTreeManager = WorkspaceTreeManager(
       workspaceDeleteFolderInvoker: resolvedWorkspaceDeleteFolderInvoker,
       workspaceCreateFolderInvoker: resolvedWorkspaceCreateFolderInvoker,
-      workspaceCreateAtomRefInvoker: resolvedWorkspaceCreateAtomRefInvoker,
       workspaceRenameNodeInvoker: resolvedWorkspaceRenameNodeInvoker,
       workspaceMoveNodeInvoker: resolvedWorkspaceMoveNodeInvoker,
       workspaceListChildrenInvoker: resolvedWorkspaceListChildrenInvoker,
@@ -177,6 +173,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   bool _detailLoading = false;
   String? _detailErrorMessage;
   bool _creatingNote = false;
+  String? _createErrorCode;
   String? _createErrorMessage;
   String? _createWarningMessage;
   Future<void>? _createTagApplyFuture;
@@ -614,7 +611,8 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   ///
   /// Contract:
   /// - Parent id must be `null` or UUID (`__uncategorized__` is mapped to root).
-  /// - Uses existing note create flow, then links note via `workspace_create_atom_ref`.
+  /// - Uses single-call `note_create(content, parent_node_id)` — atom + atom_ref
+  ///   are created atomically by `CreationService`.
   /// - On success, created note is active and tree revision is bumped.
   Future<rust_api.WorkspaceActionResponse> createWorkspaceNoteInFolder({
     String? parentNodeId,
@@ -683,16 +681,26 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     );
   }
 
-  Future<String?> _createNoteAndGetAtomId() async {
-    final created = await createNote();
+  Future<WorkspaceCreateNoteResult> _createNoteAndGetAtomId({
+    String? parentNodeId,
+  }) async {
+    final created = await createNote(parentNodeId: parentNodeId);
     if (!created) {
-      return null;
+      return (
+        atomId: null,
+        errorCode: _createErrorCode,
+        errorMessage: _createErrorMessage,
+      );
     }
     final atomId = _activeNoteId?.trim();
     if (atomId == null || atomId.isEmpty) {
-      return null;
+      return (
+        atomId: null,
+        errorCode: 'internal_error',
+        errorMessage: 'Created note is missing atom id.',
+      );
     }
-    return atomId;
+    return (atomId: atomId, errorCode: null, errorMessage: null);
   }
 
   Future<void> _handleWorkspaceDeleteSuccess() async {
@@ -784,20 +792,25 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   /// - Calls `note_create` with empty content in v0.1 C2.
   /// - Inserts created note into list/cache without reloading full list.
   /// - Sets created note as active tab and requests editor focus.
-  Future<bool> createNote() async {
+  Future<bool> createNote({String? parentNodeId}) async {
     if (_creatingNote) {
       return false;
     }
     _creatingNote = true;
+    _createErrorCode = null;
     _createErrorMessage = null;
     _createWarningMessage = null;
     notifyListeners();
 
     try {
       await _prepare();
-      final response = await _noteCreateInvoker(content: '');
+      final response = await _noteCreateInvoker(
+        content: '',
+        parentNodeId: parentNodeId,
+      );
       if (!response.ok) {
         _creatingNote = false;
+        _createErrorCode = response.errorCode;
         _createErrorMessage = _envelopeError(
           errorCode: response.errorCode,
           message: response.message,
@@ -810,6 +823,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       final created = response.item;
       if (created == null) {
         _creatingNote = false;
+        _createErrorCode = 'internal_error';
         _createErrorMessage =
             'Create note succeeded but returned empty payload.';
         notifyListeners();
@@ -868,6 +882,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       return true;
     } catch (error) {
       _creatingNote = false;
+      _createErrorCode = 'internal_error';
       _createErrorMessage = 'Create note failed unexpectedly: $error';
       notifyListeners();
       return false;
@@ -1199,6 +1214,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _activeDraftAtomId = null;
     _activeDraftContent = '';
     _creatingNote = false;
+    _createErrorCode = null;
     _createErrorMessage = null;
     _createWarningMessage = null;
     _createTagApplyFuture = null;
@@ -1443,8 +1459,9 @@ Future<rust_api.AtomItemResponse> _defaultNoteGetInvoker({
 
 Future<rust_api.AtomItemResponse> _defaultNoteCreateInvoker({
   required String content,
+  String? parentNodeId,
 }) {
-  return rust_api.noteCreate(content: content);
+  return rust_api.noteCreate(content: content, parentNodeId: parentNodeId);
 }
 
 Future<rust_api.AtomItemResponse> _defaultNoteUpdateInvoker({
@@ -1477,18 +1494,6 @@ Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateFolderInvoker({
   required String name,
 }) {
   return rust_api.workspaceCreateFolder(parentNodeId: parentNodeId, name: name);
-}
-
-Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateAtomRefInvoker({
-  String? parentNodeId,
-  required String atomId,
-  String? displayName,
-}) {
-  return rust_api.workspaceCreateAtomRef(
-    parentNodeId: parentNodeId,
-    atomId: atomId,
-    displayName: displayName,
-  );
 }
 
 Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceRenameNodeInvoker({

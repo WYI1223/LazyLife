@@ -482,3 +482,13 @@ CREATE TABLE atom_overlays (
 - R12: Canvas 渲染引擎技术选型（Flutter CustomPaint vs 第三方库）；block tree 统一评估（v0.5+）
 - R13: Conversation content_type 的 4 个待设计项（Atom 引用上下文、对话产生 Atom、长对话增长、Extension 集成）
 - R14: Reconciliation 协议的实现细节（匹配算法、超时策略、orphan 集合 UI）；atom_overlays migration 编号分配
+
+---
+
+## v0.4 Addendum（DI-11 / DI-12，规划态）
+
+> 本节仅作为 v0.4 规划输入，不覆盖 v0.3 进行中的执行基线。
+
+1. DI-11 方向：创建/读取/更新入口向 Atom-first 收敛（`atom_create` / `atom_get` / `atom_update_content`），`note_*` 与 `entry_create_*` 保留兼容包装层。
+2. DI-12 方向：Workspace 从 root-null 模型收敛到单根树（隐藏 `ROOT`）+ 固定系统节点（`Inbox` / `Tasks` / `Calendar`）语义。
+3. 上述变更落地前，v0.3 仍以现有 R5/R6 口径执行；v0.4 落地时应通过 S4 与 workspace 模块规范增补具体契约与迁移步骤。

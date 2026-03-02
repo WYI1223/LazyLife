@@ -20,7 +20,8 @@ v0.3 最终收口 PR。在所有 must-have PR（PR-RB-00 ~ PR-RB-10）完成后�
 |------|------|---------------|
 | Rebaseline | `v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-11 + §5 Gates + §6 覆盖矩阵 | 收口范围 + 发布门标准 + 覆盖验证 |
 | Ruling | S1~S9 全部 | 标注实施状态 |
-| DI | DI-0~DI-5, DI-10 | 标注实施状态 |
+| DI | DI-0~DI-5, DI-10, DI-11, DI-12 | 标注实施状态；DI-11/DI-12 以 v0.4 planning addendum 口径回填 |
+| Temporary Checklist | `docs/releases/v0.3/v0.3-rulings-modules-checklist-temp-2026-03-01.md` | DI-11/DI-12 相关守则同步的 SSOT 检查清单 |
 | Engineering Standards | `engineering-standards.md` Rule A~F | 合规校验 |
 
 ## 设计方案
@@ -67,6 +68,7 @@ PR-RB-06 将 NoteTabStateManager / NoteDraftManager / NoteSaveTracker 提取到 
 | `docs/architecture/engineering-standards.md` | 确认 Rule E `lib/core/` 豁免已明确 |
 | Rulings `S1~S9` | 更新实施状态表 |
 | DI `README.md` | 确认 DI-0~DI-5、DI-10 标注为 RESOLVED + implemented |
+| `v0.3-rulings-modules-checklist-temp-2026-03-01.md` | 作为守则同步 SSOT：逐项勾检并记录闭合状态（特别是 S1/S4 addendum 边界） |
 
 ### Lane E: Gate 验证脚本提取（SSOT）
 
@@ -201,6 +203,7 @@ rg "ExtensionRegistry" apps/lazynote_flutter/lib/features/entry/
 | T14 | 更新 `ffi-contracts.md`：新增/变更的 FFI 函数 | `docs/api/ffi-contracts.md` | 编辑 | — |
 | T15 | 更新 Rulings 实施状态（S1~S9） | `docs/architecture/rulings/` | 编辑 9 个文件 | — |
 | T16 | 更新 DI README 实施状态 | `docs/reports/v0.3/design-discussions/README.md` | 编辑 | — |
+| T16A | 逐项执行并闭合临时守则清单（DI-11/DI-12） | `docs/releases/v0.3/v0.3-rulings-modules-checklist-temp-2026-03-01.md` | 编辑 checklist | T15, T16 |
 | **Lane E: Gate 验证脚本提取** | | | | |
 | T17 | 创建 `tools/ci/gate_checks.dart`：Gate A + Gate B 验证逻辑 | `tools/ci/gate_checks.dart` | 新文件 ~100 行 | — |
 | T18 | 更新 PR-RB-04 / PR-RB-11 Verification 章节：inline grep → 引用 gate_checks.dart | PR spec 文件 | 编辑 | T17 |
@@ -230,6 +233,7 @@ rg "ExtensionRegistry" apps/lazynote_flutter/lib/features/entry/
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `docs/architecture/rulings/S1-atom-projection.md` ~ `S9-cross-feature-infrastructure-placement.md`（9 个文件）
 - `[edit]` `docs/reports/v0.3/design-discussions/README.md`
+- `[add/edit]` `docs/releases/v0.3/v0.3-rulings-modules-checklist-temp-2026-03-01.md`
 
 **Lane E（Gate 脚本）：**
 - `[add]` `tools/ci/gate_checks.dart` (~100 行)
@@ -280,6 +284,7 @@ test -f docs/releases/v0.3/v0.3-release-evidence.md
 - [ ] `CLAUDE.md` + `overview.md` + `data-model.md` + `ffi-contracts.md` 已更新反映 v0.3 状态
 - [ ] Rulings S1~S9 实施状态已标注
 - [ ] DI-0~DI-5, DI-10 实施状态已标注
+- [ ] `v0.3-rulings-modules-checklist-temp-2026-03-01.md` 相关项全部闭合（含 PR-RB-11 挂接项）
 - [ ] `tools/ci/gate_checks.dart` 已创建，Gate A/B 验证逻辑为单一事实来源
 - [ ] Gate A 全部通过（`dart run gate_checks.dart --gate-a` 零 violation）
 - [ ] Gate B 全部通过（`dart run gate_checks.dart --gate-b` 零 violation）

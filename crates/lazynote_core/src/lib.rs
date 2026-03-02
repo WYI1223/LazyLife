@@ -58,16 +58,16 @@ pub use repo::tree_repo::{
 pub use search::fts::{search_all, SearchError, SearchHit, SearchQuery, SearchResult};
 /// Re-export atom service facade.
 pub use service::atom_service::{AtomService, ScheduleEventRequest};
+/// Re-export unified creation service facade and errors.
+pub use service::creation_service::{
+    CreateEventWithRefRequest, CreationService, CreationServiceError,
+};
 /// Re-export notes service facade and models.
 pub use service::note_service::{
     derive_markdown_preview, MarkdownPreview, NoteService, NoteServiceError, NotesListResult,
 };
 /// Re-export task/section service facade and models.
 pub use service::task_service::{SectionAtom, TaskService, TaskServiceError};
-/// Re-export unified creation service facade and errors.
-pub use service::creation_service::{
-    CreateEventWithRefRequest, CreationService, CreationServiceError,
-};
 /// Re-export workspace tree service facade and errors.
 pub use service::tree_service::{FolderDeleteMode, TreeService, TreeServiceError};
 /// Re-export provider SPI and sync contract models.

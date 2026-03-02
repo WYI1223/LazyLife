@@ -311,7 +311,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
@@ -813,7 +813,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
@@ -907,7 +907,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
@@ -1265,7 +1265,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
@@ -1359,7 +1359,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
@@ -1460,7 +1460,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
@@ -1561,7 +1561,7 @@ void main() {
           items: items,
         );
       },
-      noteCreateInvoker: ({required content}) async {
+      noteCreateInvoker: ({required content, parentNodeId}) async {
         final created = note(
           atomId: 'note-new',
           content: content,
