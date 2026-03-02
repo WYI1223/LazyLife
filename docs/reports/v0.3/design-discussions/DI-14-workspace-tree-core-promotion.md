@@ -101,6 +101,20 @@ Notes Explorer 和 Tasks/Calendar 的消费能力本质相同——都是"给我
 
 展示形态（树形 / 列表 / 分组）是 feature 层的渲染选择，不影响 core 的查询语义。
 
+**关键发现：子树根是调用参数，不是 feature 级绑定**。
+
+各 feature 并非固定只看一个子树。同一 feature 在不同上下文下可能切换子树根：
+
+| 场景 | 子树根 |
+|------|--------|
+| Tasks 日常视图 | Tasks 系统节点 |
+| Tasks 里"添加已有 atom" | ROOT（全树浏览） |
+| Calendar 日常视图 | Calendar 系统节点 |
+| Calendar 里"添加已有 atom" | ROOT（全树浏览） |
+| Notes Explorer | ROOT |
+
+因此 core 接口的子树根必须是调用参数，不内置 feature 级权限限制。Core 是中立的数据提供者。
+
 **Core 核心能力（从需求端收敛）**：
 
 | 能力 | 说明 | 消费者 |
@@ -110,6 +124,25 @@ Notes Explorer 和 Tasks/Calendar 的消费能力本质相同——都是"给我
 | **系统节点解析** | role → uuid 映射，确定各 feature 的子树根 | 全部 |
 | **创建路由** | DI-12 Q6 优先级解析，确定 CRUD 的目标节点 | Entry、Tasks、Calendar、Notes |
 | **变更通知** | 结构变化后通知消费者 | 全部 |
+
+**前瞻约束：AccessGuard 权限层**。
+
+所有树数据访问必须经过 core 接口的唯一入口，接口预留 caller 身份传递能力，以支持未来叠加系统级 AccessGuard 权限校验层。
+
+```
+Feature (caller)
+  → WorkspaceTreeService (core 接口)
+    → AccessGuard (系统级权限校验，当前透明放行)
+      → 树数据操作 (缓存 / FFI)
+```
+
+| 场景 | Guard 策略 |
+|------|-----------|
+| 当前（v0.4） | 无校验，全部放行 |
+| LLM CLI（v0.5） | 按 session scope 限制可访问子树 |
+| 多人协作（远期） | 按用户身份 + 共享权限控制读写范围 |
+
+Guard 是透明层，feature 端调用方式不变。权限模型本身的设计（策略、配置 UI、capability 维度）作为独立议题，不在 DI-14 范围内展开，但 core 接口设计必须不阻塞其未来叠加。
 
 **Feature 层自有职责（不属于 core）**：
 
