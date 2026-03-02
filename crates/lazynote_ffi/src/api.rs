@@ -14,11 +14,12 @@
 use lazynote_core::db::open_db;
 use lazynote_core::{
     core_version as core_version_inner, init_logging as init_logging_inner,
-    log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId, AtomService,
-    FolderDeleteMode, LogDartEventError, NoteRecord, NoteService, NoteServiceError,
-    ScheduleEventRequest, SearchQuery, SectionAtom, SqliteAtomRepository, SqliteNoteRepository,
-    SqliteTreeRepository, TaskService, TaskServiceError, TreeRepoError, TreeService,
-    TreeServiceError, ViewHint, WorkspaceNode, WorkspaceNodeKind,
+    log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId,
+    CreateEventWithRefRequest, CreationService, CreationServiceError, FolderDeleteMode,
+    LogDartEventError, NoteRecord, NoteService, NoteServiceError, SearchQuery, SectionAtom,
+    SqliteAtomRepository, SqliteNoteRepository, SqliteTreeRepository,
+    TaskService, TaskServiceError, TreeRepoError, TreeService, TreeServiceError, ViewHint,
+    WorkspaceNode, WorkspaceNodeKind,
 };
 use log::error;
 use std::path::PathBuf;
@@ -292,15 +293,18 @@ pub struct EntryActionResponse {
     pub ok: bool,
     /// Optional created atom ID.
     pub atom_id: Option<String>,
+    /// Optional workspace node ID for the created atom_ref (S4).
+    pub node_uuid: Option<String>,
     /// Human-readable response message for diagnostics/UI.
     pub message: String,
 }
 
 impl EntryActionResponse {
-    fn success(message: impl Into<String>, atom_id: String) -> Self {
+    fn success(message: impl Into<String>, atom_id: String, node_uuid: String) -> Self {
         Self {
             ok: true,
             atom_id: Some(atom_id),
+            node_uuid: Some(node_uuid),
             message: message.into(),
         }
     }
@@ -309,6 +313,7 @@ impl EntryActionResponse {
         Self {
             ok: false,
             atom_id: None,
+            node_uuid: None,
             message: message.into(),
         }
     }
@@ -343,11 +348,11 @@ pub struct WorkspaceActionResponse {
 pub struct WorkspaceNodeItem {
     /// Stable workspace node id.
     pub node_id: String,
-    /// Node kind label (`folder|note_ref`).
+    /// Node kind label (`folder|atom_ref`).
     pub kind: String,
     /// Parent node id for non-root nodes.
     pub parent_node_id: Option<String>,
-    /// Target note atom id for note_ref nodes.
+    /// Target atom id for atom_ref nodes.
     pub atom_id: Option<String>,
     /// User-facing display name.
     pub display_name: String,
@@ -393,7 +398,6 @@ enum WorkspaceFfiError {
     NodeNotFolder(String),
     ParentNotFolder(String),
     AtomNotFound(String),
-    AtomNotNote(String),
     CycleDetected(String),
     DbBusy(String),
     DbError(String),
@@ -413,7 +417,6 @@ impl WorkspaceFfiError {
             Self::NodeNotFolder(_) => "node_not_folder",
             Self::ParentNotFolder(_) => "parent_not_folder",
             Self::AtomNotFound(_) => "atom_not_found",
-            Self::AtomNotNote(_) => "atom_not_note",
             Self::CycleDetected(_) => "cycle_detected",
             Self::DbBusy(_) => "db_busy",
             Self::DbError(_) => "db_error",
@@ -435,7 +438,6 @@ impl WorkspaceFfiError {
             Self::NodeNotFolder(value) => format!("workspace node is not a folder: {value}"),
             Self::ParentNotFolder(value) => format!("workspace parent is not a folder: {value}"),
             Self::AtomNotFound(value) => format!("workspace atom not found: {value}"),
-            Self::AtomNotNote(value) => format!("workspace atom is not a note: {value}"),
             Self::CycleDetected(value) => format!("workspace cycle detected: {value}"),
             Self::DbBusy(value) => format!("workspace database busy: {value}"),
             Self::DbError(value) => format!("workspace database error: {value}"),
@@ -600,8 +602,14 @@ pub async fn entry_create_note(content: String) -> EntryActionResponse {
 }
 
 fn entry_create_note_impl(content: String) -> EntryActionResponse {
-    match with_atom_service(|service| service.create_note(content.trim().to_string())) {
-        Ok(atom_id) => EntryActionResponse::success("Note created.", atom_id.to_string()),
+    match with_creation_service(|service| {
+        service.create_note_with_ref(content.trim().to_string(), None)
+    }) {
+        Ok((_, node)) => EntryActionResponse::success(
+            "Note created.",
+            node.atom_uuid.unwrap().to_string(),
+            node.node_uuid.to_string(),
+        ),
         Err(err) => EntryActionResponse::failure(format!("entry_create_note failed: {err}")),
     }
 }
@@ -618,8 +626,14 @@ pub async fn entry_create_task(content: String) -> EntryActionResponse {
 }
 
 fn entry_create_task_impl(content: String) -> EntryActionResponse {
-    match with_atom_service(|service| service.create_task(content.trim().to_string())) {
-        Ok(atom_id) => EntryActionResponse::success("Task created.", atom_id.to_string()),
+    match with_creation_service(|service| {
+        service.create_task_with_ref(content.trim().to_string(), None)
+    }) {
+        Ok((atom_id, node)) => EntryActionResponse::success(
+            "Task created.",
+            atom_id.to_string(),
+            node.node_uuid.to_string(),
+        ),
         Err(err) => EntryActionResponse::failure(format!("entry_create_task failed: {err}")),
     }
 }
@@ -645,13 +659,17 @@ fn entry_schedule_impl(
     start_epoch_ms: i64,
     end_epoch_ms: Option<i64>,
 ) -> EntryActionResponse {
-    let request = ScheduleEventRequest {
+    let request = CreateEventWithRefRequest {
         title: title.trim().to_string(),
         start_epoch_ms,
         end_epoch_ms,
     };
-    match with_atom_service(|service| service.schedule_event(&request)) {
-        Ok(atom_id) => EntryActionResponse::success("Event scheduled.", atom_id.to_string()),
+    match with_creation_service(|service| service.create_event_with_ref(&request, None)) {
+        Ok((atom_id, node)) => EntryActionResponse::success(
+            "Event scheduled.",
+            atom_id.to_string(),
+            node.node_uuid.to_string(),
+        ),
         Err(err) => EntryActionResponse::failure(format!("entry_schedule failed: {err}")),
     }
 }
@@ -668,14 +686,21 @@ pub async fn note_create(content: String) -> AtomItemResponse {
 }
 
 fn note_create_impl(content: String) -> AtomItemResponse {
-    match with_note_service(|service| service.create_note(content)) {
-        Ok(note) => AtomItemResponse {
+    match with_creation_service(|service| service.create_note_with_ref(content, None)) {
+        Ok((note, node)) => AtomItemResponse {
             ok: true,
             error_code: None,
             message: "Note created.".to_string(),
             item: Some(to_atom_list_item_from_note(note)),
+            node_uuid: Some(node.node_uuid.to_string()),
         },
-        Err(err) => note_failure(err),
+        Err(err) => AtomItemResponse {
+            ok: false,
+            error_code: Some("creation_failed".to_string()),
+            message: format!("note_create failed: {err}"),
+            item: None,
+            node_uuid: None,
+        },
     }
 }
 
@@ -702,6 +727,7 @@ fn note_update_impl(atom_id: String, content: String) -> AtomItemResponse {
             error_code: None,
             message: "Note updated.".to_string(),
             item: Some(to_atom_list_item_from_note(note)),
+            node_uuid: None,
         },
         Err(err) => note_failure(err),
     }
@@ -734,6 +760,7 @@ fn note_get_impl(atom_id: String) -> AtomItemResponse {
             error_code: None,
             message: "Note loaded.".to_string(),
             item: Some(to_atom_list_item_from_note(note)),
+            node_uuid: None,
         },
         Err(err) => note_failure(err),
     }
@@ -806,6 +833,7 @@ fn note_set_tags_impl(atom_id: String, tags: Vec<String>) -> AtomItemResponse {
             error_code: None,
             message: "Note tags replaced.".to_string(),
             item: Some(to_atom_list_item_from_note(note)),
+            node_uuid: None,
         },
         Err(err) => note_failure(err),
     }
@@ -900,21 +928,21 @@ fn workspace_create_folder_impl(
     }
 }
 
-/// Creates one workspace note_ref under optional parent.
+/// Creates one workspace atom_ref under optional parent.
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - `atom_id` must be UUID string of a note atom.
+/// - `atom_id` must be UUID string of an active atom (any type).
 #[flutter_rust_bridge::frb]
-pub async fn workspace_create_note_ref(
+pub async fn workspace_create_atom_ref(
     parent_node_id: Option<String>,
     atom_id: String,
     display_name: Option<String>,
 ) -> WorkspaceNodeResponse {
-    workspace_create_note_ref_impl(parent_node_id, atom_id, display_name)
+    workspace_create_atom_ref_impl(parent_node_id, atom_id, display_name)
 }
 
-fn workspace_create_note_ref_impl(
+fn workspace_create_atom_ref_impl(
     parent_node_id: Option<String>,
     atom_id: String,
     display_name: Option<String>,
@@ -929,12 +957,12 @@ fn workspace_create_note_ref_impl(
     };
 
     match with_tree_service(|service| {
-        service.create_note_ref(parsed_parent, parsed_atom_id, display_name)
+        service.create_atom_ref(parsed_parent, parsed_atom_id, display_name)
     }) {
         Ok(node) => WorkspaceNodeResponse {
             ok: true,
             error_code: None,
-            message: "Workspace note reference created.".to_string(),
+            message: "Workspace atom reference created.".to_string(),
             node: Some(to_workspace_node_item(node)),
         },
         Err(err) => workspace_node_failure(err),
@@ -1092,19 +1120,6 @@ fn set_configured_entry_db_path(db_path: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn with_atom_service(
-    f: impl FnOnce(
-        &AtomService<SqliteAtomRepository<'_>>,
-    ) -> lazynote_core::RepoResult<lazynote_core::AtomId>,
-) -> Result<lazynote_core::AtomId, String> {
-    let db_path = resolve_entry_db_path();
-    let conn = open_db(&db_path).map_err(|err| format!("entry DB open failed: {err}"))?;
-    let repo = SqliteAtomRepository::try_new(&conn)
-        .map_err(|err| format!("entry repo init failed: {err}"))?;
-    let service = AtomService::new(repo);
-    f(&service).map_err(|err| err.to_string())
-}
-
 fn with_note_service<T>(
     f: impl FnOnce(&mut NoteService<SqliteNoteRepository<'_>>) -> Result<T, NoteServiceError>,
 ) -> Result<T, NotesFfiError> {
@@ -1123,6 +1138,16 @@ fn with_tree_service<T>(
     let repo = SqliteTreeRepository::try_new(&conn).map_err(map_tree_repo_error)?;
     let service = TreeService::new(repo);
     f(&service).map_err(map_tree_service_error)
+}
+
+fn with_creation_service<T>(
+    f: impl FnOnce(&CreationService<'_>) -> Result<T, CreationServiceError>,
+) -> Result<T, String> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(|err| format!("entry DB open failed: {err}"))?;
+    let service =
+        CreationService::try_new(&conn).map_err(|err| format!("creation service init: {err}"))?;
+    f(&service).map_err(|err| err.to_string())
 }
 
 fn parse_folder_delete_mode(raw: &str) -> Result<FolderDeleteMode, WorkspaceFfiError> {
@@ -1181,7 +1206,7 @@ fn to_atom_list_item_from_note(nr: NoteRecord) -> AtomListItem {
 fn workspace_node_kind_label(kind: WorkspaceNodeKind) -> &'static str {
     match kind {
         WorkspaceNodeKind::Folder => "folder",
-        WorkspaceNodeKind::NoteRef => "note_ref",
+        WorkspaceNodeKind::AtomRef => "atom_ref",
     }
 }
 
@@ -1202,6 +1227,7 @@ fn note_failure(error: NotesFfiError) -> AtomItemResponse {
         error_code: Some(error.code().to_string()),
         message: error.message(),
         item: None,
+        node_uuid: None,
     }
 }
 
@@ -1330,9 +1356,6 @@ fn map_tree_service_error(err: TreeServiceError) -> WorkspaceFfiError {
         TreeServiceError::AtomNotFound(atom_id) => {
             WorkspaceFfiError::AtomNotFound(atom_id.to_string())
         }
-        TreeServiceError::AtomNotNote(atom_id) => {
-            WorkspaceFfiError::AtomNotNote(atom_id.to_string())
-        }
         TreeServiceError::CycleDetected {
             node_uuid,
             parent_uuid,
@@ -1411,6 +1434,8 @@ pub struct AtomItemResponse {
     pub message: String,
     /// Returned atom item payload on success.
     pub item: Option<AtomListItem>,
+    /// Optional workspace node ID for the created atom_ref (S4, create-only).
+    pub node_uuid: Option<String>,
 }
 
 /// Section list response envelope.
@@ -1644,11 +1669,7 @@ fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActi
         Ok(id) => id,
         Err(_) => {
             let err = AtomFfiError::InvalidAtomId(atom_id);
-            return EntryActionResponse {
-                ok: false,
-                atom_id: None,
-                message: err.message(),
-            };
+            return EntryActionResponse::failure(err.message());
         }
     };
 
@@ -1660,11 +1681,7 @@ fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActi
         Some("cancelled") => Some(lazynote_core::TaskStatus::Cancelled),
         Some(other) => {
             let err = AtomFfiError::InvalidStatus(other.to_string());
-            return EntryActionResponse {
-                ok: false,
-                atom_id: None,
-                message: err.message(),
-            };
+            return EntryActionResponse::failure(err.message());
         }
     };
 
@@ -1672,13 +1689,10 @@ fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActi
         Ok(()) => EntryActionResponse {
             ok: true,
             atom_id: Some(parsed_id.to_string()),
+            node_uuid: None,
             message: "Status updated.".to_string(),
         },
-        Err(err) => EntryActionResponse {
-            ok: false,
-            atom_id: None,
-            message: err.message(),
-        },
+        Err(err) => EntryActionResponse::failure(err.message()),
     }
 }
 
@@ -1744,11 +1758,7 @@ fn calendar_update_event_impl(atom_id: String, start_ms: i64, end_ms: i64) -> En
         Ok(id) => id,
         Err(_) => {
             let err = AtomFfiError::InvalidAtomId(atom_id);
-            return EntryActionResponse {
-                ok: false,
-                atom_id: None,
-                message: err.message(),
-            };
+            return EntryActionResponse::failure(err.message());
         }
     };
 
@@ -1756,13 +1766,10 @@ fn calendar_update_event_impl(atom_id: String, start_ms: i64, end_ms: i64) -> En
         Ok(()) => EntryActionResponse {
             ok: true,
             atom_id: Some(parsed_id.to_string()),
+            node_uuid: None,
             message: "Event times updated.".to_string(),
         },
-        Err(err) => EntryActionResponse {
-            ok: false,
-            atom_id: None,
-            message: err.message(),
-        },
+        Err(err) => EntryActionResponse::failure(err.message()),
     }
 }
 
@@ -1774,7 +1781,8 @@ mod tests {
         entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
         map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
         note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
-        workspace_create_folder_impl, workspace_create_note_ref_impl, workspace_delete_folder_impl,
+        workspace_create_atom_ref_impl, workspace_create_folder_impl,
+        workspace_delete_folder_impl,
         workspace_list_children_impl, workspace_move_node_impl, workspace_rename_node_impl,
         NotesFfiError, WorkspaceFfiError,
     };
@@ -2275,7 +2283,7 @@ mod tests {
             .to_string()
     }
 
-    fn create_workspace_note_ref_node() -> String {
+    fn create_workspace_atom_ref_node() -> String {
         let created_note = note_create_impl("workspace note".to_string());
         assert!(created_note.ok, "{}", created_note.message);
         let atom_id = created_note
@@ -2290,8 +2298,8 @@ mod tests {
         let repo = SqliteTreeRepository::try_new(&conn).expect("init tree repo");
         let service = TreeService::new(repo);
         service
-            .create_note_ref(None, parsed_atom_id, Some("note-ref".to_string()))
-            .expect("create workspace note_ref")
+            .create_atom_ref(None, parsed_atom_id, Some("atom-ref".to_string()))
+            .expect("create workspace atom_ref")
             .node_uuid
             .to_string()
     }
@@ -2347,9 +2355,9 @@ mod tests {
     #[test]
     fn workspace_create_folder_maps_parent_not_folder_error_code() {
         let _guard = acquire_test_db_lock();
-        let parent_note_ref = create_workspace_note_ref_node();
+        let parent_atom_ref = create_workspace_atom_ref_node();
         let response =
-            workspace_create_folder_impl(Some(parent_note_ref), "child-folder".to_string());
+            workspace_create_folder_impl(Some(parent_atom_ref), "child-folder".to_string());
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("parent_not_folder"));
     }
@@ -2372,31 +2380,32 @@ mod tests {
     }
 
     #[test]
-    fn workspace_create_note_ref_rejects_invalid_atom_id() {
+    fn workspace_create_atom_ref_rejects_invalid_atom_id() {
         let _guard = acquire_test_db_lock();
-        let response = workspace_create_note_ref_impl(None, "not-a-uuid".to_string(), None);
+        let response = workspace_create_atom_ref_impl(None, "not-a-uuid".to_string(), None);
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("invalid_atom_id"));
     }
 
     #[test]
-    fn workspace_create_note_ref_maps_atom_not_found_error_code() {
+    fn workspace_create_atom_ref_maps_atom_not_found_error_code() {
         let _guard = acquire_test_db_lock();
         let missing_atom = uuid::Uuid::new_v4().to_string();
-        let response = workspace_create_note_ref_impl(None, missing_atom, None);
+        let response = workspace_create_atom_ref_impl(None, missing_atom, None);
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("atom_not_found"));
     }
 
     #[test]
-    fn workspace_create_note_ref_rejects_non_note_atom() {
+    fn workspace_create_atom_ref_accepts_task_atom() {
         let _guard = acquire_test_db_lock();
         let created = entry_create_task_impl("workspace task".to_string());
         assert!(created.ok, "{}", created.message);
         let atom_id = created.atom_id.expect("task atom id");
-        let response = workspace_create_note_ref_impl(None, atom_id, None);
-        assert!(!response.ok);
-        assert_eq!(response.error_code.as_deref(), Some("atom_not_note"));
+        let response = workspace_create_atom_ref_impl(None, atom_id, None);
+        assert!(response.ok, "atom_ref should accept task atoms: {}", response.message);
+        let node = response.node.expect("workspace node payload");
+        assert_eq!(node.kind, "atom_ref");
     }
 
     #[test]
@@ -2456,7 +2465,7 @@ mod tests {
     #[test]
     fn workspace_delete_folder_maps_node_not_folder_error_code() {
         let _guard = acquire_test_db_lock();
-        let node_id = create_workspace_note_ref_node();
+        let node_id = create_workspace_atom_ref_node();
         let response = workspace_delete_folder_impl(node_id, "dissolve".to_string());
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("node_not_folder"));

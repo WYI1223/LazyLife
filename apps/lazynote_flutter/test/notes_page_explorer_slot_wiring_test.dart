@@ -125,7 +125,7 @@ void main() {
             message: 'ok',
           );
         },
-        workspaceCreateNoteRefInvoker:
+        workspaceCreateAtomRefInvoker:
             ({parentNodeId, required atomId, displayName}) async {
               noteRefParents.add(parentNodeId);
               return rust_api.WorkspaceNodeResponse(
@@ -134,7 +134,7 @@ void main() {
                 message: 'ok',
                 node: rust_api.WorkspaceNodeItem(
                   nodeId: 'ref_$atomId',
-                  kind: 'note_ref',
+                  kind: 'atom_ref',
                   parentNodeId: parentNodeId,
                   atomId: atomId,
                   displayName: displayName ?? atomId,

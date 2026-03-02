@@ -14,7 +14,7 @@ typedef WorkspaceCreateFolderInvoker =
       required String name,
     });
 
-typedef WorkspaceCreateNoteRefInvoker =
+typedef WorkspaceCreateAtomRefInvoker =
     Future<rust_api.WorkspaceNodeResponse> Function({
       String? parentNodeId,
       required String atomId,

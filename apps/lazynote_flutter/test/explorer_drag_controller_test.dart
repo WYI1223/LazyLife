@@ -49,12 +49,12 @@ void main() {
     final plan = controller.planForRowDrop(
       payload: const ExplorerDragPayload(
         nodeId: nodeB,
-        kind: 'note_ref',
+        kind: 'atom_ref',
         sourceParentNodeId: parentId,
       ),
       targetNode: _node(
         nodeId: nodeA,
-        kind: 'note_ref',
+        kind: 'atom_ref',
         parentNodeId: parentId,
         atomId: 'note-a',
       ),
@@ -74,7 +74,7 @@ void main() {
     final plan = controller.planForRowDrop(
       payload: const ExplorerDragPayload(
         nodeId: noteRef,
-        kind: 'note_ref',
+        kind: 'atom_ref',
         sourceParentNodeId: sourceParent,
       ),
       targetNode: _node(nodeId: targetFolder, kind: 'folder'),
@@ -95,7 +95,7 @@ void main() {
     final plan = controller.planForRowDrop(
       payload: const ExplorerDragPayload(
         nodeId: noteRef,
-        kind: 'note_ref',
+        kind: 'atom_ref',
         sourceParentNodeId: parentId,
       ),
       targetNode: _node(
@@ -125,7 +125,7 @@ void main() {
       ),
       targetNode: _node(
         nodeId: noteRef,
-        kind: 'note_ref',
+        kind: 'atom_ref',
         parentNodeId: parentId,
         atomId: 'note-a',
       ),
@@ -140,7 +140,7 @@ void main() {
   test('root-lane drop is rejected when source already at root', () {
     const payload = ExplorerDragPayload(
       nodeId: '33333333-3333-4333-8333-333333333333',
-      kind: 'note_ref',
+      kind: 'atom_ref',
       sourceParentNodeId: null,
     );
     expect(controller.planForRootDrop(payload: payload), isNull);

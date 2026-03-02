@@ -68,7 +68,7 @@ class WorkspaceTreeChildrenLoader {
       return response;
     }
     final items = response.items
-        .where((item) => item.kind != 'note_ref')
+        .where((item) => item.kind != 'atom_ref')
         .toList(growable: true);
     final hasUncategorized = items.any(
       (item) =>
@@ -119,7 +119,7 @@ class WorkspaceTreeChildrenLoader {
           rootItems = response.items;
         }
         for (final item in response.items) {
-          if (item.kind == 'note_ref') {
+          if (item.kind == 'atom_ref') {
             final atomId = item.atomId?.trim();
             if (atomId != null && atomId.isNotEmpty) {
               referencedAtomIds.add(atomId);
@@ -142,7 +142,7 @@ class WorkspaceTreeChildrenLoader {
       final projectedRows = <_ProjectedUncategorizedRow>[];
       final projectedAtomIds = <String>{};
       for (final item in rootItems ?? const <rust_api.WorkspaceNodeItem>[]) {
-        if (item.kind != 'note_ref') {
+        if (item.kind != 'atom_ref') {
           continue;
         }
         final atomId = item.atomId?.trim();
@@ -178,7 +178,7 @@ class WorkspaceTreeChildrenLoader {
         }
         projectedRows.add(
           _ProjectedUncategorizedRow(
-            nodeId: 'note_ref_uncategorized_${note.atomId}',
+            nodeId: 'atom_ref_uncategorized_${note.atomId}',
             atomId: atomId,
             displayName: note.title.isNotEmpty ? note.title : 'Untitled',
             updatedAt: note.updatedAt,
@@ -193,7 +193,7 @@ class WorkspaceTreeChildrenLoader {
         projectedItems.add(
           rust_api.WorkspaceNodeItem(
             nodeId: row.nodeId,
-            kind: 'note_ref',
+            kind: 'atom_ref',
             parentNodeId: uncategorizedFolderNodeId,
             atomId: row.atomId,
             displayName: row.displayName,
@@ -235,8 +235,8 @@ class WorkspaceTreeChildrenLoader {
       final note = sortedNotes[index];
       items.add(
         rust_api.WorkspaceNodeItem(
-          nodeId: 'note_ref_uncategorized_${note.atomId}',
-          kind: 'note_ref',
+          nodeId: 'atom_ref_uncategorized_${note.atomId}',
+          kind: 'atom_ref',
           parentNodeId: uncategorizedFolderNodeId,
           atomId: note.atomId,
           displayName: note.title.isNotEmpty ? note.title : 'Untitled',
@@ -304,8 +304,8 @@ class WorkspaceTreeChildrenLoader {
       for (final item in _listItems()) {
         noteItems.add(
           rust_api.WorkspaceNodeItem(
-            nodeId: 'note_ref_notes_${item.atomId}',
-            kind: 'note_ref',
+            nodeId: 'atom_ref_notes_${item.atomId}',
+            kind: 'atom_ref',
             parentNodeId: 'notes',
             atomId: item.atomId,
             displayName: item.title.isNotEmpty ? item.title : 'Untitled',

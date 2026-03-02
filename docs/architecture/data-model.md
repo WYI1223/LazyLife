@@ -53,7 +53,7 @@ These fields will be added via new migrations in v0.3:
 |-------|------|---------|---------|-------------|
 | `title` | TEXT | `''` | R8 | Display name. Application semantics: always non-empty, always plain text. Derivation strategy varies by `content_type`. |
 | `content_type` | TEXT | `'markdown'` | R2 | Content format declaration: `markdown \| canvas \| conversation \| plugin:<id>`. Determines editor selection (EditorResolver). |
-| `view_hint` | TEXT | — | R3 | Rename of `type`. Auto-derived by Core on create/update: `task_status → task`, time fields → `event`, default → `note`. |
+| `view_hint` | TEXT | — | R3 | Rename of `type` (Migration 10). Auto-derived by Core on create/update: `task_status → task`, time fields → `event`, default → `note`. |
 | `cover_image` | TEXT (nullable) | NULL | R10 | User-set cover image. Display priority: `cover_image` > `preview_image` > NULL. **v0.4+ implementation.** |
 | `icon` | TEXT (nullable) | NULL | R9 | User-set icon (emoji or icon name). Overrides view_hint default icon. **v0.4+ implementation.** |
 
@@ -75,16 +75,16 @@ These fields will be added via new migrations in v0.3:
 
 `workspace_nodes` stores hierarchy metadata for folders and atom references.
 
-> **Terminology evolution**: v0.2 used "note_ref" exclusively. S1 R5 generalizes this to "atom_ref" — any Atom type (note, task, event, canvas) can have workspace references. The DB column value remains `note_ref` for backward compatibility; the semantic scope is broadened.
+> **Terminology evolution**: v0.2 used "note_ref" exclusively. S1 R5 generalizes this to "atom_ref" — any Atom type (note, task, event, canvas) can have workspace references. Migration 11 (PR-RB-03) upgrades the DB column value from `note_ref` to `atom_ref` and backfills existing rows.
 
 ### Fields
 
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
 | `node_uuid` | TEXT | NO | Stable workspace-node UUID |
-| `kind` | TEXT | NO | `folder \| note_ref` (v0.3: semantically generalized to `atom_ref`) |
+| `kind` | TEXT | NO | `folder \| atom_ref` (migrated from `note_ref` in Migration 11, PR-RB-03) |
 | `parent_uuid` | TEXT | YES | Parent workspace node id (`NULL` = root level, i.e. "Uncategorized") |
-| `atom_uuid` | TEXT | YES | Required for `note_ref`/`atom_ref`; must be `NULL` for `folder` |
+| `atom_uuid` | TEXT | YES | Required for `atom_ref`; must be `NULL` for `folder` |
 | `display_name` | TEXT | NO | Folder: authoritative label. atom_ref: alias (v0.2 frozen, S1 R8 title takes priority) |
 | `sort_order` | INTEGER | NO | Backend compatibility ordering key for deterministic storage/replay |
 | `is_deleted` | INTEGER | NO | `0 \| 1` soft-delete marker |
@@ -94,7 +94,7 @@ These fields will be added via new migrations in v0.3:
 ### Tree Invariants
 
 1. `kind='folder'` must not carry `atom_uuid`.
-2. `kind='note_ref'` must carry `atom_uuid`; create/update validates target as an active atom. **(v0.3: validation broadened from note-only to any active atom — S1 R5)**
+2. `kind='atom_ref'` must carry `atom_uuid`; create/update validates target as any active atom (S1 R5, implemented in PR-RB-03).
 3. `parent_uuid` may be `NULL` (root) or reference another `workspace_nodes.node_uuid`.
 4. Service layer rejects cycle-producing moves (`A -> ... -> A`).
 5. Core child listing order is deterministic for storage/replay: `sort_order ASC, node_uuid ASC`.
@@ -138,7 +138,7 @@ See [S1 R6](rulings/S1-atom-projection.md) for full lifecycle (re-designate, un-
 
 **v0.2 policy** (current):
 1. Visible titles in Explorer are projections from Atom data (and draft state in Flutter), not a separately user-managed `note_ref` alias.
-2. `workspace_nodes.display_name` remains in schema for forward compatibility, but `note_ref` rename is frozen.
+2. `workspace_nodes.display_name` remains in schema for forward compatibility, but `atom_ref` rename is frozen.
 3. `folder` rename uses `display_name` as authoritative folder label.
 
 **v0.3 evolution** (S1 R8):
@@ -154,7 +154,7 @@ This is a UI policy freeze that coexists with the current schema:
 2. `workspace_move_node(..., target_order?)` is retained for compatibility, but UI move paths use `target_order = null`.
 3. Explorer row order policy:
    - root: synthetic `Uncategorized` first, then folders by name ascending (case-insensitive)
-   - folder children: `folder` group first, `note_ref` group second
+   - folder children: `folder` group first, `atom_ref` group second
    - within each group: name ascending (case-insensitive), stable id tie-break
    - `Uncategorized` note rows: by note `updated_at DESC`, then note id tie-break
 4. Explorer note rows are title-only (no preview text line in row rendering).
@@ -283,6 +283,7 @@ Enforcement: `Atom::validate()`, DB `CHECK` constraints, repository write bounda
 | 8 | `0008_workspace_tree_delete_policy.sql` | Remove atom-side blocking triggers and switch tree visibility to read-time filtering |
 | 9 | `0009_workspace_note_ref_backfill.sql` | Backfill root-level `note_ref` for active notes missing active workspace references |
 | 10 | `0010_s1_core_fields.sql` | Add `title`, `content_type`; rename `type`→`view_hint`; rebuild FTS5 with title indexing |
+| 11 | `0011_atom_ref_upgrade.sql` | `note_ref` → `atom_ref` workspace node kind, task/event backfill, S4 triggers |
 
 **Planned future migrations**:
 - `cover_image`, `icon` columns (v0.4+, S1 R9/R10)
@@ -347,7 +348,7 @@ Mapping is **Atom-level** (not atom_ref-level) — a single Atom maps to one ext
 | `type` → `view_hint` rename + auto-derivation | v0.3 | S1 R3 |
 | `title` field + derivation logic in Core | v0.3 | S1 R8 |
 | `content_type` field | v0.3 | S1 R2 |
-| atom_ref mandatory accompaniment | v0.3 | S1 R5 |
+| atom_ref mandatory accompaniment | v0.3 (PR-RB-03 done) | S1 R5 |
 | Designated default folder model | v0.3 | S1 R6 |
 | `icon` field | v0.4+ | S1 R9 |
 | `cover_image` field | v0.4+ | S1 R10 |

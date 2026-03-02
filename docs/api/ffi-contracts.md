@@ -95,6 +95,11 @@ All APIs are use-case level and async.
 - `tags_list` returns `TagsListResponse` (unchanged).
 - Deprecated: `NoteItem`, `NoteResponse`, `NotesListResponse` — removed in PR-RB-01.
 
+### Response Envelope Extensions (PR-RB-03, S4 ruling)
+
+- `EntryActionResponse` gains optional `node_uuid: String?` — workspace node id of the auto-created `atom_ref` (returned by `CreationService` unified creation paths).
+- `AtomItemResponse` gains optional `node_uuid: String?` — workspace node id of the auto-created `atom_ref` (returned by `note_create` and other creation paths routed through `CreationService`).
+
 ### Notes Payload (AtomListItem)
 
 - `atom_id`
@@ -246,7 +251,7 @@ This milestone extends explorer interactions while reusing existing contracts.
 - no new FFI stable error-code namespace
 - uses existing workspace/note APIs for action execution:
   - folder create: `workspace_create_folder(parent_node_id?, name)`
-  - note create in folder: `note_create(content)` + `workspace_create_note_ref(parent_node_id?, atom_id, display_name?)`
+  - note create in folder: `note_create(content)` + `workspace_create_atom_ref(parent_node_id?, atom_id, display_name?)`
   - rename (folder-only in v0.2 policy): `workspace_rename_node(node_id, new_name)`
   - move: `workspace_move_node(node_id, new_parent_id?, target_order?)`
 - UI-local guard rules (M1 frozen):
@@ -291,7 +296,7 @@ All APIs are use-case level and async.
 - `workspace_list_children(parent_node_id?) -> WorkspaceListChildrenResponse`
   - `parent_node_id = null` lists root-level nodes.
 - `workspace_create_folder(parent_node_id?, name) -> WorkspaceNodeResponse`
-- `workspace_create_note_ref(parent_node_id?, atom_id, display_name?) -> WorkspaceNodeResponse`
+- `workspace_create_atom_ref(parent_node_id?, atom_id, display_name?) -> WorkspaceNodeResponse`
 - `workspace_rename_node(node_id, new_name) -> WorkspaceActionResponse`
 - `workspace_move_node(node_id, new_parent_id?, target_order?) -> WorkspaceActionResponse`
   - backend compatibility behavior:
@@ -313,7 +318,7 @@ UI policy freeze (v0.2):
 `WorkspaceNodeItem`:
 
 - `node_id`
-- `kind` (`folder|note_ref`)
+- `kind` (`folder|atom_ref`)
 - `parent_node_id`
 - `atom_id`
 - `display_name`
@@ -339,13 +344,17 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 - `node_not_folder`
 - `parent_not_folder`
 - `atom_not_found`
-- `atom_not_note`
+- `atom_not_note` (deprecated: validation broadened to any active atom in PR-RB-03)
 - `cycle_detected`
 - `db_busy`
 - `db_error`
 - `internal_error`
 
 Detailed contract: `docs/api/workspace-tree-contract.md`.
+
+### CreationService Unified Creation (PR-RB-03, S4 ruling)
+
+All creation paths (entry commands, note create, task create, event schedule) are unified through `CreationService` in Rust Core. `CreationService` guarantees mandatory `atom_ref` accompaniment (S1 R5): every newly created Atom automatically gets a workspace `atom_ref` placed at the designated folder or root level. The `node_uuid` of the auto-created `atom_ref` is returned in `EntryActionResponse.node_uuid` or `AtomItemResponse.node_uuid`.
 
 ### Controller-Local Error Codes (Workspace Tree UI)
 

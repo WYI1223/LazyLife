@@ -3,6 +3,8 @@ use lazynote_core::{
     Atom, AtomRepository, FolderDeleteMode, SqliteAtomRepository, SqliteTreeRepository,
     TreeService, TreeServiceError, ViewHint, WorkspaceNodeKind,
 };
+// Note: after migration 0011, workspace nodes use `atom_ref` (not `note_ref`)
+// and accept any active atom type (not just notes).
 use uuid::Uuid;
 
 fn setup() -> rusqlite::Connection {
@@ -69,7 +71,7 @@ fn create_and_list_children_keeps_deterministic_order() {
 }
 
 #[test]
-fn create_note_ref_requires_active_note_atom() {
+fn create_atom_ref_accepts_any_active_atom_type() {
     let conn = setup();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
@@ -77,14 +79,15 @@ fn create_note_ref_requires_active_note_atom() {
     let task_atom = Atom::new(ViewHint::Task, "Task row");
     insert_atom(&conn, &task_atom);
 
-    let err = service
-        .create_note_ref(None, task_atom.uuid, Some("TaskRef".to_string()))
-        .unwrap_err();
-    assert!(matches!(err, TreeServiceError::AtomNotNote(id) if id == task_atom.uuid));
+    let atom_ref = service
+        .create_atom_ref(None, task_atom.uuid, Some("TaskRef".to_string()))
+        .unwrap();
+    assert_eq!(atom_ref.kind, WorkspaceNodeKind::AtomRef);
+    assert_eq!(atom_ref.atom_uuid, Some(task_atom.uuid));
 }
 
 #[test]
-fn create_note_ref_success_for_note_atom() {
+fn create_atom_ref_success_for_note_atom() {
     let conn = setup();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
@@ -93,14 +96,14 @@ fn create_note_ref_success_for_note_atom() {
     insert_atom(&conn, &note_atom);
 
     let folder = service.create_folder(None, "Notes").unwrap();
-    let note_ref = service
-        .create_note_ref(Some(folder.node_uuid), note_atom.uuid, None)
+    let atom_ref = service
+        .create_atom_ref(Some(folder.node_uuid), note_atom.uuid, None)
         .unwrap();
 
-    assert_eq!(note_ref.kind, WorkspaceNodeKind::NoteRef);
-    assert_eq!(note_ref.parent_uuid, Some(folder.node_uuid));
-    assert_eq!(note_ref.atom_uuid, Some(note_atom.uuid));
-    assert_eq!(note_ref.display_name, "Untitled note");
+    assert_eq!(atom_ref.kind, WorkspaceNodeKind::AtomRef);
+    assert_eq!(atom_ref.parent_uuid, Some(folder.node_uuid));
+    assert_eq!(atom_ref.atom_uuid, Some(note_atom.uuid));
+    assert_eq!(atom_ref.display_name, "Untitled");
 }
 
 #[test]
@@ -127,7 +130,7 @@ fn move_rejects_cycle_parenting() {
 }
 
 #[test]
-fn move_rejects_note_ref_parent() {
+fn move_rejects_atom_ref_parent() {
     let conn = setup();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
@@ -137,7 +140,7 @@ fn move_rejects_note_ref_parent() {
 
     let folder = service.create_folder(None, "Folder").unwrap();
     let note_ref = service
-        .create_note_ref(None, note_atom.uuid, Some("Ref".to_string()))
+        .create_atom_ref(None, note_atom.uuid, Some("Ref".to_string()))
         .unwrap();
 
     let err = service
@@ -181,7 +184,6 @@ fn move_with_target_order_reorders_siblings() {
 #[test]
 fn move_target_order_uses_visible_sibling_index_only() {
     let conn = setup();
-    let atom_repo = SqliteAtomRepository::try_new(&conn).unwrap();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
 
@@ -194,20 +196,28 @@ fn move_target_order_uses_visible_sibling_index_only() {
 
     let root = service.create_folder(None, "Root").unwrap();
     let hidden_ref = service
-        .create_note_ref(
+        .create_atom_ref(
             Some(root.node_uuid),
             note_hidden.uuid,
             Some("hidden".to_string()),
         )
         .unwrap();
     let ref_a = service
-        .create_note_ref(Some(root.node_uuid), note_a.uuid, Some("A".to_string()))
+        .create_atom_ref(Some(root.node_uuid), note_a.uuid, Some("A".to_string()))
         .unwrap();
     let ref_b = service
-        .create_note_ref(Some(root.node_uuid), note_b.uuid, Some("B".to_string()))
+        .create_atom_ref(Some(root.node_uuid), note_b.uuid, Some("B".to_string()))
         .unwrap();
 
-    atom_repo.soft_delete_atom(note_hidden.uuid).unwrap();
+    // S4: soft-delete the workspace node (not the atom) to hide it.
+    // The atoms_block_demote_when_referenced trigger prevents atom soft-delete
+    // while active atom_refs exist.
+    conn.execute(
+        "UPDATE workspace_nodes SET is_deleted = 1, updated_at = (strftime('%s', 'now') * 1000) WHERE node_uuid = ?1;",
+        rusqlite::params![hidden_ref.node_uuid.to_string()],
+    )
+    .unwrap();
+
     let before = service.list_children(Some(root.node_uuid)).unwrap();
     assert_eq!(before.len(), 2);
     assert_eq!(before[0].node_uuid, ref_a.node_uuid);
@@ -222,7 +232,7 @@ fn move_target_order_uses_visible_sibling_index_only() {
     assert_eq!(after[0].node_uuid, ref_b.node_uuid);
     assert_eq!(after[1].node_uuid, ref_a.node_uuid);
 
-    // Hidden dangling sibling should remain hidden and not occupy visible order slots.
+    // Hidden soft-deleted sibling should remain hidden and not occupy visible order slots.
     let hidden_still_filtered = after
         .iter()
         .all(|item| item.node_uuid != hidden_ref.node_uuid);
@@ -246,17 +256,16 @@ fn create_folder_rejects_unknown_parent() {
 }
 
 #[test]
-fn deleted_note_reference_is_filtered_and_restores_on_atom_restore() {
+fn soft_deleted_atom_ref_is_filtered_and_restores_on_node_restore() {
     let conn = setup();
-    let atom_repo = SqliteAtomRepository::try_new(&conn).unwrap();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let tree_service = TreeService::new(tree_repo);
 
     let note_atom = Atom::new(ViewHint::Note, "note");
     insert_atom(&conn, &note_atom);
     let root = tree_service.create_folder(None, "Root").unwrap();
-    let note_ref = tree_service
-        .create_note_ref(
+    let atom_ref = tree_service
+        .create_atom_ref(
             Some(root.node_uuid),
             note_atom.uuid,
             Some("ref".to_string()),
@@ -265,19 +274,30 @@ fn deleted_note_reference_is_filtered_and_restores_on_atom_restore() {
 
     let before_delete = tree_service.list_children(Some(root.node_uuid)).unwrap();
     assert_eq!(before_delete.len(), 1);
-    assert_eq!(before_delete[0].node_uuid, note_ref.node_uuid);
+    assert_eq!(before_delete[0].node_uuid, atom_ref.node_uuid);
 
-    atom_repo.soft_delete_atom(note_atom.uuid).unwrap();
+    // S4: soft-delete the workspace node to hide the reference.
+    // atoms_block_demote_when_referenced trigger prevents direct atom soft-delete
+    // while active atom_refs exist.
+    conn.execute(
+        "UPDATE workspace_nodes SET is_deleted = 1, updated_at = (strftime('%s', 'now') * 1000) WHERE node_uuid = ?1;",
+        rusqlite::params![atom_ref.node_uuid.to_string()],
+    )
+    .unwrap();
+
     let after_delete = tree_service.list_children(Some(root.node_uuid)).unwrap();
     assert!(after_delete.is_empty());
 
-    let mut restored = atom_repo.get_atom(note_atom.uuid, true).unwrap().unwrap();
-    restored.is_deleted = false;
-    atom_repo.update_atom(&restored).unwrap();
+    // Restore the workspace node.
+    conn.execute(
+        "UPDATE workspace_nodes SET is_deleted = 0, updated_at = (strftime('%s', 'now') * 1000) WHERE node_uuid = ?1;",
+        rusqlite::params![atom_ref.node_uuid.to_string()],
+    )
+    .unwrap();
 
     let after_restore = tree_service.list_children(Some(root.node_uuid)).unwrap();
     assert_eq!(after_restore.len(), 1);
-    assert_eq!(after_restore[0].node_uuid, note_ref.node_uuid);
+    assert_eq!(after_restore[0].node_uuid, atom_ref.node_uuid);
 }
 
 #[test]
@@ -293,7 +313,7 @@ fn delete_folder_dissolve_moves_direct_children_to_root() {
 
     let folder = service.create_folder(None, "Group").unwrap();
     let direct_note_ref = service
-        .create_note_ref(
+        .create_atom_ref(
             Some(folder.node_uuid),
             note_a.uuid,
             Some("Direct".to_string()),
@@ -303,7 +323,7 @@ fn delete_folder_dissolve_moves_direct_children_to_root() {
         .create_folder(Some(folder.node_uuid), "ChildFolder")
         .unwrap();
     let nested_note_ref = service
-        .create_note_ref(
+        .create_atom_ref(
             Some(child_folder.node_uuid),
             note_b.uuid,
             Some("Nested".to_string()),
@@ -341,21 +361,21 @@ fn delete_folder_delete_all_soft_deletes_unique_atoms_only() {
     let other_folder = service.create_folder(None, "Other").unwrap();
 
     service
-        .create_note_ref(
+        .create_atom_ref(
             Some(target_folder.node_uuid),
             note_only_in_target.uuid,
             Some("target-only".to_string()),
         )
         .unwrap();
     let shared_ref_in_target = service
-        .create_note_ref(
+        .create_atom_ref(
             Some(target_folder.node_uuid),
             note_shared.uuid,
             Some("shared-target".to_string()),
         )
         .unwrap();
     let shared_ref_in_other = service
-        .create_note_ref(
+        .create_atom_ref(
             Some(other_folder.node_uuid),
             note_shared.uuid,
             Some("shared-other".to_string()),

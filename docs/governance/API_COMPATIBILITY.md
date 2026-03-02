@@ -113,3 +113,20 @@ Two new FFI functions added as **non-breaking additive changes**:
 Both reuse existing response types (`AtomListResponse`, `EntryActionResponse`).
 
 New error code: `invalid_time_range` — additive, no impact on existing callers.
+
+### S4 atom_ref Unification (v0.3 PR-RB-03)
+
+**`workspace_create_note_ref` renamed to `workspace_create_atom_ref`** (v0.3 PR-RB-03):
+- Function signature unchanged except name. Parameter `atom_id` validation broadened from note-only to any active atom.
+- This is a **breaking rename** in v0.x (pre-v1.0). Dart callers updated in same PR via FRB codegen.
+- DB column `kind` value migrated from `note_ref` to `atom_ref` in Migration 11 (`0011_atom_ref_upgrade.sql`).
+
+**`EntryActionResponse.node_uuid` and `AtomItemResponse.node_uuid` new fields** (v0.3 PR-RB-03):
+- Both response envelopes gain optional `node_uuid: String?` field.
+- Returns the workspace node id of the auto-created `atom_ref` from `CreationService` unified creation paths.
+- This is a **non-breaking additive change** — existing callers that do not read the field are unaffected.
+
+**`CreationService` unified creation** (v0.3 PR-RB-03):
+- New `CreationService` in Rust Core unifies all creation paths (entry commands, note create, task create, event schedule).
+- Guarantees mandatory `atom_ref` accompaniment (S1 R5): every Atom gets a workspace reference at creation time.
+- This is an **internal refactor** — external FFI signatures are unchanged (except the additions above).

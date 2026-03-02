@@ -83,9 +83,12 @@
 | 项目 | 状态 |
 |------|------|
 | 语义定义 | v0.2.5 已完成 |
-| 路径 A 修正（自动创建根级别 atom_ref） | v0.3 待实施 |
+| DB migration: `note_ref` → `atom_ref` (Migration 11) | v0.3 PR-RB-03 已完成 |
+| `workspace_create_note_ref` → `workspace_create_atom_ref` FFI rename | v0.3 PR-RB-03 已完成 |
+| `CreationService` 统一创建 + mandatory atom_ref | v0.3 PR-RB-03 已完成 |
+| `EntryActionResponse.node_uuid` / `AtomItemResponse.node_uuid` 回传 | v0.3 PR-RB-03 已完成 |
+| 路径 A 修正（自动创建根级别 atom_ref） | v0.3 PR-RB-03 已完成 |
 | 指定默认路径文件夹配置 | v0.3 待实施 |
-| Core service 层统一创建 API | v0.3 待实施 |
 
 ---
 

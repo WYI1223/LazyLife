@@ -28,7 +28,7 @@ NotesCoordinator _buildController({
   NoteCreateInvoker? noteCreateInvoker,
   WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
-  WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
+  WorkspaceCreateAtomRefInvoker? workspaceCreateAtomRefInvoker,
   WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
   WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
@@ -63,7 +63,7 @@ NotesCoordinator _buildController({
     },
     workspaceDeleteFolderInvoker: workspaceDeleteFolderInvoker,
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
-    workspaceCreateNoteRefInvoker: workspaceCreateNoteRefInvoker,
+    workspaceCreateAtomRefInvoker: workspaceCreateAtomRefInvoker,
     workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
     workspaceMoveNodeInvoker: workspaceMoveNodeInvoker,
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
@@ -255,7 +255,7 @@ void main() {
             item: created,
           );
         },
-        workspaceCreateNoteRefInvoker:
+        workspaceCreateAtomRefInvoker:
             ({parentNodeId, required atomId, displayName}) async {
               linkedParentNodeId = parentNodeId;
               return const rust_api.WorkspaceNodeResponse(

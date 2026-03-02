@@ -21,7 +21,7 @@ export 'managers/note_tag_manager.dart' show NoteTagManager;
 export 'managers/workspace_tree_manager.dart'
     show
         WorkspaceCreateFolderInvoker,
-        WorkspaceCreateNoteRefInvoker,
+        WorkspaceCreateAtomRefInvoker,
         WorkspaceDeleteFolderInvoker,
         WorkspaceListChildrenInvoker,
         WorkspaceMoveNodeInvoker,
@@ -41,7 +41,7 @@ class NotesCoordinator extends _NotesCoordinatorImpl {
     super.noteSetTagsInvoker,
     super.workspaceDeleteFolderInvoker,
     super.workspaceCreateFolderInvoker,
-    super.workspaceCreateNoteRefInvoker,
+    super.workspaceCreateAtomRefInvoker,
     super.workspaceRenameNodeInvoker,
     super.workspaceMoveNodeInvoker,
     super.workspaceListChildrenInvoker,

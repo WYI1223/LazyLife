@@ -8,6 +8,7 @@
 //! - docs/releases/v0.1/prs/PR-0006-core-crud.md
 
 pub mod atom_service;
+pub mod creation_service;
 pub mod note_service;
 pub mod task_service;
 pub mod tree_service;

@@ -212,7 +212,7 @@ class ExplorerTreeState extends ChangeNotifier {
     switch (node.kind) {
       case 'folder':
         return 0;
-      case 'note_ref':
+      case 'atom_ref':
         return 1;
       default:
         return 2;

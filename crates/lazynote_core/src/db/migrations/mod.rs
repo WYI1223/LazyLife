@@ -63,6 +63,10 @@ const MIGRATIONS: &[Migration] = &[
         version: 10,
         sql: include_str!("0010_s1_core_fields.sql"),
     },
+    Migration {
+        version: 11,
+        sql: include_str!("0011_atom_ref_upgrade.sql"),
+    },
 ];
 
 /// Returns the latest migration version known by this binary.

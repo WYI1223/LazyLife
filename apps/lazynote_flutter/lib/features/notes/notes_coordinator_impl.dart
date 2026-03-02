@@ -27,7 +27,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     NoteSetTagsInvoker? noteSetTagsInvoker,
     WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
     WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
-    WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
+    WorkspaceCreateAtomRefInvoker? workspaceCreateAtomRefInvoker,
     WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
     WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
     WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
@@ -50,8 +50,8 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         workspaceDeleteFolderInvoker ?? _defaultWorkspaceDeleteFolderInvoker;
     final resolvedWorkspaceCreateFolderInvoker =
         workspaceCreateFolderInvoker ?? _defaultWorkspaceCreateFolderInvoker;
-    final resolvedWorkspaceCreateNoteRefInvoker =
-        workspaceCreateNoteRefInvoker ?? _defaultWorkspaceCreateNoteRefInvoker;
+    final resolvedWorkspaceCreateAtomRefInvoker =
+        workspaceCreateAtomRefInvoker ?? _defaultWorkspaceCreateAtomRefInvoker;
     final resolvedWorkspaceRenameNodeInvoker =
         workspaceRenameNodeInvoker ?? _defaultWorkspaceRenameNodeInvoker;
     final resolvedWorkspaceMoveNodeInvoker =
@@ -139,7 +139,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _workspaceTreeManager = WorkspaceTreeManager(
       workspaceDeleteFolderInvoker: resolvedWorkspaceDeleteFolderInvoker,
       workspaceCreateFolderInvoker: resolvedWorkspaceCreateFolderInvoker,
-      workspaceCreateNoteRefInvoker: resolvedWorkspaceCreateNoteRefInvoker,
+      workspaceCreateAtomRefInvoker: resolvedWorkspaceCreateAtomRefInvoker,
       workspaceRenameNodeInvoker: resolvedWorkspaceRenameNodeInvoker,
       workspaceMoveNodeInvoker: resolvedWorkspaceMoveNodeInvoker,
       workspaceListChildrenInvoker: resolvedWorkspaceListChildrenInvoker,
@@ -614,7 +614,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   ///
   /// Contract:
   /// - Parent id must be `null` or UUID (`__uncategorized__` is mapped to root).
-  /// - Uses existing note create flow, then links note via `workspace_create_note_ref`.
+  /// - Uses existing note create flow, then links note via `workspace_create_atom_ref`.
   /// - On success, created note is active and tree revision is bumped.
   Future<rust_api.WorkspaceActionResponse> createWorkspaceNoteInFolder({
     String? parentNodeId,
@@ -653,8 +653,8 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   /// Contract:
   /// - Returns core FFI response when call succeeds.
   /// - Synthetic `Uncategorized` children are projected as:
-  ///   - root-level `note_ref` rows from workspace tree
-  ///   - legacy notes with no workspace `note_ref` anywhere in tree
+  ///   - root-level `atom_ref` rows from workspace tree
+  ///   - legacy notes with no workspace `atom_ref` anywhere in tree
   /// - Uses synthetic fallback only when bridge is unavailable (e.g. Rust bridge
   ///   not initialized in test host).
   /// - Returns explicit error envelope when bridge call throws so UI can render
@@ -1479,12 +1479,12 @@ Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateFolderInvoker({
   return rust_api.workspaceCreateFolder(parentNodeId: parentNodeId, name: name);
 }
 
-Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateNoteRefInvoker({
+Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateAtomRefInvoker({
   String? parentNodeId,
   required String atomId,
   String? displayName,
 }) {
-  return rust_api.workspaceCreateNoteRef(
+  return rust_api.workspaceCreateAtomRef(
     parentNodeId: parentNodeId,
     atomId: atomId,
     displayName: displayName,

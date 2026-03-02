@@ -248,7 +248,7 @@ void main() {
         return _ok(<rust_api.WorkspaceNodeItem>[
           _node(
             nodeId: '11111111-1111-4111-8111-111111111111',
-            kind: 'note_ref',
+            kind: 'atom_ref',
             atomId: 'note-1',
             displayName: 'Note One',
           ),

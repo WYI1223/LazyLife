@@ -60,7 +60,7 @@ NotesCoordinator _controllerWithStore(
   WorkspaceDeleteFolderInvoker? workspaceDeleteFolderInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
-  WorkspaceCreateNoteRefInvoker? workspaceCreateNoteRefInvoker,
+  WorkspaceCreateAtomRefInvoker? workspaceCreateAtomRefInvoker,
   WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
 }) {
   return NotesCoordinator(
@@ -87,7 +87,7 @@ NotesCoordinator _controllerWithStore(
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
     workspaceDeleteFolderInvoker: workspaceDeleteFolderInvoker,
-    workspaceCreateNoteRefInvoker: workspaceCreateNoteRefInvoker,
+    workspaceCreateAtomRefInvoker: workspaceCreateAtomRefInvoker,
     workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
   );
 }
@@ -151,7 +151,7 @@ void main() {
           ),
           _node(
             nodeId: 'root-note-1',
-            kind: 'note_ref',
+            kind: 'atom_ref',
             atomId: 'note-1',
             displayName: 'Note One',
             sortOrder: 1,
@@ -162,7 +162,7 @@ void main() {
         return _ok(<rust_api.WorkspaceNodeItem>[
           _node(
             nodeId: 'folder-note-2',
-            kind: 'note_ref',
+            kind: 'atom_ref',
             parentNodeId: 'folder-1',
             atomId: 'note-2',
             displayName: 'Note Two',
@@ -224,7 +224,7 @@ void main() {
           return _ok(<rust_api.WorkspaceNodeItem>[
             _node(
               nodeId: childNoteRefId,
-              kind: 'note_ref',
+              kind: 'atom_ref',
               parentNodeId: parentId,
               atomId: 'note-1',
               displayName: 'Child Note',
@@ -727,7 +727,7 @@ void main() {
       return _ok(<rust_api.WorkspaceNodeItem>[
         _node(
           nodeId: 'root-note-1',
-          kind: 'note_ref',
+          kind: 'atom_ref',
           atomId: 'note-1',
           displayName: 'Note One',
         ),
@@ -770,7 +770,7 @@ void main() {
       return _ok(<rust_api.WorkspaceNodeItem>[
         _node(
           nodeId: 'root-note-1',
-          kind: 'note_ref',
+          kind: 'atom_ref',
           atomId: 'note-1',
           displayName: 'Note One',
         ),
@@ -826,7 +826,7 @@ void main() {
       return _ok(<rust_api.WorkspaceNodeItem>[
         _node(
           nodeId: 'root-note-1',
-          kind: 'note_ref',
+          kind: 'atom_ref',
           atomId: 'note-1',
           displayName: 'Note One',
         ),
@@ -876,7 +876,7 @@ void main() {
         workspaceListChildrenInvoker: ({parentNodeId}) async {
           return _ok(const <rust_api.WorkspaceNodeItem>[]);
         },
-        workspaceCreateNoteRefInvoker:
+        workspaceCreateAtomRefInvoker:
             ({parentNodeId, required atomId, displayName}) async {
               return rust_api.WorkspaceNodeResponse(
                 ok: true,
@@ -884,7 +884,7 @@ void main() {
                 message: 'ok',
                 node: rust_api.WorkspaceNodeItem(
                   nodeId: 'ref_$atomId',
-                  kind: 'note_ref',
+                  kind: 'atom_ref',
                   parentNodeId: parentNodeId,
                   atomId: atomId,
                   displayName: displayName ?? atomId,
@@ -1227,7 +1227,7 @@ void main() {
           return _ok(<rust_api.WorkspaceNodeItem>[
             _node(
               nodeId: noteRefId,
-              kind: 'note_ref',
+              kind: 'atom_ref',
               parentNodeId: folderId,
               atomId: 'note-1',
               displayName: 'Untitled note',
@@ -1288,7 +1288,7 @@ void main() {
             return _ok(<rust_api.WorkspaceNodeItem>[
               _node(
                 nodeId: folderNoteRefId,
-                kind: 'note_ref',
+                kind: 'atom_ref',
                 parentNodeId: folderId,
                 atomId: 'note-1',
                 displayName: 'Child Note',
@@ -1316,7 +1316,7 @@ void main() {
       );
       expect(
         find.byKey(
-          const Key('notes_tree_note_row_note_ref_uncategorized_note-1'),
+          const Key('notes_tree_note_row_atom_ref_uncategorized_note-1'),
         ),
         findsNothing,
       );
@@ -1324,7 +1324,7 @@ void main() {
   );
 
   testWidgets(
-    'literal Untitled title does not fallback to note_ref display name',
+    'literal Untitled title does not fallback to atom_ref display name',
     (WidgetTester tester) async {
       const folderId = '11111111-1111-4111-8111-111111111111';
       const noteRefId = '33333333-3333-4333-8333-333333333333';
@@ -1348,7 +1348,7 @@ void main() {
             return _ok(<rust_api.WorkspaceNodeItem>[
               _node(
                 nodeId: noteRefId,
-                kind: 'note_ref',
+                kind: 'atom_ref',
                 parentNodeId: folderId,
                 atomId: 'note-1',
                 displayName: 'Display Alias',

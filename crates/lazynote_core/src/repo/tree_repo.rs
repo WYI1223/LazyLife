@@ -1,13 +1,13 @@
 //! Workspace tree repository contracts and SQLite implementation.
 //!
 //! # Responsibility
-//! - Provide persistence APIs for folder/note_ref workspace hierarchy.
+//! - Provide persistence APIs for folder/atom_ref workspace hierarchy.
 //! - Keep SQL details and ordering behavior inside repository boundary.
 //!
 //! # Invariants
 //! - Only active (`is_deleted=0`) nodes are returned by default.
 //! - Child listing is deterministic: `sort_order ASC, node_uuid ASC`.
-//! - `note_ref` targets must point to active note atoms.
+//! - `atom_ref` targets must point to active atoms (any view_hint).
 
 use crate::db::migrations::latest_version;
 use crate::db::DbError;
@@ -104,8 +104,8 @@ impl From<rusqlite::Error> for TreeRepoError {
 pub enum WorkspaceNodeKind {
     /// Grouping node that can contain child nodes.
     Folder,
-    /// Link node pointing to one note atom.
-    NoteRef,
+    /// Link node pointing to one atom (any type: note, task, event).
+    AtomRef,
 }
 
 /// Workspace tree read model.
@@ -139,8 +139,8 @@ pub trait TreeRepository {
         parent_uuid: Option<WorkspaceNodeId>,
         display_name: &str,
     ) -> TreeRepoResult<WorkspaceNode>;
-    /// Creates one note_ref node.
-    fn create_note_ref(
+    /// Creates one atom_ref node.
+    fn create_atom_ref(
         &self,
         parent_uuid: Option<WorkspaceNodeId>,
         atom_uuid: AtomId,
@@ -216,7 +216,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
         load_required_node(self.conn, node_uuid)
     }
 
-    fn create_note_ref(
+    fn create_atom_ref(
         &self,
         parent_uuid: Option<WorkspaceNodeId>,
         atom_uuid: AtomId,
@@ -233,7 +233,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                 display_name,
                 sort_order,
                 is_deleted
-            ) VALUES (?1, 'note_ref', ?2, ?3, ?4, ?5, 0);",
+            ) VALUES (?1, 'atom_ref', ?2, ?3, ?4, ?5, 0);",
             params![
                 node_uuid.to_string(),
                 parent_uuid.map(|value| value.to_string()),
@@ -280,7 +280,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                AND n.is_deleted = 0
                AND (
                  n.kind = 'folder'
-                 OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
+                 OR (n.kind = 'atom_ref' AND a.is_deleted = 0)
                );"
         };
         let mut stmt = self.conn.prepare(sql)?;
@@ -344,7 +344,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                    AND n.is_deleted = 0
                    AND (
                      n.kind = 'folder'
-                     OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
+                     OR (n.kind = 'atom_ref' AND a.is_deleted = 0)
                    )
                  ORDER BY n.sort_order ASC, n.node_uuid ASC;"
             }
@@ -365,7 +365,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                    AND n.is_deleted = 0
                    AND (
                      n.kind = 'folder'
-                     OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
+                     OR (n.kind = 'atom_ref' AND a.is_deleted = 0)
                    )
                  ORDER BY n.sort_order ASC, n.node_uuid ASC;"
             }
@@ -481,7 +481,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
         let tx = Transaction::new_unchecked(self.conn, TransactionBehavior::Immediate)?;
         ensure_active_folder_exists(&tx, folder_uuid)?;
 
-        let referenced_atoms = list_referenced_note_atoms_in_subtree(&tx, folder_uuid)?;
+        let referenced_atoms = list_referenced_atoms_in_subtree(&tx, folder_uuid)?;
         soft_delete_workspace_subtree(&tx, folder_uuid)?;
 
         for atom_uuid in referenced_atoms {
@@ -489,7 +489,7 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                 "SELECT EXISTS(
                     SELECT 1
                     FROM workspace_nodes
-                    WHERE kind = 'note_ref'
+                    WHERE kind = 'atom_ref'
                       AND atom_uuid = ?1
                       AND is_deleted = 0
                 );",
@@ -505,7 +505,6 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                  SET is_deleted = 1,
                      updated_at = (strftime('%s', 'now') * 1000)
                  WHERE uuid = ?1
-                   AND view_hint = 'note'
                    AND is_deleted = 0;",
                 [atom_uuid.to_string()],
             )?;
@@ -615,7 +614,7 @@ fn list_visible_child_ids(
                AND n.is_deleted = 0
                AND (
                  n.kind = 'folder'
-                 OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
+                 OR (n.kind = 'atom_ref' AND a.is_deleted = 0)
                )
              ORDER BY n.sort_order ASC, n.node_uuid ASC;",
         )?;
@@ -633,7 +632,7 @@ fn list_visible_child_ids(
                AND n.is_deleted = 0
                AND (
                  n.kind = 'folder'
-                 OR (n.kind = 'note_ref' AND a.view_hint = 'note' AND a.is_deleted = 0)
+                 OR (n.kind = 'atom_ref' AND a.is_deleted = 0)
                )
              ORDER BY n.sort_order ASC, n.node_uuid ASC;",
         )?;
@@ -691,7 +690,7 @@ fn ensure_active_folder_exists(
     }
 }
 
-fn list_referenced_note_atoms_in_subtree(
+fn list_referenced_atoms_in_subtree(
     conn: &Connection,
     folder_uuid: WorkspaceNodeId,
 ) -> TreeRepoResult<Vec<AtomId>> {
@@ -710,7 +709,7 @@ fn list_referenced_note_atoms_in_subtree(
         SELECT DISTINCT nodes.atom_uuid
         FROM workspace_nodes nodes
         INNER JOIN subtree ON subtree.node_uuid = nodes.node_uuid
-        WHERE nodes.kind = 'note_ref'
+        WHERE nodes.kind = 'atom_ref'
           AND nodes.is_deleted = 0
           AND nodes.atom_uuid IS NOT NULL;",
     )?;
@@ -796,7 +795,7 @@ fn parse_workspace_node_row(row: &Row<'_>) -> TreeRepoResult<WorkspaceNode> {
 fn parse_workspace_kind(value: &str) -> Option<WorkspaceNodeKind> {
     match value {
         "folder" => Some(WorkspaceNodeKind::Folder),
-        "note_ref" => Some(WorkspaceNodeKind::NoteRef),
+        "atom_ref" => Some(WorkspaceNodeKind::AtomRef),
         _ => None,
     }
 }
