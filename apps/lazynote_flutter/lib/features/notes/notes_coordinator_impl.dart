@@ -135,7 +135,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       },
     );
     _noteTagManager.addListener(_handleNoteTagManagerChanged);
-    _workspaceTreeManager = WorkspaceTreeManager(
+    _workspaceTreeService = WorkspaceTreeService(
       workspaceDeleteFolderInvoker: resolvedWorkspaceDeleteFolderInvoker,
       workspaceCreateFolderInvoker: resolvedWorkspaceCreateFolderInvoker,
       workspaceRenameNodeInvoker: resolvedWorkspaceRenameNodeInvoker,
@@ -148,7 +148,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       noteById: noteById,
       listItems: () => _noteListManager.items,
     );
-    _workspaceTreeManager.addListener(_handleWorkspaceTreeManagerChanged);
+    _workspaceTreeService.addListener(_handleWorkspaceTreeServiceChanged);
   }
 
   final NoteCreateInvoker _noteCreateInvoker;
@@ -164,7 +164,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   late final NoteDraftManager _noteDraftManager;
   late final NoteTabStateManager _noteTabManager;
   late final NoteTagManager _noteTagManager;
-  late final WorkspaceTreeManager _workspaceTreeManager;
+  late final WorkspaceTreeService _workspaceTreeService;
 
   /// Requested list limit for C1 list baseline.
   final int listLimit;
@@ -250,30 +250,30 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   /// Whether workspace folder delete request is currently in flight.
   bool get workspaceDeleteInFlight =>
-      _workspaceTreeManager.workspaceDeleteInFlight;
+      _workspaceTreeService.workspaceDeleteInFlight;
 
   /// Last workspace folder delete failure message.
   String? get workspaceDeleteErrorMessage =>
-      _workspaceTreeManager.workspaceDeleteErrorMessage;
+      _workspaceTreeService.workspaceDeleteErrorMessage;
 
   /// Whether workspace folder create request is currently in flight.
   bool get workspaceCreateFolderInFlight =>
-      _workspaceTreeManager.workspaceCreateFolderInFlight;
+      _workspaceTreeService.workspaceCreateFolderInFlight;
 
   /// Last workspace folder create failure message.
   String? get workspaceCreateFolderErrorMessage =>
-      _workspaceTreeManager.workspaceCreateFolderErrorMessage;
+      _workspaceTreeService.workspaceCreateFolderErrorMessage;
 
   /// Whether workspace node mutation request is currently in flight.
   bool get workspaceNodeMutationInFlight =>
-      _workspaceTreeManager.workspaceNodeMutationInFlight;
+      _workspaceTreeService.workspaceNodeMutationInFlight;
 
   /// Last workspace node mutation failure message.
   String? get workspaceNodeMutationErrorMessage =>
-      _workspaceTreeManager.workspaceNodeMutationErrorMessage;
+      _workspaceTreeService.workspaceNodeMutationErrorMessage;
 
   /// Monotonic revision bump for explorer tree refresh triggers.
-  int get workspaceTreeRevision => _workspaceTreeManager.workspaceTreeRevision;
+  int get workspaceTreeRevision => _workspaceTreeService.workspaceTreeRevision;
 
   /// Workspace state owner used by Notes bridge (M2).
   WorkspaceProvider get workspaceProvider => _workspaceProvider;
@@ -471,7 +471,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _handleWorkspaceTreeManagerChanged() {
+  void _handleWorkspaceTreeServiceChanged() {
     if (_disposed) {
       return;
     }
@@ -486,12 +486,12 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _noteTabManager.removeListener(_handleNoteTabManagerChanged);
     _noteTagManager.removeListener(_handleNoteTagManagerChanged);
     _noteSaveTracker.removeListener(_handleNoteSaveTrackerChanged);
-    _workspaceTreeManager.removeListener(_handleWorkspaceTreeManagerChanged);
+    _workspaceTreeService.removeListener(_handleWorkspaceTreeServiceChanged);
     _noteListManager.dispose();
     _noteDraftManager.dispose();
     _noteTabManager.dispose();
     _noteTagManager.dispose();
-    _workspaceTreeManager.dispose();
+    _workspaceTreeService.dispose();
     _noteSaveTracker.dispose();
     if (_ownsWorkspaceProvider) {
       _workspaceProvider.dispose();
@@ -604,7 +604,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     required String name,
     String? parentNodeId,
   }) async {
-    return _workspaceTreeManager.createWorkspaceFolder(
+    return _workspaceTreeService.createWorkspaceFolder(
       name: name,
       parentNodeId: parentNodeId,
     );
@@ -620,7 +620,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   Future<rust_api.WorkspaceActionResponse> createWorkspaceNoteInFolder({
     String? parentNodeId,
   }) async {
-    return _workspaceTreeManager.createWorkspaceNoteInFolder(
+    return _workspaceTreeService.createWorkspaceNoteInFolder(
       parentNodeId: parentNodeId,
     );
   }
@@ -630,7 +630,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     required String nodeId,
     required String newName,
   }) async {
-    return _workspaceTreeManager.renameWorkspaceNode(
+    return _workspaceTreeService.renameWorkspaceNode(
       nodeId: nodeId,
       newName: newName,
     );
@@ -642,7 +642,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     String? newParentNodeId,
     int? targetOrder,
   }) async {
-    return _workspaceTreeManager.moveWorkspaceNode(
+    return _workspaceTreeService.moveWorkspaceNode(
       nodeId: nodeId,
       newParentNodeId: newParentNodeId,
       targetOrder: targetOrder,
@@ -663,7 +663,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   Future<rust_api.WorkspaceListChildrenResponse> listWorkspaceChildren({
     String? parentNodeId,
   }) async {
-    return _workspaceTreeManager.listWorkspaceChildren(
+    return _workspaceTreeService.listWorkspaceChildren(
       parentNodeId: parentNodeId,
     );
   }
@@ -678,7 +678,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     required String folderId,
     required String mode,
   }) async {
-    return _workspaceTreeManager.deleteWorkspaceFolder(
+    return _workspaceTreeService.deleteWorkspaceFolder(
       folderId: folderId,
       mode: mode,
     );

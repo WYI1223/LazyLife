@@ -6,7 +6,7 @@
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-28 |
-| 关联 PR | PR-0301B（EditorShellService 提取）、PR-0300D（WorkspaceTreeService 提取） |
+| 关联 PR | PR-RB-06（EditorShellService 提取）、PR-RB-05（WorkspaceTreeService 提取）；旧编号：PR-0301B、PR-0300D |
 
 ---
 
@@ -50,11 +50,17 @@ lib/core/editor/
 
 ```
 lib/core/workspace/
-├── workspace_tree_service.dart    ← 从 features/notes/managers/ 搬入
-└── workspace_models.dart          ← 从 features/workspace/ 迁入
+├── workspace_tree_service.dart          ← features/notes/managers/workspace_tree_manager.dart (move + rename)
+├── workspace_tree_types.dart            ← features/notes/managers/ (move)
+├── workspace_tree_children_loader.dart  ← features/notes/managers/ (move)
+├── workspace_tree_error_utils.dart      ← features/notes/managers/ (move)
+├── workspace_provider.dart              ← features/workspace/ (move) [TRANSIENT → core/editor/ in PR-RB-06]
+└── workspace_models.dart                ← features/workspace/ (move) [TRANSIENT → core/editor/ in PR-RB-06]
 ```
 
 组织结构基础设施：workspace tree CRUD 的 FFI 封装。语义依据见 S1 R6（指定默认路径模型）和 S3（Tag × Workspace 正交性）。
+
+> **PR-RB-05 变更说明**：实际迁移 6 个文件（4 tree 永久驻留 + 2 pane layout TRANSIENT）。pane layout 文件（`workspace_provider.dart`、`workspace_models.dart`）为过渡驻留，PR-RB-06 将其 layout 逻辑吸收进 `core/editor/group_layout.dart`。此方案一次性清空 `features/workspace/` 目录并消除 Rule E `notes → workspace` exemption。
 
 ---
 
@@ -89,8 +95,8 @@ lib/core/
 | 项目 | 状态 |
 |------|------|
 | ReminderScheduler → `core/reminders/` | **已完成** — PR-0259（S7） |
-| EditorShellService → `core/editor/` | v0.3 待实施（设计完成 — DI-1） |
-| WorkspaceTreeService → `core/workspace/` | v0.3 待实施（DI-1 Q4.3） |
+| WorkspaceTreeService → `core/workspace/` | **已完成** — v0.3 PR-RB-05（6 文件迁移：4 tree 永久 + 2 pane layout TRANSIENT）— DI-1 Q4.3 |
+| EditorShellService → `core/editor/` | v0.3 PR-RB-06 待实施（设计完成 — DI-1 Q5；依赖 PR-RB-05 pane layout 过渡位置） |
 
 ---
 

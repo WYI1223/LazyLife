@@ -1,5 +1,9 @@
+// TRANSIENT: This file is temporarily in lib/core/workspace/.
+// PR-RB-06 will absorb its layout logic into lib/core/editor/group_layout.dart.
+// See: DI-1 Q5, S2 Phase 2, PR-RB-06 T15.
+
 import 'package:flutter/foundation.dart';
-import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
 
 /// Workspace pane layout owner.
 ///

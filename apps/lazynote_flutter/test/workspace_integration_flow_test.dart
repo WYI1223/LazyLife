@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
-import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
 
 rust_api.AtomListItem _note({
   required String atomId,

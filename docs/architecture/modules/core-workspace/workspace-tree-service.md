@@ -14,22 +14,41 @@
 
 ## 目标文件结构
 
+> **PR-RB-05 变更**：实际迁移 6 个文件（原 spec 列 2 个为简化描述）。4 个 tree 文件永久驻留，2 个 pane layout 文件为 TRANSIENT 过渡。
+
 ```
 lib/core/workspace/
-├── workspace_tree_service.dart    ← 从 features/notes/managers/ 搬入
-└── workspace_models.dart          ← 从 features/workspace/ 迁入（TreeNode 等）
+├── workspace_tree_service.dart          ← features/notes/managers/workspace_tree_manager.dart (move + rename)
+├── workspace_tree_types.dart            ← features/notes/managers/ (move) — 12 个 injectable typedef
+├── workspace_tree_children_loader.dart  ← features/notes/managers/ (move) — 子节点加载 + uncategorized 投影
+├── workspace_tree_error_utils.dart      ← features/notes/managers/ (move) — 错误格式化工具
+├── workspace_provider.dart              ← features/workspace/ (move) [TRANSIENT → core/editor/ in PR-RB-06]
+└── workspace_models.dart                ← features/workspace/ (move) [TRANSIENT → core/editor/ in PR-RB-06]
 ```
+
+**文件分类**：
+
+| 分类 | 文件 | 生命周期 |
+|------|------|---------|
+| Core Tree（永久） | `workspace_tree_service.dart`, `_types.dart`, `_children_loader.dart`, `_error_utils.dart` | 永久驻留；DI-12 扩展，DI-14 添加状态管理 |
+| Transient Layout（过渡） | `workspace_provider.dart`, `workspace_models.dart` | PR-RB-06 T15 吸收到 `core/editor/group_layout.dart` |
 
 ---
 
 ## 提取范围
 
+> **PR-RB-05 变更**：扩展提取范围至完整支撑文件，确保模块自包含。
+
 | 从 | 提取内容 | 说明 |
 |---|---|---|
-| `WorkspaceTreeManager` | tree CRUD FFI 调用（create folder, create ref, list children, move, delete） | 核心操作 |
-| `WorkspaceModels` | `TreeNode`, `WorkspaceNodeKind` 等数据模型 | 共享数据类型 |
+| `WorkspaceTreeManager` | tree CRUD FFI 调用（create folder, create ref, list children, move, delete）+ 状态跟踪（revision counter）+ DartEventLogger 日志 | 核心操作；重命名为 `WorkspaceTreeService` |
+| `workspace_tree_types.dart` | 12 个 typedef（5 FFI invokers + 3 lifecycle hooks + 3 note integration callbacks + 1 result record） | injectable 依赖类型 |
+| `workspace_tree_children_loader.dart` | 子节点加载 + `__uncategorized__` 伪文件夹投影 + 三级 fallback | WorkspaceTreeService 内部依赖 |
+| `workspace_tree_error_utils.dart` | 错误格式化工具（`db_busy`/`db_error` 特殊处理） | WorkspaceTreeService 内部依赖 |
+| `WorkspaceProvider` | pane split/merge layout 管理 | **TRANSIENT**：一次性清空 features/workspace/ |
+| `WorkspaceModels` | `WorkspaceLayoutState`、split/merge 类型 | **TRANSIENT**：同上 |
 
-NotesCoordinator 中与 workspace tree 相关的协调逻辑（如 "在指定文件夹创建 note"）保留在 Coordinator 层，调用 `WorkspaceTreeService` 方法。
+NotesCoordinator 中与 workspace tree 相关的协调逻辑（如 "在指定文件夹创建 note"）保留在 Coordinator 层，调用 `WorkspaceTreeService` 方法。injectable callback 模式不变（DI-1 Q4.3 确认）。
 
 ---
 
@@ -84,11 +103,33 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 
 ---
 
-## v0.4 Addendum（DI-12，规划态）
+## 实施状态 `[PR-RB-05 新增]`
+
+| 阶段 | 状态 | PR |
+|------|------|-----|
+| CRUD 层迁移到 `core/workspace/` | **已完成** | PR-RB-05（v0.3） |
+| Pane layout TRANSIENT 过渡 | **已完成** | PR-RB-05 移入 → PR-RB-06 吸收到 `core/editor/` |
+| 状态管理提升（ExplorerTreeState） | 设计未收敛 | DI-14（v0.4） |
+| 单根树 + 系统节点 | 设计已收敛 | DI-12（v0.4） |
+
+---
+
+## v0.4 Addendum（DI-12 + DI-14，规划态）
 
 > 本节仅作为 v0.4 规划输入，不覆盖 v0.3 进行中的实现基线。
+
+### DI-12：单根树 + 系统节点（RESOLVED）
 
 1. 树结构将收敛到单根（隐藏 `ROOT`），并固化系统节点角色（`Inbox`/`Tasks`/`Calendar`）。
 2. `WorkspaceTreeService` 需补充系统节点保护语义：可移动/可重命名，不可删除。
 3. “重新指定默认路径”在实现层收敛为移动同一系统节点（role+uuid 不变），不做运行时映射重绑定。
 4. Tree/List/Spatial 读取同一结构源，模块层需保证跨视图一致性。
+
+### DI-14：Workspace Tree 提升为 Core First-Class Citizen（PENDING）`[PR-RB-05 新增]`
+
+> PR-RB-05 建立的 `core/workspace/` 目录和 injectable 模式是 DI-14 的先决条件。
+
+1. DI-14 Q0（gate 问题）：是否将 workspace tree 状态管理（ExplorerTreeState 等）也提升到 `core/workspace/`。
+2. DI-14 Q2：subtree 查询接口设计 — `workspace_tree_children_loader.dart` 的 BFS tree walk + subtree projection 是天然基础。
+3. DI-14 Q3：变更通知模型 — `WorkspaceTreeService` 已是 `ChangeNotifier`，可扩展为 scoped notification。
+4. 5 个设计问题全部 open，不做提前实现。

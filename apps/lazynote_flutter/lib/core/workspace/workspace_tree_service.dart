@@ -1,24 +1,26 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/diagnostics/dart_event_logger.dart';
-import 'package:lazynote_flutter/features/notes/managers/workspace_tree_children_loader.dart';
-import 'package:lazynote_flutter/features/notes/managers/workspace_tree_error_utils.dart';
-import 'package:lazynote_flutter/features/notes/managers/workspace_tree_types.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_tree_children_loader.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_tree_error_utils.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_tree_types.dart';
 export 'workspace_tree_types.dart';
 
-/// Extracted workspace-tree state and mutation manager.
+/// Workspace tree state and mutation service (core infrastructure).
 ///
 /// Scope:
 /// - Holds workspace tree request state + error envelopes.
 /// - Owns create/rename/move/delete/list tree operations.
 /// - Keeps controller-facing API stable via facade delegation.
-class WorkspaceTreeManager extends ChangeNotifier {
+///
+/// Renamed from WorkspaceTreeManager in PR-RB-05 (S9 core/workspace extraction).
+class WorkspaceTreeService extends ChangeNotifier {
   static const String _uncategorizedFolderNodeId = '__uncategorized__';
   static final RegExp _uuidPattern = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
   );
 
-  WorkspaceTreeManager({
+  WorkspaceTreeService({
     required WorkspaceDeleteFolderInvoker workspaceDeleteFolderInvoker,
     required WorkspaceCreateFolderInvoker workspaceCreateFolderInvoker,
     required WorkspaceRenameNodeInvoker workspaceRenameNodeInvoker,
@@ -355,7 +357,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
         DartEventLogger.tryLog(
           level: 'warn',
           eventName: 'workspace.node_move.error',
-          module: 'notes.workspace_tree_manager',
+          module: 'core.workspace_tree_service',
           message:
               'Workspace move failed (${response.errorCode ?? "unknown"}).',
           dedupe: false,
@@ -370,7 +372,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
       DartEventLogger.tryLog(
         level: 'info',
         eventName: 'workspace.node_move.ok',
-        module: 'notes.workspace_tree_manager',
+        module: 'core.workspace_tree_service',
         message: 'Workspace move succeeded.',
         dedupe: false,
       );
@@ -382,7 +384,7 @@ class WorkspaceTreeManager extends ChangeNotifier {
       DartEventLogger.tryLog(
         level: 'warn',
         eventName: 'workspace.node_move.exception',
-        module: 'notes.workspace_tree_manager',
+        module: 'core.workspace_tree_service',
         message: 'Workspace move failed unexpectedly.',
         dedupe: false,
       );

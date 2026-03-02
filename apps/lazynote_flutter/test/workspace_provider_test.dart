@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lazynote_flutter/features/workspace/workspace_models.dart';
-import 'package:lazynote_flutter/features/workspace/workspace_provider.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
+import 'package:lazynote_flutter/core/workspace/workspace_provider.dart';
 
 void main() {
   test('WorkspaceLayoutState snapshots are defensively immutable', () {
