@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
 import 'package:lazynote_flutter/core/reminders/reminder_service.dart';
+import 'package:lazynote_flutter/core/rust_bridge.dart';
 
 /// Process-level singleton that manages reminders for timed atoms.
 ///
 /// Follows the same static-singleton pattern as [RustBridge].
-/// Both TasksController and CalendarController share this instance so that
-/// reminders are not mutually overwritten.
+/// Feature controllers interact via [ReminderLifecycle] callbacks,
+/// not by importing this class directly (S7 lifecycle trigger model).
 ///
 /// Reminder timing is derived from atom time-matrix fields:
 /// - `[NULL, Value]` DDL task: remind before `end_at` (default: 15 min)
@@ -81,6 +82,37 @@ class ReminderScheduler {
         body: body,
         scheduledTime: reminderTime,
       );
+    }
+  }
+
+  /// Schedule a reminder for a single atom (convenience wrapper).
+  ///
+  /// Used by lifecycle hooks after atom creation or time-field mutation.
+  static Future<void> scheduleReminderForAtom(
+    rust_api.AtomListItem atom,
+  ) async {
+    await scheduleRemindersForAtoms([atom]);
+  }
+
+  /// Startup recovery: query all timed atoms and bulk-schedule reminders.
+  ///
+  /// Called once during app bootstrap (in background, non-blocking).
+  /// Ensures reminders survive app restart on platforms without persistent
+  /// OS-level scheduled notifications (e.g. Windows timer-based).
+  static Future<void> recoverOnStartup({
+    Future<rust_api.AtomListResponse> Function()? timedInvoker,
+  }) async {
+    await ensureInitialized();
+
+    final rust_api.AtomListResponse response;
+    if (timedInvoker != null) {
+      response = await timedInvoker();
+    } else {
+      await RustBridge.init();
+      response = await rust_api.atomsListTimed();
+    }
+    if (response.ok) {
+      await scheduleRemindersForAtoms(response.items);
     }
   }
 

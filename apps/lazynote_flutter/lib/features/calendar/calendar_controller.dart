@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/core/reminders/reminder_scheduler.dart'
-    as reminders;
+import 'package:lazynote_flutter/core/reminders/reminder_lifecycle.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 
 /// Async range query returning [rust_api.AtomListResponse].
@@ -46,10 +45,12 @@ class CalendarController extends ChangeNotifier {
     CalendarUpdateEventInvoker? updateEventInvoker,
     CalendarPrepare? prepare,
     DateTime? initialDate,
+    ReminderLifecycle? reminderLifecycle,
   }) : _rangeInvoker = rangeInvoker ?? _defaultRangeInvoker,
        _scheduleInvoker = scheduleInvoker ?? _defaultScheduleInvoker,
        _updateEventInvoker = updateEventInvoker ?? _defaultUpdateEventInvoker,
-       _prepare = prepare ?? _defaultPrepare {
+       _prepare = prepare ?? _defaultPrepare,
+       _reminderLifecycle = reminderLifecycle ?? ReminderLifecycle.instance {
     _weekStart = _mondayOf(initialDate ?? DateTime.now());
   }
 
@@ -57,6 +58,7 @@ class CalendarController extends ChangeNotifier {
   final CalendarScheduleInvoker _scheduleInvoker;
   final CalendarUpdateEventInvoker _updateEventInvoker;
   final CalendarPrepare _prepare;
+  final ReminderLifecycle _reminderLifecycle;
 
   late DateTime _weekStart;
   CalendarPhase _phase = CalendarPhase.idle;
@@ -113,8 +115,6 @@ class CalendarController extends ChangeNotifier {
       _events = List.unmodifiable(response.items);
       _phase = CalendarPhase.success;
       notifyListeners();
-      // Schedule reminders for loaded events
-      await _scheduleReminders();
     } catch (e) {
       if (requestId != _requestId) return;
       _phase = CalendarPhase.error;
@@ -157,6 +157,16 @@ class CalendarController extends ChangeNotifier {
         endEpochMs: endMs,
       );
       if (!response.ok) return false;
+
+      // Lifecycle hook: schedule reminder for newly created event
+      if (response.atomId case final atomId?) {
+        try {
+          await _reminderLifecycle.onSchedule(atomId);
+        } catch (_) {
+          // Reminder delivery must not break event creation.
+        }
+      }
+
       await loadWeek();
       return true;
     } catch (_) {
@@ -174,19 +184,18 @@ class CalendarController extends ChangeNotifier {
         endMs: endMs,
       );
       if (!response.ok) return false;
+
+      // Lifecycle hook: re-schedule reminder after time change
+      try {
+        await _reminderLifecycle.onSchedule(atomId);
+      } catch (_) {
+        // Reminder delivery must not break event update.
+      }
+
       await loadWeek();
       return true;
     } catch (_) {
       return false;
-    }
-  }
-
-  /// Schedule reminders for loaded events via the process-level singleton.
-  Future<void> _scheduleReminders() async {
-    try {
-      await reminders.ReminderScheduler.scheduleRemindersForAtoms(_events);
-    } catch (_) {
-      // Reminder delivery must not break calendar rendering.
     }
   }
 

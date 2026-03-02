@@ -1,7 +1,7 @@
 # PR-RB-04: S7 生命周期提醒
 
 - Proposed title: `feat(reminders): PR-RB-04 migrate to Atom lifecycle triggers with startup recovery`
-- Status: Draft
+- Status: Implemented
 
 ## Goal
 
@@ -36,7 +36,7 @@
 | 创建 Atom（有时间字段） | schedule | FFI 创建函数返回后 |
 | 修改时间字段 | update (cancel + re-schedule) | `calendar_update_event` 返回后 |
 | 完成/取消 (`done`/`cancelled`) | cancel | `atom_update_status` 返回后 |
-| 软删除 | cancel | `workspace_delete_folder(delete_all)` 返回后 |
+| 软删除 | cancel | `workspace_delete_folder(delete_all)` 返回后 — **延期至 v0.4 PR-0401**（Q2 裁决） |
 | App 启动 | bulk schedule | bootstrap 阶段 |
 
 ### 需要新增的 FFI 函数
@@ -140,9 +140,8 @@ class ReminderLifecycle {
 当前问题：部分 mutation 响应（`EntryActionResponse`）不包含时间字段。解决方案：
 
 - PR-RB-03 已扩展响应包含 `node_uuid`，但时间字段仍不在 response 中
-- **方案**：mutation 成功后，用返回的 `atom_id` 调用 `note_get`（或新增 `atom_get`）获取完整 `AtomListItem`，再传给 scheduler
-- **或**：创建 API 返回完整 `AtomListItem`（PR-RB-01 `AtomItemResponse` 已包含）
-- 推荐：对于返回 `AtomItemResponse` 的函数（note 系列），直接使用 `item` 字段；对于返回 `EntryActionResponse` 的函数（entry 系列），需要额外 get 查询
+- **方案（Q3 裁决）**：mutation 成功后，用返回的 `atom_id` 调用 `atom_get` 获取完整 `AtomListItem`，再传给 scheduler。`atom_get` 通过 `TaskService.get_atom_record` 查询任意类型 atom（无 `view_hint` 过滤），避免 `note_get` 仅返回 `view_hint='note'` 导致 task/event 静默失败
+- 对于返回 `AtomItemResponse` 的函数（note 系列），可直接使用 `item` 字段；对于返回 `EntryActionResponse` 的函数（entry 系列），需调用 `atom_get` 补查
 
 ## Task Breakdown
 
@@ -151,9 +150,12 @@ class ReminderLifecycle {
 | Task | 内容 | 文件 | 变更 | 依赖 |
 |------|------|------|------|------|
 | T1 | Core: `AtomRepository` 新增 `list_timed()` 查询 | `crates/lazynote_core/src/repo/atom_repo.rs` | 新增方法 + SQL | — |
-| T2 | Core: `AtomService`（或 `TaskService`）暴露 `list_timed()` | `crates/lazynote_core/src/service/` | 新增方法 | T1 |
+| T1b | Core: `AtomRepository` 新增 `get_section_atom()` 单 atom 查询（Q3 裁决） | `crates/lazynote_core/src/repo/atom_repo.rs` | 新增方法 + SQL | — |
+| T2 | Core: `TaskService` 暴露 `fetch_timed()` | `crates/lazynote_core/src/service/task_service.rs` | 新增方法 | T1 |
+| T2b | Core: `TaskService` 暴露 `get_atom_record()` 单 atom 查询（Q3 裁决） | `crates/lazynote_core/src/service/task_service.rs` | 新增方法 | T1b |
 | T3 | FFI: 新增 `atoms_list_timed()` 导出 | `crates/lazynote_ffi/src/api.rs` | 新增函数 ~15 行 | T2 |
-| T4 | Codegen: `scripts/gen_bindings.ps1` | bindings | 自动生成 | T3 |
+| T3b | FFI: 新增 `atom_get()` 导出（Q3 裁决：`onSchedule` 数据路径） | `crates/lazynote_ffi/src/api.rs` | 新增函数 + 5 测试 | T2b |
+| T4 | Codegen: `scripts/gen_bindings.ps1` | bindings | 自动生成 | T3, T3b |
 
 ### Phase 2: ReminderScheduler + Lifecycle 中间层
 
@@ -198,8 +200,9 @@ class ReminderLifecycle {
 ### Critical Path
 
 ```
-T1 → T2 → T3 → T4 → T6 → T14 (启动恢复)
-T5 无依赖 → T7~T13 (hook 挂接)
+T1 → T2 → T3 ─┐
+T1b → T2b → T3b ┤→ T4 → T6 → T14 (启动恢复 + onSchedule 数据路径)
+T5 无依赖 → T5b → T7~T13 (hook 挂接)
 ```
 
 ## Planned File Changes
@@ -221,6 +224,7 @@ T5 无依赖 → T7~T13 (hook 挂接)
 
 ### Docs
 - `[edit]` `docs/architecture/rulings/S7-reminders-infrastructure.md`
+- `[edit]` `docs/architecture/modules/core-reminders/reminder-scheduler.md`
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `CLAUDE.md`
 
@@ -276,18 +280,19 @@ rg "atoms_list_timed" crates/lazynote_ffi/src/api.rs
 
 ## Test Baseline
 
-Entry: PR-RB-03 exit count
-Exit: **≥ PR-RB-03 count + 新增 lifecycle/recovery 测试**
+Entry: PR-RB-03 exit count (Rust 211, Flutter 347)
+Exit: **Rust 216 (+5 atom_get tests), Flutter 347 (unchanged)**
 
 ## Acceptance Criteria
 
-- [ ] `TasksController.loadAll()` 不再调用 `_scheduleReminders()`
-- [ ] `CalendarController.loadWeek()` 不再调用 `_scheduleReminders()`
-- [ ] `atom_update_status` 成功且状态为 `done`/`cancelled` 时取消提醒
-- [ ] `calendar_update_event` 成功后更新提醒
-- [ ] `entry_schedule` / `entry_create_task` 成功后调度提醒
-- [ ] App 启动时批量恢复所有 timed atom 的提醒
-- [ ] FFI `atoms_list_timed()` 返回所有未删除 timed atom
-- [ ] 全部 Rust tests 通过
-- [ ] 全部 Flutter tests 通过
-- [ ] CI green
+- [x] `TasksController.loadAll()` 不再调用 `_scheduleReminders()`
+- [x] `CalendarController.loadWeek()` 不再调用 `_scheduleReminders()`
+- [x] `atom_update_status` 成功且状态为 `done`/`cancelled` 时取消提醒
+- [x] `calendar_update_event` 成功后更新提醒
+- [x] `entry_schedule` / `entry_create_task` 成功后调度提醒
+- [x] App 启动时批量恢复所有 timed atom 的提醒
+- [x] FFI `atoms_list_timed()` 返回所有未删除 timed atom
+- [x] FFI `atom_get()` 返回任意类型 atom（Q3 裁决新增）
+- [x] 全部 Rust tests 通过 (216/216)
+- [x] 全部 Flutter tests 通过 (347/347)
+- [x] CI green (fmt + clippy + analyze)

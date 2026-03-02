@@ -35,10 +35,12 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     NotesPrepare? prepare,
     this.listLimit = 50,
     this.autosaveDebounce = const Duration(milliseconds: 1500),
+    ReminderLifecycle? reminderLifecycle,
   }) : _noteCreateInvoker = noteCreateInvoker ?? _defaultNoteCreateInvoker,
        _noteUpdateInvoker = noteUpdateInvoker ?? _defaultNoteUpdateInvoker,
        _noteSetTagsInvoker = noteSetTagsInvoker ?? _defaultNoteSetTagsInvoker,
        _debounceTimerFactory = debounceTimerFactory ?? Timer.new,
+       _reminderLifecycle = reminderLifecycle ?? ReminderLifecycle.instance,
        _prepare = prepare ?? _defaultPrepare {
     final resolvedNotesListInvoker =
         notesListInvoker ?? _defaultNotesListInvoker;
@@ -153,6 +155,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   final NoteUpdateInvoker _noteUpdateInvoker;
   final NoteSetTagsInvoker _noteSetTagsInvoker;
   final DebounceTimerFactory _debounceTimerFactory;
+  final ReminderLifecycle _reminderLifecycle;
   final NotesPrepare _prepare;
   late final WorkspaceProvider _workspaceProvider;
   late final bool _ownsWorkspaceProvider;
@@ -874,6 +877,15 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       _setSaveState(NoteSaveState.clean);
       _requestEditorFocus();
       notifyListeners();
+
+      // Lifecycle hook: schedule reminder if atom has time fields
+      if (createdNote.startAt != null || createdNote.endAt != null) {
+        try {
+          await _reminderLifecycle.onSchedule(createdNote.atomId);
+        } catch (_) {
+          // Reminder delivery must not break note creation flow.
+        }
+      }
 
       await _noteTagManager.refreshAvailableTags(showLoading: false);
       await _loadSelectedDetail(atomId: createdNote.atomId);

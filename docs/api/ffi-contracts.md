@@ -448,6 +448,26 @@ See full registry: `docs/api/error-codes.md`.
 
 ---
 
+## Timed Atoms Query (PR-RB-04)
+
+- `atoms_list_timed() -> AtomListResponse`
+  - Returns all non-deleted atoms that have at least one time field set (`start_at IS NOT NULL OR end_at IS NOT NULL`)
+  - Excludes done/cancelled atoms (`task_status NOT IN ('done', 'cancelled')`)
+  - Used by startup recovery to bulk-schedule reminders
+  - Order: `COALESCE(start_at, end_at) ASC, updated_at DESC`
+  - No pagination parameters — returns all matching atoms
+
+## Universal Atom Read (PR-RB-04)
+
+- `atom_get(atom_id: String) -> AtomItemResponse`
+  - Returns any non-deleted atom regardless of `view_hint` (note, task, or event)
+  - Unlike `note_get` which filters `view_hint = 'note'`, this has no view_hint restriction
+  - Returns `AtomItemResponse` with `AtomListItem` including tags and `updated_at`
+  - Error codes: `invalid_atom_id`, `atom_not_found`, `db_error`
+  - Used by reminder lifecycle to fetch full atom data for scheduling
+
+---
+
 ## Calendar APIs (PR-0012A)
 
 All APIs are use-case level and async.

@@ -226,6 +226,16 @@ pub trait AtomRepository {
     /// Updates only `start_at` and `end_at` for a calendar event.
     /// Validates `end_at >= start_at`; returns `RepoError::Validation(InvalidEventWindow)` on failure.
     fn update_event_times(&self, id: AtomId, start_at: i64, end_at: i64) -> RepoResult<()>;
+
+    /// Returns all non-deleted atoms that have at least one time field set
+    /// (`start_at IS NOT NULL OR end_at IS NOT NULL`).
+    /// Excludes done/cancelled atoms. Used for startup reminder recovery.
+    fn fetch_timed(&self) -> RepoResult<Vec<SectionAtomRow>>;
+
+    /// Loads a single non-deleted atom by ID as a `SectionAtomRow` (includes `updated_at`).
+    /// Returns `None` when the atom does not exist or is soft-deleted.
+    /// Unlike `get_atom`, this includes the `updated_at` field needed for FFI responses.
+    fn get_section_atom(&self, id: AtomId) -> RepoResult<Option<SectionAtomRow>>;
 }
 
 /// SQLite-backed atom repository.
@@ -705,6 +715,37 @@ impl AtomRepository for SqliteAtomRepository<'_> {
         );
 
         Ok(())
+    }
+
+    fn fetch_timed(&self) -> RepoResult<Vec<SectionAtomRow>> {
+        let sql = format!(
+            "{SECTION_SELECT_SQL}
+             WHERE is_deleted = 0
+               AND (task_status IS NULL OR task_status NOT IN ('done', 'cancelled'))
+               AND (start_at IS NOT NULL OR end_at IS NOT NULL)
+             ORDER BY COALESCE(start_at, end_at) ASC, updated_at DESC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query([])?;
+        let mut result = Vec::new();
+        while let Some(row) = rows.next()? {
+            result.push(parse_section_atom_row(row)?);
+        }
+        Ok(result)
+    }
+
+    fn get_section_atom(&self, id: AtomId) -> RepoResult<Option<SectionAtomRow>> {
+        let sql = format!(
+            "{SECTION_SELECT_SQL}
+             WHERE uuid = ?1
+               AND is_deleted = 0"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query(params![id.to_string()])?;
+        if let Some(row) = rows.next()? {
+            return Ok(Some(parse_section_atom_row(row)?));
+        }
+        Ok(None)
     }
 }
 

@@ -144,6 +144,27 @@ impl<'conn, R: AtomRepository> TaskService<'conn, R> {
         Ok(())
     }
 
+    /// Returns all non-deleted, non-completed atoms that have at least one time field set.
+    /// Used for startup reminder recovery.
+    pub fn fetch_timed(&self) -> Result<Vec<SectionAtom>, TaskServiceError> {
+        let rows = self.repo.fetch_timed()?;
+        self.enrich_with_tags(rows)
+    }
+
+    /// Loads a single non-deleted atom by ID with tags.
+    /// Returns `None` when the atom does not exist or is soft-deleted.
+    /// Unlike `NoteService::get_note`, this works for any atom type (note/task/event).
+    pub fn get_atom_record(&self, id: AtomId) -> Result<Option<SectionAtom>, TaskServiceError> {
+        let row = self.repo.get_section_atom(id)?;
+        match row {
+            None => Ok(None),
+            Some(r) => {
+                let enriched = self.enrich_with_tags(vec![r])?;
+                Ok(enriched.into_iter().next())
+            }
+        }
+    }
+
     fn enrich_with_tags(
         &self,
         rows: Vec<SectionAtomRow>,

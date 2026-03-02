@@ -41,3 +41,4 @@
 | Google Calendar provider | v0.1 `PR-0015` | v0.3 `PR-RB-12` (conditional, runtime deferred to v0.4+) |
 | Export/import | v0.1 `PR-0016` | Deferred (v1.0+) |
 | Notes delete lifecycle | v0.1 | Deferred (v1.0+) |
+| Reminder cancel on `workspace_delete_folder(delete_all)` | v0.3 PR-RB-04 | Deferred (v0.4 `PR-0401`, post DI-12 single-root tree) |

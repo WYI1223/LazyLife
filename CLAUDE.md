@@ -10,7 +10,7 @@
 **LazyNote** is a local-first personal productivity app (Windows-first MVP).
 Stack: **Flutter UI → Flutter-Rust Bridge (FRB) FFI → Rust Core → SQLite**.
 
-Current status: **Post-v0.2.5 baseline.** Notes + tags are functional. Tasks views (Inbox/Today/Upcoming) with status update are functional. Calendar (weekly view + create/edit) is functional. Workspace tree (hierarchical folders + note references) is functional. Extension kernel and sync provider SPI are declaration-only (contracts defined, no runtime loading). Localization supports English and Chinese. Reminders (local notifications) are integrated.
+Current status: **Post-v0.2.5 baseline.** Notes + tags are functional. Tasks views (Inbox/Today/Upcoming) with status update are functional. Calendar (weekly view + create/edit) is functional. Workspace tree (hierarchical folders + note references) is functional. Extension kernel and sync provider SPI are declaration-only (contracts defined, no runtime loading). Localization supports English and Chinese. Reminders use lifecycle-driven triggers (S7 ruling) with startup recovery.
 
 ---
 
@@ -102,7 +102,7 @@ Flutter app. All data operations go through FFI calls. No domain state is stored
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
 | `lib/features/calendar/` | Weekly calendar: mini month sidebar, week grid, event blocks, create/edit dialog |
 | `lib/features/workspace/` | `WorkspaceProvider` (pane layout state only — post-PR-0258), `WorkspaceModels` (TreeNode, etc.) |
-| `lib/core/reminders/` | `ReminderScheduler` + `ReminderService` — local notifications via `flutter_local_notifications` (S7 ruling: infrastructure, not feature) |
+| `lib/core/reminders/` | `ReminderScheduler` + `ReminderService` + `ReminderLifecycle` — local notifications via `flutter_local_notifications`; lifecycle-driven triggers (S7 ruling: infrastructure, not feature) |
 | `lib/features/settings/` | Settings capability page (extension permissions UI) |
 | `lib/features/diagnostics/` | Rust health panel + live log viewer |
 | `lib/l10n/` | Localization: `AppLocalizations` base + `_en.dart` + `_zh.dart` |
@@ -127,7 +127,7 @@ cargo test -p lazynote_core -- <test_name>  # single test
 flutter pub get
 dart format --output=none --set-exit-if-changed .   # format check
 flutter analyze                                      # lint
-flutter test                                         # unit + widget tests (47 test files)
+flutter test                                         # unit + widget tests (54 test files)
 flutter build windows --debug                        # Windows build
 ```
 
@@ -258,7 +258,7 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 | `EntryActionResponse` | Single-item mutations (create, update, delete, status change) |
 | `AtomItemResponse` | Single note operations (create, update, get, set_tags) |
 | `TagsListResponse` | Tag listing |
-| `AtomListResponse` | Section list queries (tasks views, calendar range, notes list) |
+| `AtomListResponse` | Section list queries (tasks views, calendar range, notes list, timed atoms) |
 | `EntrySearchResponse` | FTS5 search results |
 | `WorkspaceNodeResponse` | Single workspace node operations |
 | `WorkspaceListChildrenResponse` | Workspace tree listing |
@@ -305,6 +305,13 @@ All functions are defined in `crates/lazynote_ffi/src/api.rs`.
 | `tasks_list_today(bod_ms, eod_ms, limit?, offset?)` | `AtomListResponse` |
 | `tasks_list_upcoming(eod_ms, limit?, offset?)` | `AtomListResponse` |
 | `atom_update_status(atom_id, status?)` | `EntryActionResponse` |
+
+**Atoms (async):**
+
+| Function | Returns |
+|----------|---------|
+| `atoms_list_timed()` | `AtomListResponse` |
+| `atom_get(atom_id)` | `AtomItemResponse` |
 
 **Calendar (async):**
 

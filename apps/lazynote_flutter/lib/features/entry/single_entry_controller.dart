@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/core/reminders/reminder_lifecycle.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
 import 'package:lazynote_flutter/features/entry/command_parser.dart';
 import 'package:lazynote_flutter/features/entry/command_registry.dart';
@@ -83,6 +84,7 @@ class SingleEntryController extends ChangeNotifier {
     EntrySearchPrepare? prepareSearch,
     EntryCommandPrepare? prepareCommand,
     Duration searchDebounce = const Duration(milliseconds: 150),
+    ReminderLifecycle? reminderLifecycle,
   }) : _router = router ?? const CommandRouter(),
        _searchInvoker = searchInvoker ?? _defaultEntrySearch,
        _prepareSearch =
@@ -101,6 +103,7 @@ class SingleEntryController extends ChangeNotifier {
                ? _noopPrepareCommand
                : _defaultPrepareCommand),
        _searchDebounce = searchDebounce,
+       _reminderLifecycle = reminderLifecycle ?? ReminderLifecycle.instance,
        _commandRegistry =
            commandRegistry ??
            EntryCommandRegistry.firstParty(
@@ -117,6 +120,7 @@ class SingleEntryController extends ChangeNotifier {
   final EntrySearchPrepare _prepareSearch;
   final EntryCommandPrepare _prepareCommand;
   final Duration _searchDebounce;
+  final ReminderLifecycle _reminderLifecycle;
 
   /// Input controller shared with Single Entry panel text field.
   final TextEditingController textController = TextEditingController();
@@ -482,6 +486,15 @@ class SingleEntryController extends ChangeNotifier {
           message: response.message,
           detailPayload: detail,
         );
+
+        // Lifecycle hook: schedule reminder for task/event creation
+        if (_isTimedCommand(intent.command) && response.atomId != null) {
+          try {
+            await _reminderLifecycle.onSchedule(response.atomId!);
+          } catch (_) {
+            // Reminder delivery must not break command execution flow.
+          }
+        }
       } else {
         _state = EntryState.idle().toError(
           rawInput: rawInput,
@@ -611,6 +624,11 @@ class SingleEntryController extends ChangeNotifier {
       ScheduleCommand(:final title, :final start, :final end) =>
         'mode=command\naction=schedule\ntitle="$title"\nstart=${start.toIso8601String()}\nend=${end?.toIso8601String() ?? 'null'}',
     };
+  }
+
+  /// Whether a command creates atoms that may have time fields.
+  bool _isTimedCommand(EntryCommand command) {
+    return command is CreateTaskCommand || command is ScheduleCommand;
   }
 
   @override

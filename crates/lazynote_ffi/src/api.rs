@@ -1708,6 +1708,83 @@ fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActi
     }
 }
 
+/// Returns all non-deleted, non-completed atoms that have at least one time field set.
+/// Used for startup reminder recovery.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - No pagination: returns all matching rows (timed atom count is bounded in practice).
+/// - Excludes done/cancelled atoms.
+#[flutter_rust_bridge::frb]
+pub async fn atoms_list_timed() -> AtomListResponse {
+    atoms_list_timed_impl()
+}
+
+fn atoms_list_timed_impl() -> AtomListResponse {
+    match with_task_service(|svc| svc.fetch_timed()) {
+        Ok(items) => {
+            let count = items.len();
+            AtomListResponse {
+                ok: true,
+                error_code: None,
+                message: format!("Loaded {} timed atom(s).", count),
+                items: items.into_iter().map(to_atom_list_item).collect(),
+                applied_limit: count as u32,
+            }
+        }
+        Err(err) => atom_list_failure(err, 0),
+    }
+}
+
+/// Gets one atom by stable id, regardless of view_hint.
+///
+/// Unlike `note_get` which only returns `view_hint = 'note'` atoms, this
+/// returns any non-deleted atom (note, task, or event).
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - Returns typed envelope with stable error codes.
+/// - Returns `atom_not_found` when the target does not exist or is soft-deleted.
+#[flutter_rust_bridge::frb]
+pub async fn atom_get(atom_id: String) -> AtomItemResponse {
+    atom_get_impl(atom_id)
+}
+
+fn atom_get_impl(atom_id: String) -> AtomItemResponse {
+    let parsed_id = match Uuid::parse_str(atom_id.trim()) {
+        Ok(id) => id,
+        Err(_) => {
+            return AtomItemResponse {
+                ok: false,
+                error_code: Some("invalid_atom_id".to_string()),
+                message: format!("Invalid atom ID: {atom_id}"),
+                item: None,
+                node_uuid: None,
+            };
+        }
+    };
+
+    match with_task_service(|svc| {
+        svc.get_atom_record(parsed_id)?
+            .ok_or(TaskServiceError::AtomNotFound(parsed_id))
+    }) {
+        Ok(sa) => AtomItemResponse {
+            ok: true,
+            error_code: None,
+            message: "Atom loaded.".to_string(),
+            item: Some(to_atom_list_item(sa)),
+            node_uuid: None,
+        },
+        Err(err) => AtomItemResponse {
+            ok: false,
+            error_code: Some(err.code().to_string()),
+            message: err.message(),
+            item: None,
+            node_uuid: None,
+        },
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Calendar APIs (PR-0012A)
 // ---------------------------------------------------------------------------
@@ -1788,9 +1865,9 @@ fn calendar_update_event_impl(atom_id: String, start_ms: i64, end_ms: i64) -> En
 #[cfg(test)]
 mod tests {
     use super::{
-        calendar_list_by_range_impl, calendar_update_event_impl, configure_entry_db_path,
-        core_version, entry_create_note_impl, entry_create_task_impl, entry_schedule_impl,
-        entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
+        atom_get_impl, calendar_list_by_range_impl, calendar_update_event_impl,
+        configure_entry_db_path, core_version, entry_create_note_impl, entry_create_task_impl,
+        entry_schedule_impl, entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
         map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
         note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
         workspace_create_atom_ref_impl, workspace_create_folder_impl, workspace_delete_folder_impl,
@@ -2085,6 +2162,67 @@ mod tests {
         assert!(item.start_at.is_none(), "pure note has no start_at");
         assert!(item.end_at.is_none(), "pure note has no end_at");
         assert!(item.task_status.is_none(), "pure note has no task_status");
+    }
+
+    #[test]
+    fn atom_get_returns_note() {
+        let _guard = acquire_test_db_lock();
+        let created = note_create_impl("atom_get note test".to_string(), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let loaded = atom_get_impl(atom_id);
+        assert!(loaded.ok, "{}", loaded.message);
+        let item = loaded.item.as_ref().expect("loaded payload");
+        assert_eq!(item.view_hint, "note");
+        assert!(item.content.contains("atom_get note test"));
+    }
+
+    #[test]
+    fn atom_get_returns_task() {
+        let _guard = acquire_test_db_lock();
+        let created = entry_create_task_impl("atom_get task test".to_string());
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.atom_id.clone().expect("task atom_id");
+
+        let loaded = atom_get_impl(atom_id);
+        assert!(loaded.ok, "{}", loaded.message);
+        let item = loaded.item.as_ref().expect("loaded payload");
+        assert_eq!(item.view_hint, "task");
+        assert_eq!(item.task_status.as_deref(), Some("todo"));
+    }
+
+    #[test]
+    fn atom_get_returns_event() {
+        let _guard = acquire_test_db_lock();
+        let start = 1_700_100_000_000_i64;
+        let end = 1_700_103_600_000_i64;
+        let created = entry_schedule_impl("atom_get event test".to_string(), start, Some(end));
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.atom_id.clone().expect("event atom_id");
+
+        let loaded = atom_get_impl(atom_id);
+        assert!(loaded.ok, "{}", loaded.message);
+        let item = loaded.item.as_ref().expect("loaded payload");
+        assert_eq!(item.view_hint, "event");
+        assert_eq!(item.start_at, Some(start));
+        assert_eq!(item.end_at, Some(end));
+    }
+
+    #[test]
+    fn atom_get_returns_not_found_for_invalid_id() {
+        let _guard = acquire_test_db_lock();
+        let loaded = atom_get_impl("not-a-uuid".to_string());
+        assert!(!loaded.ok);
+        assert_eq!(loaded.error_code.as_deref(), Some("invalid_atom_id"));
+    }
+
+    #[test]
+    fn atom_get_returns_not_found_for_nonexistent_id() {
+        let _guard = acquire_test_db_lock();
+        let loaded = atom_get_impl("00000000-0000-0000-0000-000000000000".to_string());
+        assert!(!loaded.ok);
+        assert_eq!(loaded.error_code.as_deref(), Some("atom_not_found"));
     }
 
     #[test]
