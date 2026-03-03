@@ -96,8 +96,9 @@ Flutter app. All data operations go through FFI calls. No domain state is stored
 | `lib/core/debug/` | `LogReader` — reads rolling log files |
 | `lib/core/diagnostics/` | `DartEventLogger` — Dart-side structured event logging |
 | `lib/features/entry/` | Single-entry search/command panel, `CommandParser`, `CommandRouter`, `CommandRegistry`, workbench shell layout |
-| `lib/core/workspace/` | `WorkspaceTreeService` (tree CRUD infrastructure — PR-RB-05 S9 extraction), `WorkspaceProvider` + `WorkspaceModels` (pane layout — TRANSIENT, PR-RB-06 absorbs into `core/editor/`) |
-| `lib/features/notes/` | Coordinator + 5 managers (tab, draft, save, list, tag), editor, explorer tree, tab strip |
+| `lib/core/editor/` | `EditorShellService` (workbench singleton), `EditorGroupModel` (per-pane tab state), `EditBuffer` (per-atom content state machine), `GroupLayout` (recursive pane layout tree) — PR-RB-06 S2 Phase 2 |
+| `lib/core/workspace/` | `WorkspaceTreeService` (tree CRUD infrastructure — PR-RB-05 S9 extraction) |
+| `lib/features/notes/` | Coordinator + 2 managers (list, tag), editor, explorer tree, tab strip. Tab/draft/save/layout extracted to `lib/core/editor/` by PR-RB-06 |
 | `lib/shared/` | `TagFilter` widget, `ui_tokens.dart` shared color constants |
 | `lib/features/search/` | Search results view |
 | `lib/features/tasks/` | Tasks dashboard: Inbox/Today/Upcoming sections, status toggle, inline create |
@@ -366,19 +367,22 @@ Feature controllers extend `ChangeNotifier` and use `AnimatedBuilder` for reacti
 
 ### Notes Coordinator Architecture (Post-PR-0252)
 
-PR-0252 decomposed the monolithic `NotesController` into a coordinator + manager pattern:
+PR-0252 decomposed the monolithic `NotesController` into a coordinator + manager pattern. PR-RB-06 (S2 Phase 2) further extracts tab/draft/save/layout into workbench-level `EditorShellService`:
 
 ```
-NotesCoordinator (orchestrator)
-├── NoteTabStateManager  — tab open/close/activate state
-├── NoteDraftManager     — draft buffer lifecycle
-├── NoteSaveTracker      — save state, debounce, retry
+NotesCoordinator (orchestrator, ~400-600 lines post PR-RB-06)
 ├── NoteListManager      — note list queries + pagination
 ├── NoteTagManager       — tag operations
-└── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05 S9 extraction)
+├── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05)
+└── → EditorShellService — tab/draft/save/layout delegation (lib/core/editor/, PR-RB-06)
+
+EditorShellService (workbench singleton, lib/core/editor/)
+├── EditorGroupModel[]   — per-pane tab state (from NoteTabStateManager)
+├── EditBuffer[]         — per-atom content + save state machine (unified NoteDraftManager + NoteSaveTracker)
+└── GroupLayout          — recursive binary pane layout tree (from WorkspaceProvider, deleted by PR-RB-06)
 ```
 
-`WorkspaceProvider` remains separate (now in `lib/core/workspace/`, TRANSIENT — PR-RB-06 absorbs into `core/editor/`), managing pane layout state (split/close/activate pane). The dual-state pattern between coordinator and `WorkspaceProvider` was eliminated in PR-0258.
+The dual-state pattern between coordinator and `WorkspaceProvider` was eliminated in PR-0258. PR-RB-06 deletes `WorkspaceProvider` entirely — pane layout is now managed by `GroupLayout` within `EditorShellService`.
 
 ### Other Controllers
 

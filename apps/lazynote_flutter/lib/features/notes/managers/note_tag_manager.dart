@@ -2,7 +2,6 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/managers/note_save_tracker.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_manager_types.dart';
 import 'package:lazynote_flutter/features/notes/managers/note_tag_mutation_queue.dart';
 

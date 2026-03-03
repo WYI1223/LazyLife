@@ -86,3 +86,11 @@ S2 Phase 2（`docs/architecture/rulings/S2-tab-draft-save-ownership.md`）已定
 ---
 
 *下一个议题：[DI-1 EditorShellService 接口](DI-1-editor-shell-service.md)*
+
+---
+
+## 实施关联 `[PR-RB-06 新增]`
+
+D4 裁决由 PR-RB-06 实施：NoteTabManager widget → NoteTabStrip（T9）；NoteTabStateManager → EditorGroupModel（T5/T12）。
+
+See: `docs/releases/v0.3/prs/PR-RB-06-core-editor-foundation.md`

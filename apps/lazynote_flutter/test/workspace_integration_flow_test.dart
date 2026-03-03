@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'dart:ui' show Size;
+
+import 'package:flutter/widgets.dart' show Axis;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
 rust_api.AtomListItem _note({
@@ -45,7 +47,6 @@ NotesCoordinator _buildController({
 }) {
   return NotesCoordinator(
     prepare: () async {},
-    autosaveDebounce: const Duration(seconds: 30),
     notesListInvoker: ({tag, limit, offset}) async {
       final ids = store.keys.toList()..sort();
       final items = <rust_api.AtomListItem>[];
@@ -184,27 +185,27 @@ void main() {
       addTearDown(controller.dispose);
 
       await controller.loadNotes();
-      final primaryPane = controller.workspaceProvider.activePaneId;
+      final primaryGroup = controller.editorShellService.activeGroupId;
       expect(
         controller.splitActivePane(
-          direction: WorkspaceSplitDirection.horizontal,
-          containerExtent: 1200,
+          direction: Axis.horizontal,
+          containerSize: const Size(1200, 800),
         ),
-        WorkspaceSplitResult.ok,
+        PaneSplitResult.ok,
       );
-      final splitPane = controller.workspaceProvider.activePaneId;
-      expect(splitPane, isNot(primaryPane));
+      final splitGroup = controller.editorShellService.activeGroupId;
+      expect(splitGroup, isNot(primaryGroup));
 
       await controller.openNoteFromExplorer('note-2');
-      expect(controller.workspaceProvider.activePaneId, splitPane);
+      expect(controller.editorShellService.activeGroupId, splitGroup);
       expect(controller.activeNoteId, 'note-2');
 
       controller.updateActiveDraft('# second updated');
       final flushFuture = controller.flushPendingSave();
       await saveStarted.future;
 
-      expect(controller.switchActivePane(primaryPane), isTrue);
-      expect(controller.workspaceProvider.activePaneId, primaryPane);
+      expect(controller.switchActivePane(primaryGroup), isTrue);
+      expect(controller.editorShellService.activeGroupId, primaryGroup);
       expect(controller.activeNoteId, 'note-1');
 
       allowSaveFinish.complete();
@@ -212,7 +213,7 @@ void main() {
 
       expect(flushed, isTrue);
       expect(saveCalls, ['note-2::# second updated']);
-      expect(controller.workspaceProvider.activePaneId, primaryPane);
+      expect(controller.editorShellService.activeGroupId, primaryGroup);
       expect(controller.activeNoteId, 'note-1');
       expect(controller.detailErrorMessage, isNull);
     },

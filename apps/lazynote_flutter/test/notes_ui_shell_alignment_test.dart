@@ -70,7 +70,7 @@ void main() {
     final shellFinder = find.byKey(const Key('notes_shell_card'));
     expect(shellFinder, findsOneWidget);
     expect(find.byKey(const Key('notes_shell_divider')), findsOneWidget);
-    expect(find.byKey(const Key('note_tab_manager')), findsOneWidget);
+    expect(find.byKey(const Key('note_tab_strip')), findsOneWidget);
     expect(find.byKey(const Key('notes_detail_editor')), findsOneWidget);
 
     final shell = tester.widget<Container>(shellFinder);
@@ -112,7 +112,7 @@ void main() {
       await tester.pump();
 
       expect(
-        tester.getSize(find.byKey(const Key('note_tab_manager'))).height,
+        tester.getSize(find.byKey(const Key('note_tab_strip'))).height,
         kNotesTopStripHeight,
       );
       expect(find.text('My Workspace'), findsOneWidget);

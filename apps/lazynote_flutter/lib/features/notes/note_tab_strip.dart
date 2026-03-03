@@ -6,18 +6,22 @@ import 'package:lazynote_flutter/l10n/app_localizations.dart';
 
 enum _TabContextAction { close, closeOthers, closeRight }
 
-/// Top tab strip managing currently opened notes.
-class NoteTabManager extends StatefulWidget {
-  const NoteTabManager({super.key, required this.controller});
+/// Top tab strip managing currently opened notes (renamed from NoteTabManager).
+class NoteTabStrip extends StatefulWidget {
+  const NoteTabStrip({super.key, required this.controller, this.groupId});
 
   /// Shared notes controller that owns open-tab and active-tab state.
   final NotesCoordinator controller;
 
+  /// Optional group ID for multi-pane rendering. When provided, the tab strip
+  /// reads tabs from the specified group. When null, reads from the active group.
+  final String? groupId;
+
   @override
-  State<NoteTabManager> createState() => _NoteTabManagerState();
+  State<NoteTabStrip> createState() => _NoteTabStripState();
 }
 
-class _NoteTabManagerState extends State<NoteTabManager> {
+class _NoteTabStripState extends State<NoteTabStrip> {
   final ScrollController _scrollController = ScrollController();
   static const Duration _doubleTapThreshold = Duration(milliseconds: 280);
   String? _lastPrimaryTapNoteId;
@@ -71,7 +75,18 @@ class _NoteTabManagerState extends State<NoteTabManager> {
     _scrollController.jumpTo(nextOffset);
   }
 
+  /// Ensures the pane owning this tab strip is active before mutating tabs.
+  void _ensurePaneActive() {
+    if (widget.groupId case final gid?) {
+      if (widget.controller.editorShellService.activeGroupId != gid) {
+        widget.controller.switchActivePane(gid);
+      }
+    }
+  }
+
   void _handleTabPrimaryTap(String noteId) {
+    _ensurePaneActive();
+
     final now = DateTime.now();
     final lastId = _lastPrimaryTapNoteId;
     final lastAt = _lastPrimaryTapAt;
@@ -98,7 +113,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
       child: ColoredBox(
         color: kNotesCanvasBackground,
         child: SizedBox(
-          key: const Key('note_tab_manager'),
+          key: const Key('note_tab_strip'),
           height: kNotesTopStripHeight,
           child: _buildTabStrip(context),
         ),
@@ -107,8 +122,16 @@ class _NoteTabManagerState extends State<NoteTabManager> {
   }
 
   Widget _buildTabStrip(BuildContext context) {
-    final openNoteIds = widget.controller.openNoteIds;
-    final activeNoteId = widget.controller.activeNoteId;
+    final List<String> openNoteIds;
+    final String? activeNoteId;
+    if (widget.groupId case final gid?) {
+      final group = widget.controller.editorShellService.groups[gid];
+      openNoteIds = group?.tabs.map((t) => t.atomId).toList() ?? const [];
+      activeNoteId = group?.activeAtomId;
+    } else {
+      openNoteIds = widget.controller.openNoteIds;
+      activeNoteId = widget.controller.activeNoteId;
+    }
     if (openNoteIds.isEmpty) {
       return Center(
         child: Text(
@@ -137,7 +160,18 @@ class _NoteTabManagerState extends State<NoteTabManager> {
               itemBuilder: (context, index) {
                 final noteId = openNoteIds[index];
                 final active = noteId == activeNoteId;
-                final preview = widget.controller.isPreviewTab(noteId);
+                final bool preview;
+                if (widget.groupId case final gid?) {
+                  preview =
+                      widget
+                          .controller
+                          .editorShellService
+                          .groups[gid]
+                          ?.previewTabId ==
+                      noteId;
+                } else {
+                  preview = widget.controller.isPreviewTab(noteId);
+                }
                 return _buildTabChip(
                   context,
                   noteId: noteId,
@@ -274,6 +308,7 @@ class _NoteTabManagerState extends State<NoteTabManager> {
                     splashFactory: NoSplash.splashFactory,
                     highlightColor: Colors.transparent,
                     onTap: () {
+                      _ensurePaneActive();
                       widget.controller.closeOpenNote(noteId);
                     },
                     child: Padding(
@@ -296,10 +331,13 @@ class _NoteTabManagerState extends State<NoteTabManager> {
   }) async {
     switch (action) {
       case _TabContextAction.close:
+        _ensurePaneActive();
         await widget.controller.closeOpenNote(noteId);
       case _TabContextAction.closeOthers:
+        _ensurePaneActive();
         await widget.controller.closeOtherOpenNotes(noteId);
       case _TabContextAction.closeRight:
+        _ensurePaneActive();
         await widget.controller.closeOpenNotesToRight(noteId);
       case null:
         return;

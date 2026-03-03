@@ -367,3 +367,11 @@ Split("g1", horizontal):
 
 *前序议题：[DI-1 EditorShellService 接口](DI-1-editor-shell-service.md)（RESOLVED）*
 *下一个议题：[DI-3 布局持久化](DI-3-layout-persistence.md)*
+
+---
+
+## 实施关联 `[PR-RB-06 新增]`
+
+D5/D6 裁决由 PR-RB-06 实施。GroupLayout sealed class 二叉树 + top-down resolve 首次落地。
+
+See: `docs/releases/v0.3/prs/PR-RB-06-core-editor-foundation.md`

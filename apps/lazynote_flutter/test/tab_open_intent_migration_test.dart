@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
-import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
+import 'package:lazynote_flutter/features/notes/note_tab_strip.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 
 rust_api.AtomListItem _note({
@@ -63,7 +63,7 @@ void main() {
         home: Scaffold(
           body: AnimatedBuilder(
             animation: controller,
-            builder: (context, _) => NoteTabManager(controller: controller),
+            builder: (context, _) => NoteTabStrip(controller: controller),
           ),
         ),
       ),
@@ -102,7 +102,7 @@ void main() {
         home: Scaffold(
           body: AnimatedBuilder(
             animation: controller,
-            builder: (context, _) => NoteTabManager(controller: controller),
+            builder: (context, _) => NoteTabStrip(controller: controller),
           ),
         ),
       ),

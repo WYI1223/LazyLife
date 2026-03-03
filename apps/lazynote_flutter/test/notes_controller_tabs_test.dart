@@ -40,7 +40,6 @@ NotesCoordinator _buildController({
 }) {
   return NotesCoordinator(
     prepare: () async {},
-    autosaveDebounce: const Duration(seconds: 10),
     notesListInvoker: ({tag, limit, offset}) async {
       final items = <rust_api.AtomListItem>[];
       for (final id in const ['note-1', 'note-2']) {

@@ -49,12 +49,12 @@ Draft 内容和 save 状态**不属于** EditorGroupModel。
 
 | 事件 | 行为 |
 |------|------|
-| 启动 | 创建 1 个 primary group |
+| 启动 | 创建 1 个默认 group（`_defaultGroupId = 'group.primary'`，固定 ID，无特殊销毁豁免） |
 | Split | 创建新 group，复制当前 activeTab |
 | 关闭 tab | 从 `group.tabs` 移除 |
-| 关闭最后一个 tab（非 primary） | group 自动销毁，布局树节点移除 |
-| 关闭最后一个 tab（primary） | group 保留，显示空状态 |
-| 切换焦点 | 更新 `EditorShellService.activeGroupId` |
+| 关闭最后一个 tab（非唯一 group） | group 自动销毁，布局树节点移除（auto-collapse） |
+| 关闭最后一个 tab（唯一剩余 group） | group 保留，显示空状态（`paneCount >= 1` 不变量） |
+| 切换焦点 | 用户点击目标 pane 触发 `switchActivePane(groupId)` |
 
 **无独立 "close pane" API** — pane 关闭完全由 tab 生命周期驱动。
 
@@ -72,7 +72,7 @@ Draft 内容和 save 状态**不属于** EditorGroupModel。
 
 - Group 不直接引用 EditBuffer — 通过 `EditorShellService.buffers[atomId]` 间接访问
 - TabEntry.title 更新由 Service 推送，Group 不主动查询
-- Primary group 永远不被销毁（即使 tab 列表为空）
+- 最后一个 group 永远不被销毁（`paneCount >= 1` 不变量；`_defaultGroupId` 仅是初始 group 的固定 ID，不具备特殊豁免）
 
 ---
 

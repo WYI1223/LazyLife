@@ -39,8 +39,8 @@ void main() {
     final saveCalls = <String>[];
 
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(milliseconds: 50),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -103,8 +103,8 @@ void main() {
   ) async {
     final base = note(atomId: 'note-1', content: '# Seed', updatedAt: 1000);
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(milliseconds: 30),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -162,6 +162,7 @@ void main() {
 
     final base = note(atomId: 'note-1', content: '# Seed', updatedAt: 1000);
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
@@ -213,6 +214,7 @@ void main() {
 
     final base = note(atomId: 'note-1', content: '# Seed', updatedAt: 1000);
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
@@ -261,8 +263,8 @@ void main() {
     };
 
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -322,8 +324,8 @@ void main() {
     };
 
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -385,8 +387,8 @@ void main() {
     };
 
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(seconds: 10),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -454,8 +456,8 @@ void main() {
     var callCount = 0;
 
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(milliseconds: 30),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -544,8 +546,8 @@ void main() {
     };
 
     final controller = NotesCoordinator(
-      prepare: () async {},
       autosaveDebounce: const Duration(milliseconds: 20),
+      prepare: () async {},
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,
@@ -629,8 +631,8 @@ void main() {
     final updateCalls = <String>[];
 
     final controller = NotesCoordinator(
+      autosaveDebounce: const Duration(milliseconds: 20),
       prepare: () async {},
-      autosaveDebounce: const Duration(seconds: 5),
       notesListInvoker: ({tag, limit, offset}) async {
         return rust_api.AtomListResponse(
           ok: true,

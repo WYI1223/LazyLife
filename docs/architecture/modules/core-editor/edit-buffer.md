@@ -81,7 +81,7 @@ EditBuffer(String atomId, Future<bool> Function(String, String) persistFn, {void
 // 状态转换
 void initialize(String loadedContent)   // loading → ready
 void markError(String message)          // loading → error
-Future<void> retry()                    // error → loading → (ready | error)
+void retry()                            // error → loading（重新触发 load）
 void dispose()                          // → disposing
 
 // 编辑（仅 ready 状态有效，否则 no-op）

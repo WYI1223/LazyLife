@@ -7,11 +7,9 @@ import 'package:lazynote_flutter/app/ui_slots/first_party_ui_slots.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_host.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_models.dart';
 import 'package:lazynote_flutter/app/ui_slots/ui_slot_registry.dart';
-import 'package:lazynote_flutter/core/workspace/workspace_models.dart';
-import 'package:lazynote_flutter/core/workspace/workspace_provider.dart';
 import 'package:lazynote_flutter/features/notes/note_content_area.dart';
 import 'package:lazynote_flutter/features/notes/note_explorer.dart';
-import 'package:lazynote_flutter/features/notes/note_tab_manager.dart';
+import 'package:lazynote_flutter/features/notes/note_tab_strip.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
@@ -54,6 +52,7 @@ class _NotesPageState extends State<NotesPage>
   late final NotesCoordinator _coordinator;
   late final bool _ownsController;
   late final UiSlotRegistry _uiSlotRegistry;
+  late final Listenable _mergedListenable;
   bool _windowCloseGuardEnabled = false;
   bool _preventCloseActive = false;
   bool _handlingWindowClose = false;
@@ -74,6 +73,10 @@ class _NotesPageState extends State<NotesPage>
     _coordinator = widget.controller ?? NotesCoordinator();
     _ownsController = widget.controller == null;
     _uiSlotRegistry = widget.uiSlotRegistry ?? createFirstPartyUiSlotRegistry();
+    _mergedListenable = Listenable.merge([
+      _coordinator,
+      _coordinator.editorShellService,
+    ]);
     _coordinator.addListener(_onControllerChanged);
     unawaited(_setupWindowCloseGuard());
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -294,20 +297,16 @@ class _NotesPageState extends State<NotesPage>
   }
 
   void _handleSplitCommand({
-    required WorkspaceSplitDirection direction,
+    required Axis direction,
     required double editorWidthExtent,
     required double editorHeightExtent,
   }) {
-    final containerExtent = direction == WorkspaceSplitDirection.horizontal
-        ? editorWidthExtent
-        : editorHeightExtent;
     final result = _coordinator.splitActivePane(
       direction: direction,
-      containerExtent: containerExtent,
+      containerSize: Size(editorWidthExtent, editorHeightExtent),
     );
-    if (result == WorkspaceSplitResult.ok) {
-      final workspace = _coordinator.workspaceProvider;
-      final paneCount = workspace.layoutState.paneOrder.length;
+    if (result == PaneSplitResult.ok) {
+      final paneCount = _coordinator.editorShellService.paneCount;
       _showSplitFeedback(
         _l10nText(
           fallback: 'Split created. $paneCount panes ready.',
@@ -318,28 +317,16 @@ class _NotesPageState extends State<NotesPage>
     }
 
     final message = switch (result) {
-      WorkspaceSplitResult.paneNotFound => _l10nText(
-        fallback: 'Cannot split: active pane is unavailable.',
-        pick: (l10n) => l10n.notesSplitPaneUnavailable,
+      PaneSplitResult.maxPanesReached => _l10nText(
+        fallback: 'Cannot split: maximum pane count ($maxPaneCount) reached.',
+        pick: (l10n) => l10n.notesSplitMaxPaneReached(maxPaneCount),
       ),
-      WorkspaceSplitResult.maxPanesReached => _l10nText(
+      PaneSplitResult.minSizeBlocked => _l10nText(
         fallback:
-            'Cannot split: maximum pane count (${WorkspaceProvider.maxPaneCount}) reached.',
-        pick: (l10n) =>
-            l10n.notesSplitMaxPaneReached(WorkspaceProvider.maxPaneCount),
+            'Cannot split: each pane must stay at least ${minPaneExtent.toInt()}px.',
+        pick: (l10n) => l10n.notesSplitMinSizeBlocked(minPaneExtent.toInt()),
       ),
-      WorkspaceSplitResult.directionLocked => _l10nText(
-        fallback: 'Cannot split: v0.2 keeps one split direction per workspace.',
-        pick: (l10n) => l10n.notesSplitDirectionLocked,
-      ),
-      WorkspaceSplitResult.minSizeBlocked => _l10nText(
-        fallback:
-            'Cannot split: each pane must stay at least ${WorkspaceProvider.minPaneExtent.toInt()}px.',
-        pick: (l10n) => l10n.notesSplitMinSizeBlocked(
-          WorkspaceProvider.minPaneExtent.toInt(),
-        ),
-      ),
-      WorkspaceSplitResult.ok => _l10nText(
+      PaneSplitResult.ok => _l10nText(
         fallback: 'Split created.',
         pick: (l10n) => l10n.notesSplitCreatedSimple,
       ),
@@ -347,67 +334,8 @@ class _NotesPageState extends State<NotesPage>
     _showSplitFeedback(message, isError: true);
   }
 
-  void _handleActivateNextPane() {
-    final workspace = _coordinator.workspaceProvider;
-    if (workspace.layoutState.paneOrder.length <= 1) {
-      _showSplitFeedback(
-        _l10nText(
-          fallback: 'Only one pane is available.',
-          pick: (l10n) => l10n.notesOnlyOnePaneAvailable,
-        ),
-      );
-      return;
-    }
-    _coordinator.activateNextPane();
-    final activeIndex = workspace.layoutState.paneOrder.indexOf(
-      workspace.activePaneId,
-    );
-    final paneOrdinal = activeIndex < 0 ? '?' : '${activeIndex + 1}';
-    _showSplitFeedback(
-      _l10nText(
-        fallback: 'Switched to pane $paneOrdinal.',
-        pick: (l10n) => l10n.notesSwitchedToPane(paneOrdinal),
-      ),
-    );
-  }
-
-  void _handleCloseActivePane() {
-    final result = _coordinator.closeActivePane();
-    if (result == WorkspaceMergeResult.ok) {
-      final paneCount =
-          _coordinator.workspaceProvider.layoutState.paneOrder.length;
-      _showSplitFeedback(
-        _l10nText(
-          fallback: 'Pane closed. $paneCount remaining.',
-          pick: (l10n) => l10n.notesPaneClosedWithCount(paneCount),
-        ),
-      );
-      return;
-    }
-
-    final message = switch (result) {
-      WorkspaceMergeResult.singlePaneBlocked => _l10nText(
-        fallback: 'Cannot close pane: only one pane is available.',
-        pick: (l10n) => l10n.notesClosePaneSingleBlocked,
-      ),
-      WorkspaceMergeResult.paneNotFound => _l10nText(
-        fallback: 'Cannot close pane: active pane is unavailable.',
-        pick: (l10n) => l10n.notesClosePaneUnavailable,
-      ),
-      WorkspaceMergeResult.ok => _l10nText(
-        fallback: 'Pane closed.',
-        pick: (l10n) => l10n.notesPaneClosedSimple,
-      ),
-    };
-    _showSplitFeedback(message, isError: true);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final mergedListenable = Listenable.merge([
-      _coordinator,
-      _coordinator.workspaceProvider,
-    ]);
     return Shortcuts(
       shortcuts: const {
         SingleActivator(LogicalKeyboardKey.tab, control: true):
@@ -433,9 +361,9 @@ class _NotesPageState extends State<NotesPage>
         child: Focus(
           autofocus: true,
           child: AnimatedBuilder(
-            animation: mergedListenable,
+            animation: _mergedListenable,
             builder: (context, _) {
-              final workspace = _coordinator.workspaceProvider;
+              final editor = _coordinator.editorShellService;
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final compactHeader = constraints.maxWidth < 860;
@@ -454,12 +382,14 @@ class _NotesPageState extends State<NotesPage>
                       (constraints.maxWidth - explorerWidth - 1)
                           .clamp(0, constraints.maxWidth)
                           .toDouble();
-                  final activePaneIndex = workspace.layoutState.paneOrder
-                      .indexOf(workspace.activePaneId);
+                  final groupIds = editor.groups.keys.toList();
+                  final activePaneIndex = groupIds.indexOf(
+                    editor.activeGroupId,
+                  );
                   final paneOrdinal = activePaneIndex < 0
                       ? '?'
                       : '${activePaneIndex + 1}';
-                  final paneCount = workspace.layoutState.paneOrder.length;
+                  final paneCount = editor.paneCount;
 
                   return Column(
                     key: const Key('notes_page_root'),
@@ -537,7 +467,7 @@ class _NotesPageState extends State<NotesPage>
                             ),
                             onPressed: () {
                               _handleSplitCommand(
-                                direction: WorkspaceSplitDirection.horizontal,
+                                direction: Axis.horizontal,
                                 editorWidthExtent: editorWidthExtent,
                                 editorHeightExtent: paneHeight,
                               );
@@ -555,37 +485,13 @@ class _NotesPageState extends State<NotesPage>
                             ),
                             onPressed: () {
                               _handleSplitCommand(
-                                direction: WorkspaceSplitDirection.vertical,
+                                direction: Axis.vertical,
                                 editorWidthExtent: editorWidthExtent,
                                 editorHeightExtent: paneHeight,
                               );
                             },
                             icon: Icon(
                               Icons.view_agenda_outlined,
-                              color: headerTextColor,
-                            ),
-                          ),
-                          IconButton(
-                            key: const Key('notes_next_pane_button'),
-                            tooltip: _l10nText(
-                              fallback: 'Next pane',
-                              pick: (l10n) => l10n.notesNextPaneTooltip,
-                            ),
-                            onPressed: _handleActivateNextPane,
-                            icon: Icon(
-                              Icons.switch_right_outlined,
-                              color: headerTextColor,
-                            ),
-                          ),
-                          IconButton(
-                            key: const Key('notes_close_pane_button'),
-                            tooltip: _l10nText(
-                              fallback: 'Close pane',
-                              pick: (l10n) => l10n.notesClosePaneTooltip,
-                            ),
-                            onPressed: _handleCloseActivePane,
-                            icon: Icon(
-                              Icons.vertical_split_outlined,
                               color: headerTextColor,
                             ),
                           ),
@@ -792,11 +698,126 @@ class _NotesPageState extends State<NotesPage>
   }
 
   Widget _buildEditorPane() {
-    return Column(
-      children: [
-        NoteTabManager(controller: _coordinator),
-        Expanded(child: NoteContentArea(controller: _coordinator)),
-      ],
+    final editor = _coordinator.editorShellService;
+    if (editor.paneCount <= 1) {
+      // Single pane — render directly without layout resolve overhead.
+      return Column(
+        children: [
+          NoteTabStrip(controller: _coordinator),
+          Expanded(child: NoteContentArea(controller: _coordinator)),
+        ],
+      );
+    }
+
+    // Multi-pane: use resolveLayout() recursive binary tree rendering.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        final resolved = editor.resolveLayout(size);
+        return Stack(
+          children: [
+            for (final entry in resolved.leafRects.entries)
+              Positioned.fromRect(
+                rect: entry.value,
+                child: _buildGroupPane(
+                  entry.key,
+                  isActive: entry.key == editor.activeGroupId,
+                ),
+              ),
+            for (final divider in resolved.dividers)
+              Positioned.fromRect(
+                rect: divider.rect,
+                child: _buildDividerHandle(divider, size),
+              ),
+          ],
+        );
+      },
     );
+  }
+
+  Widget _buildGroupPane(String groupId, {required bool isActive}) {
+    final borderSide = isActive
+        ? const BorderSide(color: kNotesDividerColor, width: 2)
+        : BorderSide.none;
+    return GestureDetector(
+      key: Key('editor_group_$groupId'),
+      behavior: isActive
+          ? HitTestBehavior.deferToChild
+          : HitTestBehavior.opaque,
+      onTap: isActive ? null : () => _coordinator.switchActivePane(groupId),
+      child: Container(
+        decoration: BoxDecoration(
+          color: kNotesCanvasBackground,
+          border: Border(top: borderSide),
+        ),
+        child: Column(
+          children: [
+            NoteTabStrip(controller: _coordinator, groupId: groupId),
+            Expanded(
+              child: isActive
+                  ? NoteContentArea(controller: _coordinator)
+                  : IgnorePointer(
+                      child: NoteContentArea(
+                        controller: _coordinator,
+                        groupId: groupId,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDividerHandle(DividerInfo divider, Size containerSize) {
+    // Narrow width means vertical divider → horizontal split axis.
+    final isVerticalDivider = divider.rect.width < divider.rect.height;
+    final splitAxis = isVerticalDivider ? Axis.horizontal : Axis.vertical;
+    final totalExtent = splitAxis == Axis.horizontal
+        ? containerSize.width
+        : containerSize.height;
+    final usable = totalExtent - dividerThickness;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanUpdate: (details) {
+        if (usable <= 0) return;
+        final delta = splitAxis == Axis.horizontal
+            ? details.delta.dx
+            : details.delta.dy;
+        final currentLayout = _coordinator.editorShellService.layout;
+        final currentFraction = _fractionAtPath(
+          currentLayout.root,
+          divider.path,
+        );
+        if (currentFraction == null) return;
+        // Clamp so each side keeps at least minPaneExtent pixels.
+        final minFrac = usable > 0 ? (minPaneExtent / usable) : 0.05;
+        final maxFrac = usable > 0 ? (1.0 - minPaneExtent / usable) : 0.95;
+        if (minFrac >= maxFrac) return; // container too small to resize
+        final newFraction = (currentFraction + delta / usable).clamp(
+          minFrac,
+          maxFrac,
+        );
+        _coordinator.editorShellService.resizeAt(divider.path, newFraction);
+      },
+      child: MouseRegion(
+        cursor: isVerticalDivider
+            ? SystemMouseCursors.resizeColumn
+            : SystemMouseCursors.resizeRow,
+        child: const ColoredBox(color: kNotesDividerColor),
+      ),
+    );
+  }
+
+  /// Walks the layout tree to find the fraction at [path].
+  double? _fractionAtPath(LayoutNode node, List<int> path) {
+    if (path.isEmpty) {
+      return node is SplitNode ? node.fraction : null;
+    }
+    if (node is! SplitNode) return null;
+    final index = path.first;
+    final child = index == 0 ? node.first : node.second;
+    return _fractionAtPath(child, path.sublist(1));
   }
 }
