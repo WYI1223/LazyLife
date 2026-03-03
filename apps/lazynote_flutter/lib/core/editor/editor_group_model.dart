@@ -48,13 +48,10 @@ class TabEntry {
 /// Draft content and save state are NOT stored here — they belong to
 /// per-atom [EditBuffer] instances that are shared across panes.
 class EditorGroupModel extends ChangeNotifier {
-  EditorGroupModel({required this.groupId, this.isPrimary = false});
+  EditorGroupModel({required this.groupId});
 
   /// Unique identifier for this group (matches [LeafNode.groupId]).
   final String groupId;
-
-  /// Whether this is the primary group (never auto-destroyed).
-  final bool isPrimary;
 
   final List<TabEntry> _tabs = [];
   String? _activeAtomId;

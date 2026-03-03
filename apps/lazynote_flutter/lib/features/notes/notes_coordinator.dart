@@ -20,7 +20,13 @@ export 'package:lazynote_flutter/core/editor/editor_shell_service.dart'
     show EditorShellService;
 
 export 'package:lazynote_flutter/core/editor/group_layout.dart'
-    show maxPaneCount, minPaneExtent;
+    show
+        DividerInfo,
+        LayoutNode,
+        SplitNode,
+        dividerThickness,
+        maxPaneCount,
+        minPaneExtent;
 
 export 'package:lazynote_flutter/core/workspace/workspace_tree_service.dart'
     show
@@ -36,6 +42,7 @@ export 'managers/note_tag_manager.dart' show NoteTagManager;
 export 'managers/note_tag_manager_types.dart' show NoteSaveState;
 export 'notes_coordinator_types.dart';
 
+part 'notes_coordinator_defaults.dart';
 part 'notes_coordinator_impl.dart';
 
 class NotesCoordinator extends _NotesCoordinatorImpl {

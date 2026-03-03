@@ -136,93 +136,20 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    // Multi-pane: both panes' tabs are visible simultaneously.
+    // Primary pane has note-1, secondary pane has note-2.
     expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
-    expect(find.byKey(const Key('note_tab_note-1')), findsNothing);
-
-    await tester.tap(find.byKey(const Key('notes_next_pane_button')));
-    await tester.pump();
-    await tester.pump();
-
     expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
-    expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
-  });
-
-  testWidgets('next pane command on single-pane shows no-op feedback', (
-    WidgetTester tester,
-  ) async {
-    final controller = _buildController();
-    addTearDown(controller.dispose);
-
-    await tester.pumpWidget(
-      _wrapWithMaterial(NotesPage(controller: controller)),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(controller.editorShellService.paneCount, 1);
-    expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('notes_next_pane_button')));
-    await tester.pump();
-
-    expect(find.text('Only one pane is available.'), findsOneWidget);
-    expect(controller.editorShellService.paneCount, 1);
-    expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
-  });
-
-  testWidgets('close pane command on single-pane shows blocked feedback', (
-    WidgetTester tester,
-  ) async {
-    final controller = _buildController();
-    addTearDown(controller.dispose);
-
-    await tester.pumpWidget(
-      _wrapWithMaterial(NotesPage(controller: controller)),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(controller.editorShellService.paneCount, 1);
-    await tester.tap(find.byKey(const Key('notes_close_pane_button')));
-    await tester.pump();
-
-    expect(
-      find.text('Cannot close pane: only one pane is available.'),
-      findsOneWidget,
-    );
-    expect(controller.editorShellService.paneCount, 1);
-  });
-
-  testWidgets('close pane command merges active pane into adjacent pane', (
-    WidgetTester tester,
-  ) async {
-    final controller = _buildController();
-    addTearDown(controller.dispose);
-
-    await tester.pumpWidget(
-      _wrapWithMaterial(NotesPage(controller: controller)),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
-    await tester.pump();
-    await tester.pump();
-    expect(controller.editorShellService.paneCount, 2);
-
-    await tester.tap(find.byKey(const Key('notes_list_item_note-2')));
-    await tester.pump();
-    await tester.pump();
     expect(controller.activeNoteId, 'note-2');
 
-    await tester.tap(find.byKey(const Key('notes_close_pane_button')));
+    controller.activateNextPane();
     await tester.pump();
     await tester.pump();
 
-    expect(controller.editorShellService.paneCount, 1);
-    expect(controller.activeNoteId, 'note-2');
+    // After switching: active pane is now primary with note-1.
+    expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
     expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
-    expect(find.text('Pane closed. 1 remaining.'), findsOneWidget);
+    expect(controller.activeNoteId, 'note-1');
   });
 
   testWidgets('Ctrl+Tab stays pane-local in split mode', (
@@ -237,6 +164,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    final initialGroupId = controller.editorShellService.activeGroupId;
+
     await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
     await tester.pump();
     await tester.pump();
@@ -244,14 +173,17 @@ void main() {
     await tester.tap(find.byKey(const Key('notes_list_item_note-2')));
     await tester.pump();
     await tester.pump();
+    // Multi-pane: both panes' tabs visible simultaneously.
     expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
-    expect(find.byKey(const Key('note_tab_note-1')), findsNothing);
+    expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
+    expect(controller.activeNoteId, 'note-2');
 
-    await tester.tap(find.byKey(const Key('notes_next_pane_button')));
+    controller.activateNextPane();
     await tester.pump();
     await tester.pump();
     expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
-    expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
+    expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
+    expect(controller.activeNoteId, 'note-1');
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -259,10 +191,11 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // Why: split mode tab strip is active-pane scoped; Ctrl+Tab must not pull
-    // tabs from non-active panes.
-    expect(find.byKey(const Key('note_tab_note-1')), findsOneWidget);
-    expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
+    // Why: Ctrl+Tab cycles within active pane only. Initial pane has only
+    // note-1, so activeNoteId stays note-1. The other pane's note-2 is
+    // unaffected.
+    expect(controller.activeNoteId, 'note-1');
+    expect(controller.editorShellService.activeGroupId, initialGroupId);
   });
 
   testWidgets('Ctrl+Shift+Tab stays pane-local in split mode', (
@@ -277,6 +210,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    final editor = controller.editorShellService;
+    final initialGroupId = editor.activeGroupId;
+
     await tester.tap(find.byKey(const Key('notes_split_horizontal_button')));
     await tester.pump();
     await tester.pump();
@@ -285,20 +221,19 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(controller.activeNoteId, 'note-2');
-    final editor = controller.editorShellService;
-    expect(editor.activeGroupId, isNot(editor.primaryGroupId));
+    expect(editor.activeGroupId, isNot(initialGroupId));
 
-    await tester.tap(find.byKey(const Key('notes_next_pane_button')));
+    controller.activateNextPane();
     await tester.pump();
     await tester.pump();
-    expect(editor.activeGroupId, editor.primaryGroupId);
+    expect(editor.activeGroupId, initialGroupId);
     expect(controller.activeNoteId, 'note-1');
 
     await tester.tap(find.byKey(const Key('notes_list_item_note-3')));
     await tester.pump();
     await tester.pump();
     expect(controller.activeNoteId, 'note-3');
-    expect(editor.activeGroupId, editor.primaryGroupId);
+    expect(editor.activeGroupId, initialGroupId);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -308,9 +243,11 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // Why: reverse tab cycle should stay within active-pane tab set.
-    expect(editor.activeGroupId, editor.primaryGroupId);
+    // Why: reverse tab cycle stays within initial pane (note-1, note-3).
+    // note-2 is in the other pane — Ctrl+Shift+Tab must not switch to it.
+    expect(editor.activeGroupId, initialGroupId);
     expect(controller.activeNoteId, 'note-1');
-    expect(find.byKey(const Key('note_tab_note-2')), findsNothing);
+    // note-2 tab is still visible in the other pane.
+    expect(find.byKey(const Key('note_tab_note-2')), findsOneWidget);
   });
 }

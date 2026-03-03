@@ -96,7 +96,7 @@ lib/core/
 |------|------|
 | ReminderScheduler → `core/reminders/` | **已完成** — PR-0259（S7） |
 | WorkspaceTreeService → `core/workspace/` | **已完成** — v0.3 PR-RB-05（6 文件迁移：4 tree 永久 + 2 pane layout TRANSIENT）— DI-1 Q4.3 |
-| EditorShellService → `core/editor/` | v0.3 PR-RB-06 待实施（**spec 已定稿** — DI-1 Q5；含 TRANSIENT 文件删除：PR-RB-05 过渡的 `workspace_provider.dart` + `workspace_models.dart` 吸收入 `core/editor/group_layout.dart` 后删除） |
+| EditorShellService → `core/editor/` | v0.3 PR-RB-06 **实施中**（4 文件已落地：`editor_shell_service.dart`、`editor_group_model.dart`、`edit_buffer.dart`、`group_layout.dart`；TRANSIENT 文件 `workspace_provider.dart` + `workspace_models.dart` 已删除） |
 
 ---
 

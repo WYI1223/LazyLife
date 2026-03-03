@@ -137,7 +137,7 @@ Split("g1", horizontal):
            └── LeafNode("g2")     ← 父 SplitNode 坍缩为兄弟
 ```
 
-Note: 实际 pane 关闭由 closeTab() 清空 tabs 列表驱动（非 primary group），不是独立操作。
+Note: 实际 pane 关闭由 closeTab() 清空 tabs 列表驱动（`groups.length > 1` 时空 group auto-collapse），不是独立用户操作。唯一剩余 group 永远保留（`paneCount >= 1` 不变量）。
 
 ### Resize
 
@@ -187,9 +187,9 @@ bool canSplit(String groupId, Axis axis, Size containerSize) {
 
 | 阶段 | 状态 |
 |------|------|
-| 启动 | 单个 `LeafNode(primary_group_id)` 作为根 |
+| 启动 | 单个 `LeafNode(_defaultGroupId)` 作为根 |
 | Split | 目标 leaf 替换为 SplitNode，新 group 成为 second 子节点 |
-| Tab 驱动销毁 | 非 primary group 的 tabs 清空 → closeGroup() 移除节点（父 SplitNode 坍缩为兄弟） |
+| Tab 驱动销毁 | 空 group + `groups.length > 1` → closeGroup() 移除节点（父 SplitNode 坍缩为兄弟） |
 | 持久化 | 结构变化后去抖写入 JSON（DI-3，PR-RB-07 实现；PR-RB-06 提供 toJson/fromJson） |
 
 ---
@@ -198,7 +198,7 @@ bool canSplit(String groupId, Axis axis, Size containerSize) {
 
 由 [LayoutPersistence](layout-persistence.md) 负责（PR-RB-07）。GroupLayout 提供 `toJson()` / `fromJson()`。
 
-序列化范围：树结构 + per-group tab 列表 + activeTab + previewTab + primaryGroupId。不序列化 draft 内容和 save 状态。
+序列化范围：树结构 + per-group tab 列表 + activeTab + previewTab + activeGroupId。不序列化 draft 内容和 save 状态。
 
 ---
 

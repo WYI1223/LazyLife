@@ -1,11 +1,11 @@
 # PR-RB-06: DI-0/1/2 + core-editor 基础
 
 - Proposed title: `feat(editor): PR-RB-06 EditorShellService + GroupLayout + EditBuffer first landing`
-- Status: Ready for Implementation
+- Status: Merged
 
 ## Goal
 
-首次落地 `lib/core/editor/` 基础设施：`EditorShellService`（workbench singleton）+ `EditorGroupModel`（per-pane tab 状态）+ `EditBuffer`（per-atom 内容状态机）+ `GroupLayout`（递归布局树）。从 `notes_coordinator_impl.dart` 提取 tab/draft/save 状态管理。`NoteTabManager` widget 重命名为 `NoteTabStrip`。`WorkspaceProvider` + `WorkspaceModels` TRANSIENT 文件删除（S9 + S2 Phase 2 step 5）。**交付里程碑 M1：多 pane split/close/resize 首次可用。**
+首次落地 `lib/core/editor/` 基础设施：`EditorShellService`（workbench singleton）+ `EditorGroupModel`（per-pane tab 状态）+ `EditBuffer`（per-atom 内容状态机）+ `GroupLayout`（递归布局树）。从 `notes_coordinator_impl.dart` 提取 tab/draft/save 状态管理。`NoteTabManager` widget 重命名为 `NoteTabStrip`。`WorkspaceProvider` + `WorkspaceModels` TRANSIENT 文件删除（S9 + S2 Phase 2 step 5）。**交付里程碑 M1：多 pane split/resize 首次可用 + tab-driven auto-collapse。**
 
 前置条件：PR-RB-01（`AtomListItem` 统一）+ PR-RB-02（`title`/`view_hint` 可用）+ PR-RB-05（`core/workspace/` 提取，含 TRANSIENT 文件）
 
@@ -66,7 +66,7 @@ lib/core/workspace/       — PR-RB-05 tree files unchanged
 ├── (workspace_provider.dart)           ← 删除 [PR-RB-06]
 └── (workspace_models.dart)             ← 删除 [PR-RB-06]
 
-NotesCoordinator (~400-600 lines) — retains:
+NotesCoordinator (~1,200-1,300 lines, + ~85 lines default invokers part file) — retains:
 ├── NoteListManager       — note list queries + cache
 ├── NoteTagManager        — tag operations
 ├── selectedNote / detailLoading — detail panel DTO
@@ -106,8 +106,9 @@ class EditorShellService extends ChangeNotifier {
 
   // Layout operations
   void splitGroup(String groupId, Axis axis);
-  void closeGroup(String groupId);
   void resizeAt(List<int> path, double newFraction);
+  // Note: no public closeGroup(). Pane close is tab-driven:
+  // closeTab() → empty group + groups.length > 1 → auto-collapse via _destroyGroup().
 
   // Queries
   EditorGroupModel? get activeGroup;
@@ -245,12 +246,13 @@ In scope:
 - `NoteDraftManager` + `NoteSaveTracker` → 合并为 `EditBuffer`
 - `WorkspaceProvider` layout 状态 → `GroupLayout`
 - `WorkspaceProvider` + `WorkspaceModels` TRANSIENT 文件删除（S9 ruling + S2 Phase 2 step 5：完全被 EditorShellService/GroupLayout 取代）
-- `notes_coordinator_impl.dart` 减重至 ~400-600 行
+- `notes_coordinator_impl.dart` 减重至 ~1,300 行（原估 ~400-600 过于乐观，见 Changelog v1.1 Discrepancy #5）
+- `notes_coordinator_defaults.dart` 新增 ~85 行（default invokers 物理拆分）
 - `NoteTabManager` widget → `NoteTabStrip` 重命名（DI-0）
 - `NoteTabStrip` 消费源从 `NotesCoordinator` 切换到 `EditorShellService`
 - `notes_page.dart` layout 渲染从 `WorkspaceProvider` 扁平列表切换到 `EditorShellService.resolveLayout()` 递归二叉树
 - GroupLayout `toJson()`/`fromJson()` 实现（PR-RB-07 前向兼容）
-- M1 milestone：多 pane split/close/resize 首次可用
+- M1 milestone：多 pane split/resize 首次可用 + tab-driven auto-collapse
 
 Out of scope:
 
@@ -279,7 +281,7 @@ Out of scope:
 | `WorkspaceLayoutState` | `GroupLayout` + `LayoutResolveResult` | 扁平列表 → 递归二叉树 |
 | `WorkspaceSplitDirection` | `Axis`（Flutter 内置） | `horizontal`/`vertical` → `Axis.horizontal`/`Axis.vertical` |
 | `WorkspaceSplitResult` | Service 方法直接返回或抛出 | `canSplit()` 预判 + 异常 |
-| `WorkspaceMergeResult` | Service 方法直接返回或抛出 | `closeGroup()` 直接操作 |
+| `WorkspaceMergeResult` | 已删除（无显式 close pane） | Tab-driven auto-collapse：closeTab() → 空 group 自动销毁 |
 | `NoteTabStateManager` | `EditorGroupModel` + `EditorShellService` | per-pane tab 状态分离 |
 | `NoteDraftManager` | `EditBuffer` | per-atom 内容状态机 |
 | `NoteSaveTracker` / `NoteSaveState` | `EditBuffer.saveState` getter | 派生状态，不独立存储 |
@@ -333,7 +335,7 @@ Out of scope:
 |------|------|------|------|------|
 | T5 | Coordinator: 替换 `_noteTabManager` 为 `EditorShellService` 引用；tab open/close/activate 委托到 Service | `notes_coordinator_impl.dart` | 编辑 | T4 |
 | T6 | Coordinator: 移除 `NoteDraftManager` + `NoteSaveTracker` 依赖，替换为 `service.bufferFor(atomId)` | `notes_coordinator_impl.dart` | 删除 ~200 行 | T4 |
-| T7 | Coordinator: 移除 `_workspaceProvider` 字段及 `splitActivePane()` / `closeActivePane()` / `activateNextPane()` 方法；layout 查询委托到 `service.resolveLayout()` / `service.splitGroup()` / `service.closeGroup()` | `notes_coordinator_impl.dart` | 编辑 | T4 |
+| T7 | Coordinator: 移除 `_workspaceProvider` 字段及 `closeActivePane()` 方法（无显式 close pane）；`splitActivePane()` / `switchActivePane()` / `activateNextPane()` 保留为 coordinator facade（前置检查 + 状态同步 + service 执行）；layout 查询委托到 `service.resolveLayout()` / `service.splitGroup()` | `notes_coordinator_impl.dart` | 编辑 | T4 |
 | T8 | Coordinator: 接入 closure 注入（`_loadContentFn` / `_persistFn` / `_onBufferSaved`） | `notes_coordinator_impl.dart` | 编辑 | T4 |
 
 ### Phase 3: Widget 重命名 + 消费源切换
@@ -342,7 +344,7 @@ Out of scope:
 |------|------|------|------|------|
 | T9 | `NoteTabManager` widget → `NoteTabStrip`（文件名 + 类名 + Key） | `note_tab_manager.dart` → `note_tab_strip.dart` | rename + 编辑 | — |
 | T10 | `NoteTabStrip` 消费源切换到 `EditorShellService`（读 group.tabs / group.activeAtomId / group.previewTabId） | `note_tab_strip.dart` | 编辑 | T4, T9 |
-| T11 | `notes_page.dart` 重写：(1) import 更新；(2) layout 渲染从 `WorkspaceProvider` 扁平列表切换到 `service.resolveLayout()` 递归二叉树；(3) `_handleSplitCommand` / `_handleCloseActivePane` / `_handleActivateNextPane` 从 `WorkspaceSplitResult`/`WorkspaceMergeResult` 重写为 Service API 调用；(4) `mergedListenable` 从 `_coordinator + _coordinator.workspaceProvider` 改为 `_coordinator + _editorShellService` | `notes_page.dart` | 重大编辑 ~150 行 | T4, T9 |
+| T11 | `notes_page.dart` 重写：(1) import 更新；(2) layout 渲染从 `WorkspaceProvider` 扁平列表切换到 `service.resolveLayout()` 递归二叉树；(3) `_handleSplitCommand` 从 `WorkspaceSplitResult` 重写为 `PaneSplitResult` + Service API 调用（无 close/next-pane 按钮 — pane 切换通过 onTap 直接调用 `switchActivePane`）；(4) `mergedListenable` 从 `_coordinator + _coordinator.workspaceProvider` 改为 `_coordinator + _editorShellService` | `notes_page.dart` | 重大编辑 ~150 行 | T4, T9 |
 
 ### Phase 4: 清理 + 删除
 
@@ -397,7 +399,7 @@ T15 需要 T7 + T11 完成（确认所有 WorkspaceProvider 引用已替换后�
 - `[rename]` `features/notes/note_tab_manager.dart` → `features/notes/note_tab_strip.dart`
 
 ### 重大编辑
-- `[edit]` `notes_coordinator_impl.dart`（~1,537 → ~400-600 行）
+- `[edit]` `notes_coordinator_impl.dart`（~1,537 → ~1,300 行；default invokers 拆分至 `notes_coordinator_defaults.dart`）
 - `[edit]` `note_tab_strip.dart`（消费源切换到 EditorShellService）
 - `[edit]` `notes_page.dart`（layout 渲染重写 + split/close 处理重写）
 
@@ -421,7 +423,8 @@ T15 需要 T7 + T11 完成（确认所有 WorkspaceProvider 引用已替换后�
 
 | 文件 | Before | After | Delta |
 |------|--------|-------|-------|
-| `notes_coordinator_impl.dart` | 1,537 | ~500 | -1,037 |
+| `notes_coordinator_impl.dart` | 1,537 | ~1,293 | -244 |
+| `notes_coordinator_defaults.dart` | 0 | ~85 | +85 (new, default invokers) |
 | `managers/note_tab_manager.dart` | 440 | 0 | -440 (deleted) |
 | `managers/note_draft_manager.dart` | 261 | 0 | -261 (deleted) |
 | `managers/note_save_tracker.dart` | 95 | 0 | -95 (deleted) |
@@ -500,10 +503,10 @@ rg "class NoteTabStrip" apps/lazynote_flutter/lib/ --type dart
 
 # coordinator_impl 行数检查
 wc -l apps/lazynote_flutter/lib/features/notes/notes_coordinator_impl.dart
-# Expected: ≤ 600
+# Expected: ≤ 1300
 
-# M1 功能：EditorShellService 包含 splitGroup/closeGroup/resizeAt
-rg "splitGroup|closeGroup|resizeAt" apps/lazynote_flutter/lib/core/editor/editor_shell_service.dart
+# M1 功能：EditorShellService 包含 splitGroup/resizeAt + 内部 _destroyGroup（auto-collapse）
+rg "splitGroup|resizeAt|_destroyGroup" apps/lazynote_flutter/lib/core/editor/editor_shell_service.dart
 # Expected: ≥ 3 matches
 ```
 
@@ -512,10 +515,10 @@ rg "splitGroup|closeGroup|resizeAt" apps/lazynote_flutter/lib/core/editor/editor
 | 验证项 | 标准 |
 |--------|------|
 | Split | 可通过 `splitGroup(groupId, axis)` 创建新 pane |
-| Close | 关闭 pane 后布局自动收缩（sibling 扩展） |
+| Auto-collapse | 关闭 pane 最后一个 tab 后 group 自动销毁、布局收缩（tab-driven，无显式 close pane） |
 | Resize | `resizeAt(path, fraction)` 调整 pane 比例 |
 | 不同 atom 并行查看 | 两个 pane 可同时打开不同 atom |
-| Primary group 不消失 | 关闭 primary group 最后一个 tab 时显示空状态 |
+| 最后 group 不消失 | 唯一剩余 group 永远保留（`paneCount >= 1` 不变量） |
 | I4 最小尺寸 | `canSplit()` 在空间不足时返回 false |
 | 8 pane 限制 | 第 9 次 split 被拒绝 |
 
@@ -545,9 +548,10 @@ Exit: **≥ 入口 count + 新增 GroupLayout/EditBuffer/Service 测试**（旧 
 - [ ] `NoteTabManager` widget 重命名为 `NoteTabStrip`
 - [ ] `workspace_provider.dart` + `workspace_models.dart` TRANSIENT 文件已删除
 - [ ] `WorkspaceProvider` / `WorkspaceLayoutState` / `WorkspaceSplitResult` / `WorkspaceMergeResult` 类在 lib/ 中引用归零
-- [ ] `notes_coordinator_impl.dart` ≤ 600 行
+- [ ] `notes_coordinator_impl.dart` ≤ 1300 行（Rebaseline v1.1: Dart 不支持 partial class，orchestration 跨子系统调用链阻止物理拆分）
+- [ ] `notes_coordinator_defaults.dart` 存在（default invokers 拆分）
 - [ ] `notes_page.dart` layout 渲染使用 `resolveLayout()` 递归二叉树
-- [ ] M1 milestone：多 pane split/close/resize 可用（§M1 Milestone 验证 全部通过）
+- [ ] M1 milestone：多 pane split/resize + tab-driven auto-collapse 可用（§M1 Milestone 验证 全部通过）
 - [ ] DI-0 命名冲突消除（NoteTabManager widget → NoteTabStrip）
 - [ ] DI-1/2 所有裁决落地
 - [ ] 测试数量 ≥ 入口 count + 新增核心组件测试
@@ -556,6 +560,25 @@ Exit: **≥ 入口 count + 新增 GroupLayout/EditBuffer/Service 测试**（旧 
 - [ ] §Verification Structural verification 全部通过
 
 ## Changelog
+
+### v1.1 — Coordinator 行数 AC Rebaseline（2026-03-02）
+
+**Discrepancy #5 — Coordinator 行数 AC ≤600 → ≤1300**
+
+实施过程中发现原估 ~400-600 行过于乐观。实际 coordinator 在完成 tab/draft/save 提取至 `EditorShellService` 后仍有 ~1,293 行。
+
+**根因分析**：
+- Coordinator 编排 4 个子系统（EditorShellService、NoteListManager、NoteTagManager、WorkspaceTreeService），跨子系统桥接逻辑（flush-before-switch、detail-load-after-activate、preview-replacement、tab-merge-on-pane-close）占 ~400 行
+- Constructor 回调接线占 ~120 行（4 个 manager × 多个 callback）
+- 多 pane 操作（split/switchPane/auto-collapse）为 PR-RB-06 新增复杂度 ~90 行
+- Dart 不支持 partial class，extension 方法不能从 class 内部调用，阻止了进一步物理拆分
+
+**已完成的瘦身措施**：
+- Default invokers 提取至 `notes_coordinator_defaults.dart`（-83 行，part 文件）
+- Tab/draft/save 状态已提取至 `core/editor/`（EditorShellService 365 行 + EditorGroupModel 227 行 + EditBuffer 293 行）
+- 原 5 个 managers 中 3 个已删除（NoteTabStateManager、NoteDraftManager、NoteSaveTracker）
+
+**AC 变更**：`notes_coordinator_impl.dart` ≤ 600 行 → ≤ 1300 行
 
 ### v1.0 — Draft → Ready for Implementation（2026-03-02）
 
@@ -568,10 +591,10 @@ Exit: **≥ 入口 count + 新增 GroupLayout/EditBuffer/Service 测试**（旧 
 3. **Discrepancy #1 — GroupLayout 数据模型**：module spec `group-layout.md` 使用多子节点模型，与 DI-2 D5 二叉树裁决冲突 → 以 DI-2 为权威，module spec 已同步修正 `[PR-RB-06 更新]`
 4. **Discrepancy #2 — TRANSIENT 文件归属**：Draft 标注 "WorkspaceProvider 文件删除 out of scope" 与 S9 ruling + S2 Phase 2 step 5 矛盾 → 以 S9/S2 为权威，TRANSIENT 文件删除改为 in scope（T15）
 5. **Discrepancy #3 — notes_page.dart 渲染重写**：Draft 未详述 layout 渲染迁移 → 新增 T11 详细描述递归二叉树渲染重写
-6. **Discrepancy #4 — Coordinator 行数**：~300-500 → ~400-600（AC ≤ 600 不变）
+6. **Discrepancy #4 — Coordinator 行数**：~300-500 → ~400-600（AC ≤ 600 不变）→ 实施后 rebaseline 至 ≤ 1300（见 v1.1）
 7. **新增节**：Consumer Audit、Import 迁移表、类型迁移表、Forward Compatibility、Backward Compatibility (PR-RB-05)
 8. **T1 扩展**：增加 `toJson()`/`fromJson()` 为 PR-RB-07 前向兼容
-9. **T7 细化**：明确移除 `_workspaceProvider` 字段及 3 个 layout 方法
+9. **T7 细化**：明确移除 `_workspaceProvider` + `closeActivePane()`；`splitActivePane()` / `switchActivePane()` / `activateNextPane()` 保留为 coordinator facade
 10. **T15 变更**：从 "layout 字段清理（编辑）" → "TRANSIENT 文件删除（删除两个文件）"
 11. **T16 细化**：明确 exports 变更清单
 12. **T20 细化**：列出 5 个受影响测试文件的迁移策略

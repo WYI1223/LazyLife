@@ -47,8 +47,9 @@ bool get hasPendingSaveWork
 
 // 布局操作（委托给 GroupLayout）
 splitGroup(String groupId, Axis axis)
-closeGroup(String groupId)
 resizeAt(List<int> path, double newFraction)
+// 无公开 closeGroup()：pane 关闭由 tab 生命周期驱动
+// closeTab() → 空 group + groups.length > 1 → 内部 _destroyGroup() auto-collapse
 
 // 查询
 EditorGroupModel? get activeGroup
@@ -66,7 +67,7 @@ LayoutResolveResult resolveLayout(Size containerSize)
 | Service → FFI | 双闭包注入 | `_loadContentFn` + `_persistFn`，Service 控制 WHEN，Coordinator 提供 HOW |
 | Service → Coordinator | 回调 | `onBufferSaved(atomId, content)` — 保存成功后通知 Coordinator 更新缓存 |
 
-**Coordinator 定位**：接线员（wiring mediator），不是执行层。Coordinator 在构造时注入闭包，监听 Service 变化转发给 UI，但不参与加载/保存逻辑。
+**Coordinator 定位**：接线员（wiring mediator）+ facade。Coordinator 在构造时注入闭包，监听 Service 变化转发给 UI，但不参与加载/保存逻辑。Pane 操作（`splitActivePane` / `switchActivePane` / `activateNextPane`）保留为 coordinator facade，负责前置检查（canSplit、containerSize）和状态同步（selectedNote、saveState、editorFocus），底层委托 Service 执行。
 
 ```dart
 // Coordinator 注入示例
@@ -89,7 +90,7 @@ service = EditorShellService(
 |------|------|
 | 启动 | 注入闭包，从 `LayoutPersistence` 恢复布局，创建 primary group |
 | openTab | 若 buffer 不存在 → 创建 `EditBuffer`（loading 状态），调用 `_loadContentFn` |
-| closeTab | 从 group.tabs 移除；检查引用计数 → 无其他 group 引用 → flush + dispose buffer |
+| closeTab | 从 group.tabs 移除；检查引用计数 → 无其他 group 引用 → flush + dispose buffer；空 group + groups.length > 1 → auto-collapse |
 | split | 创建新 group，复制当前 activeTab |
 | 退出前 | `flushAllDirtyBuffers()` |
 
@@ -123,8 +124,8 @@ service = EditorShellService(
 
 | 阶段 | 状态 | PR |
 |------|------|-----|
-| Service + groups + buffers + layout 组合 | PR-RB-06 待实施 | PR-RB-06（v0.3） |
-| Coordinator 提取（tab/draft/save → Service） | PR-RB-06 待实施 | PR-RB-06（v0.3） |
+| Service + groups + buffers + layout 组合 | PR-RB-06 实施中 | PR-RB-06（v0.3） |
+| Coordinator 提取（tab/draft/save → Service） | PR-RB-06 实施中 | PR-RB-06（v0.3） |
 | 布局持久化集成（LayoutPersistence） | PR-RB-07 待实施 | PR-RB-07（v0.3，DI-3） |
 | EditorResolver 集成 | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
 

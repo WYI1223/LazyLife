@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lazynote_flutter/core/editor/edit_buffer.dart';
 import 'package:lazynote_flutter/features/notes/note_editor.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
@@ -15,12 +16,18 @@ String _notesL10nText({
   return l10n == null ? fallback : pick(l10n);
 }
 
-/// Center editor/content area for active note.
+/// Center editor/content area for a note pane.
+///
+/// When [groupId] is null, displays the active group's note.
+/// When [groupId] is provided, displays that group's active note.
 class NoteContentArea extends StatelessWidget {
-  const NoteContentArea({super.key, required this.controller});
+  const NoteContentArea({super.key, required this.controller, this.groupId});
 
   /// Shared notes controller used to read list/detail snapshots.
   final NotesCoordinator controller;
+
+  /// Group to display content for. Null means the coordinator's active group.
+  final String? groupId;
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +53,32 @@ class NoteContentArea extends StatelessWidget {
     );
   }
 
+  static NoteSaveState _bufferToNoteSaveState(EditBuffer? buffer) {
+    if (buffer == null) return NoteSaveState.clean;
+    return switch (buffer.saveState) {
+      SaveState.loading => NoteSaveState.clean,
+      SaveState.clean => NoteSaveState.clean,
+      SaveState.dirty => NoteSaveState.dirty,
+      SaveState.saving => NoteSaveState.saving,
+      SaveState.error => NoteSaveState.error,
+    };
+  }
+
   Widget _buildContent(BuildContext context) {
-    final atomId = controller.activeNoteId;
-    final noteSaveState = controller.noteSaveState;
-    final activeDraftContent = controller.activeDraftContent;
+    final editor = controller.editorShellService;
+    final isActiveGroup = groupId == null || groupId == editor.activeGroupId;
+    final atomId = isActiveGroup
+        ? controller.activeNoteId
+        : editor.groups[groupId]?.activeAtomId;
+    final buffer = atomId != null ? editor.bufferFor(atomId) : null;
+    final noteSaveState = isActiveGroup
+        ? controller.noteSaveState
+        : _bufferToNoteSaveState(buffer);
+    final activeDraftContent = isActiveGroup
+        ? controller.activeDraftContent
+        : buffer?.content ??
+              (atomId != null ? controller.noteById(atomId)?.content : null) ??
+              '';
     switch (controller.listPhase) {
       case NotesListPhase.idle:
       case NotesListPhase.loading:
@@ -102,11 +131,15 @@ class NoteContentArea extends StatelessWidget {
         ),
       );
     }
-    if (controller.detailErrorMessage case final error?) {
-      return _detailErrorState(context, error: error);
+    if (isActiveGroup) {
+      if (controller.detailErrorMessage case final error?) {
+        return _detailErrorState(context, error: error);
+      }
     }
-    final note = controller.selectedNote;
-    if (note == null && controller.detailLoading) {
+    final note = isActiveGroup
+        ? controller.selectedNote
+        : controller.noteById(atomId);
+    if (isActiveGroup && note == null && controller.detailLoading) {
       return const Center(
         child: SizedBox(
           key: Key('notes_detail_loading'),
@@ -127,13 +160,15 @@ class NoteContentArea extends StatelessWidget {
       );
     }
 
-    final saveError = controller.saveErrorMessage;
+    final saveError = isActiveGroup
+        ? controller.saveErrorMessage
+        : buffer?.errorMessage;
     return Center(
       child: ConstrainedBox(
         // Why: keep readable document line length on wide desktop windows.
         constraints: const BoxConstraints(maxWidth: 860),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(34, 18, 34, 28),
+          padding: const EdgeInsets.fromLTRB(8, 5, 8, 7),
           child: Column(
             key: const Key('notes_detail_editor'),
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,7 +368,9 @@ class NoteContentArea extends StatelessWidget {
                   child: NoteEditor(
                     key: ValueKey<String>('note_editor_$atomId'),
                     content: activeDraftContent,
-                    focusRequestId: controller.editorFocusRequestId,
+                    focusRequestId: isActiveGroup
+                        ? controller.editorFocusRequestId
+                        : 0,
                     onChanged: controller.updateActiveDraft,
                   ),
                 ),

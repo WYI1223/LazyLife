@@ -413,6 +413,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   Future<bool> openNoteFromExplorerPinned(String atomId) async {
     if (activeNoteId == atomId) {
       _editorShellService.activeGroup?.pinPreviewTab(atomId);
+      notifyListeners();
       return true;
     }
     final group = _editorShellService.activeGroup;
@@ -420,11 +421,13 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       final switched = await selectNote(atomId);
       if (!switched) return false;
       group.pinPreviewTab(atomId);
+      notifyListeners();
       return true;
     }
     final opened = await openNoteFromExplorer(atomId);
     if (!opened) return false;
     _editorShellService.activeGroup?.pinPreviewTab(atomId);
+    notifyListeners();
     return true;
   }
 
@@ -437,12 +440,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   PaneSplitResult splitActivePane({
     required Axis direction,
-    required double containerExtent,
+    required Size containerSize,
   }) {
     final groupId = _editorShellService.activeGroupId;
-    final containerSize = direction == Axis.horizontal
-        ? Size(containerExtent, minPaneExtent)
-        : Size(minPaneExtent, containerExtent);
     if (!_editorShellService.layout.canSplit(
       groupId,
       direction,
@@ -457,43 +457,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _editorShellService.splitGroup(groupId, direction);
     notifyListeners();
     return PaneSplitResult.ok;
-  }
-
-  PaneCloseResult closeActivePane() {
-    if (_editorShellService.paneCount <= 1) {
-      return PaneCloseResult.lastPaneBlocked;
-    }
-    final closingGroupId = _editorShellService.activeGroupId;
-    final closingGroup = _editorShellService.activeGroup;
-    final activeAtomId = closingGroup?.activeAtomId;
-
-    // Merge unique tabs from the closing group into the primary group so the
-    // user's active note survives the pane close.
-    final primaryGroup =
-        _editorShellService.groups[_editorShellService.primaryGroupId];
-    if (closingGroup != null && primaryGroup != null) {
-      for (final tab in closingGroup.tabs) {
-        if (!primaryGroup.containsAtom(tab.atomId)) {
-          primaryGroup.addTab(tab);
-        }
-      }
-    }
-
-    unawaited(_editorShellService.closeGroup(closingGroupId));
-
-    // Activate the previously-active note in the surviving primary group.
-    if (activeAtomId != null && primaryGroup != null) {
-      if (primaryGroup.containsAtom(activeAtomId)) {
-        _editorShellService.switchTab(
-          _editorShellService.primaryGroupId,
-          activeAtomId,
-        );
-        _selectedNote = noteById(activeAtomId);
-      }
-    }
-    _updateSaveStateFromBuffer();
-    notifyListeners();
-    return PaneCloseResult.ok;
   }
 
   bool switchActivePane(String groupId) {
@@ -1281,87 +1244,4 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _workspaceTreeService.dispose();
     super.dispose();
   }
-}
-
-// ── Default invokers ───────────────────────────────────────────────────
-
-Future<rust_api.AtomListResponse> _defaultNotesListInvoker({
-  String? tag,
-  int? limit,
-  int? offset,
-}) {
-  return rust_api.notesList(tag: tag, limit: limit, offset: offset);
-}
-
-Future<rust_api.AtomItemResponse> _defaultNoteGetInvoker({
-  required String atomId,
-}) {
-  return rust_api.noteGet(atomId: atomId);
-}
-
-Future<rust_api.AtomItemResponse> _defaultNoteCreateInvoker({
-  required String content,
-  String? parentNodeId,
-}) {
-  return rust_api.noteCreate(content: content, parentNodeId: parentNodeId);
-}
-
-Future<rust_api.AtomItemResponse> _defaultNoteUpdateInvoker({
-  required String atomId,
-  required String content,
-}) {
-  return rust_api.noteUpdate(atomId: atomId, content: content);
-}
-
-Future<rust_api.TagsListResponse> _defaultTagsListInvoker() {
-  return rust_api.tagsList();
-}
-
-Future<rust_api.AtomItemResponse> _defaultNoteSetTagsInvoker({
-  required String atomId,
-  required List<String> tags,
-}) {
-  return rust_api.noteSetTags(atomId: atomId, tags: tags);
-}
-
-Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceDeleteFolderInvoker({
-  required String nodeId,
-  required String mode,
-}) {
-  return rust_api.workspaceDeleteFolder(nodeId: nodeId, mode: mode);
-}
-
-Future<rust_api.WorkspaceNodeResponse> _defaultWorkspaceCreateFolderInvoker({
-  String? parentNodeId,
-  required String name,
-}) {
-  return rust_api.workspaceCreateFolder(parentNodeId: parentNodeId, name: name);
-}
-
-Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceRenameNodeInvoker({
-  required String nodeId,
-  required String newName,
-}) {
-  return rust_api.workspaceRenameNode(nodeId: nodeId, newName: newName);
-}
-
-Future<rust_api.WorkspaceActionResponse> _defaultWorkspaceMoveNodeInvoker({
-  required String nodeId,
-  String? newParentId,
-  int? targetOrder,
-}) {
-  return rust_api.workspaceMoveNode(
-    nodeId: nodeId,
-    newParentId: newParentId,
-    targetOrder: targetOrder,
-  );
-}
-
-Future<rust_api.WorkspaceListChildrenResponse>
-_defaultWorkspaceListChildrenInvoker({String? parentNodeId}) {
-  return rust_api.workspaceListChildren(parentNodeId: parentNodeId);
-}
-
-Future<void> _defaultPrepare() async {
-  await RustBridge.ensureEntryDbPathConfigured();
 }

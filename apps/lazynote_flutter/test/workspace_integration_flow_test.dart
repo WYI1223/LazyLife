@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'dart:ui' show Size;
+
 import 'package:flutter/widgets.dart' show Axis;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
@@ -187,7 +189,7 @@ void main() {
       expect(
         controller.splitActivePane(
           direction: Axis.horizontal,
-          containerExtent: 1200,
+          containerSize: const Size(1200, 800),
         ),
         PaneSplitResult.ok,
       );

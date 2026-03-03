@@ -32,13 +32,14 @@ class EditorShellService extends ChangeNotifier {
        _onBufferSaved = onBufferSaved,
        _timerFactory = timerFactory,
        _autosaveDebounce = autosaveDebounce {
-    // Create primary group + initial layout
-    final primaryId = 'group.primary';
-    _primaryGroupId = primaryId;
-    _activeGroupId = primaryId;
-    _groups[primaryId] = EditorGroupModel(groupId: primaryId, isPrimary: true);
-    _layout = GroupLayout(root: LeafNode(groupId: primaryId));
+    // Create default single-pane layout
+    _activeGroupId = _defaultGroupId;
+    _groups[_defaultGroupId] = EditorGroupModel(groupId: _defaultGroupId);
+    _layout = GroupLayout(root: LeafNode(groupId: _defaultGroupId));
   }
+
+  /// Fixed ID for the initial group created at construction and after reset.
+  static const _defaultGroupId = 'group.primary';
 
   // ── Injected closures ────────────────────────────────────────────────
 
@@ -53,7 +54,6 @@ class EditorShellService extends ChangeNotifier {
   final Map<String, EditorGroupModel> _groups = {};
   final Map<String, EditBuffer> _buffers = {};
   late GroupLayout _layout;
-  late String _primaryGroupId;
   late String _activeGroupId;
 
   // ── Public accessors ─────────────────────────────────────────────────
@@ -69,9 +69,6 @@ class EditorShellService extends ChangeNotifier {
 
   /// Active group identifier.
   String get activeGroupId => _activeGroupId;
-
-  /// Primary group identifier (never destroyed).
-  String get primaryGroupId => _primaryGroupId;
 
   /// Active group model, or null if not found.
   EditorGroupModel? get activeGroup => _groups[_activeGroupId];
@@ -139,7 +136,8 @@ class EditorShellService extends ChangeNotifier {
   /// Closes a tab in [groupId] for [atomId].
   ///
   /// If no other group references [atomId], the buffer is flushed and disposed.
-  /// Non-primary groups with empty tabs trigger automatic group destruction.
+  /// Empty groups are auto-collapsed when at least one other group remains
+  /// (DI-1 Q2: group exists iff it has tabs; last pane is never removed).
   Future<void> closeTab(String groupId, String atomId) async {
     final group = _groups[groupId];
     if (group == null) return;
@@ -159,8 +157,8 @@ class EditorShellService extends ChangeNotifier {
       }
     }
 
-    // Auto-destroy non-primary empty groups
-    if (group.isEmpty && !group.isPrimary) {
+    // Auto-collapse: remove empty group if at least one other group remains.
+    if (group.isEmpty && _groups.length > 1) {
       _destroyGroup(groupId);
     }
 
@@ -232,43 +230,6 @@ class EditorShellService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Closes a group and removes it from the layout.
-  ///
-  /// Buffers that are no longer referenced by any group are flushed + disposed.
-  Future<void> closeGroup(String groupId) async {
-    final group = _groups[groupId];
-    if (group == null) return;
-    if (group.isPrimary) return; // Primary group cannot be closed
-
-    // Collect atom IDs that might need cleanup
-    final atomIds = group.tabs.map((t) => t.atomId).toList();
-
-    _groups.remove(groupId);
-    _layout = _layout.closeGroup(groupId);
-
-    // Update active group if we closed it
-    if (_activeGroupId == groupId) {
-      _activeGroupId = _primaryGroupId;
-    }
-
-    // Cleanup buffers no longer referenced
-    for (final atomId in atomIds) {
-      final stillReferenced = _groups.values.any((g) => g.containsAtom(atomId));
-      if (!stillReferenced) {
-        final buffer = _buffers.remove(atomId);
-        if (buffer != null) {
-          buffer.removeListener(_onBufferChanged);
-          if (buffer.isDirty && buffer.phase == BufferPhase.ready) {
-            await buffer.flush();
-          }
-          buffer.dispose();
-        }
-      }
-    }
-
-    notifyListeners();
-  }
-
   /// Adjusts the split fraction at [path] in the layout tree.
   void resizeAt(List<int> path, double newFraction) {
     _layout = _layout.resizeAt(path, newFraction);
@@ -292,8 +253,7 @@ class EditorShellService extends ChangeNotifier {
 
   /// Hard resets all groups and buffers without flushing.
   ///
-  /// Used by coordinator session reload. Non-primary groups are destroyed,
-  /// primary group tabs are cleared, all buffers are disposed.
+  /// Disposes everything and recreates a single default pane.
   void resetSession() {
     for (final buffer in _buffers.values) {
       buffer.removeListener(_onBufferChanged);
@@ -301,21 +261,14 @@ class EditorShellService extends ChangeNotifier {
     }
     _buffers.clear();
 
-    for (final key in _groups.keys.toList()) {
-      if (key != _primaryGroupId) {
-        _groups[key]?.dispose();
-        _groups.remove(key);
-      }
+    for (final group in _groups.values) {
+      group.dispose();
     }
-    final primary = _groups[_primaryGroupId];
-    if (primary != null) {
-      for (final tab in primary.tabs.toList()) {
-        primary.removeTab(tab.atomId);
-      }
-    }
+    _groups.clear();
 
-    _layout = GroupLayout(root: LeafNode(groupId: _primaryGroupId));
-    _activeGroupId = _primaryGroupId;
+    _groups[_defaultGroupId] = EditorGroupModel(groupId: _defaultGroupId);
+    _layout = GroupLayout(root: LeafNode(groupId: _defaultGroupId));
+    _activeGroupId = _defaultGroupId;
     notifyListeners();
   }
 
@@ -331,8 +284,8 @@ class EditorShellService extends ChangeNotifier {
     } on StateError {
       // Already removed or last node — ignore
     }
-    if (_activeGroupId == groupId) {
-      _activeGroupId = _primaryGroupId;
+    if (_activeGroupId == groupId && _groups.isNotEmpty) {
+      _activeGroupId = _groups.keys.first;
     }
   }
 

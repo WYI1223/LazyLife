@@ -336,7 +336,7 @@ class GroupLayout {
   static LayoutNode _splitNode(
     LayoutNode node,
     String targetGroupId,
-    Axis axis,
+    Axis requestedAxis,
     String newGroupId,
   ) {
     switch (node) {
@@ -344,13 +344,18 @@ class GroupLayout {
         return SplitNode(
           first: LeafNode(groupId: groupId),
           second: LeafNode(groupId: newGroupId),
-          axis: axis,
+          axis: requestedAxis,
           fraction: 0.5,
         );
       case LeafNode():
         return node;
       case SplitNode(:final first, :final second, :final axis, :final fraction):
-        final newFirst = _splitNode(first, targetGroupId, axis, newGroupId);
+        final newFirst = _splitNode(
+          first,
+          targetGroupId,
+          requestedAxis,
+          newGroupId,
+        );
         if (!identical(newFirst, first)) {
           return SplitNode(
             first: newFirst,
@@ -359,7 +364,12 @@ class GroupLayout {
             fraction: fraction,
           );
         }
-        final newSecond = _splitNode(second, targetGroupId, axis, newGroupId);
+        final newSecond = _splitNode(
+          second,
+          targetGroupId,
+          requestedAxis,
+          newGroupId,
+        );
         if (!identical(newSecond, second)) {
           return SplitNode(
             first: first,

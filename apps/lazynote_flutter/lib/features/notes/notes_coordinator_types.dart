@@ -39,8 +39,3 @@ typedef NotesPrepare = Future<void> Function();
 ///
 /// Replaces `WorkspaceSplitResult` from deleted `workspace_models.dart`.
 enum PaneSplitResult { ok, maxPanesReached, minSizeBlocked }
-
-/// Result codes for pane close operations (PR-RB-06).
-///
-/// Replaces `WorkspaceMergeResult` from deleted `workspace_models.dart`.
-enum PaneCloseResult { ok, lastPaneBlocked }

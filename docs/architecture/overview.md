@@ -149,7 +149,7 @@ lib/core/workspace/                     ← PR-RB-05 S9 extraction (4 permanent 
 PR-0252 decomposed the monolithic `NotesController` into a coordinator + manager pattern. PR-RB-06 (S2 Phase 2) extracts tab/draft/save/layout into workbench-level `EditorShellService`:
 
 ```
-NotesCoordinator (orchestrator) — post PR-RB-06: ~400-600 lines
+NotesCoordinator (orchestrator) — post PR-RB-06: ~1,300 lines
 ├── NoteListManager      — note list queries + pagination
 ├── NoteTagManager       — tag operations
 ├── WorkspaceTreeService — explorer tree operations (lib/core/workspace/, PR-RB-05)
