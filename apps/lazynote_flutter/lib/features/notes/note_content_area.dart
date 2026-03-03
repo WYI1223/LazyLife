@@ -368,6 +368,7 @@ class NoteContentArea extends StatelessWidget {
                   child: NoteEditor(
                     key: ValueKey<String>('note_editor_$atomId'),
                     content: activeDraftContent,
+                    buffer: buffer,
                     focusRequestId: isActiveGroup
                         ? controller.editorFocusRequestId
                         : 0,

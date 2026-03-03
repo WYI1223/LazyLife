@@ -220,5 +220,6 @@ void _onTextChanged(String newText) {
 | 阶段 | 状态 | PR |
 |------|------|-----|
 | EditBuffer 状态机 + save 语义（debounce/force/_rev/queue） | 已实施 | PR-RB-06（v0.3，DI-1 Q3） |
-| 跨 pane sync（manual listener + string guard） | PR-RB-08 待实施 | PR-RB-08（v0.3，DI-4 Q3） |
-| P1/P2 loading（eager/lazy） | PR-RB-08 待实施 | PR-RB-08（v0.3，DI-4 Q4） |
+| 跨 pane sync（manual listener + string guard） | 已实施 | PR-RB-08（v0.3，DI-4 Q3） |
+| P1/P2 loading（eager/lazy） | 已实施 | PR-RB-08（v0.3，DI-4 Q4） |
+| AtomNotFoundException 约定异常 | 已实施 | PR-RB-08（v0.3，DI-4 Q4） |

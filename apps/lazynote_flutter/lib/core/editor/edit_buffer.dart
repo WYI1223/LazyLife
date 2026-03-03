@@ -12,6 +12,23 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 // ---------------------------------------------------------------------------
+// AtomNotFoundException — loading failure convention (DI-4 Q4)
+// ---------------------------------------------------------------------------
+
+/// Thrown when a buffer load fails because the atom no longer exists in DB.
+///
+/// Coordinator-injected [loadContentFn] should throw this when `atom_get`
+/// returns null. [EditorShellService] handles it by removing the tab from
+/// all groups (PR-RB-08 T7).
+class AtomNotFoundException implements Exception {
+  const AtomNotFoundException(this.atomId);
+  final String atomId;
+
+  @override
+  String toString() => 'AtomNotFoundException: $atomId';
+}
+
+// ---------------------------------------------------------------------------
 // BufferPhase — lifecycle gate
 // ---------------------------------------------------------------------------
 

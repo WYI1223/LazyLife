@@ -1,7 +1,7 @@
 # PR-RB-08: DI-4/5 Buffer 同步
 
 - Proposed title: `feat(editor): PR-RB-08 cross-pane buffer sync with manual listener pattern`
-- Status: Ready for Implementation
+- Status: Implemented
 
 ## Goal
 
@@ -195,12 +195,12 @@ dart run ../../tools/ci/architecture_check.dart
 
 ## Acceptance Criteria
 
-- [ ] 同一 Atom 跨 2+ pane 编辑实时同步
-- [ ] 光标独立：非编辑 pane 更新不影响编辑 pane cursor
-- [ ] Manual listener 三点生命周期正确（initState/didUpdateWidget/dispose）
-- [ ] String guard 防止编辑 pane 自身 loop
-- [ ] `_rev` 防止 stale save
-- [ ] P1 eager loading + P2 lazy loading 正常
-- [ ] Loading failure gracefully handled
-- [ ] Buffer sync 100KB <40ms（CI guard）
-- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
+- [x] 同一 Atom 跨 2+ pane 编辑实时同步
+- [x] 光标独立：非编辑 pane 更新不影响编辑 pane cursor
+- [x] Manual listener 三点生命周期正确（initState/didUpdateWidget/dispose）
+- [x] String guard 防止编辑 pane 自身 loop
+- [x] `_rev` 防止 stale save
+- [x] P1 eager loading + P2 lazy loading 正常
+- [x] Loading failure gracefully handled
+- [x] Buffer sync 100KB <40ms（CI guard）
+- [x] §Verification CI gates 全部通过（逐项执行并记录输出）

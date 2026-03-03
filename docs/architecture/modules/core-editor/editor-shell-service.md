@@ -128,7 +128,8 @@ service = EditorShellService(
 | Coordinator 提取（tab/draft/save → Service） | 已实施 | PR-RB-06（v0.3） |
 | 布局持久化集成（LayoutPersistence） | 已实施 | PR-RB-07（v0.3，DI-3） |
 | Buffer sharing + save 语义 | 已实施 | PR-RB-06（v0.3，DI-4 T1/T2） |
-| P1/P2 loading 策略 | PR-RB-08 待实施 | PR-RB-08（v0.3，DI-4 T5/T6） |
+| P1/P2 loading 策略（loadActiveBuffers + switchTab lazy） | 已实施 | PR-RB-08（v0.3，DI-4 T5/T6） |
+| Loading failure handling（AtomNotFoundException → tab removal） | 已实施 | PR-RB-08（v0.3，DI-4 T7） |
 | EditorResolver 集成 | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
 
 ---
