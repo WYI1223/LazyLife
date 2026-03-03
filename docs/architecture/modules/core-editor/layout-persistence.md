@@ -27,7 +27,7 @@ GroupLayout 和 EditorGroupModel tab 列表的文件 I/O + 去抖 + 原子写入
 | 树结构（SplitNode / LeafNode） | Draft 内容（EditBuffer 从 DB 重加载） |
 | per-group tab 列表（atomId 数组） | Save 状态（getter 派生） |
 | per-group activeTab、previewTab | 光标位置（未来增强） |
-| primaryGroupId | |
+| activeGroupId | |
 | `schema_version = 1` | |
 
 ---
@@ -38,7 +38,7 @@ GroupLayout 和 EditorGroupModel tab 列表的文件 I/O + 去抖 + 原子写入
 
 | 触发 | 说明 |
 |------|------|
-| Split / Close pane | 结构变化 |
+| Split / tab-driven auto-collapse | 结构变化 |
 | Resize（拖拽分隔条） | 比例变化 |
 | Tab open / close / switch | Tab 列表变化 |
 
@@ -69,7 +69,7 @@ Phase 1 在 Critical Phase 执行（阻塞首帧，与 LocalSettingsStore 同步
 | `schema_version > current` | 默认单 pane + 不覆盖文件（保护更高版本） |
 | 无效树结构 | 默认单 pane + 警告日志 |
 | atomId 在 DB 中不存在 | 跳过该 tab，继续恢复 |
-| 非 primary group 恢复后为空 | group 销毁，树折叠（DI-1 Q2） |
+| group 恢复后为空 + groups.length > 1 | group 销毁，树折叠（paneCount ≥ 1 不变量） |
 | 临时文件残留 | 复用 LocalSettingsStore 临时文件恢复模式 |
 
 ---
@@ -87,3 +87,12 @@ Phase 1 在 Critical Phase 执行（阻塞首帧，与 LocalSettingsStore 同步
 - ← [GroupLayout](group-layout.md) — `toJson()` / `fromJson()`
 - ← [EditorShellService](editor-shell-service.md) — 启动时调用 load，结构变化时触发 save
 - → `LocalSettingsStore` — 复用原子写入模式
+
+---
+
+## 实施状态 `[PR-RB-07 已实施]`
+
+| 阶段 | 状态 | PR |
+|------|------|-----|
+| LayoutPersistence 类 + recovery + debounce | 已实施 | PR-RB-07（v0.3，DI-3） |
+| EditorShellService 集成 | 已实施 | PR-RB-07（v0.3，DI-3） |

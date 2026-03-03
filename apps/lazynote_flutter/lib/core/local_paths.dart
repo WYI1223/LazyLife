@@ -14,6 +14,7 @@ class LocalPaths {
   static const String dataFolderName = 'data';
   static const String entryDbFileName = 'lazynote_entry.sqlite3';
   static const String settingsFileName = 'settings.json';
+  static const String workspaceLayoutFileName = 'workspace_layout.json';
 
   @visibleForTesting
   static Future<Directory> Function() applicationSupportDirectoryResolver =
@@ -65,6 +66,12 @@ class LocalPaths {
   static Future<String> resolveSettingsFilePath() async {
     final root = await resolveAppRootPath();
     return _joinPath(root, settingsFileName);
+  }
+
+  /// Resolves absolute path to workspace layout JSON file.
+  static Future<String> resolveWorkspaceLayoutFilePath() async {
+    final root = await resolveAppRootPath();
+    return _joinPath(root, workspaceLayoutFileName);
   }
 }
 

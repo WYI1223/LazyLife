@@ -107,7 +107,7 @@ Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom
 GroupLayout 和 EditorGroupModel tab 列表**联合持久化**到独立文件：
 
 - **文件路径**：`%APPDATA%/LazyLife/workspace_layout.json`（独立于 `settings.json`，避免频繁写入干扰设置文件）
-- **序列化范围**：树结构（SplitNode/LeafNode）+ per-group tab 列表 + activeTab + previewTab + primaryGroupId。不序列化 draft 内容和 save 状态（分别由 DB 重加载和 getter 派生）
+- **序列化范围**：树结构（SplitNode/LeafNode）+ per-group tab 列表 + activeTab + previewTab + activeGroupId。不序列化 draft 内容和 save 状态（分别由 DB 重加载和 getter 派生）
 - **写入策略**：1 秒去抖（debounce），复用 `LocalSettingsStore` 三阶段 atomic write
 - **Recovery**：文件不存在/损坏/schema 版本不匹配 → 默认单 pane
 - **Pane 上限**：8（DI-3 D9），无深度限制

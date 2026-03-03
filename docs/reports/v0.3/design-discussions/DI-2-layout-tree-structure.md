@@ -308,7 +308,7 @@ DI-1 Q2 生命周期事件在布局树上的映射：
 
 | DI-1 生命周期事件 | EditorGroupModel | 布局树 |
 |-------------------|-----------------|--------|
-| **启动** | 创建 primary group | 树 = `LeafNode(primaryGroupId)` |
+| **启动** | 创建 default group | 树 = `LeafNode(defaultGroupId)` |
 | **Split** | 创建新 group（tabs = [原 activeTab]） | 将目标 leaf 替换为 `SplitNode(原leaf, 新leaf, axis, 0.5)` |
 | **关闭最后 tab（非 primary）** | group 销毁 | 将该 leaf 的父 SplitNode 替换为兄弟节点（坍缩） |
 | **关闭最后 tab（primary）** | group 保留（空状态） | leaf 保留 |

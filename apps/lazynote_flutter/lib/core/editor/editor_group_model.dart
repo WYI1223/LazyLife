@@ -220,4 +220,31 @@ class EditorGroupModel extends ChangeNotifier {
     notifyListeners();
     return true;
   }
+
+  // ── Serialization (PR-RB-07 DI-3) ─────────────────────────────────────
+
+  /// Serializes tab state to JSON for layout persistence.
+  ///
+  /// Only atomId references are persisted — titles are reloaded in Phase 2.
+  Map<String, dynamic> toJson() {
+    return {
+      'tabs': _tabs.map((t) => t.atomId).toList(),
+      'activeTab': _activeAtomId,
+      'previewTab': _previewTabId,
+    };
+  }
+
+  /// Restores group state from persisted JSON (Phase 1).
+  ///
+  /// Tab titles default to empty string — reloaded during Phase 2.
+  static EditorGroupModel fromJson(String groupId, Map<String, dynamic> json) {
+    final model = EditorGroupModel(groupId: groupId);
+    final tabs = (json['tabs'] as List?)?.cast<String>() ?? [];
+    for (final atomId in tabs) {
+      model._tabs.add(TabEntry(atomId: atomId, title: ''));
+    }
+    model._activeAtomId = json['activeTab'] as String?;
+    model._previewTabId = json['previewTab'] as String?;
+    return model;
+  }
 }
