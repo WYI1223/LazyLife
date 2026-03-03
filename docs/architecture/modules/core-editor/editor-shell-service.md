@@ -88,7 +88,7 @@ service = EditorShellService(
 
 | 事件 | 行为 |
 |------|------|
-| 启动 | 注入闭包，从 `LayoutPersistence` 恢复布局，创建 primary group |
+| 启动 | 注入闭包，从 `LayoutPersistence` 恢复布局，创建 default group |
 | openTab | 若 buffer 不存在 → 创建 `EditBuffer`（loading 状态），调用 `_loadContentFn` |
 | closeTab | 从 group.tabs 移除；检查引用计数 → 无其他 group 引用 → flush + dispose buffer；空 group + groups.length > 1 → auto-collapse |
 | split | 创建新 group，复制当前 activeTab |
@@ -124,9 +124,11 @@ service = EditorShellService(
 
 | 阶段 | 状态 | PR |
 |------|------|-----|
-| Service + groups + buffers + layout 组合 | PR-RB-06 实施中 | PR-RB-06（v0.3） |
-| Coordinator 提取（tab/draft/save → Service） | PR-RB-06 实施中 | PR-RB-06（v0.3） |
-| 布局持久化集成（LayoutPersistence） | PR-RB-07 待实施 | PR-RB-07（v0.3，DI-3） |
+| Service + groups + buffers + layout 组合 | 已实施 | PR-RB-06（v0.3） |
+| Coordinator 提取（tab/draft/save → Service） | 已实施 | PR-RB-06（v0.3） |
+| 布局持久化集成（LayoutPersistence） | 已实施 | PR-RB-07（v0.3，DI-3） |
+| Buffer sharing + save 语义 | 已实施 | PR-RB-06（v0.3，DI-4 T1/T2） |
+| P1/P2 loading 策略 | PR-RB-08 待实施 | PR-RB-08（v0.3，DI-4 T5/T6） |
 | EditorResolver 集成 | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
 
 ---

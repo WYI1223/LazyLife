@@ -947,7 +947,7 @@ main()
 | 裁决 | 内容 | 对 Q4 的约束 |
 |------|------|------------|
 | DI-1 Q3 细化1 | EditBuffer 状态机 `loading → ready → disposing`；`loading` 阶段 `edit()/save()/flush()` 均为 no-op | 加载前 UI 安全 |
-| DI-3 边界 | atomId 不存在 → 跳过 tab；非 primary group 清空 → 坍缩 | 失败处理已定义方向 |
+| DI-3 边界 | atomId 不存在 → 跳过 tab；groups.length > 1 时空 group → 坍缩（paneCount ≥ 1 不变量） | 失败处理已定义方向 |
 | DI-3 边界 | 用户在 loading 阶段关闭 tab → 允许（结构操作） | 加载可中断 |
 | S2 Phase 2 | Coordinator → Service（直接调用），Service → FFI（persistFn 闭包），Service → Coordinator（onBufferSaved 回调） | 通信模式已定义 |
 
@@ -1308,7 +1308,7 @@ Future<void> _loadSingleBuffer(String atomId) async {
 
 | 场景 | 异常类型 | Service 行为 | 用户看到 |
 |------|---------|-------------|---------|
-| atomId 在 DB 中不存在 | `AtomNotFoundException` | 从所有 group 移除该 tab → 非 primary group 清空则坍缩（DI-3） | Tab 消失，其余 tab 正常 |
+| atomId 在 DB 中不存在 | `AtomNotFoundException` | 从所有 group 移除该 tab → groups.length > 1 时空 group 坍缩（paneCount ≥ 1，DI-3） | Tab 消失，其余 tab 正常 |
 | FFI 调用异常（DB 锁定、I/O 错误） | 通用异常 | buffer 标记 `error` 状态 → UI 显示错误占位 + retry 按钮 | 错误提示，可点击重试 |
 | 用户在 loading 中关闭 tab | — | 允许关闭（DI-3）→ 忽略后续 load 结果 → dispose buffer | Tab 关闭，符合预期 |
 | 用户在 loading 中切换 tab | — | 旧 tab 加载继续（fire-and-forget）→ 新 tab 触发 P2 加载 | 新 tab 显示 loading → content |

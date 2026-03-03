@@ -88,7 +88,7 @@ S2 的开放设计项：
 
 ### 核心规则
 
-**Group 存在 ↔ Group 有 tab（或是 primary group）。** 无显式"关闭窗格"操作。
+**Group 存在 ↔ Group 有 tab（或是最后一个 group，paneCount ≥ 1 不变量）。** 无显式"关闭窗格"操作。
 
 参考：VS Code / IntelliJ / Sublime 均无独立的"关闭窗格"按钮，pane 生命周期完全由 tab 驱动。
 
@@ -96,11 +96,11 @@ S2 的开放设计项：
 
 | 事件 | 行为 |
 |------|------|
-| **启动** | 创建 1 个 primary group |
+| **启动** | 创建 1 个 default group |
 | **Split** | 创建新 group，`tabs = [原 activeTab]`，`activeAtomId = 原 activeAtomId`，`previewTabId = null`。原 group 不变。 |
 | **关闭 tab** | 从 group.tabs 移除 |
-| **关闭最后一个 tab（非 primary group）** | group 自动销毁，空间归还相邻 group |
-| **关闭最后一个 tab（primary group）** | group 保留，显示空状态 |
+| **关闭最后一个 tab（groups.length > 1）** | group 自动销毁，空间归还相邻 group |
+| **关闭最后一个 tab（最后一个 group）** | group 保留，显示空状态（paneCount ≥ 1） |
 | **Switch** | 切换 EditorShellService.activeGroupId 指针 |
 
 如需快速清空一个窗格，提供"Close All Tabs in Group"批量操作（关闭 tab → 最后一个关完 → group 自然消失）。

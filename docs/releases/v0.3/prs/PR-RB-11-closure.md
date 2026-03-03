@@ -47,7 +47,7 @@ PR-RB-06 将 NoteTabStateManager / NoteDraftManager / NoteSaveTracker 提取到 
 | 测试领域 | 关键路径 | 预期由前 PR 覆盖 | PR-RB-11 补齐 |
 |----------|---------|------------------|--------------|
 | EditBuffer 状态机 | loading→ready→error→disposing 转换 | PR-RB-08 T7/T8 | 边界用例：concurrent edit、ref counting |
-| GroupLayout 不变式 | I1-I7（max 8 pane、primary 不消失等） | PR-RB-06 T12/T13 | 压力测试：快速 split/close 序列 |
+| GroupLayout 不变式 | I1-I7（max 8 pane、paneCount ≥ 1 不变式等） | PR-RB-06 T12/T13 | 压力测试：快速 split/close 序列 |
 | Layout 持久化 | save→corrupt→recover 完整链路 | PR-RB-07 T4/T5 | 补充：schema 版本不匹配回退 |
 | EditorResolver | register/resolve/unknown placeholder | PR-RB-09 T6/T7 | 覆盖已足够，PR-RB-11 不额外补 |
 | Atom ref 语义 | 创建 → atom_ref 自动生成 | PR-RB-03 T12-T14 | 补充：多 entry point 一致性验证 |
