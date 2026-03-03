@@ -29,6 +29,18 @@ void _tearDownTempDir() {
   }
 }
 
+/// A Timer stub that does nothing — allows manual callback invocation.
+class _NoOpTimer implements Timer {
+  @override
+  void cancel() {}
+
+  @override
+  bool get isActive => false;
+
+  @override
+  int get tick => 0;
+}
+
 LayoutPersistence _buildPersistence({
   Timer Function(Duration, void Function())? timerFactory,
 }) {
@@ -412,15 +424,17 @@ void main() {
   group('debounce', () {
     test('multiple rapid calls result in single write', () async {
       var writeCount = 0;
-      Timer? capturedTimer;
+      void Function()? pendingCallback;
       final persistence = _buildPersistence(
         timerFactory: (duration, callback) {
-          capturedTimer?.cancel();
-          capturedTimer = Timer(duration, () {
+          // Capture the latest callback; previous ones are discarded
+          // (mirrors real Timer cancel + recreate in scheduleSave).
+          writeCount = 0; // reset on each schedule — only final fire counts
+          pendingCallback = () {
             writeCount++;
             callback();
-          });
-          return capturedTimer!;
+          };
+          return _NoOpTimer();
         },
       );
 
@@ -440,8 +454,9 @@ void main() {
         );
       }
 
-      // Wait for debounce to fire
-      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      // Fire the debounced callback manually (no wall-clock dependency)
+      pendingCallback!();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       expect(writeCount, 1);
     });

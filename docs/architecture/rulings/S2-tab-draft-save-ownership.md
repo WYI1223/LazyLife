@@ -67,11 +67,11 @@ Draft 内容和 save 状态**不属于** EditorGroupModel — 它们是 per-atom
 
 | 事件 | 行为 |
 |------|------|
-| 启动 | 创建 1 个 primary group |
+| 启动 | 创建 1 个 default group |
 | Split | 创建新 group，复制当前 activeTab |
 | 关闭 tab | 从 group.tabs 移除 |
-| 关闭最后一个 tab（非 primary） | group 自动销毁 |
-| 关闭最后一个 tab（primary） | group 保留，显示空状态 |
+| 关闭最后一个 tab（groups.length > 1） | group 自动销毁 |
+| 关闭最后一个 tab（最后一个 group） | group 保留，显示空状态（paneCount ≥ 1） |
 
 **EditBuffer（per-atom 自包含状态机）**：
 

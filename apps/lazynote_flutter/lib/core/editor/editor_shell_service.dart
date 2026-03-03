@@ -125,7 +125,7 @@ class EditorShellService extends ChangeNotifier {
 
     _scheduleLayoutSave();
 
-    // Ensure buffer exists
+    // Ensure buffer exists and is loaded
     if (!_buffers.containsKey(atomId)) {
       final buffer = EditBuffer(
         atomId: atomId,
@@ -142,6 +142,16 @@ class EditorShellService extends ChangeNotifier {
         buffer.initialize(initialContent);
       } else {
         _loadBufferContent(atomId, buffer);
+      }
+    } else {
+      // Buffer exists (e.g. from Phase 1 restore) — apply P2 lazy loading
+      final existing = _buffers[atomId]!;
+      if (existing.phase == BufferPhase.loading) {
+        if (initialContent != null) {
+          existing.initialize(initialContent);
+        } else {
+          _loadBufferContent(atomId, existing);
+        }
       }
     }
 
@@ -182,11 +192,21 @@ class EditorShellService extends ChangeNotifier {
   }
 
   /// Switches the active tab in [groupId] to [atomId].
+  ///
+  /// P2 Lazy loading (DI-4 Q4): if the buffer is still in loading phase,
+  /// triggers on-demand content load.
   void switchTab(String groupId, String atomId) {
     final group = _groups[groupId];
     if (group == null) return;
     group.activateTab(atomId);
     _activeGroupId = groupId;
+
+    // T6: P2 Lazy — trigger load if buffer still in loading phase
+    final buffer = _buffers[atomId];
+    if (buffer != null && buffer.phase == BufferPhase.loading) {
+      _loadBufferContent(atomId, buffer);
+    }
+
     _scheduleLayoutSave();
     notifyListeners();
   }
@@ -195,6 +215,50 @@ class EditorShellService extends ChangeNotifier {
   void updateTabTitle(String atomId, String newTitle) {
     for (final group in _groups.values) {
       group.updateTitle(atomId, newTitle);
+    }
+  }
+
+  // ── Buffer loading ──────────────────────────────────────────────────
+
+  /// P1 Eager: loads all active tab buffers in parallel (DI-4 Q4).
+  ///
+  /// Called by the coordinator after Background Phase (DB ready). Creates
+  /// buffers for restored tabs (from Phase 1 snapshot) and loads content
+  /// for each group's active tab via fire-and-forget parallel fetch.
+  Future<void> loadActiveBuffers() async {
+    _ensureRestoredBuffersExist();
+
+    final futures = <Future<void>>[];
+    for (final group in _groups.values) {
+      final atomId = group.activeAtomId;
+      if (atomId == null) continue;
+      final buffer = _buffers[atomId];
+      if (buffer != null && buffer.phase == BufferPhase.loading) {
+        futures.add(_loadBufferContent(atomId, buffer));
+      }
+    }
+    await Future.wait(futures, eagerError: false);
+  }
+
+  /// Creates EditBuffer instances for all tabs restored from the layout
+  /// snapshot. Phase 1 restores tab entries only; buffers are created here
+  /// in loading phase, ready for P1/P2 content loading.
+  void _ensureRestoredBuffersExist() {
+    for (final group in _groups.values) {
+      for (final tab in group.tabs) {
+        if (!_buffers.containsKey(tab.atomId)) {
+          final buffer = EditBuffer(
+            atomId: tab.atomId,
+            persistFn: _persistFn,
+            onSaved: _onBufferSaved,
+            autosaveDebounce:
+                _autosaveDebounce ?? const Duration(milliseconds: 1500),
+            timerFactory: _timerFactory,
+          );
+          buffer.addListener(_onBufferChanged);
+          _buffers[tab.atomId] = buffer;
+        }
+      }
     }
   }
 
@@ -320,17 +384,48 @@ class EditorShellService extends ChangeNotifier {
 
   void _onBufferChanged() => notifyListeners();
 
+  /// Loads content for a single buffer via the injected closure.
+  ///
+  /// T7 failure handling (DI-4 Q4):
+  /// - [AtomNotFoundException] → remove tab from all groups + auto-collapse
+  /// - Generic exception → [buffer.markError] → UI shows error + retry
   Future<void> _loadBufferContent(String atomId, EditBuffer buffer) async {
     try {
       final content = await _loadContentFn(atomId);
       if (buffer.phase == BufferPhase.loading) {
         buffer.initialize(content);
       }
+    } on AtomNotFoundException {
+      // Atom no longer exists in DB — remove from all groups
+      _removeAtomFromAllGroups(atomId);
     } catch (e) {
       if (buffer.phase == BufferPhase.loading) {
         buffer.markError(e.toString());
       }
     }
+  }
+
+  /// Removes an atom's tab from every group and cleans up the buffer.
+  ///
+  /// Used when loading reveals the atom no longer exists (T7).
+  void _removeAtomFromAllGroups(String atomId) {
+    final groupIds = _groups.keys.toList();
+    for (final gid in groupIds) {
+      final group = _groups[gid];
+      if (group == null) continue;
+      group.removeTab(atomId);
+      if (group.isEmpty && _groups.length > 1) {
+        _destroyGroup(gid);
+      }
+    }
+    // Clean up the orphaned buffer
+    final buffer = _buffers.remove(atomId);
+    if (buffer != null) {
+      buffer.removeListener(_onBufferChanged);
+      buffer.dispose();
+    }
+    _scheduleLayoutSave();
+    notifyListeners();
   }
 
   @override

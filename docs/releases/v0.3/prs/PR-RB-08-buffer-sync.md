@@ -1,7 +1,7 @@
 # PR-RB-08: DI-4/5 Buffer 同步
 
 - Proposed title: `feat(editor): PR-RB-08 cross-pane buffer sync with manual listener pattern`
-- Status: Draft
+- Status: Implemented
 
 ## Goal
 
@@ -122,8 +122,8 @@ class _EditorPaneState extends State<EditorPane> {
 
 | Task | 内容 | 文件 | 变更 | 依赖 |
 |------|------|------|------|------|
-| T1 | EditBuffer 完善 save 语义：1.5s debounce + 30s force + `_rev` stale guard | `edit_buffer.dart` | 编辑 ~50 行 | — |
-| T2 | EditorShellService：同一 atomId 多 pane 打开时共享 EditBuffer 实例（buffer ref-counting） | `editor_shell_service.dart` | 编辑 ~30 行 | — |
+| T1 | **验证** 已有 EditBuffer save 语义：1.5s debounce + 30s force + `_rev` stale guard + save queuing — PR-RB-06 已实现 | `edit_buffer.dart` | 验证，无代码变更 | — |
+| T2 | **验证** 已有 buffer sharing：`_buffers` map + group containment ref-counting in `closeTab()` — PR-RB-06 已实现 | `editor_shell_service.dart` | 验证，无代码变更 | — |
 
 ### Phase 2: Editor Widget Bridging
 
@@ -144,8 +144,8 @@ class _EditorPaneState extends State<EditorPane> {
 
 | Task | 内容 | 文件 | 变更 | 依赖 |
 |------|------|------|------|------|
-| T8 | EditBuffer 跨 pane sync 测试：两个 listener，edit from one → other receives | `test/edit_buffer_test.dart` | 新增 ~100 行 | T1 |
-| T9 | Save 语义测试：debounce + `_rev` stale guard + force periodic | `test/edit_buffer_test.dart` | 新增 ~80 行 | T1 |
+| T8 | EditBuffer 跨 pane sync 测试：验证 PR-RB-06 已有 listener 行为 + 补充两个 listener edit-from-one-observe-other 场景 | `test/edit_buffer_test.dart` | 新增 ~100 行 | T1 |
+| T9 | Save 语义测试：验证 PR-RB-06 已有 debounce + `_rev` stale guard + force periodic + save queuing | `test/edit_buffer_test.dart` | 新增 ~80 行 | T1 |
 | T10 | P1/P2 loading 测试：eager parallel + lazy on-demand + failure handling | `test/editor_shell_service_test.dart` | 新增 ~100 行 | T5, T6, T7 |
 | T11 | 性能回归守卫：100KB buffer sync <40ms (CI 5x) | `test/edit_buffer_test.dart` | 新增 ~15 行 | T1 |
 | T12 | Manual listener widget 测试 | `test/editor_pane_test.dart` | 新文件 ~80 行 | T3 |
@@ -195,12 +195,12 @@ dart run ../../tools/ci/architecture_check.dart
 
 ## Acceptance Criteria
 
-- [ ] 同一 Atom 跨 2+ pane 编辑实时同步
-- [ ] 光标独立：非编辑 pane 更新不影响编辑 pane cursor
-- [ ] Manual listener 三点生命周期正确（initState/didUpdateWidget/dispose）
-- [ ] String guard 防止编辑 pane 自身 loop
-- [ ] `_rev` 防止 stale save
-- [ ] P1 eager loading + P2 lazy loading 正常
-- [ ] Loading failure gracefully handled
-- [ ] Buffer sync 100KB <40ms（CI guard）
-- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
+- [x] 同一 Atom 跨 2+ pane 编辑实时同步
+- [x] 光标独立：非编辑 pane 更新不影响编辑 pane cursor
+- [x] Manual listener 三点生命周期正确（initState/didUpdateWidget/dispose）
+- [x] String guard 防止编辑 pane 自身 loop
+- [x] `_rev` 防止 stale save
+- [x] P1 eager loading + P2 lazy loading 正常
+- [x] Loading failure gracefully handled
+- [x] Buffer sync 100KB <40ms（CI guard）
+- [x] §Verification CI gates 全部通过（逐项执行并记录输出）

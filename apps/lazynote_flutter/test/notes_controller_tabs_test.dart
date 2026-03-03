@@ -583,4 +583,49 @@ void main() {
     expect(result.errorCode, 'save_blocked');
     expect(deleteInvoked, isFalse);
   });
+
+  test(
+    'db_error on note_get does not remove tab (only note_not_found does)',
+    () async {
+      final store = <String, rust_api.AtomListItem>{
+        'note-1': _note(atomId: 'note-1', content: '# first', updatedAt: 2),
+        'note-2': _note(atomId: 'note-2', content: '# second', updatedAt: 1),
+      };
+      var dbErrorForNote2 = false;
+      final controller = _buildController(
+        store: store,
+        noteGetInvoker: ({required atomId}) async {
+          if (atomId == 'note-2' && dbErrorForNote2) {
+            return const rust_api.AtomItemResponse(
+              ok: false,
+              errorCode: 'db_error',
+              message: 'database busy',
+              item: null,
+            );
+          }
+          final found = store[atomId];
+          return rust_api.AtomItemResponse(
+            ok: found != null,
+            errorCode: found == null ? 'note_not_found' : null,
+            message: found == null ? 'missing' : 'ok',
+            item: found,
+          );
+        },
+      );
+      addTearDown(controller.dispose);
+
+      await controller.loadNotes();
+      expect(controller.openNoteIds, ['note-1']);
+
+      // Open note-2, then trigger a db_error on its detail load
+      dbErrorForNote2 = true;
+      await controller.openNoteFromExplorer('note-2');
+
+      // Tab must survive — db_error should NOT trigger tab removal
+      expect(controller.openNoteIds, contains('note-2'));
+      expect(controller.activeNoteId, 'note-2');
+      // Detail load should show error, not silently remove
+      expect(controller.detailErrorMessage, isNotNull);
+    },
+  );
 }

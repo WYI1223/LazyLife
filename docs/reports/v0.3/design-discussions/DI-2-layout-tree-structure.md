@@ -122,9 +122,9 @@
 
 任何 pane 在两个轴上均不小于 200px。Split 操作在不满足时被拒绝，Resize 操作在到达阈值时停止。
 
-### Primary pane 不可消失
+### 最后一个 pane 不可消失
 
-DI-1 Q2 裁决：关闭 primary group 的最后一个 tab → group 保留，显示空状态。最后一个 atom 可以关闭，最后一个 pane 不消失。
+DI-1 Q2 裁决：关闭最后一个 group 的最后一个 tab → group 保留，显示空状态（paneCount ≥ 1 不变量）。最后一个 atom 可以关闭，最后一个 pane 不消失。
 
 ### 窗口缩小 → UI 层 overflow clip
 
@@ -310,8 +310,8 @@ DI-1 Q2 生命周期事件在布局树上的映射：
 |-------------------|-----------------|--------|
 | **启动** | 创建 default group | 树 = `LeafNode(defaultGroupId)` |
 | **Split** | 创建新 group（tabs = [原 activeTab]） | 将目标 leaf 替换为 `SplitNode(原leaf, 新leaf, axis, 0.5)` |
-| **关闭最后 tab（非 primary）** | group 销毁 | 将该 leaf 的父 SplitNode 替换为兄弟节点（坍缩） |
-| **关闭最后 tab（primary）** | group 保留（空状态） | leaf 保留 |
+| **关闭最后 tab（groups.length > 1）** | group 销毁 | 将该 leaf 的父 SplitNode 替换为兄弟节点（坍缩） |
+| **关闭最后 tab（最后一个 group）** | group 保留（空状态，paneCount ≥ 1） | leaf 保留 |
 
 **Split 示例**：
 

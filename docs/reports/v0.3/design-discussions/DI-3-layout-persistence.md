@@ -75,7 +75,7 @@
 
 布局持久化与 tab 列表持久化是**不可分割的**。
 
-**推导**：DI-1 Q2 规则——非 primary group 最后一个 tab 关闭 → group 销毁 → leaf 坍缩。如果恢复时 group 无 tab，立即触发销毁，树坍缩回单 pane。**布局持久化无 tab 数据 = 无效持久化**。
+**推导**：DI-1 Q2 规则——groups.length > 1 时最后一个 tab 关闭 → group 销毁 → leaf 坍缩（paneCount ≥ 1 不变量）。如果恢复时 group 无 tab，立即触发销毁，树坍缩回单 pane。**布局持久化无 tab 数据 = 无效持久化**。
 
 | 序列化 | 不序列化 |
 |--------|---------|
@@ -157,7 +157,7 @@
 | schema_version > 当前版本 | 默认单 pane + 不覆写（保护未来版本数据） |
 | 树结构不合法（fraction ≤ 0、缺少必要字段等） | 默认单 pane + 日志警告 |
 | Tab 中的 atomId 在 DB 中不存在 | 跳过该 tab，继续恢复其余 |
-| Group 恢复后 tab 列表为空（非 primary） | 该 group 销毁，树坍缩（DI-1 Q2） |
+| Group 恢复后 tab 列表为空（groups.length > 1） | 该 group 销毁，树坍缩（paneCount ≥ 1 不变量） |
 | Temp file 残留 | 复用 temp file recovery 模式 |
 
 ### Atomic Write
@@ -285,7 +285,7 @@ DI-4 接收 DI-3 的产出作为前提条件：
 | JSON 文件不存在 / 损坏 | DI-3 | 默认单 pane |
 | 树结构不合法 | DI-3 | 默认单 pane |
 | DB 尚未就绪 | DI-4 | EditBuffer 保持 `loading`，UI 显示 loading |
-| atomId 在 DB 中不存在 | DI-4 | 跳过该 tab；非 primary group 因此清空 → 坍缩 |
+| atomId 在 DB 中不存在 | DI-4 | 跳过该 tab；groups.length > 1 时空 group 坍缩（paneCount ≥ 1） |
 | 用户在 loading 阶段关闭 tab | DI-3（结构操作） | 允许——仅更新 GroupLayout + EditorGroupModel |
 | 用户在 loading 阶段尝试编辑 | DI-4（Buffer 状态） | `loading` 状态拒绝 `edit()` 调用，UI 禁用编辑 |
 | DB 加载失败（FFI 通用异常） | DI-4 | EditBuffer 标记 `error` 状态（`markError()`），UI 显示错误占位 + retry 按钮，不影响布局结构（DI-4 Q4 细化4） |

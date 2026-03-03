@@ -40,6 +40,9 @@ closeTab(String groupId, String atomId)
 switchTab(String groupId, String atomId)
 updateTabTitle(String atomId, String newTitle)
 
+// 内容加载
+Future<void> loadActiveBuffers()     // P1 eager: 恢复后并行加载所有 active tab 内容
+
 // 保存操作
 Future<void> flushBuffer(String atomId)
 Future<void> flushAllDirtyBuffers()
@@ -67,7 +70,9 @@ LayoutResolveResult resolveLayout(Size containerSize)
 | Service → FFI | 双闭包注入 | `_loadContentFn` + `_persistFn`，Service 控制 WHEN，Coordinator 提供 HOW |
 | Service → Coordinator | 回调 | `onBufferSaved(atomId, content)` — 保存成功后通知 Coordinator 更新缓存 |
 
-**Coordinator 定位**：接线员（wiring mediator）+ facade。Coordinator 在构造时注入闭包，监听 Service 变化转发给 UI，但不参与加载/保存逻辑。Pane 操作（`splitActivePane` / `switchActivePane` / `activateNextPane`）保留为 coordinator facade，负责前置检查（canSplit、containerSize）和状态同步（selectedNote、saveState、editorFocus），底层委托 Service 执行。
+**Coordinator 定位**：接线员（wiring mediator）+ facade。Coordinator 在构造时注入闭包，监听 Service 变化转发给 UI，但不参与加载/保存逻辑。Pane 操作（`splitActivePane` / `switchActivePane` / `activateNextPane`）保留为 coordinator facade，负责前置检查（canSplit、containerSize）和状态同步（saveState、editorFocus），底层委托 Service 执行。
+
+**激活后状态同步**（PR-RB-08B）：所有"让某个 note 成为 active"的路径统一调用 `_syncActiveNoteState()` → `_updateSaveStateFromBuffer()` + `_requestEditorFocus()` + `_switchBlockErrorMessage = null`。
 
 ```dart
 // Coordinator 注入示例
@@ -88,8 +93,9 @@ service = EditorShellService(
 
 | 事件 | 行为 |
 |------|------|
-| 启动 | 注入闭包，从 `LayoutPersistence` 恢复布局，创建 primary group |
-| openTab | 若 buffer 不存在 → 创建 `EditBuffer`（loading 状态），调用 `_loadContentFn` |
+| 启动 | 注入闭包，从 `LayoutPersistence` 恢复布局，创建 default group |
+| 初次加载 | Coordinator 检测到已恢复的 tabs → 调用 `loadActiveBuffers()` 进行 P1 eager 内容加载 |
+| openTab | 若 buffer 不存在 → 创建 `EditBuffer`（loading 状态），调用 `_loadContentFn`；若 buffer 已存在且处于 loading 状态 → 触发 P2 lazy 加载 |
 | closeTab | 从 group.tabs 移除；检查引用计数 → 无其他 group 引用 → flush + dispose buffer；空 group + groups.length > 1 → auto-collapse |
 | split | 创建新 group，复制当前 activeTab |
 | 退出前 | `flushAllDirtyBuffers()` |
@@ -104,9 +110,10 @@ service = EditorShellService(
 
 | 保留组件 | 职责 |
 |---------|------|
-| `NoteListManager` | 列表查询 + 缓存 |
+| `NoteListManager` | 列表查询 + 缓存（`_noteCache` 为 `selectedNote` 派生源） |
 | `NoteTagManager` | tag CRUD + 变更队列 |
-| `selectedNote` / `detailLoading` | 详情面板 DTO + 加载状态 |
+| `selectedNote`（derived getter） | 从 `activeNoteId + cachedNoteById()` 派生，无存储字段（PR-RB-08B） |
+| `_detailLoadedAtomId` / `detailLoading` | detail 加载完成追踪 + 加载中状态 |
 | `selectedTag` | 列表过滤条件 |
 
 ---
@@ -124,9 +131,13 @@ service = EditorShellService(
 
 | 阶段 | 状态 | PR |
 |------|------|-----|
-| Service + groups + buffers + layout 组合 | PR-RB-06 实施中 | PR-RB-06（v0.3） |
-| Coordinator 提取（tab/draft/save → Service） | PR-RB-06 实施中 | PR-RB-06（v0.3） |
-| 布局持久化集成（LayoutPersistence） | PR-RB-07 待实施 | PR-RB-07（v0.3，DI-3） |
+| Service + groups + buffers + layout 组合 | 已实施 | PR-RB-06（v0.3） |
+| Coordinator 提取（tab/draft/save → Service） | 已实施 | PR-RB-06（v0.3） |
+| 布局持久化集成（LayoutPersistence） | 已实施 | PR-RB-07（v0.3，DI-3） |
+| Buffer sharing + save 语义 | 已实施 | PR-RB-06（v0.3，DI-4 T1/T2） |
+| P1/P2 loading 策略（loadActiveBuffers + switchTab lazy） | 已实施 | PR-RB-08（v0.3，DI-4 T5/T6） |
+| Loading failure handling（AtomNotFoundException → tab removal） | 已实施 | PR-RB-08（v0.3，DI-4 T7） |
+| Coordinator 结构清理（selectedNote 派生化 + 激活收敛 + 通知收敛） | 已实施 | PR-RB-08B（v0.3） |
 | EditorResolver 集成 | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
 
 ---

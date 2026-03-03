@@ -90,7 +90,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
             return _noteListManager.listPhase != NotesListPhase.error;
           },
       activeNoteId: () => activeNoteId,
-      noteById: (atomId) => _noteListManager.noteById(atomId) ?? _selectedNote,
+      noteById: (atomId) => _noteListManager.noteById(atomId) ?? selectedNote,
       upsertNote: _noteListManager.upsertNote,
       isDirty: _isDirty,
       setSaveState: _setSaveState,
@@ -98,7 +98,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         _saveErrorMessage = message;
       },
       onActiveNoteUpdated: ({required atomId, required note}) {
-        _selectedNote = note;
         _switchBlockErrorMessage = null;
       },
     );
@@ -143,9 +142,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   // ── Detail state ───────────────────────────────────────────────────
 
-  rust_api.AtomListItem? _selectedNote;
   bool _detailLoading = false;
   String? _detailErrorMessage;
+  String? _detailLoadedAtomId;
 
   // ── Create state ───────────────────────────────────────────────────
 
@@ -168,6 +167,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   String? _switchBlockErrorMessage;
   int _detailRequestId = 0;
   bool _disposed = false;
+  bool _initialLoadCompleted = false;
 
   // ── Public getters: list ───────────────────────────────────────────
 
@@ -200,7 +200,13 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   // ── Public getters: detail ─────────────────────────────────────────
 
-  rust_api.AtomListItem? get selectedNote => _selectedNote;
+  /// Derived from activeNoteId + list cache. No manual assignment needed.
+  rust_api.AtomListItem? get selectedNote {
+    final atomId = activeNoteId;
+    if (atomId == null) return null;
+    return _noteListManager.cachedNoteById(atomId);
+  }
+
   bool get detailLoading => _detailLoading;
   String? get detailErrorMessage => _detailErrorMessage;
 
@@ -253,7 +259,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     final atomId = activeNoteId;
     if (atomId == null) return '';
     return _editorShellService.bufferFor(atomId)?.content ??
-        _selectedNote?.content ??
+        selectedNote?.content ??
         '';
   }
 
@@ -269,7 +275,12 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   // ── Tab operations ─────────────────────────────────────────────────
 
   Future<bool> selectNote(String atomId) async {
-    if (_canReuseSelection(atomId)) return true;
+    if (activeNoteId == atomId &&
+        _detailLoadedAtomId == atomId &&
+        !_detailLoading &&
+        _detailErrorMessage == null) {
+      return true;
+    }
     if (activeNoteId case final currentId? when currentId != atomId) {
       final flushed = await flushPendingSave();
       if (!flushed) return false;
@@ -314,9 +325,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     // If we closed the active note, adopt the new active tab
     final newActiveId = _editorShellService.activeGroup?.activeAtomId;
     if (newActiveId != null && newActiveId != atomId) {
-      _selectedNote = noteById(newActiveId);
-      _updateSaveStateFromBuffer();
-      _requestEditorFocus();
+      _syncActiveNoteState();
       notifyListeners();
       await _loadSelectedDetail(atomId: newActiveId);
     } else if (newActiveId == null) {
@@ -463,9 +472,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     if (!_editorShellService.groups.containsKey(groupId)) return false;
     if (_editorShellService.activeGroupId == groupId) return true;
     _editorShellService.switchActiveGroup(groupId);
-    _selectedNote = activeNoteId != null ? noteById(activeNoteId!) : null;
-    _updateSaveStateFromBuffer();
-    _requestEditorFocus();
+    _syncActiveNoteState();
     notifyListeners();
     return true;
   }
@@ -537,10 +544,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _editorShellService.activeGroup?.pinPreviewTab(atomId);
 
     // Update title projection in list
-    final current = _noteListManager.cachedNoteById(atomId) ?? _selectedNote;
+    final current = _noteListManager.cachedNoteById(atomId);
     if (current != null) {
       final updated = _withContent(current, content);
-      _selectedNote = updated;
       _noteListManager.upsertNote(updated);
       _editorShellService.updateTabTitle(
         atomId,
@@ -670,11 +676,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       );
       _noteListManager.markListSuccess();
       _openAndActivateTab(createdNote.atomId, initialContent: '');
-      _selectedNote = createdNote;
       _detailErrorMessage = null;
       _creatingNote = false;
       _setSaveState(NoteSaveState.clean);
-      _requestEditorFocus();
       notifyListeners();
 
       if (createdNote.startAt != null || createdNote.endAt != null) {
@@ -761,23 +765,13 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       initialContent: effectiveContent,
       title: title,
     );
-    _updateSaveStateFromBuffer();
-    _requestEditorFocus();
-    _switchBlockErrorMessage = null;
-  }
-
-  bool _canReuseSelection(String atomId) {
-    return activeNoteId == atomId &&
-        _selectedNote != null &&
-        _selectedNote!.atomId == atomId &&
-        !_detailLoading &&
-        _detailErrorMessage == null;
+    _syncActiveNoteState();
   }
 
   void _clearSelection() {
-    _selectedNote = null;
     _detailLoading = false;
     _detailErrorMessage = null;
+    _detailLoadedAtomId = null;
     _setSaveState(NoteSaveState.clean);
   }
 
@@ -817,10 +811,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         title: title,
       );
     }
-    _selectedNote = noteById(atomId);
-    _updateSaveStateFromBuffer();
-    _requestEditorFocus();
-    _switchBlockErrorMessage = null;
+    _syncActiveNoteState();
     notifyListeners();
     await _loadSelectedDetail(atomId: atomId);
     return true;
@@ -831,8 +822,14 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   Future<String> _loadNoteContentFromFFI(String atomId) async {
     await _prepare();
     final response = await _noteGetInvoker(atomId: atomId);
-    if (!response.ok || response.item == null) {
-      throw Exception(response.message);
+    if (response.item == null) {
+      if (response.errorCode == 'note_not_found') {
+        throw AtomNotFoundException(atomId);
+      }
+      throw Exception(
+        'Failed to load note $atomId: '
+        '${response.errorCode ?? "unknown"} — ${response.message}',
+      );
     }
     return response.item!.content;
   }
@@ -866,7 +863,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   void _handleBufferSaved(String atomId, String content) {
     if (activeNoteId == atomId) {
-      _selectedNote = _noteListManager.cachedNoteById(atomId) ?? _selectedNote;
       _switchBlockErrorMessage = null;
     }
   }
@@ -882,12 +878,45 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       unawaited(_noteTagManager.refreshAvailableTags());
     }
 
+    // Phase 1→Phase 2 transition: detect restored tabs from layout persistence.
+    // On the initial load, preserve the restored layout instead of resetting it.
+    final hasRestoredTabs =
+        resetSession &&
+        !_initialLoadCompleted &&
+        _editorShellService.groups.values.any((g) => g.tabs.isNotEmpty);
+
     if (resetSession) {
-      _resetSessionForReload();
+      _resetSessionForReload(skipEditorReset: hasRestoredTabs);
     }
+    _initialLoadCompleted = true;
 
     _switchBlockErrorMessage = null;
     final loadedItems = await _noteListManager.loadNotes(limit: listLimit);
+
+    if (hasRestoredTabs) {
+      // Restored-layout path: load note list for sidebar, then P1 load active
+      // buffer content. Tabs/layout are already in place from Phase 1 snapshot.
+      await _editorShellService.loadActiveBuffers();
+
+      String? detailTargetId = activeNoteId;
+      if (detailTargetId != null) {
+        _syncActiveNoteState();
+      } else if (loadedItems != null && loadedItems.isNotEmpty) {
+        final first = loadedItems.first;
+        _openAndActivateTab(first.atomId, initialContent: first.content);
+        _setSaveState(NoteSaveState.clean);
+        detailTargetId = first.atomId;
+      } else {
+        _clearSelection();
+      }
+      notifyListeners();
+      if (detailTargetId != null) {
+        await _loadSelectedDetail(atomId: detailTargetId);
+      }
+      return;
+    }
+
+    // Normal path: no restored tabs.
     if (loadedItems == null) return;
 
     final currentActiveId = activeNoteId;
@@ -897,31 +926,27 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       if (loadedItems.isNotEmpty) {
         final first = loadedItems.first;
         _openAndActivateTab(first.atomId, initialContent: first.content);
-        _selectedNote = first;
         _setSaveState(NoteSaveState.clean);
         detailTargetId = first.atomId;
       } else {
         _clearSelection();
       }
     } else {
-      final activeItem = _noteListManager.findLoadedItem(
-        loadedItems,
-        currentActiveId,
-      );
-      if (activeItem != null) {
-        _selectedNote = activeItem;
-      } else if (preserveActiveWhenFilteredOut) {
-        _selectedNote =
-            _noteListManager.cachedNoteById(currentActiveId) ?? _selectedNote;
-      } else if (loadedItems.isNotEmpty) {
-        final fallback = loadedItems.first;
-        _openAndActivateTab(fallback.atomId, initialContent: fallback.content);
-        _selectedNote = fallback;
-        _updateSaveStateFromBuffer();
-        _requestEditorFocus();
-        detailTargetId = fallback.atomId;
-      } else {
-        _clearSelection();
+      // selectedNote is derived — only act when active note is gone from list
+      // and we're not preserving it across filter changes.
+      final activeInList =
+          _noteListManager.findLoadedItem(loadedItems, currentActiveId) != null;
+      if (!activeInList && !preserveActiveWhenFilteredOut) {
+        if (loadedItems.isNotEmpty) {
+          final fallback = loadedItems.first;
+          _openAndActivateTab(
+            fallback.atomId,
+            initialContent: fallback.content,
+          );
+          detailTargetId = fallback.atomId;
+        } else {
+          _clearSelection();
+        }
       }
     }
     notifyListeners();
@@ -931,13 +956,15 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     }
   }
 
-  void _resetSessionForReload() {
-    _editorShellService.resetSession();
+  void _resetSessionForReload({bool skipEditorReset = false}) {
+    if (!skipEditorReset) {
+      _editorShellService.resetSession();
+    }
     _noteListManager.resetSessionState();
     _noteTagManager.resetMutationState();
-    _selectedNote = null;
     _detailLoading = false;
     _detailErrorMessage = null;
+    _detailLoadedAtomId = null;
     _creatingNote = false;
     _createErrorCode = null;
     _createErrorMessage = null;
@@ -949,29 +976,22 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _showSavedBadge = false;
   }
 
+  bool _staleDetailRequest(int requestId, String atomId) =>
+      _disposed || requestId != _detailRequestId || atomId != activeNoteId;
+
   Future<void> _loadSelectedDetail({required String atomId}) async {
     if (_disposed) return;
     final requestId = ++_detailRequestId;
     _detailLoading = true;
     _detailErrorMessage = null;
-    _selectedNote = _noteListManager.findListItem(atomId) ?? _selectedNote;
-    if (_disposed) return;
-    notifyListeners();
+    if (!_disposed) notifyListeners(); // ① Loading state
 
     try {
       await _prepare();
-      if (_disposed ||
-          requestId != _detailRequestId ||
-          atomId != activeNoteId) {
-        return;
-      }
+      if (_staleDetailRequest(requestId, atomId)) return;
 
       final response = await _noteListManager.loadNoteDetail(atomId: atomId);
-      if (_disposed ||
-          requestId != _detailRequestId ||
-          atomId != activeNoteId) {
-        return;
-      }
+      if (_staleDetailRequest(requestId, atomId)) return;
 
       if (!response.ok) {
         _detailLoading = false;
@@ -980,38 +1000,27 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
           message: response.message,
           fallback: 'Failed to load note detail.',
         );
-        if (!_disposed) notifyListeners();
-        return;
-      }
-
-      if (response.item case final note?) {
-        _selectedNote = note;
+      } else if (response.item case final note?) {
         _noteListManager.upsertNote(note, updatePersisted: true);
-        // Update buffer if it hasn't been edited yet
         final buffer = _editorShellService.bufferFor(note.atomId);
         if (buffer != null && buffer.phase == BufferPhase.loading) {
           buffer.initialize(note.content);
         }
         _detailLoading = false;
         _detailErrorMessage = null;
+        _detailLoadedAtomId = note.atomId;
         _updateSaveStateFromBuffer();
-        if (!_disposed) notifyListeners();
-        return;
+      } else {
+        _detailLoading = false;
+        _detailErrorMessage = 'Note detail is empty.';
       }
-
-      _detailLoading = false;
-      _detailErrorMessage = 'Note detail is empty.';
-      if (!_disposed) notifyListeners();
     } catch (error) {
-      if (_disposed ||
-          requestId != _detailRequestId ||
-          atomId != activeNoteId) {
-        return;
-      }
+      if (_staleDetailRequest(requestId, atomId)) return;
       _detailLoading = false;
       _detailErrorMessage = 'Note detail load failed unexpectedly: $error';
-      if (!_disposed) notifyListeners();
     }
+
+    if (!_disposed) notifyListeners(); // ② Result state (single call)
   }
 
   // ── Internal: workspace helpers ────────────────────────────────────
@@ -1080,15 +1089,21 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
     final newActiveId = group.activeAtomId;
     if (newActiveId != null) {
-      _selectedNote = noteById(newActiveId);
-      _updateSaveStateFromBuffer();
-      _requestEditorFocus();
+      _syncActiveNoteState();
       notifyListeners();
       await _loadSelectedDetail(atomId: newActiveId);
     }
   }
 
   // ── Internal: state helpers ────────────────────────────────────────
+
+  /// Unified post-activation sync: save state + focus + clear switch error.
+  /// All paths that make a note "active" call this at the end.
+  void _syncActiveNoteState() {
+    _updateSaveStateFromBuffer();
+    _requestEditorFocus();
+    _switchBlockErrorMessage = null;
+  }
 
   void _requestEditorFocus() {
     _editorFocusRequestId += 1;
