@@ -125,7 +125,7 @@ class EditorShellService extends ChangeNotifier {
 
     _scheduleLayoutSave();
 
-    // Ensure buffer exists
+    // Ensure buffer exists and is loaded
     if (!_buffers.containsKey(atomId)) {
       final buffer = EditBuffer(
         atomId: atomId,
@@ -142,6 +142,16 @@ class EditorShellService extends ChangeNotifier {
         buffer.initialize(initialContent);
       } else {
         _loadBufferContent(atomId, buffer);
+      }
+    } else {
+      // Buffer exists (e.g. from Phase 1 restore) — apply P2 lazy loading
+      final existing = _buffers[atomId]!;
+      if (existing.phase == BufferPhase.loading) {
+        if (initialContent != null) {
+          existing.initialize(initialContent);
+        } else {
+          _loadBufferContent(atomId, existing);
+        }
       }
     }
 

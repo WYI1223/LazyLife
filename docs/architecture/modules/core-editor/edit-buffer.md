@@ -44,7 +44,6 @@ loading ──┬──→ ready ──→ disposing
 | `content` | `String` | 当前编辑内容 |
 | `lastSavedContent` | `String` | 上次成功持久化的内容 |
 | `_rev` | `int` | 单调递增版本号（统一 DI-1 的 `_editVersion`） |
-| `_lastOp` | `EditOp?` | 最后一次编辑的操作提示（v0.3 不使用） |
 | `_debounceTimer` | `Timer?` | 自动保存延迟（per-buffer） |
 | `_saveFuture` | `Future<bool>?` | 进行中的保存 promise |
 | `_saveQueued` | `bool` | 保存完成后是否需要重新保存 |
@@ -84,8 +83,8 @@ void markError(String message)          // loading → error
 void retry()                            // error → loading（重新触发 load）
 void dispose()                          // → disposing
 
-// 编辑（仅 ready 状态有效，否则 no-op）
-void edit(String newContent, {EditOp? op})
+// 编辑（仅 ready 状态有效，否则 no-op；same-content 也是 no-op）
+void edit(String newContent, {EditOp? op})  // op: v0.3 不存储，预留 v0.4+
 
 // 保存
 Future<void> flush()                    // 立即保存 + 等待完成
@@ -95,11 +94,12 @@ Future<void> flush()                    // 立即保存 + 等待完成
 
 ## `_rev` 用途
 
-单调递增版本号，每次 `edit()` 时自增。三个用途：
+单调递增版本号，每次 `edit()` 时自增。当前用途：
 
 1. **防陈旧保存**：debounce timer 触发时检查 rev 是否匹配
-2. **同步协议版本**：`EditOp.baseRev` 基于此判断是否需要降级
-3. **Overlay stale 判定**：`content_rev > overlay.content_rev_at_sync` → 需要 reconciliation
+2. **外部版本查询**：测试和消费者通过 `rev` getter 检测编辑次数
+
+v0.4+ 预留：同步协议版本（`EditOp.baseRev`）、Overlay stale 判定。
 
 ---
 
@@ -108,9 +108,9 @@ Future<void> flush()                    // 立即保存 + 等待完成
 ```
 User keystroke → buffer.edit(newContent)
   ├── _phase != ready → no-op
+  ├── content == newContent → no-op (string guard L1)
   ├── content = newContent
   ├── _rev++
-  ├── _lastOp = op (v0.3: null)
   ├── isDirty → true (computed)
   ├── notifyListeners()
   └── restart debounce timer (1.5s idle)
@@ -155,16 +155,17 @@ EditBuffer 不关心 content_type — 统一 `notifyListeners()`，消费者自�
 
 ```dart
 sealed class EditOp {
-  final int baseRev;
+  const EditOp();
 }
-class SnapshotReplace extends EditOp { final String content; }
-class TextDelta extends EditOp { final int offset, deleteCount; final String insertText; }
-class StructuredOp extends EditOp { final String opType; final Map<String, dynamic> payload; }
+class SnapshotReplace extends EditOp { const SnapshotReplace(); }
+// v0.4+ reserved:
+// class TextDelta extends EditOp { final int offset, deleteCount; final String insertText; }
+// class StructuredOp extends EditOp { final String opType; final Map<String, dynamic> payload; }
 ```
 
-**v0.3 实现**：`edit(content)` 不传 op（等效 SnapshotReplace）。类已定义，不实例化。
+**v0.3 实现**：`edit(content, {EditOp? op})` 接受 op 参数但不存储。v0.3 调用者传 null（等效 SnapshotReplace）。`SnapshotReplace` 已定义为标记类（无字段），`TextDelta` / `StructuredOp` 注释保留。
 
-**降级规则**：TextDelta baseRev ≠ currentRev → 降级为 SnapshotReplace。StructuredOp 消费者不理解 → 降级为 SnapshotReplace。
+**v0.4+ 降级规则**：TextDelta baseRev ≠ currentRev → 降级为 SnapshotReplace。StructuredOp 消费者不理解 → 降级为 SnapshotReplace。
 
 ---
 
