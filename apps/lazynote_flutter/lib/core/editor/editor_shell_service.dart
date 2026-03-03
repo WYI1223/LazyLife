@@ -15,6 +15,7 @@ import 'package:flutter/widgets.dart' show Axis;
 import 'package:lazynote_flutter/core/editor/edit_buffer.dart';
 import 'package:lazynote_flutter/core/editor/editor_group_model.dart';
 import 'package:lazynote_flutter/core/editor/group_layout.dart';
+import 'package:lazynote_flutter/core/editor/layout_persistence.dart';
 
 /// Workbench singleton managing groups, buffers, and layout.
 ///
@@ -27,15 +28,26 @@ class EditorShellService extends ChangeNotifier {
     void Function(String atomId, String content)? onBufferSaved,
     Timer Function(Duration, void Function())? timerFactory,
     Duration? autosaveDebounce,
+    LayoutPersistence? layoutPersistence,
   }) : _loadContentFn = loadContentFn,
        _persistFn = persistFn,
        _onBufferSaved = onBufferSaved,
        _timerFactory = timerFactory,
-       _autosaveDebounce = autosaveDebounce {
-    // Create default single-pane layout
-    _activeGroupId = _defaultGroupId;
-    _groups[_defaultGroupId] = EditorGroupModel(groupId: _defaultGroupId);
-    _layout = GroupLayout(root: LeafNode(groupId: _defaultGroupId));
+       _autosaveDebounce = autosaveDebounce,
+       _layoutPersistence = layoutPersistence ?? LayoutPersistence.instance {
+    // Restore from persisted snapshot or create default single-pane layout.
+    // consumeLoadedSnapshot() returns the snapshot exactly once, preventing
+    // reuse of mutable EditorGroupModel objects across service lifetimes.
+    final snapshot = _layoutPersistence?.consumeLoadedSnapshot();
+    if (snapshot != null) {
+      _layout = snapshot.layout;
+      _groups.addAll(snapshot.groups);
+      _activeGroupId = snapshot.activeGroupId;
+    } else {
+      _activeGroupId = _defaultGroupId;
+      _groups[_defaultGroupId] = EditorGroupModel(groupId: _defaultGroupId);
+      _layout = GroupLayout(root: LeafNode(groupId: _defaultGroupId));
+    }
   }
 
   /// Fixed ID for the initial group created at construction and after reset.
@@ -48,6 +60,7 @@ class EditorShellService extends ChangeNotifier {
   final void Function(String atomId, String content)? _onBufferSaved;
   final Timer Function(Duration, void Function())? _timerFactory;
   final Duration? _autosaveDebounce;
+  final LayoutPersistence? _layoutPersistence;
 
   // ── State ────────────────────────────────────────────────────────────
 
@@ -110,6 +123,8 @@ class EditorShellService extends ChangeNotifier {
     final entry = TabEntry(atomId: atomId, title: title ?? 'Untitled');
     group.openTab(entry);
 
+    _scheduleLayoutSave();
+
     // Ensure buffer exists
     if (!_buffers.containsKey(atomId)) {
       final buffer = EditBuffer(
@@ -162,6 +177,7 @@ class EditorShellService extends ChangeNotifier {
       _destroyGroup(groupId);
     }
 
+    _scheduleLayoutSave();
     notifyListeners();
   }
 
@@ -171,6 +187,7 @@ class EditorShellService extends ChangeNotifier {
     if (group == null) return;
     group.activateTab(atomId);
     _activeGroupId = groupId;
+    _scheduleLayoutSave();
     notifyListeners();
   }
 
@@ -227,12 +244,14 @@ class EditorShellService extends ChangeNotifier {
     _groups[newGroupId] = newGroup;
     _activeGroupId = newGroupId;
 
+    _scheduleLayoutSave();
     notifyListeners();
   }
 
   /// Adjusts the split fraction at [path] in the layout tree.
   void resizeAt(List<int> path, double newFraction) {
     _layout = _layout.resizeAt(path, newFraction);
+    _scheduleLayoutSave();
     notifyListeners();
   }
 
@@ -246,6 +265,7 @@ class EditorShellService extends ChangeNotifier {
     if (!_groups.containsKey(groupId)) return;
     if (_activeGroupId == groupId) return;
     _activeGroupId = groupId;
+    _scheduleLayoutSave();
     notifyListeners();
   }
 
@@ -269,6 +289,7 @@ class EditorShellService extends ChangeNotifier {
     _groups[_defaultGroupId] = EditorGroupModel(groupId: _defaultGroupId);
     _layout = GroupLayout(root: LeafNode(groupId: _defaultGroupId));
     _activeGroupId = _defaultGroupId;
+    _scheduleLayoutSave();
     notifyListeners();
   }
 
@@ -287,6 +308,14 @@ class EditorShellService extends ChangeNotifier {
     if (_activeGroupId == groupId && _groups.isNotEmpty) {
       _activeGroupId = _groups.keys.first;
     }
+  }
+
+  void _scheduleLayoutSave() {
+    _layoutPersistence?.scheduleSave(
+      layout: _layout,
+      groups: _groups,
+      activeGroupId: _activeGroupId,
+    );
   }
 
   void _onBufferChanged() => notifyListeners();

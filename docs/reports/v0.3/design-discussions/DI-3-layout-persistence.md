@@ -84,14 +84,14 @@
 | Per-group tab 列表（atomId 数组） | 光标位置（未来增强） |
 | Per-group activeTab | |
 | Per-group previewTab | |
-| primaryGroupId | |
+| activeGroupId | |
 
 ### JSON Schema
 
 ```json
 {
   "schema_version": 1,
-  "primaryGroupId": "g1",
+  "activeGroupId": "g1",
   "layout": {
     "type": "split",
     "axis": "horizontal",
@@ -130,7 +130,7 @@
 ```json
 {
   "schema_version": 1,
-  "primaryGroupId": "g1",
+  "activeGroupId": "g1",
   "layout": { "type": "leaf", "groupId": "g1" },
   "groups": {
     "g1": {

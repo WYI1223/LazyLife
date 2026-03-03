@@ -1,13 +1,13 @@
 # PR-RB-07: DI-3 布局持久化
 
 - Proposed title: `feat(editor): PR-RB-07 layout persistence with atomic write and corruption recovery`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 
 实现 `workspace_layout.json` 持久化：序列化 `GroupLayout` + per-group tab 列表到 JSON 文件，1s 去抖写入，atomic write 防损坏，启动时两阶段恢复 Phase-1（纯结构恢复，无 FFI 依赖）。
 
-前置条件：PR-RB-06（GroupLayout + EditorGroupModel 已落地）
+前置条件：PR-RB-06（GroupLayout + EditorGroupModel 已落地，已合并。`GroupLayout.toJson()/fromJson()` 树序列化已落地）
 
 ## Execution Contract (Canonical Inputs)
 
@@ -15,7 +15,7 @@
 |------|------|---------------|
 | DI-3 | `DI-3-layout-persistence.md` D7/D8/D9 | 持久化格式 / atomic write / corruption recovery / 8 pane 限制 |
 | Module Spec | `modules/core-editor/layout-persistence.md` | LayoutPersistence API + 两层分离（data conversion / file I/O） |
-| DI-1 Q2 | `DI-1-editor-shell-service.md` | 非 primary group 零 tab 时自动销毁 → tab list 和 layout 必须联合序列化 |
+| DI-1 Q2 | `DI-1-editor-shell-service.md` | group 零 tab + `groups.length > 1` 时 auto-collapse → tab list 和 layout 必须联合序列化 |
 | DI-7 | `DI-7-gates-perf-testing.md` Q2-SLA | startup recovery <200ms（CI guard <1000ms） |
 | Rebaseline | `v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-07 | Scope + 依赖 |
 
@@ -26,7 +26,7 @@
 ```json
 {
   "schema_version": 1,
-  "primaryGroupId": "g1",
+  "activeGroupId": "g1",
   "layout": {
     "type": "split",
     "axis": "horizontal",
@@ -41,7 +41,7 @@
 }
 ```
 
-**序列化内容**：tree structure + axis/fraction + groupId + per-group tabs/activeTab/previewTab + primaryGroupId。
+**序列化内容**：tree structure + axis/fraction + groupId + per-group tabs/activeTab/previewTab + activeGroupId。
 
 **不序列化**：draft content（EditBuffer 从 DB 重载）、save state（derived）、cursor position（future）。
 
@@ -69,7 +69,7 @@
 | `schema_version` > 当前支持版本 | 默认单 pane + **不覆写**文件 |
 | 无效树结构（fraction ≤ 0 等） | 默认单 pane + log warning |
 | tab 引用的 atomId 不存在于 DB | 跳过该 tab，继续恢复 |
-| 非 primary group tab 清空后 | group 自动销毁，树折叠（DI-1 Q2） |
+| group tab 清空 + groups.length > 1 | group 自动销毁，树折叠（paneCount ≥ 1 不变量） |
 | 残余 `.tmp.*` 文件 | 找最新 tmp，rename 到目标 |
 
 ### 两阶段恢复
@@ -90,7 +90,7 @@
 
 | Task | 内容 | 文件 | 估算 | 依赖 |
 |------|------|------|------|------|
-| T1 | `GroupLayout.toJson()` / `GroupLayout.fromJson()` + `EditorGroupModel` tabs 序列化 | `group_layout.dart`、`editor_group_model.dart` | 新增 ~80 行 | — |
+| T1 | `EditorGroupModel` tabs 序列化（`toJson()` / `fromJson()`）— GroupLayout 树序列化已由 PR-RB-06 完成 | `editor_group_model.dart` | 新增 ~40 行 | — |
 | T2 | `LayoutPersistence` 类：`load()` / `scheduleSave()` / atomic write / debounce / recovery | `lib/core/editor/layout_persistence.dart` | 新文件 ~200 行 | T1 |
 | T3 | `LocalPaths` 添加 `workspaceLayoutFileName` 常量 | `lib/core/local_paths.dart` | 新增 1 行 | — |
 | T4 | `EditorShellService` 集成：构造时 `load()`，结构变更时 `scheduleSave()` | `editor_shell_service.dart` | 编辑 ~20 行 | T2 |
@@ -102,8 +102,8 @@
 ## Planned File Changes
 
 - `[add]` `apps/lazynote_flutter/lib/core/editor/layout_persistence.dart` (~200 行)
-- `[edit]` `apps/lazynote_flutter/lib/core/editor/group_layout.dart`（toJson/fromJson）
-- `[edit]` `apps/lazynote_flutter/lib/core/editor/editor_group_model.dart`（tabs 序列化）
+- `[edit]` `apps/lazynote_flutter/lib/core/editor/group_layout.dart`（LayoutPersistence 组装 JSON 时调用已有 toJson/fromJson）
+- `[edit]` `apps/lazynote_flutter/lib/core/editor/editor_group_model.dart`（新增 tabs toJson/fromJson）
 - `[edit]` `apps/lazynote_flutter/lib/core/editor/editor_shell_service.dart`（集成）
 - `[edit]` `apps/lazynote_flutter/lib/core/local_paths.dart`
 - `[edit]` `apps/lazynote_flutter/lib/main.dart`
@@ -135,10 +135,11 @@ rg "workspaceLayoutFileName" apps/lazynote_flutter/lib/core/local_paths.dart
 
 ## Acceptance Criteria
 
-- [ ] `workspace_layout.json` 在 split/tab 变更后 1s 内写入
-- [ ] Atomic write 保证文件不会半写损坏
-- [ ] 7 个 corruption 场景全部 gracefully fallback 到默认单 pane
-- [ ] 启动时 Phase 1 恢复正确重建 layout + tabs（无 content）
-- [ ] `schema_version` > 当前版本时不覆写文件
-- [ ] JSON round-trip 测试通过
-- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
+- [x] `workspace_layout.json` 在 split/tab 变更后 1s 内写入
+- [x] Atomic write 保证文件不会半写损坏
+- [x] 7 个 corruption 场景全部 gracefully fallback 到默认单 pane
+- [x] 启动时 Phase 1 恢复正确重建 layout + tabs（无 content）
+- [x] `schema_version` > 当前版本时不覆写文件
+- [x] JSON round-trip 测试通过
+- [x] `activeGroupId` 字段正确序列化和恢复
+- [x] §Verification CI gates 全部通过（逐项执行并记录输出）

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/app/app.dart';
 import 'package:lazynote_flutter/app/app_locale_controller.dart';
 import 'package:lazynote_flutter/core/bindings/api.dart' as rust_api;
+import 'package:lazynote_flutter/core/editor/layout_persistence.dart';
 import 'package:lazynote_flutter/core/reminders/reminder_lifecycle.dart';
 import 'package:lazynote_flutter/core/reminders/reminder_scheduler.dart';
 import 'package:lazynote_flutter/core/rust_bridge.dart';
@@ -59,6 +60,17 @@ Future<void> _bootstrapCriticalSettings() async {
     // Why: locale resolution should be best-effort and never block app launch.
     dev.log(
       'Critical settings bootstrap failed; continuing with defaults.',
+      name: 'Main',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+  try {
+    await LayoutPersistence.ensureInitialized();
+  } catch (error, stackTrace) {
+    // Why: layout restore is best-effort — app boots with default single pane.
+    dev.log(
+      'Layout persistence bootstrap failed; continuing with default layout.',
       name: 'Main',
       error: error,
       stackTrace: stackTrace,
