@@ -531,7 +531,7 @@ void main() {
 
     expect(controller.activeNoteId, 'note-1');
     expect(find.byKey(const Key('notes_list_item_note-1')), findsNothing);
-    expect(find.byKey(const Key('note_editor_field')), findsOneWidget);
+    expect(find.byKey(const Key('markdown_editor_field')), findsOneWidget);
 
     // Flush the 3-second saved-badge timer from the tag mutation.
     await tester.pump(const Duration(seconds: 3));

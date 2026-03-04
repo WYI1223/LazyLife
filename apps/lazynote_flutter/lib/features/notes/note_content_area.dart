@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lazynote_flutter/core/editor/edit_buffer.dart';
-import 'package:lazynote_flutter/features/notes/note_editor.dart';
 import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
@@ -64,6 +63,25 @@ class NoteContentArea extends StatelessWidget {
     };
   }
 
+  Widget _buildEditorPane(
+    BuildContext context,
+    EditorShellService editor,
+    EditBuffer buffer,
+    String atomId, {
+    bool requestInitialFocus = false,
+  }) {
+    final contentType = controller.noteById(atomId)?.contentType ?? 'markdown';
+    final paneBuilder = editor.resolver.resolve(contentType);
+    return KeyedSubtree(
+      key: ValueKey<String>('editor_pane_$atomId'),
+      child: paneBuilder(
+        context,
+        buffer,
+        requestInitialFocus: requestInitialFocus,
+      ),
+    );
+  }
+
   Widget _buildContent(BuildContext context) {
     final editor = controller.editorShellService;
     final isActiveGroup = groupId == null || groupId == editor.activeGroupId;
@@ -74,11 +92,6 @@ class NoteContentArea extends StatelessWidget {
     final noteSaveState = isActiveGroup
         ? controller.noteSaveState
         : _bufferToNoteSaveState(buffer);
-    final activeDraftContent = isActiveGroup
-        ? controller.activeDraftContent
-        : buffer?.content ??
-              (atomId != null ? controller.noteById(atomId)?.content : null) ??
-              '';
     switch (controller.listPhase) {
       case NotesListPhase.idle:
       case NotesListPhase.loading:
@@ -365,14 +378,12 @@ class NoteContentArea extends StatelessWidget {
                     color: kNotesCanvasBackground,
                   ),
                   padding: const EdgeInsets.fromLTRB(0, 0, 0, 6),
-                  child: NoteEditor(
-                    key: ValueKey<String>('note_editor_$atomId'),
-                    content: activeDraftContent,
-                    buffer: buffer,
-                    focusRequestId: isActiveGroup
-                        ? controller.editorFocusRequestId
-                        : 0,
-                    onChanged: controller.updateActiveDraft,
+                  child: _buildEditorPane(
+                    context,
+                    editor,
+                    buffer!,
+                    atomId,
+                    requestInitialFocus: isActiveGroup,
                   ),
                 ),
               ),

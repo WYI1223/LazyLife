@@ -1,7 +1,7 @@
 # PR-RB-09: S2 Phase 3 + EditorResolver
 
 - Proposed title: `feat(editor): PR-RB-09 EditorResolver with MarkdownEditorPane extraction`
-- Status: Ready for Implementation
+- Status: Implemented
 
 ## Goal
 
@@ -273,12 +273,16 @@ ls apps/lazynote_flutter/lib/core/editor/
 
 ## Acceptance Criteria
 
-- [ ] `EditorResolver` 实现 register + resolve
-- [ ] `markdown` content_type → `MarkdownEditorPane`
-- [ ] 未知 content_type → error placeholder（非 fallback）
-- [ ] `MarkdownEditorPane` 仅依赖 `EditBuffer`（无 coordinator / notes feature 引用）
-- [ ] `NoteEditor` 已删除，功能由 `MarkdownEditorPane` 替代
-- [ ] `updateActiveDraft` 副作用正确迁移到 buffer change listener
-- [ ] Focus 管理在 tab 切换后正常工作
-- [ ] `lib/core/editor/` 包含 7 个文件（PR-RB-06 的 4 + PR-RB-07 的 1 + 本 PR 的 2）
-- [ ] §Verification CI gates 全部通过（逐项执行并记录输出）
+- [x] `EditorResolver` 实现 register + resolve
+- [x] `markdown` content_type → `MarkdownEditorPane`
+- [x] 未知 content_type → error placeholder（非 fallback）
+- [x] `MarkdownEditorPane` 仅依赖 `EditBuffer`（无 coordinator / notes feature 引用）
+- [x] `NoteEditor` 已删除，功能由 `MarkdownEditorPane` 替代
+- [x] `updateActiveDraft` 副作用正确迁移到 buffer change listener
+- [x] Focus 管理在 tab 切换后正常工作
+- [x] `lib/core/editor/` 包含 7 个文件（PR-RB-06 的 4 + PR-RB-07 的 1 + 本 PR 的 2）
+- [x] §Verification CI gates 全部通过（逐项执行并记录输出）
+
+### Deferred
+
+- 页面级 unknown `content_type` 路由集成测试：v0.3 仅 markdown 一种类型，单元测试已覆盖 resolver fallback 占位符，C2/C3/C4 已覆盖主链路。延后到 v0.4 引入第二 content_type 时执行。

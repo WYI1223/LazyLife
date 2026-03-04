@@ -72,7 +72,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# Next',
     );
     await tester.pump();
@@ -140,7 +140,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# fail',
     );
     await tester.pump();
@@ -300,7 +300,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# One*',
     );
     await tester.pump();
@@ -361,7 +361,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# One*',
     );
     await tester.pump();
@@ -430,7 +430,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# One*',
     );
     await tester.pump();
@@ -509,7 +509,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# fail',
     );
     await tester.pump();
@@ -519,7 +519,7 @@ void main() {
     expect(find.byKey(const Key('notes_save_retry_button')), findsOneWidget);
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# latest draft',
     );
     await tester.pump();
@@ -582,12 +582,18 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.enterText(find.byKey(const Key('note_editor_field')), '# one');
+    await tester.enterText(
+      find.byKey(const Key('markdown_editor_field')),
+      '# one',
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 30));
     expect(find.byKey(const Key('notes_save_status_saving')), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('note_editor_field')), '# two');
+    await tester.enterText(
+      find.byKey(const Key('markdown_editor_field')),
+      '# two',
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 30));
     expect(updateCalls.first, '# one');
@@ -671,7 +677,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(
-      find.byKey(const Key('note_editor_field')),
+      find.byKey(const Key('markdown_editor_field')),
       '# paused',
     );
     await tester.pump();

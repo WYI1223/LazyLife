@@ -21,7 +21,11 @@
 ## 接口
 
 ```dart
-typedef EditorPaneBuilder = Widget Function(BuildContext context, EditBuffer buffer);
+typedef EditorPaneBuilder = Widget Function(
+  BuildContext context,
+  EditBuffer buffer, {
+  bool requestInitialFocus,
+});
 
 class EditorResolver {
   final Map<String, EditorPaneBuilder> _registry = {};
@@ -39,6 +43,7 @@ class EditorResolver {
 - `buffer.edit(newContent)` — 写入变更
 - `buffer.atomId` — atom 身份
 - `buffer.saveState` — 保存状态指示
+- `requestInitialFocus` — chrome 层控制首次构建是否请求键盘焦点（默认 `false`）
 
 **不提供**：
 - EditorGroupModel（pane 状态与编辑器无关）
@@ -51,7 +56,11 @@ class EditorResolver {
 
 **v0.3 启动注册**：
 ```dart
-resolver.register('markdown', (context, buffer) => MarkdownEditorPane(buffer: buffer));
+resolver.register(
+  'markdown',
+  (context, buffer, {bool requestInitialFocus = false}) =>
+      MarkdownEditorPane(buffer: buffer, requestInitialFocus: requestInitialFocus),
+);
 ```
 
 静态 Map + `register()` 方法。v0.3 仅注册 `markdown`。未来 `plugin:<id>` 动态注册时复用同一接口。
@@ -109,8 +118,13 @@ View Mode 是 per-pane 视图选择，不是 content_type 属性。配套需求�
 
 ```dart
 class MarkdownEditorPane extends StatefulWidget {
-  const MarkdownEditorPane({super.key, required this.buffer});
+  const MarkdownEditorPane({
+    super.key,
+    required this.buffer,
+    this.requestInitialFocus = false,
+  });
   final EditBuffer buffer;
+  final bool requestInitialFocus;
 }
 ```
 
@@ -121,7 +135,7 @@ class MarkdownEditorPane extends StatefulWidget {
 | `buffer` 改为 required | 不再接受 null（EditorPane 仅在 buffer ready 时实例化） |
 | 删除 `content` 参数 | 从 `buffer.content` 读取 |
 | 删除 `onChanged` 参数 | 内部直接调用 `buffer.edit()` |
-| 删除 `focusRequestId` 参数 | Focus 管理由外层 chrome 处理 |
+| `focusRequestId` → `requestInitialFocus` | Chrome 层传入 bool 控制首次构建是否请求焦点（默认 `false`，仅活跃窗格为 `true`） |
 | 解耦 `notes_style.dart` | 使用 `Theme.of(context)` 替代 feature 级颜色常量 |
 
 **桥接模式**（DI-4 Q3 D12）inline 在 MarkdownEditorPane 内部实现（~30 行）：
@@ -146,7 +160,7 @@ class MarkdownEditorPane extends StatefulWidget {
 
 | 阶段 | 状态 | PR |
 |------|------|-----|
-| EditorResolver + MarkdownEditorPane | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
+| EditorResolver + MarkdownEditorPane | PR-RB-09 **已实施** | PR-RB-09（v0.3，DI-10） |
 
 ---
 

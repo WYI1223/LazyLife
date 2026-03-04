@@ -14,8 +14,10 @@ import 'package:flutter/widgets.dart' show Axis;
 
 import 'package:lazynote_flutter/core/editor/edit_buffer.dart';
 import 'package:lazynote_flutter/core/editor/editor_group_model.dart';
+import 'package:lazynote_flutter/core/editor/editor_resolver.dart';
 import 'package:lazynote_flutter/core/editor/group_layout.dart';
 import 'package:lazynote_flutter/core/editor/layout_persistence.dart';
+import 'package:lazynote_flutter/core/editor/markdown_editor_pane.dart';
 
 /// Workbench singleton managing groups, buffers, and layout.
 ///
@@ -35,6 +37,17 @@ class EditorShellService extends ChangeNotifier {
        _timerFactory = timerFactory,
        _autosaveDebounce = autosaveDebounce,
        _layoutPersistence = layoutPersistence ?? LayoutPersistence.instance {
+    // Register content_type → EditorPane builders (DI-10, S2 Phase 3).
+    // v0.3: markdown is the only registered type.
+    _resolver.register(
+      'markdown',
+      (context, buffer, {bool requestInitialFocus = false}) =>
+          MarkdownEditorPane(
+            buffer: buffer,
+            requestInitialFocus: requestInitialFocus,
+          ),
+    );
+
     // Restore from persisted snapshot or create default single-pane layout.
     // consumeLoadedSnapshot() returns the snapshot exactly once, preventing
     // reuse of mutable EditorGroupModel objects across service lifetimes.
@@ -52,6 +65,13 @@ class EditorShellService extends ChangeNotifier {
 
   /// Fixed ID for the initial group created at construction and after reset.
   static const _defaultGroupId = 'group.primary';
+
+  // ── EditorResolver (DI-10) ──────────────────────────────────────────
+
+  final EditorResolver _resolver = EditorResolver();
+
+  /// Content-type → EditorPane mapping (DI-10, S2 Phase 3).
+  EditorResolver get resolver => _resolver;
 
   // ── Injected closures ────────────────────────────────────────────────
 
