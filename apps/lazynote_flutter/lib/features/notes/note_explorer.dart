@@ -15,6 +15,7 @@ import 'package:lazynote_flutter/features/notes/notes_coordinator.dart';
 import 'package:lazynote_flutter/features/notes/notes_style.dart';
 import 'package:lazynote_flutter/l10n/app_localizations.dart';
 import 'package:lazynote_flutter/shared/tag_filter.dart';
+import 'package:lazynote_flutter/shared/tag_results_panel.dart';
 
 export 'package:lazynote_flutter/features/notes/explorer_tree_builder.dart'
     show ExplorerFolderNode;
@@ -476,7 +477,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
 
   Widget _buildSuccessTree(BuildContext context) {
     if (widget.folderTreeBuilder != null) {
-      final rows = <Widget>[_buildTagFilter()];
+      final rows = <Widget>[_buildTagFilter(), ..._buildTagResultsPanel()];
       final treeBuilder = _createTreeBuilder(context);
       final tree = _buildFolderTree();
       for (final node in tree) {
@@ -489,7 +490,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
       animation: Listenable.merge([_treeState, widget.controller]),
       builder: (context, _) {
         final treeBuilder = _createTreeBuilder(context);
-        final rows = <Widget>[_buildTagFilter()];
+        final rows = <Widget>[_buildTagFilter(), ..._buildTagResultsPanel()];
         if (_treeState.isLoading(null) && !_treeState.hasLoaded(null)) {
           rows.add(
             const Padding(
@@ -656,6 +657,31 @@ class _NoteExplorerState extends State<NoteExplorer> {
         },
       ),
     );
+  }
+
+  List<Widget> _buildTagResultsPanel() {
+    final tag = widget.controller.selectedTag;
+    if (tag == null) return const [];
+    return [
+      TagResultsPanel(
+        tag: tag,
+        items: widget.controller.tagResults
+            .map(
+              (item) => TagResultItem(
+                atomId: item.atomId,
+                viewHint: item.viewHint,
+                title: item.title,
+              ),
+            )
+            .toList(),
+        loading: widget.controller.tagResultsLoading,
+        breadcrumbs: widget.controller.tagBreadcrumbs,
+        errorMessage: widget.controller.tagResultsErrorMessage,
+        onTapItem: (atomId) {
+          unawaited(widget.controller.openNoteFromExplorer(atomId));
+        },
+      ),
+    ];
   }
 
   Widget _buildScrollableRows(List<Widget> rows) {

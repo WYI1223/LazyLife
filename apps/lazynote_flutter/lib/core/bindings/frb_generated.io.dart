@@ -109,6 +109,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WorkspaceActionResponse dco_decode_workspace_action_response(dynamic raw);
 
   @protected
+  WorkspaceAncestorPathResponse dco_decode_workspace_ancestor_path_response(
+    dynamic raw,
+  );
+
+  @protected
   WorkspaceListChildrenResponse dco_decode_workspace_list_children_response(
     dynamic raw,
   );
@@ -225,6 +230,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WorkspaceActionResponse sse_decode_workspace_action_response(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  WorkspaceAncestorPathResponse sse_decode_workspace_ancestor_path_response(
     SseDeserializer deserializer,
   );
 
@@ -384,6 +394,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_workspace_action_response(
     WorkspaceActionResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_workspace_ancestor_path_response(
+    WorkspaceAncestorPathResponse self,
     SseSerializer serializer,
   );
 

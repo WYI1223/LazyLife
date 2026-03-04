@@ -86,6 +86,15 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 
 ---
 
+## 读取能力
+
+| 能力 | FFI 函数 | 说明 | PR |
+|------|---------|------|-----|
+| 子节点列表 | `workspace_list_children(parent_node_id?)` | 单层子节点，lazy-load per-parent | PR-RB-05 已实施 |
+| 祖先路径查询 | `workspace_ancestor_path(atom_id)` | 递归 CTE 沿 `parent_uuid` 向上收集 `display_name`，返回根到直接父级有序路径 | PR-RB-10 已实施 |
+
+> `WorkspaceTreeService` 不持有全树缓存。子节点列表按需从 Rust 侧获取，祖先路径通过 SQL 递归 CTE 单次查询完成（O(depth)）。
+
 ## 约束
 
 - FFI 调用通过注入的 invoker 执行（可测试性）

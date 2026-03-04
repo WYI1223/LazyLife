@@ -1,7 +1,7 @@
 # PR-RB-03: S4 + S1 R5/R6 创建路径统一
 
 - Proposed title: `feat(core): PR-RB-03 unify creation paths with atom_ref forced accompaniment`
-- Status: In Review
+- Status: Completed
 
 ## Goal
 

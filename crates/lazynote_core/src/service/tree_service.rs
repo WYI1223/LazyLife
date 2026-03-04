@@ -223,6 +223,12 @@ impl<R: TreeRepository> TreeService<R> {
         Ok(())
     }
 
+    /// Returns ancestor folder display_names from root to direct parent
+    /// for the given atom's first active `atom_ref`.
+    pub fn ancestor_path(&self, atom_uuid: AtomId) -> Result<Vec<String>, TreeServiceError> {
+        self.repo.ancestor_path(atom_uuid).map_err(Into::into)
+    }
+
     fn ensure_parent_is_folder(
         &self,
         parent_uuid: WorkspaceNodeId,

@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Accepted** — v0.3 PR-RB-10 实现 |
+| 状态 | **Accepted** — Phase A v0.3 PR-RB-10 已实施 |
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
@@ -105,7 +105,7 @@ Phase A 稳定后，Tag 结果直接替换 Explorer 视图区域。取消 tag �
 |------|------|
 | 语义定义 | v0.2.5 已完成 |
 | 当前行为符合目标语义 | ✓（tag filter + explorer 独立工作是 Phase A 的前置状态） |
-| Phase A：独立面板 | v0.3 待实施 |
+| Phase A：独立面板 | v0.3 已实施 |
 | Phase B：视图替换 | v0.3+ 待实施 |
 | Spatial 视图模式 | v0.4+ |
 
@@ -113,5 +113,5 @@ Phase A 稳定后，Tag 结果直接替换 Explorer 视图区域。取消 tag �
 
 ## 开放设计项
 
-- Phase A 的面包屑路径格式（全路径 vs 最近两级）
-- 多 atom_ref 场景的面包屑显示策略（显示全部 vs 仅主引用）
+- ~~Phase A 的面包屑路径格式（全路径 vs 最近两级）~~ → **已实施**：全路径（PR-RB-10 spec）
+- ~~多 atom_ref 场景的面包屑显示策略（显示全部 vs 仅主引用）~~ → **已实施**：显示 `sort_order ASC` 最小的 ref 路径（v0.3 仅单 ref，多 ref 是未来场景）（PR-RB-10 spec）

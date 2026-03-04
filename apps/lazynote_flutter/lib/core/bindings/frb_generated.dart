@@ -65,7 +65,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1818109395;
+  int get rustContentHash => 566615584;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -171,6 +171,10 @@ abstract class RustLibApi extends BaseApi {
     required PlatformInt64 eodMs,
     int? limit,
     int? offset,
+  });
+
+  Future<WorkspaceAncestorPathResponse> crateApiWorkspaceAncestorPath({
+    required String atomId,
   });
 
   Future<WorkspaceNodeResponse> crateApiWorkspaceCreateAtomRef({
@@ -942,6 +946,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<WorkspaceAncestorPathResponse> crateApiWorkspaceAncestorPath({
+    required String atomId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(atomId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_workspace_ancestor_path_response,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiWorkspaceAncestorPathConstMeta,
+        argValues: [atomId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWorkspaceAncestorPathConstMeta =>
+      const TaskConstMeta(
+        debugName: 'workspace_ancestor_path',
+        argNames: ['atomId'],
+      );
+
+  @override
   Future<WorkspaceNodeResponse> crateApiWorkspaceCreateAtomRef({
     String? parentNodeId,
     required String atomId,
@@ -957,7 +994,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 25,
             port: port_,
           );
         },
@@ -992,7 +1029,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1027,7 +1064,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1060,7 +1097,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1097,7 +1134,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1131,7 +1168,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1406,6 +1443,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       ok: dco_decode_bool(arr[0]),
       errorCode: dco_decode_opt_String(arr[1]),
       message: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  WorkspaceAncestorPathResponse dco_decode_workspace_ancestor_path_response(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return WorkspaceAncestorPathResponse(
+      ok: dco_decode_bool(arr[0]),
+      errorCode: dco_decode_opt_String(arr[1]),
+      message: dco_decode_String(arr[2]),
+      path: dco_decode_list_String(arr[3]),
     );
   }
 
@@ -1801,6 +1854,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  WorkspaceAncestorPathResponse sse_decode_workspace_ancestor_path_response(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_ok = sse_decode_bool(deserializer);
+    var var_errorCode = sse_decode_opt_String(deserializer);
+    var var_message = sse_decode_String(deserializer);
+    var var_path = sse_decode_list_String(deserializer);
+    return WorkspaceAncestorPathResponse(
+      ok: var_ok,
+      errorCode: var_errorCode,
+      message: var_message,
+      path: var_path,
+    );
+  }
+
+  @protected
   WorkspaceListChildrenResponse sse_decode_workspace_list_children_response(
     SseDeserializer deserializer,
   ) {
@@ -2155,6 +2225,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.ok, serializer);
     sse_encode_opt_String(self.errorCode, serializer);
     sse_encode_String(self.message, serializer);
+  }
+
+  @protected
+  void sse_encode_workspace_ancestor_path_response(
+    WorkspaceAncestorPathResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.ok, serializer);
+    sse_encode_opt_String(self.errorCode, serializer);
+    sse_encode_String(self.message, serializer);
+    sse_encode_list_String(self.path, serializer);
   }
 
   @protected

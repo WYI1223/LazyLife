@@ -30,6 +30,7 @@ export 'package:lazynote_flutter/core/editor/group_layout.dart'
 
 export 'package:lazynote_flutter/core/workspace/workspace_tree_service.dart'
     show
+        WorkspaceAncestorPathInvoker,
         WorkspaceCreateFolderInvoker,
         WorkspaceDeleteFolderInvoker,
         WorkspaceListChildrenInvoker,
@@ -58,6 +59,7 @@ class NotesCoordinator extends _NotesCoordinatorImpl {
     super.workspaceRenameNodeInvoker,
     super.workspaceMoveNodeInvoker,
     super.workspaceListChildrenInvoker,
+    super.workspaceAncestorPathInvoker,
     super.debounceTimerFactory,
     super.prepare,
     super.listLimit = 50,

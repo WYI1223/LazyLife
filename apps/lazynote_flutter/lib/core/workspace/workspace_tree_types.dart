@@ -32,6 +32,11 @@ typedef WorkspaceListChildrenInvoker =
       String? parentNodeId,
     });
 
+typedef WorkspaceAncestorPathInvoker =
+    Future<rust_api.WorkspaceAncestorPathResponse> Function({
+      required String atomId,
+    });
+
 typedef WorkspacePrepare = Future<void> Function();
 
 /// Result from workspace note creation, carrying error details for transparency.

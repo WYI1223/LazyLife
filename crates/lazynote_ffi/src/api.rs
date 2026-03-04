@@ -386,6 +386,20 @@ pub struct WorkspaceListChildrenResponse {
     pub items: Vec<WorkspaceNodeItem>,
 }
 
+/// Workspace ancestor path response envelope (PR-RB-10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceAncestorPathResponse {
+    /// Whether operation succeeded.
+    pub ok: bool,
+    /// Stable machine-readable error code for failure paths.
+    pub error_code: Option<String>,
+    /// Human-readable message for diagnostics/UI.
+    pub message: String,
+    /// Ancestor folder display_names from root to direct parent.
+    /// Empty when atom_ref is at root level or atom has no active ref.
+    pub path: Vec<String>,
+}
+
 #[derive(Debug)]
 enum WorkspaceFfiError {
     InvalidNodeId(String),
@@ -1076,6 +1090,35 @@ fn workspace_delete_folder_impl(node_id: String, mode: String) -> WorkspaceActio
     }
 }
 
+/// Returns ancestor folder display_names for an atom's first active `atom_ref`.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - `atom_id` must be UUID string of an atom.
+/// - Returns ordered `path` from root to direct parent folder.
+/// - Root-level `atom_ref` or nonexistent atom returns empty `path`.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_ancestor_path(atom_id: String) -> WorkspaceAncestorPathResponse {
+    workspace_ancestor_path_impl(atom_id)
+}
+
+fn workspace_ancestor_path_impl(atom_id: String) -> WorkspaceAncestorPathResponse {
+    let parsed_atom_id = match parse_workspace_atom_id(atom_id.as_str()) {
+        Ok(value) => value,
+        Err(err) => return workspace_ancestor_path_failure(err),
+    };
+
+    match with_tree_service(|service| service.ancestor_path(parsed_atom_id)) {
+        Ok(path) => WorkspaceAncestorPathResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Resolved {} ancestor segment(s).", path.len()),
+            path,
+        },
+        Err(err) => workspace_ancestor_path_failure(err),
+    }
+}
+
 fn normalize_entry_limit(limit: Option<u32>) -> u32 {
     match limit {
         Some(0) => ENTRY_DEFAULT_LIMIT,
@@ -1266,6 +1309,15 @@ fn workspace_list_failure(error: WorkspaceFfiError) -> WorkspaceListChildrenResp
         error_code: Some(error.code().to_string()),
         message: error.message(),
         items: Vec::new(),
+    }
+}
+
+fn workspace_ancestor_path_failure(error: WorkspaceFfiError) -> WorkspaceAncestorPathResponse {
+    WorkspaceAncestorPathResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        path: Vec::new(),
     }
 }
 

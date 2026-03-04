@@ -474,6 +474,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notesNoteCreatedToast => '笔记已创建。';
+
+  @override
+  String get tagResultsRootDirectory => '根目录';
+
+  @override
+  String get tagResultsNoMatching => '没有匹配的内容';
+
+  @override
+  String tagResultsHeader(String tag) {
+    return '标签 "$tag"';
+  }
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).

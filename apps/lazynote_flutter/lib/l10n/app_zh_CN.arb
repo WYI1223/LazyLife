@@ -290,5 +290,15 @@
   "notesRenameAction": "重命名",
   "notesRenameDialogTitle": "重命名",
   "notesRenamedToast": "已重命名。",
-  "notesNoteCreatedToast": "笔记已创建。"
+  "notesNoteCreatedToast": "笔记已创建。",
+  "tagResultsRootDirectory": "根目录",
+  "tagResultsNoMatching": "没有匹配的内容",
+  "tagResultsHeader": "标签 \"{tag}\"",
+  "@tagResultsHeader": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  }
 }

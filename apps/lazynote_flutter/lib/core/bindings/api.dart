@@ -6,9 +6,9 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_get_impl`, `atom_list_failure`, `atom_update_status_impl`, `atoms_list_timed_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_creation_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_create_atom_ref_impl`, `workspace_create_folder_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
+// These functions are ignored because they are not marked as `pub`: `atom_get_impl`, `atom_list_failure`, `atom_update_status_impl`, `atoms_list_timed_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_creation_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_ancestor_path_failure`, `workspace_ancestor_path_impl`, `workspace_create_atom_ref_impl`, `workspace_create_folder_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `LogDartEventFfiError`, `NotesFfiError`, `WorkspaceFfiError`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Minimal health-check API for FRB smoke integration.
 ///
@@ -264,6 +264,17 @@ Future<WorkspaceActionResponse> workspaceDeleteFolder({
   nodeId: nodeId,
   mode: mode,
 );
+
+/// Returns ancestor folder display_names for an atom's first active `atom_ref`.
+///
+/// # FFI contract
+/// - Async call, DB-backed execution.
+/// - `atom_id` must be UUID string of an atom.
+/// - Returns ordered `path` from root to direct parent folder.
+/// - Root-level `atom_ref` or nonexistent atom returns empty `path`.
+Future<WorkspaceAncestorPathResponse> workspaceAncestorPath({
+  required String atomId,
+}) => RustLib.instance.api.crateApiWorkspaceAncestorPath(atomId: atomId);
 
 /// Lists inbox atoms (both `start_at` and `end_at` NULL).
 ///
@@ -765,6 +776,43 @@ class WorkspaceActionResponse {
           ok == other.ok &&
           errorCode == other.errorCode &&
           message == other.message;
+}
+
+/// Workspace ancestor path response envelope (PR-RB-10).
+class WorkspaceAncestorPathResponse {
+  /// Whether operation succeeded.
+  final bool ok;
+
+  /// Stable machine-readable error code for failure paths.
+  final String? errorCode;
+
+  /// Human-readable message for diagnostics/UI.
+  final String message;
+
+  /// Ancestor folder display_names from root to direct parent.
+  /// Empty when atom_ref is at root level or atom has no active ref.
+  final List<String> path;
+
+  const WorkspaceAncestorPathResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    required this.path,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ path.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceAncestorPathResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          path == other.path;
 }
 
 /// Workspace children-list response envelope.
