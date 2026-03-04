@@ -15,7 +15,7 @@
 ### 来源 S2 Phase 3
 
 > 1. 新建 `EditorResolver`，根据 Atom 的 `content_type` 选择 `EditorPane`
-> 2. 当前 `NoteContentArea` 重命名为 `MarkdownEditorPane`，注册为 `markdown` 渲染器
+> 2. 当前编辑核心（`NoteEditor`）提取为 `MarkdownEditorPane`，注册为 `markdown` 渲染器
 > 3. 未来 canvas/conversation/plugin 各注册自己的 `EditorPane`
 
 ### 来源 S1 R2 content_type
@@ -47,14 +47,14 @@ Feature Chrome        — 外壳展示 (loading/error/metadata 由 feature contr
 
 EditorResolver **只负责中间层**：给定一个 EditBuffer，返回正确的编辑器 widget。它不管 chrome（loading 占位、error 横幅、breadcrumb、save 状态、tags 等），chrome 留在 feature controller 层。
 
-### 当前 NoteContentArea 的拆分
+### 编辑核心提取
 
-当前 `NoteContentArea`（346 行）实际做了两层事情：
+> **代码演进说明**：DI-10 撰写时 `NoteContentArea` 约 346 行，混合了 Feature Chrome 和编辑核心。当前代码已演进：编辑核心独立为 `NoteEditor`（`note_editor.dart`，157 行），`NoteContentArea`（907 行）全为 Feature Chrome。PR-RB-09 的工作是**移动/适配 NoteEditor → MarkdownEditorPane**，而非从混合代码中拆分。
 
-| 层 | 内容 | 归属 |
+| 层 | 当前文件 | 归属 |
 |---|------|------|
-| Feature Chrome | loading/error 状态、breadcrumb、save 横幅、metadata chips、tags | 保留在 notes feature |
-| 编辑核心 | NoteEditor（markdown 编辑） | 提取为 `MarkdownEditorPane`，注册到 EditorResolver |
+| Feature Chrome | `note_content_area.dart`（907 行）：loading/error 状态、breadcrumb、save 横幅、metadata chips、tags | 保留在 notes feature |
+| 编辑核心 | `note_editor.dart`（157 行）：TextField + manual listener + string guard | 移动为 `MarkdownEditorPane`，注册到 EditorResolver |
 
 ---
 

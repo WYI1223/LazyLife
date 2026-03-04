@@ -128,7 +128,7 @@ GroupLayout 和 EditorGroupModel tab 列表**联合持久化**到独立文件：
 | 步骤 | 内容 |
 |------|------|
 | 1 | 新建 `EditorResolver`，根据 Atom 的 `content_type` 选择 `EditorPane` |
-| 2 | 当前 `NoteContentArea` 拆分：编辑核心提取为 `MarkdownEditorPane`，注册为 `markdown` 渲染器；外壳 chrome（loading/error/metadata/tags）保留在 notes feature |
+| 2 | 编辑核心（`NoteEditor`）提取为 `MarkdownEditorPane`（`lib/core/editor/`），注册为 `markdown` 渲染器；外壳 chrome（`NoteContentArea`：loading/error/metadata/tags）保留在 notes feature |
 | 3 | 未来 canvas/conversation/plugin 各注册自己的 `EditorPane` |
 
 #### Phase 3 设计规则（DI-10 裁决）
