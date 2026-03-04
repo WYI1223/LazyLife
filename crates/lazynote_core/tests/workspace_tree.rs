@@ -468,3 +468,136 @@ fn move_node_rolls_back_when_reorder_fails() {
     let target_ids: Vec<_> = target_children.iter().map(|item| item.node_uuid).collect();
     assert!(!target_ids.contains(&moving.node_uuid));
 }
+
+// ── ancestor_path tests (PR-RB-10) ─────────────────────────────────
+
+#[test]
+fn ancestor_path_root_level_atom_ref_returns_empty() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let note = Atom::new(ViewHint::Note, "root note");
+    insert_atom(&conn, &note);
+
+    service
+        .create_atom_ref(None, note.uuid, Some("RootNote".to_string()))
+        .unwrap();
+
+    let path = service.ancestor_path(note.uuid).unwrap();
+    assert!(
+        path.is_empty(),
+        "root-level atom_ref should return empty path"
+    );
+}
+
+#[test]
+fn ancestor_path_single_level_nesting() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let note = Atom::new(ViewHint::Note, "nested note");
+    insert_atom(&conn, &note);
+
+    let folder = service.create_folder(None, "Projects").unwrap();
+    service
+        .create_atom_ref(Some(folder.node_uuid), note.uuid, Some("Note".to_string()))
+        .unwrap();
+
+    let path = service.ancestor_path(note.uuid).unwrap();
+    assert_eq!(path, vec!["Projects"]);
+}
+
+#[test]
+fn ancestor_path_deep_nesting() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let note = Atom::new(ViewHint::Note, "deep note");
+    insert_atom(&conn, &note);
+
+    let folder_a = service.create_folder(None, "Work").unwrap();
+    let folder_b = service
+        .create_folder(Some(folder_a.node_uuid), "Engineering")
+        .unwrap();
+    let folder_c = service
+        .create_folder(Some(folder_b.node_uuid), "Backend")
+        .unwrap();
+    service
+        .create_atom_ref(
+            Some(folder_c.node_uuid),
+            note.uuid,
+            Some("Note".to_string()),
+        )
+        .unwrap();
+
+    let path = service.ancestor_path(note.uuid).unwrap();
+    assert_eq!(path, vec!["Work", "Engineering", "Backend"]);
+}
+
+#[test]
+fn ancestor_path_nonexistent_atom_returns_empty() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let unknown_atom = Uuid::new_v4();
+    let path = service.ancestor_path(unknown_atom).unwrap();
+    assert!(path.is_empty(), "nonexistent atom should return empty path");
+}
+
+#[test]
+fn ancestor_path_soft_deleted_ref_is_excluded() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let note = Atom::new(ViewHint::Note, "deleted ref");
+    insert_atom(&conn, &note);
+
+    let folder = service.create_folder(None, "Archive").unwrap();
+    let atom_ref = service
+        .create_atom_ref(Some(folder.node_uuid), note.uuid, Some("Ref".to_string()))
+        .unwrap();
+
+    // Soft-delete the atom_ref node
+    conn.execute(
+        "UPDATE workspace_nodes SET is_deleted = 1, updated_at = (strftime('%s', 'now') * 1000) WHERE node_uuid = ?1;",
+        rusqlite::params![atom_ref.node_uuid.to_string()],
+    )
+    .unwrap();
+
+    let path = service.ancestor_path(note.uuid).unwrap();
+    assert!(path.is_empty(), "soft-deleted atom_ref should be excluded");
+}
+
+#[test]
+fn ancestor_path_soft_deleted_folder_in_chain_is_excluded() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let note = Atom::new(ViewHint::Note, "note in deleted folder");
+    insert_atom(&conn, &note);
+
+    let folder_a = service.create_folder(None, "Top").unwrap();
+    let folder_b = service
+        .create_folder(Some(folder_a.node_uuid), "Middle")
+        .unwrap();
+    service
+        .create_atom_ref(Some(folder_b.node_uuid), note.uuid, Some("Ref".to_string()))
+        .unwrap();
+
+    // Soft-delete the top-level folder
+    conn.execute(
+        "UPDATE workspace_nodes SET is_deleted = 1, updated_at = (strftime('%s', 'now') * 1000) WHERE node_uuid = ?1;",
+        rusqlite::params![folder_a.node_uuid.to_string()],
+    )
+    .unwrap();
+
+    let path = service.ancestor_path(note.uuid).unwrap();
+    // Only "Middle" is returned since "Top" is soft-deleted and the CTE stops
+    assert_eq!(path, vec!["Middle"]);
+}

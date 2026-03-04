@@ -487,4 +487,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notesNoteCreatedToast => 'Note created.';
+
+  @override
+  String get tagResultsRootDirectory => 'Root';
+
+  @override
+  String get tagResultsNoMatching => 'No matching atoms';
+
+  @override
+  String tagResultsHeader(String tag) {
+    return 'Tag "$tag"';
+  }
 }

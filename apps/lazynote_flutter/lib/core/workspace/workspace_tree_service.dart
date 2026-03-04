@@ -26,6 +26,7 @@ class WorkspaceTreeService extends ChangeNotifier {
     required WorkspaceRenameNodeInvoker workspaceRenameNodeInvoker,
     required WorkspaceMoveNodeInvoker workspaceMoveNodeInvoker,
     required WorkspaceListChildrenInvoker workspaceListChildrenInvoker,
+    WorkspaceAncestorPathInvoker? workspaceAncestorPathInvoker,
     required WorkspacePrepare prepare,
     required WorkspaceCreateNoteAndGetAtomId createNoteAndGetAtomId,
     required WorkspaceFlushPendingSave flushPendingSave,
@@ -36,6 +37,7 @@ class WorkspaceTreeService extends ChangeNotifier {
        _workspaceCreateFolderInvoker = workspaceCreateFolderInvoker,
        _workspaceRenameNodeInvoker = workspaceRenameNodeInvoker,
        _workspaceMoveNodeInvoker = workspaceMoveNodeInvoker,
+       _workspaceAncestorPathInvoker = workspaceAncestorPathInvoker,
        _prepare = prepare,
        _createNoteAndGetAtomId = createNoteAndGetAtomId,
        _flushPendingSave = flushPendingSave,
@@ -51,6 +53,7 @@ class WorkspaceTreeService extends ChangeNotifier {
   final WorkspaceCreateFolderInvoker _workspaceCreateFolderInvoker;
   final WorkspaceRenameNodeInvoker _workspaceRenameNodeInvoker;
   final WorkspaceMoveNodeInvoker _workspaceMoveNodeInvoker;
+  final WorkspaceAncestorPathInvoker? _workspaceAncestorPathInvoker;
   final WorkspacePrepare _prepare;
   final WorkspaceCreateNoteAndGetAtomId _createNoteAndGetAtomId;
   final WorkspaceFlushPendingSave _flushPendingSave;
@@ -502,6 +505,22 @@ class WorkspaceTreeService extends ChangeNotifier {
       return _WorkspaceParentValidation.invalid;
     }
     return _WorkspaceParentValidation.value;
+  }
+
+  /// Returns the ancestor folder path for an atom (root to direct parent).
+  ///
+  /// Returns empty list if no invoker is configured or on failure.
+  Future<List<String>> ancestorPath({required String atomId}) async {
+    final invoker = _workspaceAncestorPathInvoker;
+    if (invoker == null) return const [];
+    try {
+      await _prepare();
+      final response = await invoker(atomId: atomId);
+      if (response.ok) return response.path;
+    } catch (_) {
+      // Non-fatal; caller handles empty path gracefully.
+    }
+    return const [];
   }
 
   void _bumpWorkspaceTreeRevision() {

@@ -290,5 +290,15 @@
   "notesRenameAction": "Rename",
   "notesRenameDialogTitle": "Rename",
   "notesRenamedToast": "Renamed.",
-  "notesNoteCreatedToast": "Note created."
+  "notesNoteCreatedToast": "Note created.",
+  "tagResultsRootDirectory": "Root",
+  "tagResultsNoMatching": "No matching atoms",
+  "tagResultsHeader": "Tag \"{tag}\"",
+  "@tagResultsHeader": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  }
 }

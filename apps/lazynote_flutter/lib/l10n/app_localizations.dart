@@ -944,6 +944,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Note created.'**
   String get notesNoteCreatedToast;
+
+  /// No description provided for @tagResultsRootDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Root'**
+  String get tagResultsRootDirectory;
+
+  /// No description provided for @tagResultsNoMatching.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching atoms'**
+  String get tagResultsNoMatching;
+
+  /// No description provided for @tagResultsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag "{tag}"'**
+  String tagResultsHeader(String tag);
 }
 
 class _AppLocalizationsDelegate

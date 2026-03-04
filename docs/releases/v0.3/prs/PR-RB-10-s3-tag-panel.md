@@ -1,7 +1,7 @@
 # PR-RB-10: S3 Phase A — Tag Results Independent Panel
 
 - Proposed title: `feat(tags): PR-RB-10 independent tag results panel with atom_ref breadcrumbs`
-- Status: Ready for Implementation
+- Status: **Implemented**
 
 ## Goal
 
@@ -301,14 +301,14 @@ rg "workspace_ancestor_path" crates/lazynote_ffi/src/api.rs
 
 ## Acceptance Criteria
 
-- [ ] Rust：`TreeRepository::ancestor_path()` 递归 CTE 正确返回祖先路径（根级返回空 Vec，嵌套返回有序路径段）
-- [ ] Rust：`workspace_ancestor_path` FFI 函数可通过 Dart 绑定调用
-- [ ] Rust：ancestor_path 单元测试覆盖根级/嵌套/不存在/已删除场景
-- [ ] 选中 tag 时，TagResultsPanel 在 tag 芯片栏下方展开
-- [ ] 结果列表每条显示 icon + title + atom_ref 面包屑路径
-- [ ] 根级别 atom_ref 的 Atom 面包屑显示 "根目录"
-- [ ] 取消 tag 选择时面板收起，Explorer 恢复完整高度
-- [ ] Explorer 树在 tag 过滤期间保持完整不变
-- [ ] 点击结果行在编辑器中打开对应 Atom
-- [ ] breadcrumb_builder 和 TagResultsPanel 位于 `lib/shared/`（不引用 features/ 内部）
-- [ ] §Verification CI gates 全部通过（Rust + Flutter 逐项执行并记录输出）
+- [x] Rust：`TreeRepository::ancestor_path()` 递归 CTE 正确返回祖先路径（根级返回空 Vec，嵌套返回有序路径段）
+- [x] Rust：`workspace_ancestor_path` FFI 函数可通过 Dart 绑定调用
+- [x] Rust：ancestor_path 单元测试覆盖根级/嵌套/不存在/已删除场景
+- [x] 选中 tag 时，TagResultsPanel 在 tag 芯片栏下方展开
+- [x] 结果列表每条显示 icon + title + atom_ref 面包屑路径
+- [x] 根级别 atom_ref 的 Atom 面包屑显示 "根目录"（已本地化）
+- [x] 取消 tag 选择时面板收起，Explorer 恢复完整高度
+- [x] Explorer 树在 tag 过滤期间保持完整不变
+- [x] 点击结果行在编辑器中打开对应 Atom
+- [x] breadcrumb_builder 和 TagResultsPanel 位于 `lib/shared/`（不引用 features/ 内部）
+- [x] §Verification CI gates 全部通过（Rust + Flutter 逐项执行并记录输出）

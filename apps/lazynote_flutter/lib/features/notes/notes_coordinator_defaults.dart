@@ -80,6 +80,11 @@ _defaultWorkspaceListChildrenInvoker({String? parentNodeId}) {
   return rust_api.workspaceListChildren(parentNodeId: parentNodeId);
 }
 
+Future<rust_api.WorkspaceAncestorPathResponse>
+_defaultWorkspaceAncestorPathInvoker({required String atomId}) {
+  return rust_api.workspaceAncestorPath(atomId: atomId);
+}
+
 Future<void> _defaultPrepare() async {
   await RustBridge.ensureEntryDbPathConfigured();
 }

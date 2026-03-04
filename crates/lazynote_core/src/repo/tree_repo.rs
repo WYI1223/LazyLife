@@ -173,6 +173,14 @@ pub trait TreeRepository {
     fn delete_folder_delete_all(&self, folder_uuid: WorkspaceNodeId) -> TreeRepoResult<()>;
     /// Loads atom type for active atom, if present.
     fn atom_view_hint(&self, atom_uuid: AtomId) -> TreeRepoResult<Option<ViewHint>>;
+
+    /// Returns ancestor folder display_names from root to direct parent
+    /// for the first active `atom_ref` of the given atom.
+    ///
+    /// When multiple `atom_ref` nodes exist for the same atom, the one with
+    /// the smallest `(sort_order, node_uuid)` is selected (deterministic).
+    /// Root-level `atom_ref` (no parent folder) returns an empty `Vec`.
+    fn ancestor_path(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<String>>;
 }
 
 /// SQLite-backed workspace tree repository.
@@ -536,6 +544,38 @@ impl TreeRepository for SqliteTreeRepository<'_> {
                 "invalid view_hint `{other}` in atoms.view_hint"
             ))),
         }
+    }
+
+    fn ancestor_path(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "WITH RECURSIVE ancestors(node_uuid, display_name, parent_uuid, depth) AS (
+                SELECT node_uuid, display_name, parent_uuid, 0
+                FROM (
+                    SELECT f.node_uuid, f.display_name, f.parent_uuid
+                    FROM workspace_nodes r
+                    JOIN workspace_nodes f ON f.node_uuid = r.parent_uuid
+                    WHERE r.atom_uuid = ?1
+                      AND r.kind = 'atom_ref'
+                      AND r.is_deleted = 0
+                      AND f.is_deleted = 0
+                    ORDER BY r.sort_order ASC, r.node_uuid ASC
+                    LIMIT 1
+                )
+                UNION ALL
+                SELECT w.node_uuid, w.display_name, w.parent_uuid, a.depth + 1
+                FROM workspace_nodes w
+                JOIN ancestors a ON w.node_uuid = a.parent_uuid
+                WHERE w.is_deleted = 0
+            )
+            SELECT display_name FROM ancestors ORDER BY depth DESC;",
+        )?;
+
+        let mut rows = stmt.query([atom_uuid.to_string()])?;
+        let mut path = Vec::new();
+        while let Some(row) = rows.next()? {
+            path.push(row.get::<_, String>(0)?);
+        }
+        Ok(path)
     }
 }
 

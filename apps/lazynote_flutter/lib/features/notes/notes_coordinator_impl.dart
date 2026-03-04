@@ -17,6 +17,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
     WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
     WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
+    WorkspaceAncestorPathInvoker? workspaceAncestorPathInvoker,
     DebounceTimerFactory? debounceTimerFactory,
     NotesPrepare? prepare,
     this.listLimit = 50,
@@ -30,6 +31,8 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
        _autosaveDebounce = autosaveDebounce,
        _reminderLifecycle = reminderLifecycle ?? ReminderLifecycle.instance,
        _prepare = prepare ?? _defaultPrepare {
+    final resolvedWorkspaceAncestorPathInvoker =
+        workspaceAncestorPathInvoker ?? _defaultWorkspaceAncestorPathInvoker;
     final resolvedNotesListInvoker =
         notesListInvoker ?? _defaultNotesListInvoker;
     final resolvedTagsListInvoker = tagsListInvoker ?? _defaultTagsListInvoker;
@@ -109,6 +112,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       workspaceRenameNodeInvoker: resolvedWorkspaceRenameNodeInvoker,
       workspaceMoveNodeInvoker: resolvedWorkspaceMoveNodeInvoker,
       workspaceListChildrenInvoker: resolvedWorkspaceListChildrenInvoker,
+      workspaceAncestorPathInvoker: resolvedWorkspaceAncestorPathInvoker,
       prepare: _prepare,
       createNoteAndGetAtomId: _createNoteAndGetAtomId,
       flushPendingSave: flushPendingSave,
@@ -161,6 +165,14 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   bool _showSavedBadge = false;
   Timer? _savedBadgeTimer;
 
+  // ── Tag results state (S3 Phase A) ─────────────────────────────────
+
+  List<rust_api.AtomListItem> _tagResults = const [];
+  Map<String, List<String>> _tagBreadcrumbs = const {};
+  bool _tagResultsLoading = false;
+  String? _tagResultsErrorMessage;
+  int _tagResultsRequestId = 0;
+
   // ── Misc state ─────────────────────────────────────────────────────
 
   String? _switchBlockErrorMessage;
@@ -181,6 +193,13 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   List<String> get availableTags => _noteTagManager.availableTags;
   String? get tagsErrorMessage => _noteTagManager.tagsErrorMessage;
   String? get selectedTag => _noteTagManager.selectedTag;
+
+  // ── Public getters: tag results (S3 Phase A) ────────────────────────
+
+  List<rust_api.AtomListItem> get tagResults => _tagResults;
+  Map<String, List<String>> get tagBreadcrumbs => _tagBreadcrumbs;
+  bool get tagResultsLoading => _tagResultsLoading;
+  String? get tagResultsErrorMessage => _tagResultsErrorMessage;
 
   // ── Public getters: tabs (derived from EditorShellService) ─────────
 
@@ -578,10 +597,25 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   Future<void> retryTagLoad() => _noteTagManager.refreshAvailableTags();
 
-  Future<bool> applyTagFilter(String rawTag) =>
-      _noteTagManager.applyTagFilter(rawTag);
+  Future<bool> applyTagFilter(String rawTag) async {
+    final ok = await _noteTagManager.applyTagFilter(rawTag);
+    if (ok && _noteTagManager.selectedTag != null) {
+      unawaited(_loadTagResults(_noteTagManager.selectedTag!));
+    } else {
+      // Clear stale results — selectedTag may have changed even on failure.
+      _clearTagResults();
+      notifyListeners();
+    }
+    return ok;
+  }
 
-  Future<bool> clearTagFilter() => _noteTagManager.clearTagFilter();
+  Future<bool> clearTagFilter() async {
+    final ok = await _noteTagManager.clearTagFilter();
+    if (ok) {
+      _clearTagResults();
+    }
+    return ok;
+  }
 
   // ── Tag operations ─────────────────────────────────────────────────
 
@@ -971,6 +1005,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _saveErrorMessage = null;
     _showSavedBadge = false;
     _lastKnownDraftContent = null;
+    _clearTagResults();
   }
 
   bool _staleDetailRequest(int requestId, String atomId) =>
@@ -1222,6 +1257,54 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         await pending.timeout(timeout, onTimeout: () {});
       }
     } catch (_) {}
+  }
+
+  // ── Internal: tag results aggregation (S3 Phase A) ─────────────────
+
+  Future<void> _loadTagResults(String tag) async {
+    final requestId = ++_tagResultsRequestId;
+    _tagResultsLoading = true;
+    _tagResults = const [];
+    _tagBreadcrumbs = const {};
+    _tagResultsErrorMessage = null;
+    notifyListeners();
+
+    try {
+      // Reuse the already-loaded list from NoteListManager, which was
+      // refreshed by NoteTagManager.applyTagFilter before we get here.
+      final items = _noteListManager.items;
+      _tagResults = items;
+      _tagResultsLoading = false;
+      notifyListeners();
+
+      if (requestId != _tagResultsRequestId) return;
+
+      // Parallel-fetch breadcrumbs for all results via WorkspaceTreeService.
+      final futures = items.map((item) async {
+        final path = await _workspaceTreeService.ancestorPath(
+          atomId: item.atomId,
+        );
+        return MapEntry(item.atomId, path);
+      });
+      final entries = await Future.wait(futures);
+      if (requestId != _tagResultsRequestId) return;
+
+      _tagBreadcrumbs = Map.fromEntries(entries);
+      notifyListeners();
+    } catch (error) {
+      if (requestId != _tagResultsRequestId) return;
+      _tagResultsLoading = false;
+      _tagResultsErrorMessage = 'Tag results failed: $error';
+      notifyListeners();
+    }
+  }
+
+  void _clearTagResults() {
+    _tagResultsRequestId++;
+    _tagResults = const [];
+    _tagBreadcrumbs = const {};
+    _tagResultsLoading = false;
+    _tagResultsErrorMessage = null;
   }
 
   // ── Listener handlers ──────────────────────────────────────────────
