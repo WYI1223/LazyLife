@@ -163,9 +163,9 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   // ── Misc state ─────────────────────────────────────────────────────
 
-  int _editorFocusRequestId = 0;
   String? _switchBlockErrorMessage;
   int _detailRequestId = 0;
+  String? _lastKnownDraftContent;
   bool _disposed = false;
   bool _initialLoadCompleted = false;
 
@@ -252,8 +252,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     }
     return false;
   }
-
-  int get editorFocusRequestId => _editorFocusRequestId;
 
   String get activeDraftContent {
     final atomId = activeNoteId;
@@ -539,11 +537,12 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     if (buffer.content == content) return;
 
     buffer.edit(content);
+    // Side effects (pin preview, title projection) are now driven by
+    // _handleEditorShellChanged via _lastKnownDraftContent detection.
+  }
 
-    // Pin preview tab on edit to prevent surprise replacement
-    _editorShellService.activeGroup?.pinPreviewTab(atomId);
-
-    // Update title projection in list
+  /// Updates note list cache and tab title to reflect draft content changes.
+  void _syncTitleProjection(String atomId, String content) {
     final current = _noteListManager.cachedNoteById(atomId);
     if (current != null) {
       final updated = _withContent(current, content);
@@ -553,9 +552,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         updated.title.isNotEmpty ? updated.title : 'Untitled',
       );
     }
-
-    _updateSaveStateFromBuffer();
-    notifyListeners();
   }
 
   // ── List operations ────────────────────────────────────────────────
@@ -689,7 +685,6 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
       await _noteTagManager.refreshAvailableTags(showLoading: false);
       await _loadSelectedDetail(atomId: createdNote.atomId);
-      _requestEditorFocus();
       notifyListeners();
       return true;
     } catch (error) {
@@ -772,6 +767,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _detailLoading = false;
     _detailErrorMessage = null;
     _detailLoadedAtomId = null;
+    _lastKnownDraftContent = null;
     _setSaveState(NoteSaveState.clean);
   }
 
@@ -974,6 +970,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     _noteSaveState = NoteSaveState.clean;
     _saveErrorMessage = null;
     _showSavedBadge = false;
+    _lastKnownDraftContent = null;
   }
 
   bool _staleDetailRequest(int requestId, String atomId) =>
@@ -1009,6 +1006,7 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         _detailLoading = false;
         _detailErrorMessage = null;
         _detailLoadedAtomId = note.atomId;
+        _lastKnownDraftContent = buffer?.content ?? note.content;
         _updateSaveStateFromBuffer();
       } else {
         _detailLoading = false;
@@ -1097,16 +1095,22 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
 
   // ── Internal: state helpers ────────────────────────────────────────
 
-  /// Unified post-activation sync: save state + focus + clear switch error.
+  /// Unified post-activation sync: save state + clear switch error.
   /// All paths that make a note "active" call this at the end.
   void _syncActiveNoteState() {
     _updateSaveStateFromBuffer();
-    _requestEditorFocus();
     _switchBlockErrorMessage = null;
-  }
-
-  void _requestEditorFocus() {
-    _editorFocusRequestId += 1;
+    // Sync draft content tracker so _handleEditorShellChanged doesn't
+    // misfire side effects on the first notification after switching.
+    // Only sync when buffer is ready — loading-phase default content ('')
+    // would cause false content-change detection when buffer initializes.
+    final atomId = activeNoteId;
+    if (atomId != null) {
+      final buf = _editorShellService.bufferFor(atomId);
+      _lastKnownDraftContent = buf != null && buf.phase == BufferPhase.ready
+          ? buf.content
+          : null;
+    }
   }
 
   bool _isDirty(String atomId) {
@@ -1225,6 +1229,23 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   void _handleEditorShellChanged() {
     if (_disposed) return;
     _updateSaveStateFromBuffer();
+
+    // Detect active buffer content change → run side effects that were
+    // previously inline in updateActiveDraft (pin preview + title projection).
+    final atomId = activeNoteId;
+    if (atomId != null) {
+      final buffer = _editorShellService.bufferFor(atomId);
+      if (buffer != null && buffer.phase == BufferPhase.ready) {
+        final currentContent = buffer.content;
+        if (_lastKnownDraftContent != null &&
+            currentContent != _lastKnownDraftContent) {
+          _editorShellService.activeGroup?.pinPreviewTab(atomId);
+          _syncTitleProjection(atomId, currentContent);
+        }
+        _lastKnownDraftContent = currentContent;
+      }
+    }
+
     notifyListeners();
   }
 

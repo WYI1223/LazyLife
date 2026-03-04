@@ -17,7 +17,7 @@
 | [EditorGroupModel](core-editor/editor-group-model.md) | `lib/core/editor/editor_group_model.dart` | DI-1 Q1/Q2 |
 | [GroupLayout](core-editor/group-layout.md) | `lib/core/editor/group_layout.dart` | DI-1, DI-3 |
 | [LayoutPersistence](core-editor/layout-persistence.md) | `lib/core/editor/layout_persistence.dart` | DI-3 |
-| [EditorResolver](core-editor/editor-resolver.md) | `lib/core/editor/editor_resolver.dart` | DI-10, S2 Phase 3 |
+| [EditorResolver](core-editor/editor-resolver.md) | `lib/core/editor/editor_resolver.dart` + `markdown_editor_pane.dart` | DI-10, S2 Phase 3 |
 
 ### `core-workspace/` — 组织结构基础设施
 

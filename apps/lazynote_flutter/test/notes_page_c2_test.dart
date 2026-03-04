@@ -83,7 +83,7 @@ void main() {
 
     expect(controller.activeNoteId, 'note-new');
     expect(find.byKey(const Key('note_tab_note-new')), findsOneWidget);
-    expect(find.byKey(const Key('note_editor_field')), findsOneWidget);
+    expect(find.byKey(const Key('markdown_editor_field')), findsOneWidget);
 
     final editable = tester.widget<EditableText>(find.byType(EditableText));
     expect(editable.controller.text, '');
@@ -191,6 +191,6 @@ void main() {
 
     expect(detailCallCount, 2);
     expect(find.byKey(const Key('notes_detail_error_center')), findsNothing);
-    expect(find.byKey(const Key('note_editor_field')), findsOneWidget);
+    expect(find.byKey(const Key('markdown_editor_field')), findsOneWidget);
   });
 }

@@ -1,6 +1,6 @@
 # Module Spec: EditorResolver
 
-> `lib/core/editor/editor_resolver.dart`
+> `lib/core/editor/editor_resolver.dart` + `lib/core/editor/markdown_editor_pane.dart`
 >
 > 设计来源：[DI-10](../../../reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md) · [S2 Phase 3](../../rulings/S2-tab-draft-save-ownership.md)
 
@@ -21,7 +21,11 @@
 ## 接口
 
 ```dart
-typedef EditorPaneBuilder = Widget Function(BuildContext context, EditBuffer buffer);
+typedef EditorPaneBuilder = Widget Function(
+  BuildContext context,
+  EditBuffer buffer, {
+  bool requestInitialFocus,
+});
 
 class EditorResolver {
   final Map<String, EditorPaneBuilder> _registry = {};
@@ -39,6 +43,7 @@ class EditorResolver {
 - `buffer.edit(newContent)` — 写入变更
 - `buffer.atomId` — atom 身份
 - `buffer.saveState` — 保存状态指示
+- `requestInitialFocus` — chrome 层控制首次构建是否请求键盘焦点（默认 `false`）
 
 **不提供**：
 - EditorGroupModel（pane 状态与编辑器无关）
@@ -51,7 +56,11 @@ class EditorResolver {
 
 **v0.3 启动注册**：
 ```dart
-resolver.register('markdown', (context, buffer) => MarkdownEditorPane(buffer: buffer));
+resolver.register(
+  'markdown',
+  (context, buffer, {bool requestInitialFocus = false}) =>
+      MarkdownEditorPane(buffer: buffer, requestInitialFocus: requestInitialFocus),
+);
 ```
 
 静态 Map + `register()` 方法。v0.3 仅注册 `markdown`。未来 `plugin:<id>` 动态注册时复用同一接口。
@@ -103,12 +112,55 @@ View Mode 是 per-pane 视图选择，不是 content_type 属性。配套需求�
 
 ---
 
+## MarkdownEditorPane（v0.3 参考实现）
+
+`lib/core/editor/markdown_editor_pane.dart` — v0.3 唯一的 EditorPane 实现。
+
+```dart
+class MarkdownEditorPane extends StatefulWidget {
+  const MarkdownEditorPane({
+    super.key,
+    required this.buffer,
+    this.requestInitialFocus = false,
+  });
+  final EditBuffer buffer;
+  final bool requestInitialFocus;
+}
+```
+
+**来源**：从 `lib/features/notes/note_editor.dart` 移动并适配。适配变更：
+
+| 适配项 | 说明 |
+|--------|------|
+| `buffer` 改为 required | 不再接受 null（EditorPane 仅在 buffer ready 时实例化） |
+| 删除 `content` 参数 | 从 `buffer.content` 读取 |
+| 删除 `onChanged` 参数 | 内部直接调用 `buffer.edit()` |
+| `focusRequestId` → `requestInitialFocus` | Chrome 层传入 bool 控制首次构建是否请求焦点（默认 `false`，仅活跃窗格为 `true`） |
+| 解耦 `notes_style.dart` | 使用 `Theme.of(context)` 替代 feature 级颜色常量 |
+
+**桥接模式**（DI-4 Q3 D12）inline 在 MarkdownEditorPane 内部实现（~30 行）：
+- `initState` → `buffer.addListener(_onBufferChanged)`
+- `didUpdateWidget` → swap listener on buffer reference change
+- `dispose` → `buffer.removeListener(_onBufferChanged)`
+- String guard → `buffer.content != controller.text` → NO-OP on local edit echo
+
+---
+
 ## 约束
 
 - v0.3 每个 content_type 单一 builder（无级联 fallback 链）
 - 未注册的 content_type 渲染 error，不渲染损坏数据
 - EditBuffer 必须通过构造参数注入
 - EditorPane 不回调 feature controller（依赖反转）
+- EditorPane 不引用 `lib/features/` 内部模块（Rule E）
+
+---
+
+## 实施状态
+
+| 阶段 | 状态 | PR |
+|------|------|-----|
+| EditorResolver + MarkdownEditorPane | PR-RB-09 **已实施** | PR-RB-09（v0.3，DI-10） |
 
 ---
 
