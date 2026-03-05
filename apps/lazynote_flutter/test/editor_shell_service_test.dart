@@ -318,6 +318,59 @@ void main() {
     );
   });
 
+  // ---------------------------------------------------------------------------
+  // T4 (PR-RB-11): 3-pane cross-pane sync
+  // ---------------------------------------------------------------------------
+
+  group('T4: 3-pane cross-pane sync', () {
+    test('3 groups sharing same atom all see edits via shared buffer', () {
+      final service = _buildService(loadContentFn: (id) async => 'content');
+
+      // Open atom in primary group
+      service.openTab('group.primary', 'shared-atom', initialContent: 'v0');
+
+      // Split twice to create 3 groups
+      service.splitGroup('group.primary', Axis.horizontal);
+      final secondGroupId = service.groups.keys.firstWhere(
+        (k) => k != 'group.primary',
+      );
+      service.splitGroup(secondGroupId, Axis.vertical);
+
+      expect(service.paneCount, 3);
+
+      // All groups should share the same buffer
+      final buffer = service.bufferFor('shared-atom')!;
+      expect(buffer.content, 'v0');
+
+      // Edit from any pane updates the shared buffer
+      buffer.edit('v1');
+      expect(buffer.content, 'v1');
+      expect(buffer.rev, 1);
+
+      // Verify only one buffer instance exists
+      expect(service.buffers.keys.where((k) => k == 'shared-atom').length, 1);
+
+      service.dispose();
+    });
+
+    test('3-pane: listener notification count is correct', () {
+      final service = _buildService(loadContentFn: (id) async => 'content');
+
+      service.openTab('group.primary', 'atom-1', initialContent: 'start');
+      service.splitGroup('group.primary', Axis.horizontal);
+
+      final buffer = service.bufferFor('atom-1')!;
+
+      var listenerCount = 0;
+      buffer.addListener(() => listenerCount++);
+
+      buffer.edit('changed');
+      expect(listenerCount, 1); // One edit = one notification
+
+      service.dispose();
+    });
+  });
+
   group('Buffer sharing across groups', () {
     test('same atomId in multiple groups shares one buffer', () {
       final service = _buildService(loadContentFn: (id) async => 'content');

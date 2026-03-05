@@ -41,7 +41,7 @@ Responsibilities:
 
 - canonical domain model (`Atom` — universal entity for notes, tasks, events)
 - validation and invariants (time-matrix, soft-delete, tag normalization)
-- SQLite schema + 9 migrations (`PRAGMA user_version`-tracked)
+- SQLite schema + 11 migrations (`PRAGMA user_version`-tracked)
 - CRUD repository/service layers (atom, note, task, tree)
 - FTS5 full-text search with snippet extraction
 - workspace tree with cycle detection, folder delete modes (dissolve/delete-all)
@@ -81,7 +81,7 @@ Non-responsibilities:
 
 - Primary store: SQLite (single file, `lazynote_entry.sqlite3`)
 - Full-text index: FTS5 (`atoms_fts`) with sync triggers
-- Migration version source: `PRAGMA user_version` (9 migrations, next = 10)
+- Migration version source: `PRAGMA user_version` (11 migrations, next = 12)
 - Soft delete policy: `is_deleted` tombstone (business paths never hard-delete)
 - Runtime file root: `%APPDATA%/LazyLife/` (Windows), `<app_support>/LazyLife/` (others)
 
@@ -90,7 +90,7 @@ Non-responsibilities:
 ### Rust Core
 
 - `crates/lazynote_core/src/model`: canonical `Atom` model, `AtomType`, `TaskStatus` enums
-- `crates/lazynote_core/src/db`: connection bootstrap + 9 migrations
+- `crates/lazynote_core/src/db`: connection bootstrap + 11 migrations
 - `crates/lazynote_core/src/repo`: persistence contracts/SQLite impl (atom, note, tree)
 - `crates/lazynote_core/src/service`: use-case orchestration (atom, note, task, tree)
 - `crates/lazynote_core/src/search`: FTS5 search with snippet extraction

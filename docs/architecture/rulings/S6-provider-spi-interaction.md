@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Accepted** — v0.3 scope (Google Calendar) |
+| 状态 | **Accepted** — 语义已定义；ProviderSpi + schema declaration-only landed (v0.2.5)；Google Calendar provider deferred to PR-RB-12 (conditional)；SyncOrchestratorService v0.4+ |
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
@@ -86,8 +86,8 @@ atom_ref 多引用不影响映射（映射关系是 Atom 级别，不是 atom_re
 | 语义定义 | v0.2.5 已完成 |
 | ProviderSpi trait | 已存在（declaration-only） |
 | external_mappings schema | 已存在（Migration 3） |
-| SyncOrchestratorService | v0.3 PR-0309 待建 |
-| ExternalMappingRepository | v0.3 PR-0309 待建 |
+| SyncOrchestratorService | v0.4+ 延期（依赖 Google Calendar provider） |
+| ExternalMappingRepository | v0.4+ 延期（依赖 SyncOrchestratorService） |
 
 ---
 

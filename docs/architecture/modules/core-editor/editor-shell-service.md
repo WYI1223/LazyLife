@@ -138,7 +138,7 @@ service = EditorShellService(
 | P1/P2 loading 策略（loadActiveBuffers + switchTab lazy） | 已实施 | PR-RB-08（v0.3，DI-4 T5/T6） |
 | Loading failure handling（AtomNotFoundException → tab removal） | 已实施 | PR-RB-08（v0.3，DI-4 T7） |
 | Coordinator 结构清理（selectedNote 派生化 + 激活收敛 + 通知收敛） | 已实施 | PR-RB-08B（v0.3） |
-| EditorResolver 集成 | PR-RB-09 待实施 | PR-RB-09（v0.3，DI-10） |
+| EditorResolver 集成 | 已实施 | PR-RB-09（v0.3，DI-10） |
 
 ---
 

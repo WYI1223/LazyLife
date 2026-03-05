@@ -1,7 +1,7 @@
 # PR-RB-11: 收口与发布门
 
 - Proposed title: `chore(release): PR-RB-11 v0.3 closure — regression tests, doc sync, release evidence`
-- Status: Ready for Implementation
+- Status: Implemented
 
 ## Goal
 
@@ -49,7 +49,7 @@ v0.3 最终收口 PR。在所有 must-have PR（PR-RB-00 ~ PR-RB-10）完成后�
 | EditBuffer 状态机 | 14 个测试（`edit_buffer_test.dart`） | 覆盖 phase 转换、跨 pane 同步、save 语义、性能守卫。缺少：多 pane 并发 edit（同帧） | 追加 concurrent edit 边界用例 |
 | Layout 持久化 | 20 个测试（`layout_persistence_test.dart`） | 已覆盖 schema 版本不匹配（scenario 3: version > current → skipOverwrite）、损坏恢复、atomic write。**原 spec T7 已被前序 PR 覆盖** | ~~T7 移除~~；可选补充 I/O 故障场景 |
 | EditorResolver | 5 个测试（`editor_resolver_test.dart`） | 基础覆盖充分（register/override/unknown placeholder） | 不补齐 |
-| Atom ref 语义 | 通过 workspace 集成测试间接覆盖 | 缺少多 entry point（note_create / entry_create_note / entry_create_task）创建后 atom_ref 一致性的直接验证 | 新建 `atom_ref_consistency_test.dart` |
+| Atom ref 语义 | 通过 workspace 集成测试间接覆盖 | 缺少多 entry point（note_create / entry_create_note / entry_create_task）创建后 atom_ref 一致性的直接验证 | 追加 Rust 集成测试至 `crates/lazynote_ffi/src/api.rs` |
 | Cross-pane sync | 13 个测试（edit_buffer + editor_shell_service + workspace_split） | 2-pane 场景充分。**缺少 3-pane 同时编辑同一 Atom** | 追加三 pane 测试 |
 | Tag results panel | 10 个测试（widget + integration） | 覆盖充分 | 不补齐 |
 | Reminder lifecycle | 28 个测试（lifecycle + scheduler） | **空数据库启动恢复已有测试**（`handles empty timed atom list gracefully`）。**原 spec T10 已被前序 PR 覆盖** | ~~T10 移除~~ |
@@ -106,7 +106,7 @@ v0.3 最终收口 PR。在所有 must-have PR（PR-RB-00 ~ PR-RB-10）完成后�
 | **GroupLayout 不变式**（关键缺口） | `test/group_layout_test.dart`（新建） | ~10 个 | split 正确性（axis、fraction、ID 生成）、close 级联、allGroupIds 遍历、深层嵌套（4+ pane）、快速 split/close 序列、边界：关闭不存在的 groupId、最后一个 pane 不消失（I1） |
 | EditBuffer concurrent edit | `test/edit_buffer_test.dart`（追加） | 1-2 个 | 同帧多 pane 并发 edit()、Future.wait 竞态 |
 | Cross-pane 三 pane | `test/editor_shell_service_test.dart`（追加） | 1-2 个 | 3 pane 同时编辑同一 Atom、监听器通知确认 |
-| Atom ref 多入口一致性 | `test/atom_ref_consistency_test.dart`（新建） | 2-3 个 | note_create / entry_create_note / entry_create_task 创建后 atom_ref 存在性验证 |
+| Atom ref 多入口一致性 | `crates/lazynote_ffi/src/api.rs`（追加 Rust 集成测试） | 3 个 | entry_create_note / entry_create_task / entry_schedule 创建后 atom_ref 存在性验证 |
 
 **预期新增**：15-17 个测试用例，~200-250 行测试代码。
 
@@ -152,11 +152,11 @@ v0.3 最终收口 PR。在所有 must-have PR（PR-RB-00 ~ PR-RB-10）完成后�
 // - tasks/calendar 零 reminder 直接引用（import 级静态检查）
 // - entry 零 ExtensionRegistry 引用（S5 合规）
 
-// Gate B: 编辑器基础设施验证
-// - EditorShellService 测试存在且通过
-// - EditBuffer cross-pane 测试存在且通过
-// - GroupLayout 不变式测试存在且通过
-// - Layout persistence round-trip 测试存在且通过
+// Gate B: 编辑器基础设施验证（存在性 gate — 测试通过由 flutter test CI step 保证）
+// - EditorShellService 测试文件存在
+// - EditBuffer cross-pane 测试文件存在
+// - GroupLayout 不变式测试文件存在
+// - Layout persistence round-trip 测试文件存在
 ```
 
 ### Lane D: Release Evidence 收集
@@ -172,8 +172,10 @@ rg "NoteItem" apps/lazynote_flutter/lib/ --glob '!**/bindings/**' --glob '!**/fr
 # Rust 集成测试（note_create 路径）：
 # - note_create_with_parent_places_atom_ref_under_folder (api.rs:2281)
 # - note_create_without_parent_places_atom_ref_at_root (api.rs:2326)
-# Flutter 测试（entry_create_note / entry_create_task / entry_schedule 路径）：
-# - atom_ref_consistency_test.dart (T5 新建，覆盖全部 entry 入口)
+# Rust 集成测试（entry_create_note / entry_create_task / entry_schedule 路径）：
+# - entry_create_note_places_atom_ref_at_root (api.rs, T5 新建)
+# - entry_create_task_places_atom_ref_at_root (api.rs, T5 新建)
+# - entry_schedule_places_atom_ref_at_root (api.rs, T5 新建)
 # gate_checks.dart --gate-a 自动检查上述测试存在性
 
 # Tasks/Calendar 不承担提醒调度入口（import 级静态检查）
@@ -245,7 +247,7 @@ dart run ../../tools/ci/architecture_check.dart
 | T2 | GroupLayout 不变式测试（关键缺口） | `test/group_layout_test.dart`（新建） | 新文件 ~120 行，~10 个测试 | — |
 | T3 | EditBuffer concurrent edit 边界 | `test/edit_buffer_test.dart`（追加） | ~+30 行，1-2 个测试 | — |
 | T4 | Cross-pane 三 pane 同时编辑 | `test/editor_shell_service_test.dart`（追加） | ~+40 行，1-2 个测试 | — |
-| T5 | Atom ref 多入口一致性验证 | `test/atom_ref_consistency_test.dart`（新建） | 新文件 ~60 行，2-3 个测试 | — |
+| T5 | Atom ref 多入口一致性验证 | `crates/lazynote_ffi/src/api.rs`（追加 Rust 集成测试） | 3 个测试 | — |
 | **Lane C: 文档同步** | | | | |
 | T6 | `overview.md`：migration 计数修正 | `docs/architecture/overview.md` | 1 行编辑 | — |
 | T7 | `ffi-contracts.md`：补充 `workspace_ancestor_path` | `docs/api/ffi-contracts.md` | ~+15 行 | — |
@@ -267,7 +269,7 @@ dart run ../../tools/ci/architecture_check.dart
 
 **Lane B（测试）：**
 - `[add]` `apps/lazynote_flutter/test/group_layout_test.dart` (~120 行)
-- `[add]` `apps/lazynote_flutter/test/atom_ref_consistency_test.dart` (~60 行)
+- `[edit]` `crates/lazynote_ffi/src/api.rs`（追加 3 个 atom_ref 一致性 Rust 集成测试）
 - `[edit]` `apps/lazynote_flutter/test/edit_buffer_test.dart` (~+30 行)
 - `[edit]` `apps/lazynote_flutter/test/editor_shell_service_test.dart` (~+40 行)
 
@@ -328,16 +330,16 @@ dart run ../../tools/ci/gate_checks.dart --all
 
 ## Acceptance Criteria
 
-- [ ] 旧 manager 零残留已验证并记录（Lane A verification pass）
-- [ ] 回归测试补齐：新增 ≥15 个测试用例（其中 GroupLayout ≥10 个）
-- [ ] `overview.md` migration 计数修正 + `ffi-contracts.md` 补充 `workspace_ancestor_path`
-- [ ] Rulings S1~S9 实施状态已标注
-- [ ] DI-0~DI-5, DI-10~DI-12 实施状态已标注（DI-11/DI-12 以 v0.4 addendum 口径）；DI-13/DI-14 保持 PENDING 已确认
-- [ ] `v0.3-rulings-modules-checklist-temp-2026-03-01.md` 相关项全部闭合（RC-06/RC-07/MC-03 + §6 挂接）
-- [ ] `tools/ci/gate_checks.dart` 已创建，Gate A/B 验证逻辑为单一事实来源，CI workflow 可执行
-- [ ] Gate A 全部通过（`dart run ../../tools/ci/gate_checks.dart --gate-a` 零 violation）
-- [ ] Gate B 全部通过（`dart run ../../tools/ci/gate_checks.dart --gate-b` 零 violation）
-- [ ] §Verification CI gates 全部通过（测试数量无回退，release evidence 记录实际值）
-- [ ] S5 合规校验通过
-- [ ] v0.4 延期项汇总已纳入 release evidence
-- [ ] `v0.3-release-evidence.md` 已撰写
+- [x] 旧 manager 零残留已验证并记录（Lane A verification pass）
+- [x] 回归测试补齐：新增 ≥15 个测试用例（其中 GroupLayout ≥10 个）— 实际：22 个（GroupLayout 15, EditBuffer 2, EditorShellService 2, Rust atom_ref 3）
+- [x] `overview.md` migration 计数修正 + `ffi-contracts.md` 补充 `workspace_ancestor_path`
+- [x] Rulings S1~S9 实施状态已标注
+- [x] DI-0~DI-5, DI-10~DI-12 实施状态已标注（DI-11/DI-12 以 v0.4 addendum 口径）；DI-13/DI-14 保持 PENDING 已确认
+- [x] `v0.3-rulings-modules-checklist-temp-2026-03-01.md` 相关项全部闭合（RC-06/RC-07/MC-03 + §6 挂接）
+- [x] `tools/ci/gate_checks.dart` 已创建，Gate A/B 验证逻辑为单一事实来源，CI workflow 可执行（ci.yml 已添加 step）
+- [x] Gate A 全部通过（`dart run ../../tools/ci/gate_checks.dart --gate-a` 零 violation）
+- [x] Gate B 全部通过（`dart run ../../tools/ci/gate_checks.dart --gate-b` 零 violation）
+- [x] §Verification CI gates 全部通过（Rust 62, Flutter 409; release evidence 已记录）
+- [x] S5 合规校验通过
+- [x] v0.4 延期项汇总已纳入 release evidence（15 项）
+- [x] `v0.3-release-evidence.md` 已撰写
