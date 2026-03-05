@@ -94,6 +94,18 @@ String _splitPaneJson({
   });
 }
 
+/// Polls until [path] exists on disk, with a timeout guard for CI.
+Future<void> _waitForFile(String path, {int maxMs = 5000}) async {
+  const pollInterval = Duration(milliseconds: 50);
+  final deadline = DateTime.now().add(Duration(milliseconds: maxMs));
+  while (!File(path).existsSync()) {
+    if (DateTime.now().isAfter(deadline)) {
+      throw StateError('File $path did not appear within ${maxMs}ms');
+    }
+    await Future<void>.delayed(pollInterval);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -347,7 +359,7 @@ void main() {
       final persistence = _buildPersistence(
         timerFactory: (duration, callback) {
           callback(); // Fire immediately for testing
-          return Timer(Duration.zero, () {});
+          return _NoOpTimer();
         },
       );
 
@@ -370,8 +382,8 @@ void main() {
         activeGroupId: 'group.primary',
       );
 
-      // Wait for async file write
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // Poll until file appears (async write is fire-and-forget from timer)
+      await _waitForFile(_layoutFilePath);
 
       expect(File(_layoutFilePath).existsSync(), true);
 
@@ -387,7 +399,7 @@ void main() {
       final persistence = _buildPersistence(
         timerFactory: (duration, callback) {
           callback();
-          return Timer(Duration.zero, () {});
+          return _NoOpTimer();
         },
       );
 
@@ -408,7 +420,7 @@ void main() {
         groups: groups,
         activeGroupId: g2Id,
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await _waitForFile(_layoutFilePath);
 
       final loaded = await _buildPersistence().load();
       expect(loaded, isNotNull);
@@ -469,7 +481,7 @@ void main() {
       final persistence = _buildPersistence(
         timerFactory: (duration, callback) {
           callback();
-          return Timer(Duration.zero, () {});
+          return _NoOpTimer();
         },
       );
 
@@ -485,7 +497,7 @@ void main() {
         groups: groups,
         activeGroupId: 'group.primary',
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await _waitForFile(_layoutFilePath);
 
       expect(File(_layoutFilePath).existsSync(), true);
 
