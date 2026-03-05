@@ -36,6 +36,8 @@ Thumbs.db
 # -----------------------------
 *.log
 *.tmp
+.claude/
+.codex/
 .claude/settings.local.json
 
 # -----------------------------
