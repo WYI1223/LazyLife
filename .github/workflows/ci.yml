@@ -76,6 +76,9 @@ jobs:
       - name: Architecture check
         run: dart run ../../tools/ci/architecture_check.dart
 
+      - name: Gate checks
+        run: dart run ../../tools/ci/gate_checks.dart --all
+
       - name: Flutter build windows (debug)
         run: flutter build windows --debug
 

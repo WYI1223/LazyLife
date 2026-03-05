@@ -352,6 +352,20 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 
 Detailed contract: `docs/api/workspace-tree-contract.md`.
 
+### Workspace Ancestor Path (PR-RB-10, S3 Phase A)
+
+- `workspace_ancestor_path(atom_id) -> WorkspaceAncestorPathResponse`
+  - Returns ordered ancestor folder `display_name` list from root to direct parent.
+  - Root-level `atom_ref` or nonexistent atom returns empty `path`.
+  - Used by tag results panel for breadcrumb display.
+
+`WorkspaceAncestorPathResponse`:
+
+- `ok` (bool)
+- `error_code` (String?, nullable)
+- `message` (String)
+- `path` (List\<String\>) — ancestor folder display_names, root-to-parent order
+
 ### CreationService Unified Creation (PR-RB-03, S4 ruling)
 
 All creation paths (entry commands, note create, task create, event schedule) are unified through `CreationService` in Rust Core. `CreationService` guarantees mandatory `atom_ref` accompaniment (S1 R5): every newly created Atom automatically gets a workspace `atom_ref` placed at the designated folder or root level. The `node_uuid` of the auto-created `atom_ref` is returned in `EntryActionResponse.node_uuid` or `AtomItemResponse.node_uuid`.

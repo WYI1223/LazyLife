@@ -216,9 +216,9 @@ bool canSplit(String groupId, Axis axis, Size containerSize) {
 
 | 阶段 | 状态 | PR |
 |------|------|-----|
-| 二叉树结构 + resolve + I1-I7 | PR-RB-06 待实施 | PR-RB-06（v0.3） |
-| toJson/fromJson（前向兼容） | PR-RB-06 待实施 | PR-RB-06（v0.3） |
-| 文件 I/O + 去抖 + recovery | PR-RB-07 待实施 | PR-RB-07（v0.3，DI-3） |
+| 二叉树结构 + resolve + I1-I7 | 已实施 | PR-RB-06（v0.3） |
+| toJson/fromJson（前向兼容） | 已实施 | PR-RB-06（v0.3） |
+| 文件 I/O + 去抖 + recovery | 已实施 | PR-RB-07（v0.3，DI-3） |
 
 ---
 

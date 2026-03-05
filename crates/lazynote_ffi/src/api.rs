@@ -2350,6 +2350,76 @@ mod tests {
         assert_eq!(root_refs[0].node_id, node_uuid);
     }
 
+    // T5 (PR-RB-11): atom_ref consistency — all creation entry points
+    // produce an atom_ref in the workspace tree.
+
+    #[test]
+    fn entry_create_note_places_atom_ref_at_root() {
+        let _guard = acquire_test_db_lock();
+
+        let created = entry_create_note_impl("entry note content".to_string());
+        assert!(created.ok, "{}", created.message);
+        let node_uuid = created
+            .node_uuid
+            .expect("entry_create_note should return node_uuid");
+
+        // Verify atom_ref exists at root level.
+        let root_children = workspace_list_children_impl(None);
+        assert!(root_children.ok, "{}", root_children.message);
+        let found = root_children.items.iter().any(|n| n.node_id == node_uuid);
+        assert!(
+            found,
+            "atom_ref from entry_create_note must appear at root; node_uuid={}",
+            node_uuid
+        );
+    }
+
+    #[test]
+    fn entry_create_task_places_atom_ref_at_root() {
+        let _guard = acquire_test_db_lock();
+
+        let created = entry_create_task_impl("entry task content".to_string());
+        assert!(created.ok, "{}", created.message);
+        let node_uuid = created
+            .node_uuid
+            .expect("entry_create_task should return node_uuid");
+
+        // Verify atom_ref exists at root level.
+        let root_children = workspace_list_children_impl(None);
+        assert!(root_children.ok, "{}", root_children.message);
+        let found = root_children.items.iter().any(|n| n.node_id == node_uuid);
+        assert!(
+            found,
+            "atom_ref from entry_create_task must appear at root; node_uuid={}",
+            node_uuid
+        );
+    }
+
+    #[test]
+    fn entry_schedule_places_atom_ref_at_root() {
+        let _guard = acquire_test_db_lock();
+
+        let created = entry_schedule_impl(
+            "entry event".to_string(),
+            1_700_000_000_000,
+            Some(1_700_003_600_000),
+        );
+        assert!(created.ok, "{}", created.message);
+        let node_uuid = created
+            .node_uuid
+            .expect("entry_schedule should return node_uuid");
+
+        // Verify atom_ref exists at root level.
+        let root_children = workspace_list_children_impl(None);
+        assert!(root_children.ok, "{}", root_children.message);
+        let found = root_children.items.iter().any(|n| n.node_id == node_uuid);
+        assert!(
+            found,
+            "atom_ref from entry_schedule must appear at root; node_uuid={}",
+            node_uuid
+        );
+    }
+
     #[test]
     fn calendar_list_returns_s8_fields_for_event() {
         let _guard = acquire_test_db_lock();

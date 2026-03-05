@@ -2,7 +2,7 @@
 
 | 字段 | 值 |
 |------|-----|
-| 状态 | **Landed** — v0.3 PR-RB-02 (R2/R3/R8) |
+| 状态 | **Landed** — v0.3 PR-RB-02 (R2/R3/R8) + PR-RB-03 (R5 atom_ref mandatory); R9-R14 deferred v0.4 |
 | 引入版本 | v0.2.5 (PR-0256) |
 | 废弃者 | — |
 | 裁决日期 | 2026-02-26 |
@@ -465,8 +465,8 @@ CREATE TABLE atom_overlays (
 | view_hint 重命名 + 自动推导 | v0.3 PR-RB-02 已完成 |
 | title 字段 | v0.3 PR-RB-02 已完成 |
 | content_type 字段 | v0.3 PR-RB-02 已完成 |
-| atom_ref 强制伴随 | v0.3 待实施（S4 前置） |
-| 指定默认路径模型 | v0.3 待实施 |
+| atom_ref 强制伴随 | v0.3 已实施 — PR-RB-03（S4 统一创建） |
+| 指定默认路径模型 | v0.4 延期（指定文件夹 UI） |
 | R9 icon / R10 cover_image | v0.4+ |
 | R11 comment（独立实体方案） | v0.4+ |
 | R12 Spatial Canvas（渲染引擎 + 元素系统） | v0.3–v0.4+ |

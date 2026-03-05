@@ -394,6 +394,60 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
+  // T3 (PR-RB-11): Concurrent edit boundary
+  // ---------------------------------------------------------------------------
+
+  group('T3: Concurrent edit boundary', () {
+    test('multiple rapid edits within same frame coalesce correctly', () {
+      final tf = _fakeTimerFactory();
+      final buffer = EditBuffer(
+        atomId: 'atom-1',
+        persistFn: _successPersist,
+        timerFactory: tf.factory,
+      );
+      buffer.initialize('start');
+
+      var notifyCount = 0;
+      buffer.addListener(() => notifyCount++);
+
+      // Simulate rapid sequential edits (same synchronous frame)
+      buffer.edit('a');
+      buffer.edit('ab');
+      buffer.edit('abc');
+
+      // Each distinct edit triggers a notification
+      expect(notifyCount, 3);
+      expect(buffer.content, 'abc');
+      expect(buffer.rev, 3);
+
+      buffer.dispose();
+    });
+
+    test('concurrent listeners all see final state after rapid edits', () {
+      final tf = _fakeTimerFactory();
+      final buffer = EditBuffer(
+        atomId: 'atom-1',
+        persistFn: _successPersist,
+        timerFactory: tf.factory,
+      );
+      buffer.initialize('');
+
+      final paneContents = <String>[];
+      // Simulate 3 panes listening
+      buffer.addListener(() => paneContents.add('A:${buffer.content}'));
+      buffer.addListener(() => paneContents.add('B:${buffer.content}'));
+      buffer.addListener(() => paneContents.add('C:${buffer.content}'));
+
+      buffer.edit('final');
+
+      // All 3 listeners fired with same content
+      expect(paneContents, ['A:final', 'B:final', 'C:final']);
+
+      buffer.dispose();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // AtomNotFoundException
   // ---------------------------------------------------------------------------
 
