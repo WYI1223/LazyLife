@@ -8,6 +8,12 @@
 | **前置依赖** | DI-12（单根树与系统节点语义） |
 | **来源** | DI-12 E3 同源化执行项的设计空白；DI-1 Q4 细化3 仅覆盖 CRUD 层搬迁 |
 
+> **治理说明**：本文件为**概念母题（Conceptual Parent）**。Q0-Q2 裁决作为下游执行设计的输入约束。Q3-Q5 未裁决议题已迁移至 DI-17（Flutter 薄客户端）继续讨论。后续执行裁决迁移至：
+> - DI-15（Rust 数据模型：schema + migration）
+> - DI-16（Rust Service + FFI 契约）
+> - DI-17（Flutter 薄客户端：承接 Q3-Q5）
+> - DI-18（执行方案：PR 拆分 + 测试策略）
+
 ---
 
 ## 背景
@@ -76,7 +82,7 @@ DI-12 E3 提出"Explorer/Tasks/Calendar 同源化"执行项，但只列举了执
 
 ---
 
-### Q1. Core workspace tree service 应提供什么核心能力？
+### Q1. Core workspace tree service 应提供什么核心能力？（RESOLVED）
 
 #### 需求端推导
 
@@ -91,7 +97,7 @@ DI-12 E3 提出"Explorer/Tasks/Calendar 同源化"执行项，但只列举了执
 | **Calendar** | 以 Calendar 系统节点为根，获取子树内全部 active atom_ref（DI-12 Q7） |
 | **Entry** | 创建时根据意图上下文确定落点（DI-12 Q6 路由优先级） |
 
-**关键发现：统一子树抽象**。
+**关键发现 1：统一子树抽象**。
 
 Notes Explorer 和 Tasks/Calendar 的消费能力本质相同——都是"给我以节点 X 为根的子树数据"。差异仅在于：
 
@@ -101,7 +107,7 @@ Notes Explorer 和 Tasks/Calendar 的消费能力本质相同——都是"给我
 
 展示形态（树形 / 列表 / 分组）是 feature 层的渲染选择，不影响 core 的查询语义。
 
-**关键发现：子树根是调用参数，不是 feature 级绑定**。
+**关键发现 2：子树根是调用参数，不是 feature 级绑定**。
 
 各 feature 并非固定只看一个子树。同一 feature 在不同上下文下可能切换子树根：
 
@@ -115,7 +121,7 @@ Notes Explorer 和 Tasks/Calendar 的消费能力本质相同——都是"给我
 
 因此 core 接口的子树根必须是调用参数，不内置 feature 级权限限制。Core 是中立的数据提供者。
 
-**Core 核心能力（从需求端收敛）**：
+**裁决：Core 核心能力（从需求端收敛）**：
 
 | 能力 | 说明 | 消费者 |
 |------|------|--------|
@@ -144,7 +150,7 @@ Feature (caller)
 
 Guard 是透明层，feature 端调用方式不变。权限模型本身的设计（策略、配置 UI、capability 维度）作为独立议题，不在 DI-14 范围内展开，但 core 接口设计必须不阻塞其未来叠加。
 
-**Feature 层自有职责（不属于 core）**：
+**裁决：Feature 层自有职责（不属于 core）**：
 
 | 职责 | 性质 | 说明 |
 |------|------|------|
@@ -154,23 +160,110 @@ Guard 是透明层，feature 端调用方式不变。权限模型本身的设计
 
 ---
 
-### Q2. 子树查询的接口设计？
+### Q2. 子树查询的接口设计？（RESOLVED）
 
-Q1 确立了"子树查询"为唯一数据读取原语。具体接口如何设计？
+#### 现状 vs 目标
 
-- A. **统一 `querySubtree(rootNodeId, {depth?})` 接口**：单一方法，`depth=1` 为直接子节点（Explorer 逐层展开），`depth=null` 为全量递归（Tasks/Calendar 全量获取）
-- B. **双方法接口**：`listChildren(parentNodeId)` + `listSubtreeAtomRefs(rootNodeId)` 分别服务于逐层展开和全量获取两个场景
-- C. **纯事件驱动**：Core 持有全树缓存，feature 通过 `getSubtreeSnapshot(rootNodeId)` 获取当前快照，不区分加载粒度
+**当前实现**（各 feature 独立查询，不经过 workspace tree）：
 
-**分析重点**：
+```
+Notes Explorer
+  → ExplorerTreeState.loadChildren(parentId)
+    → FFI workspace_list_children(parentId)
+    → 缓存在 _childrenByParent
 
-- Explorer 逐层展开需要懒加载（用户可能永远不展开某些文件夹），全量预加载浪费。
-- Tasks/Calendar 需要子树全量（UI 要做分组/排序），逐层加载增加 feature 端复杂度。
-- 是否需要 Rust Core 提供新的子树查询 FFI，还是 Flutter 侧递归组装。
+Tasks
+  → TasksController
+    → FFI tasks_list_inbox / tasks_list_today / tasks_list_upcoming
+    → 按时间/状态直接查 atoms 表，不经过 workspace tree
+
+Calendar
+  → CalendarController
+    → FFI calendar_list_by_range
+    → 按时间范围直接查 atoms 表，不经过 workspace tree
+```
+
+**目标实现**（所有 feature 通过 core service 统一访问）：
+
+```
+所有 feature → WorkspaceTreeService (core)
+
+Notes Explorer
+  → service.listChildren(ROOT)
+  → 用户展开 → service.listChildren(folderId)
+
+Tasks 日常视图
+  → service.listSubtreeAtomRefs(TasksNodeId)
+  → feature 层按 status/time 分组
+
+Tasks "添加已有项"
+  → service.listChildren(ROOT) → 全树浏览 picker
+
+Calendar 日常视图
+  → service.listSubtreeAtomRefs(CalendarNodeId)
+  → feature 层按时间分组
+
+任意 feature 执行 mutation
+  → service 发变更通知
+  → 所有消费者自动刷新
+```
+
+#### 用户视角的两种操作模式
+
+| 模式 | 用户行为 | 数据需求 |
+|------|---------|---------|
+| **浏览模式** | 逐层点击展开文件夹 | 一层子节点（按需懒加载） |
+| **收集模式** | 看到某个范围内的全部内容 | 子树内全部 atom_ref（扁平化） |
+
+两种模式是同一个子树查询原语的不同粒度，不是不同功能。
+
+#### 裁决
+
+选择 **B（双方法接口）**——同一子树查询原语的两种粒度模式：
+
+```dart
+// 浏览模式：返回 parentId 的直接子节点（文件夹 + atom_ref）
+// 用于：Explorer 逐层展开、Tasks/Calendar "添加已有项" picker
+Future<List<WorkspaceNodeItem>> listChildren(String? parentNodeId);
+
+// 收集模式：返回 rootNodeId 子树内全部 atom_ref（扁平化，不含文件夹）
+// 用于：Tasks/Calendar 日常视图
+Future<List<WorkspaceAtomRef>> listSubtreeAtomRefs(String rootNodeId);
+```
+
+**裁决理由**：
+
+1. 选项 A（统一 `depth` 参数）概念优雅但实现分叉大——`depth=1` 和 `depth=null` 在数据来源、缓存策略、性能特征上差异显著，硬塞进一个方法会导致大量内部分支。
+2. 选项 C（全树缓存 + 快照）对大树有预加载浪费，且与 Explorer 的懒加载交互体验冲突。
+3. 选项 B 的两个方法语义一致（都是 scoped by root node），只是加载策略不同，符合实际使用模式。
+
+**辅助查询接口**：
+
+除两个核心查询原语外，以下辅助查询从使用场景反推得出：
+
+| 接口 | 查询方向 | 场景 |
+|------|---------|------|
+| `getNode(nodeId)` | 精确定位 | 单节点属性查询（删除确认、重命名回显、系统节点判断） |
+| `getAncestorPath(nodeId)` | 子 → 根 | 面包屑导航、子树归属判断（变更通知时确定影响范围） |
+| `listAtomRefsForAtom(atomId)` | atom → 引用它的 atom_ref | 多挂载感知、"是否已引用"检查、删除影响评估 |
+
+**接口完备性原则**：
+
+以上 5 个查询接口（2 核心 + 3 辅助）+ CRUD + 系统节点解析 + 创建路由 + 变更通知，构成完备的元操作集。任何更高层的功能由 feature 层组合得到，不向 core 追加派生接口。未来若某组合操作频繁到需要性能优化，方可按明确动机下沉为新的 core 原语。
+
+**收集模式需要新的 Rust Core FFI**：
+
+当前不存在"递归查询子树内全部 atom_ref"的 FFI。不可在 Flutter 侧用 `listChildren` 逐层递归拼装，原因：
+
+1. N+1 查询：深度 N 的子树需要多次 FFI 往返。
+2. Q9 一致性：DI-12 Q9 的 ancestor chain active 判定在 SQL 层做更准确。
+3. 原子性：逐层拼装过程中树可能被其他操作修改，结果不一致。
+
+SQL 递归 CTE 单次查询完成，单次 FFI 往返，结果一致。
 
 ---
 
-### Q3. 变更通知与缓存一致性？
+### Q3. 变更通知与缓存一致性？→ 迁移至 DI-17 Q2
 
 Core service 的变更通知如何设计，使各 feature 保持数据一致？
 
@@ -186,7 +279,7 @@ Core service 的变更通知如何设计，使各 feature 保持数据一致？
 
 ---
 
-### Q4. 树 UI 组件的共享层级？
+### Q4. 树 UI 组件的共享层级？→ 迁移至 DI-17 Q3
 
 `ExplorerTreeBuilder`、`ExplorerTreeItem` 等渲染组件是否共享？
 
@@ -201,7 +294,7 @@ Core service 的变更通知如何设计，使各 feature 保持数据一致？
 
 ---
 
-### Q5. 系统节点解析归属？
+### Q5. 系统节点解析归属？→ 迁移至 DI-17 Q4
 
 DI-12 定义了系统节点（ROOT/Inbox/Tasks/Calendar）按 `role + uuid` 绑定。"从 role 解析到 uuid"的逻辑放在哪？
 
