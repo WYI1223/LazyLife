@@ -31,6 +31,24 @@
 | DI-10 | [DI-10-editor-resolver-shell.md](DI-10-editor-resolver-shell.md) | EditorResolver 壳设计 | S2 Phase 3 | RESOLVED |
 | DI-11 | [DI-11-atomtype-rename-impact.md](DI-11-atomtype-rename-impact.md) | AtomType → ViewHint 枚举重命名影响 | S1 R3, PR-RB-02 D1 | RESOLVED |
 | DI-12 | [DI-12-workspace-tree-single-root.md](DI-12-workspace-tree-single-root.md) | Workspace Tree 单根化与系统语义锚点 | S1 R5/R6, S4 | RESOLVED |
+| DI-13 | [DI-13-calendar-range-limit-policy.md](DI-13-calendar-range-limit-policy.md) | Calendar Range 查询默认 Limit 策略 | PR-RB-04 | PENDING |
+| DI-14 | [DI-14-workspace-tree-core-promotion.md](DI-14-workspace-tree-core-promotion.md) | Workspace Tree 提升为 Core 层一等公民 | DI-12 E3 | PENDING |
+| DI-15 | [DI-15-rust-data-model-single-root.md](DI-15-rust-data-model-single-root.md) | Rust Core 数据模型 — 工作区树架构 | DI-12, DI-14, DI-16 | RESOLVED |
+| DI-16 | [DI-16-rust-service-ffi-contract.md](DI-16-rust-service-ffi-contract.md) | Rust Service 层与 FFI 契约 | DI-12, DI-14, DI-15 | IN PROGRESS |
+| DI-17 | [DI-17-flutter-thin-client.md](DI-17-flutter-thin-client.md) | Flutter 薄客户端与 Feature 消费适配 | DI-14, DI-16 | PENDING |
+| DI-18 | [DI-18-execution-plan.md](DI-18-execution-plan.md) | 执行方案 — PR 拆分、迁移顺序与测试策略 | DI-15, DI-16, DI-17 | RESOLVED |
+| DI-19 | [DI-19-adr-governance.md](DI-19-adr-governance.md) | ADR 治理方案 | E1, DI-12→DI-16 | RESOLVED |
+| DI-20 | [DI-20-governance-execution-plan.md](DI-20-governance-execution-plan.md) | 治理执行计划 — ADR 历史重演、主题覆盖与激活顺序 | DI-19 | RESOLVED |
+| DI-21 | [DI-21-ci-duplication-detection.md](DI-21-ci-duplication-detection.md) | CI 跨 Feature 代码重复检测 | DI-17 Q3, DI-18 Q5.2, Rule E | RESOLVED |
+
+---
+
+## 治理 Kickoff 筹备 PR 草案
+
+| 编号 | 文件 | 作用 | 状态 |
+|------|------|------|------|
+| PR-GOV-01 | [../governance-kickoff-prep/PR-GOV-01-source-corpus-and-theme-map-baseline.md](../governance-kickoff-prep/PR-GOV-01-source-corpus-and-theme-map-baseline.md) | 供 future `v0.4 kickoff` 使用的首个候选 PR spec：`source corpus` 盘点、first-pass 主题地图、覆盖基线、模板抽离清单入口 | PREP READY |
+| PR-GOV-02 ~ PR-GOV-06 | [../governance-kickoff-prep/README.md](../governance-kickoff-prep/README.md) | 后续治理 kickoff 筹备 PR 草案目录；范围与顺序见 [DI-20-governance-execution-plan.md](DI-20-governance-execution-plan.md) Q3/Q5 | PLANNED |
 
 ---
 
