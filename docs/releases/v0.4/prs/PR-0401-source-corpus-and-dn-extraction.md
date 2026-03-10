@@ -89,6 +89,13 @@ PR-0401 的主线 source corpus 按以下顺序建立：
 
 - `Doc ID` 使用 `DOC-xxx` 命名空间
 - `Normative Status`：`historical` / `current_effective` / `deferred` / `pending`
+- `Normative Status` 映射按以下优先级执行：
+  - 角色覆盖优先：仅对被 PR-0401 明确指定为当前治理执行权威输入的文档赋值 `current_effective`；当前范围仅限 `DI-19` / `DI-20`，该值不是源文档头部状态的直接拷贝
+  - 其余文档按权威状态源映射：文档头部状态优先于 `docs/reports/v0.3/design-discussions/README.md` 索引；若头部缺失或非标准，再回退到索引状态
+  - `RESOLVED` / `APPLIED` -> `historical`
+  - `OPEN` / `PENDING` / `IN PROGRESS` -> `pending`
+  - `DEFERRED*` 或缺失槽位 -> `deferred`
+  - 若文档头部与索引状态冲突，`Normative Status` 采用头部映射结果，并在 `Notes` 中显式记录冲突
 - `DI-0` 至 `DI-21` 必须按编号顺序连续入表；`DI-9` 使用缺失槽位占位
 - legacy rulings 不进入 inventory 主表（已由 PR-0400 归档），但可在 `Notes` 中声明 current normative anchor
 
@@ -178,9 +185,17 @@ dart run ../../tools/ci/architecture_check.dart
 
 ### Structural verification
 
-```bash
-# inventory 中应包含 DI-0 ~ DI-21 顺序链
-rg -n "DI-0|DI-1|DI-2|DI-3|DI-4|DI-5|DI-6|DI-7|DI-8|DI-9|DI-10|DI-11|DI-12|DI-13|DI-14|DI-15|DI-16|DI-17|DI-18|DI-19|DI-20|DI-21" docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md
+```powershell
+# inventory 中 DI-0 ~ DI-21 必须连续且按序出现
+$diRows = Get-Content 'docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md' |
+  Where-Object { $_ -match '^\| `DOC-0(0[89]|1[0-9]|2[0-9])` \|' } |
+  ForEach-Object {
+    if ($_ -match '\| `[^`]* / DI-(\d+)` \|') { [int]$matches[1] }
+  }
+$expected = 0..21
+if (($diRows -join ',') -ne ($expected -join ',')) {
+  throw "DI chain mismatch: $($diRows -join ',')"
+}
 
 # 缺失槽位 DI-9 必须显式存在
 rg -n "DI-9|缺失槽位|missing slot" docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md docs/reports/v0.4/governance-execution/PR-0401/coverage-matrix.md

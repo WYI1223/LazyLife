@@ -4,32 +4,32 @@
 
 | Doc ID | Doc Title | Survey Status | DN Extraction Status | Extracted DN Count | Notes |
 |------|------|------|------|------|------|
-| `DOC-001` | 08a — 审计发现（事实基础） | `not_started` | `not_started` | `0` | queued |
-| `DOC-002` | 08b — 语义裁决记录 | `seeded` | `seeded` | `5` | first semantic seed batch |
-| `DOC-003` | 08c — 解决方案 | `not_started` | `not_started` | `0` | queued |
-| `DOC-004` | 08d — PR 再规划 | `not_started` | `not_started` | `0` | queued |
-| `DOC-005` | 09 — v0.2.5 重构验收报告 | `not_started` | `not_started` | `0` | queued |
-| `DOC-006` | PR-RB-00: 文档前置修复与基础设施 | `seeded` | `seeded` | `2` | governance lineage seed |
-| `DOC-007` | v0.3 Release Evidence | `not_started` | `not_started` | `0` | queued |
-| `DOC-008` | DI-0: 双版本 NoteTabManager 关系确认 | `not_started` | `not_started` | `0` | queued |
-| `DOC-009` | DI-1: EditorShellService 接口设计 + 状态归属 | `not_started` | `not_started` | `0` | queued |
-| `DOC-010` | DI-2: 递归布局树节点结构 + 约束传播 | `not_started` | `not_started` | `0` | queued |
-| `DOC-011` | DI-3: 布局持久化、迁移策略、深度限制 | `not_started` | `not_started` | `0` | queued |
-| `DOC-012` | DI-4: Buffer 同步模型 + 粒度 | `not_started` | `not_started` | `0` | queued |
-| `DOC-013` | DI-5: 光标独立性 + 冲突处理 | `not_started` | `not_started` | `0` | queued |
-| `DOC-014` | DI-6: 跨 Track 隐藏依赖 + 增量交付 | `not_started` | `not_started` | `0` | queued |
-| `DOC-015` | DI-7: Gate 验证标准 + 性能基线 + 测试策略 | `not_started` | `not_started` | `0` | queued |
-| `DOC-016` | DI-8: PR-0309 SPI 验证方式 | `not_started` | `not_started` | `0` | deferred item still inventoried |
-| `DOC-017` | DI-9: Entry Search 查询语义重设计 | `missing` | `missing` | `0` | explicit missing slot |
-| `DOC-018` | DI-10: EditorResolver 壳设计 | `not_started` | `not_started` | `0` | queued |
-| `DOC-019` | DI-11: AtomType → ViewHint 枚举重命名影响分析 | `not_started` | `not_started` | `0` | queued |
-| `DOC-020` | DI-12: Workspace Tree 单根化与系统语义锚点 | `not_started` | `not_started` | `0` | queued |
-| `DOC-021` | DI-13: Calendar Range 查询默认 Limit 策略 | `not_started` | `not_started` | `0` | pending DI item |
-| `DOC-022` | DI-14: Workspace Tree 提升为 Core 层一等公民 | `not_started` | `not_started` | `0` | pending DI item |
-| `DOC-023` | DI-15: Rust Core 数据模型 — 工作区树架构 | `not_started` | `not_started` | `0` | queued |
-| `DOC-024` | DI-16: Rust Service 层与 FFI 契约 | `not_started` | `not_started` | `0` | in-progress DI item |
-| `DOC-025` | DI-17: Flutter 薄客户端与 Feature 消费适配 | `not_started` | `not_started` | `0` | pending in DI index |
-| `DOC-026` | DI-18: 执行方案 — PR 拆分、迁移顺序与测试策略 | `not_started` | `not_started` | `0` | queued |
-| `DOC-027` | DI-19: Architecture Decision Records 治理方案 | `seeded` | `seeded` | `3` | governance rules seed |
-| `DOC-028` | DI-20: 治理执行计划 — ADR 历史重演、主题覆盖与激活顺序 | `seeded` | `seeded` | `3` | governance execution seed |
-| `DOC-029` | DI-21: CI 跨 Feature 代码重复检测 | `not_started` | `not_started` | `0` | queued |
+| `DOC-001` | 08a - audit findings | `seeded` | `completed` | `28` | clause-level extraction now covers D1-D10, Rule E synthesis, S1-S8, and F1-F8 |
+| `DOC-002` | 08b - semantic decisions | `seeded` | `completed` | `46` | old section-level seed replaced with clause-level extraction across all `####` ruling anchors |
+| `DOC-003` | 08c - solution proposals | `seeded` | `completed` | `11` | clause-level extraction covers 3.1 proposal units, 3.2 CI guardrails, and 3.3 doc backlog judgments |
+| `DOC-004` | 08d - PR replanning | `seeded` | `completed` | `10` | clause-level extraction covers structure reset, S1-S8 mapping, execution order, and PR-0256 through PR-0253 planning anchors |
+| `DOC-005` | 09 - acceptance report | `seeded` | `completed` | `22` | clause-level extraction covers closure matrices, CI evidence, residual debt, readiness, and final release judgment |
+| `DOC-006` | PR-RB-00 - doc fixes | `seeded` | `completed` | `9` | governance-lineage extraction now covers B1-B3, C1-C3, Lane D, E1, and E2 |
+| `DOC-007` | v0.3 release evidence | `seeded` | `completed` | `13` | clause-level extraction covers lane-gate evidence, coverage sign-off, deferred boundary, and post-review fixes |
+| `DOC-008` | DI-0 - dual-tab-manager | `seeded` | `completed` | `5` | clause-level extraction covers S2 baseline, D4 naming ruling, impact scope, PR-spec handoff, and implementation link |
+| `DOC-009` | DI-1 - editor-shell-service | `seeded` | `completed` | `26` | clause-level extraction covers intake, Q1-Q5, Q3-Q4 refinements, integrated architecture, and implementation handoff |
+| `DOC-010` | DI-2 - layout-tree-structure | `seeded` | `completed` | `6` | clause-level extraction covers D5, node and wrapper shape, D6 resolve, invariants, and DI-1 lifecycle mapping |
+| `DOC-011` | DI-3 - layout-persistence | `seeded` | `completed` | `4` | clause-level extraction covers persistence, migration cutover, pane-limit rule, and the DI-3 to DI-4 boundary |
+| `DOC-012` | DI-4 - buffer-sync-model | `seeded` | `completed` | `43` | clause-level extraction covers intake, `D10-D12`, Q1 supplement protocols, and Q4 refinement order `1 -> 3 -> 2 -> 4` |
+| `DOC-013` | DI-5 - cursor-and-conflict | `seeded` | `completed` | `11` | clause-level extraction covers intake, D12, D13, inherited sync-frequency context, and explicit open-boundary notes |
+| `DOC-014` | DI-6 - cross-track-dependencies | `seeded` | `completed` | `11` | clause-level extraction covers track-failure diagnosis, rebased dependency and delivery models, and Gate A/B/Release contracts |
+| `DOC-015` | DI-7 - gates-perf-testing | `seeded` | `completed` | `17` | clause-level extraction covers gate precision, SLA and verification split, per-PR test expectations, and migration principles |
+| `DOC-016` | DI-8 - spi-verification | `seeded` | `completed` | `6` | deferred-source extraction only; captures evidence, risk, readiness, and open questions without fabricating resolved rulings |
+| `DOC-017` | DI-9 - missing slot | `missing` | `missing` | `0` | survey documents index-level absence only; no source file exists |
+| `DOC-018` | DI-10 - editor-resolver-shell | `seeded` | `completed` | `14` | clause-level extraction covers intake, shell-boundary framing, resolved `Q1-Q4` contract, and future/handoff placeholders without merging them |
+| `DOC-019` | DI-11 - atomtype-rename-impact | `seeded` | `completed` | `30` | clause-level extraction separates current constraints, resolved rename decision, `atom_create` draft contract, Pending semantics, rename maps, and execution method |
+| `DOC-020` | DI-12 - workspace-tree-single-root | `seeded` | `completed` | `23` | clause-level extraction covers conceptual-parent framing, Q1-Q12 semantics, E1-E6 execution lanes, and the final output contract |
+| `DOC-021` | DI-13 - calendar-range-limit-policy | `seeded` | `completed` | `7` | pending-source extraction covers the contract bug framing, scope boundary, three open questions, and reproduction evidence without inventing a ruling |
+| `DOC-022` | DI-14 - workspace-tree-core-promotion | `seeded` | `completed` | `17` | pending-source extraction covers conceptual-parent framing, local Q0-Q2 resolved anchors, and the explicit Q3-Q5 migration boundary into DI-17 |
+| `DOC-023` | DI-15 - rust-data-model-single-root | `seeded` | `completed` | `33` | clause-level extraction keeps the architecture pivot, superseded single-root rules, active multi-root model, and security-model constraints in separate buckets |
+| `DOC-024` | DI-16 - rust-service-ffi-contract | `seeded` | `completed` | `63` | clause-level extraction covers framing, `A1-A12`, `Q1` subcontracts, numbered `Q2` navigation methods, `Q3-Q5` service and guard contracts, and the renamed `Q6` FFI surface |
+| `DOC-025` | DI-17 - flutter-thin-client | `seeded` | `completed` | `44` | clause-level extraction covers framing, `Q1-Q6`, numbered execution rules, controller-adaptation details, and synthetic-removal cleanup contracts |
+| `DOC-026` | DI-18 - execution-plan | `seeded` | `completed` | `32` | clause-level extraction covers framing, `Q1-Q5`, expand-contract migration rules, per-PR test gates, no-move policy, and Appendix A cleanup inventory |
+| `DOC-027` | DI-19 - adr-governance | `seeded` | `completed` | `38` | extraction now separates the revised current-effective rule surface from superseded `§2.2-§8` replay material without collapsing them |
+| `DOC-028` | DI-20 - governance-execution-plan | `seeded` | `completed` | `26` | extraction now covers T1-T8 execution contracts, Theme Delta and anti-downgrade rules, closure, template backfill, and risk gates |
+| `DOC-029` | DI-21 - ci-duplication-detection | `seeded` | `completed` | `15` | extraction now treats DI-21 as a current-effective Rule E extension and records policy, detector, allowlist, and failure-output contracts |
