@@ -1,12 +1,12 @@
 # PR-0401: Source Corpus 盘点与 DN Extraction
 
 - Proposed title: `docs(governance): establish source corpus inventory and first-pass DN ledger baseline`
-- Execution status: In Progress
+- Execution status: Merged
 - Spec review status: Review-clean (`docs/releases/v0.4/pr-spec-review-resolution.md`)
 
 | 项目 | 值 |
 |------|-----|
-| **执行状态** | IN PROGRESS |
+| **执行状态** | MERGED |
 | **规格评审状态** | Review-clean |
 | **主题覆盖** | `T3`, `T4`, `T7` |
 | **依赖** | `PR-0400` |
@@ -17,7 +17,7 @@
 ## Purpose
 
 在 legacy rulings 归档完成后，对全量 source corpus 进行结构化盘点，建立 Document Inventory
-和 Decision Node Ledger，为后续 per-ADR 全链执行提供统一基线。
+和 DN Ledger baseline，为后续 per-ADR 全链执行提供统一基线。
 
 ---
 
@@ -27,7 +27,7 @@
 
 1. **Action 1: Document Inventory** — 全量文档盘点，建立 `DOC-xxx` 稳定清单
 2. **Action 2a: Document Structure Survey** — 对每个 `DOC-xxx` 独立执行内部结构分析
-3. **Action 2b: DN Extraction** — 从每个文档抽取条款级决策节点，仅填 extraction 阶段字段
+3. **Action 2b: DN Extraction** — 从每个文档抽取条款级治理节点（decision-bearing / boundary-bearing clause nodes），仅填 extraction 阶段字段
 4. **Action 3: Coverage Matrix** — 建立执行进度视图，记录每个文档的 survey / extraction 完成状态
 5. **Action 4: Template Extraction Backlog** — 确认 PR-0401 规划阶段的 3 项模板，补录遗漏项
 
@@ -110,6 +110,12 @@ PR-0401 的主线 source corpus 按以下顺序建立：
 产出物：`dn-ledger.md`（全局汇总）
 
 仅填 extraction 阶段字段（8 项）：`DN ID` / `Decision Tier` / `Source Doc ID` / `Source Anchor` / `Node Role` / `Statement` / `Effective Status` / `Notes`
+
+- PR-0401 中的 `DN` 指条款级治理节点：
+  - 既包括直接承载裁决的 decision-bearing clauses
+  - 也包括后续 classification / theme mapping 必须消费的 boundary-bearing / contract-bearing clauses
+- 纯背景叙述、上下文铺垫、问题陈述若不形成稳定治理约束，则保留在 survey，不进入 `dn-ledger.md`
+- `Node Role` 必须显式区分 `policy_decision` / `contract_schema` / `scope_boundary` / `normative_source` / `trigger_boundary` 等节点职责，避免把所有条款压成单一“decision”标签
 
 classification 阶段字段（9 项）标记为 `pending`。
 
@@ -211,11 +217,11 @@ rg -n "DI-9|缺失槽位|missing slot" docs/reports/v0.4/governance-execution/PR
 
 ## Exit Gate
 
-- [ ] Action 1: Document Inventory 完成且有稳定 `DOC-xxx` 清单
-- [ ] Action 2a: 每个 `DOC-xxx` 的 Document Structure Survey 已完成
-- [ ] Action 2b: Decision Node Ledger 已建立并完成 first-pass DN extraction（仅 extraction 阶段字段）
-- [ ] Action 3: Coverage Matrix 基线已建立
-- [ ] Action 4: PR-0401 规划阶段的 3 项模板已确认，遗漏项已补录
+- [x] Action 1: Document Inventory 完成且有稳定 `DOC-xxx` 清单
+- [x] Action 2a: 每个 `DOC-xxx` 的 Document Structure Survey 已完成
+- [x] Action 2b: DN Ledger 已建立并完成 first-pass governance-node extraction（仅 extraction 阶段字段）
+- [x] Action 3: Coverage Matrix 基线已建立
+- [x] Action 4: PR-0401 规划阶段的 3 项模板已确认，遗漏项已补录
 
 ---
 

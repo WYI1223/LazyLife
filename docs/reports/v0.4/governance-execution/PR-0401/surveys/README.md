@@ -10,6 +10,6 @@ This directory stores per-document structure surveys for PR-0401.
 
 ## Current Boundary
 
-- Survey completion does not mean DN extraction is complete.
-- `DOC-002`, `DOC-006`, `DOC-027`, and `DOC-028` still remain the only DN-seeded rows in `dn-ledger.md`.
-- The next pass should continue per-anchor DN extraction without re-collapsing survey granularity.
+- Survey completion does not collapse anchors back into parent sections.
+- DN extraction is now complete for every non-missing corpus row in `dn-ledger.md`.
+- The next stage should consume the existing survey and clause-level governance-node baseline for classification and theme mapping without re-collapsing survey granularity.
