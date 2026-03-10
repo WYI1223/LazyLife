@@ -2,7 +2,7 @@
 
 > `lib/core/editor/editor_shell_service.dart`
 >
-> 设计来源：[S2 Phase 2](../../rulings/S2-tab-draft-save-ownership.md) · [DI-1](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings/S9-cross-feature-infrastructure-placement.md)
+> 设计来源：[S2 Phase 2](../../rulings-legacy/S2-tab-draft-save-ownership.md) · [DI-1](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings-legacy/S9-cross-feature-infrastructure-placement.md)
 
 ---
 

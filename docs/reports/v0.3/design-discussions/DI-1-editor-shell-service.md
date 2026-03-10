@@ -31,7 +31,7 @@
 
 ## S2 裁决已定义的方向
 
-S2（`docs/architecture/rulings/S2-tab-draft-save-ownership.md`）Phase 2 已定义：
+S2（`docs/architecture/rulings-legacy/S2-tab-draft-save-ownership.md`）Phase 2 已定义：
 
 | S2 步骤 | 内容 |
 |---------|------|
@@ -736,7 +736,7 @@ NotesCoordinator (feature controller, lib/features/notes/)
 ## 关联
 
 - ← DI-0（D4 已 RESOLVED：提取源 = `NoteTabStateManager` → `EditorGroupModel`）
-- ← S2 裁决（`docs/architecture/rulings/S2-tab-draft-save-ownership.md`）
+- ← S2 裁决（`docs/architecture/rulings-legacy/S2-tab-draft-save-ownership.md`）
 - ← S1 R8（Q4 细化1：Tab 显示 `atom.title`）
 - ← S1 R6 + S3（Q4 细化3：WorkspaceTreeManager 独立提取依据）
 - → DI-4（Buffer 同步模型依赖 D2 状态归属结论）

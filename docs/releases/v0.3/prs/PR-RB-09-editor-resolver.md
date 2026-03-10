@@ -15,7 +15,7 @@
 |------|------|---------------|
 | DI-10 | `DI-10-editor-resolver-shell.md` Q1~Q4 | Resolver API + 三层分离 + error placeholder + bridging 模式 |
 | Module Spec | `modules/core-editor/editor-resolver.md` | EditorResolver 完整规格 |
-| Ruling | `rulings/S2-tab-draft-save-ownership.md` Phase 3 | Phase 3 = EditorResolver + MarkdownEditorPane |
+| Ruling | `rulings-legacy/S2-tab-draft-save-ownership.md` Phase 3 | Phase 3 = EditorResolver + MarkdownEditorPane |
 | Rebaseline | `v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-09 | Scope + 依赖 |
 
 ## 代码现状分析

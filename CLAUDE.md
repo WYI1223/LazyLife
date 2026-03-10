@@ -441,7 +441,8 @@ All path resolution is in `apps/lazynote_flutter/lib/core/local_paths.dart`.
 | Extension kernel | `docs/architecture/extension-kernel.md` | Plugin architecture contracts |
 | Provider SPI | `docs/architecture/provider-spi.md` | Sync provider interface |
 | UI extension slots | `docs/architecture/ui-extension-slots.md` | UI extensibility system |
-| Semantic rulings | `docs/architecture/rulings/README.md` | S1-S9 structural and semantic rulings registry |
+| Current-effective rulings | `docs/architecture/rulings/README.md` | Rebuilt rulings registry; starts empty after PR-0400 |
+| Legacy rulings snapshot | `docs/architecture/rulings-legacy/README.md` | Archived S1-S9 / E1 baseline used for governance replay |
 | FFI contracts | `docs/api/ffi-contracts.md` | Consolidated FFI API specs |
 | Error codes | `docs/api/error-codes.md` | Stable error code registry |
 | API compatibility | `docs/governance/API_COMPATIBILITY.md` | Breaking change policy |

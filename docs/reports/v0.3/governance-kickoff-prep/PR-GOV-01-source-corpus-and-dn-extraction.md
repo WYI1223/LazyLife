@@ -1,5 +1,9 @@
 # PR-GOV-01: Source Corpus 盘点与 DN Extraction
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-01` corresponds to `PR-0401`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0401/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
@@ -99,15 +103,15 @@ classification 阶段字段（9 项）标记为 `pending`。
 
 ## Deliverables
 
-所有产出物存放于 `docs/reports/v0.4/governance-execution/PR-GOV-01/`。
+所有产出物存放于 `docs/reports/v0.4/governance-execution/PR-0401/`。
 
 | Action | 产出物 | 存放路径 |
 |--------|--------|----------|
-| 1 | `document-inventory.md` | `PR-GOV-01/` |
-| 2a | `DOC-xxx-survey.md` | `PR-GOV-01/surveys/` |
-| 2b | `dn-ledger.md` | `PR-GOV-01/` |
-| 3 | `coverage-matrix.md` | `PR-GOV-01/` |
-| 4 | `template-extraction-backlog.md` | `PR-GOV-01/` |
+| 1 | `document-inventory.md` | `PR-0401/` |
+| 2a | `DOC-xxx-survey.md` | `PR-0401/surveys/` |
+| 2b | `dn-ledger.md` | `PR-0401/` |
+| 3 | `coverage-matrix.md` | `PR-0401/` |
+| 4 | `template-extraction-backlog.md` | `PR-0401/` |
 
 ---
 

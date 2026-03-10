@@ -276,7 +276,7 @@ dart run ../../tools/ci/architecture_check.dart
 **Lane C（文档）：**
 - `[edit]` `docs/architecture/overview.md`（migration 计数修正）
 - `[edit]` `docs/api/ffi-contracts.md`（补充 workspace_ancestor_path）
-- `[edit]` `docs/architecture/rulings/S1-atom-projection.md` ~ `S9-cross-feature-infrastructure-placement.md`（实施状态标注，9 个文件）
+- `[edit]` `docs/architecture/rulings-legacy/S1-atom-projection.md` ~ `S9-cross-feature-infrastructure-placement.md`（实施状态标注，9 个文件）
 - `[verify]` `docs/reports/v0.3/design-discussions/README.md`（DI-0~DI-12 状态验证，DI-13/DI-14 保持 PENDING 无需变更）
 - `[edit]` `docs/releases/v0.3/v0.3-rulings-modules-checklist-temp-2026-03-01.md`（闭合检查项）
 

@@ -1,5 +1,9 @@
 # PR-GOV-03: Per-ADR 串行全链执行
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-03` corresponds to `PR-0403`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0403/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
@@ -82,13 +86,13 @@
 
 ## Deliverables
 
-产出物存放于 `docs/reports/v0.4/governance-execution/PR-GOV-03/`。
+产出物存放于 `docs/reports/v0.4/governance-execution/PR-0403/`。
 
 | 产出物 | 说明 |
 |--------|------|
 | Per-iteration run records | 每组 DN 候选（per-document）的全链执行记录 |
-| DN Ledger（classification 版） | 在 PR-GOV-03/ 下维护含 classification 字段的完整版本，不回改 PR-GOV-01/ 的原始 extraction 版 |
-| Topic-map working copy | 在 PR-GOV-03/ 下维护 TH 条目工作副本，不直接修改 PR-GOV-02 创建的 `adr/topic-map.md`；最终合并由正式发布阶段负责 |
+| DN Ledger（classification 版） | 在 PR-0403/ 下维护含 classification 字段的完整版本，不回改 PR-0401/ 的原始 extraction 版 |
+| Topic-map working copy | 在 PR-0403/ 下维护 TH 条目工作副本，不直接修改 PR-0402 创建的 `adr/topic-map.md`；最终合并由正式发布阶段负责 |
 | 历史补录 ADR | `docs/architecture/adr/` 下的 ADR 文件 |
 | Ruling updates | `docs/architecture/rulings/` 下的 rebuilt rulings |
 | 未闭合候选记录 | 升级回 DI 或标记 deferred 的候选 |

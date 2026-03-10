@@ -1,5 +1,9 @@
 # PR-GOV-00: Legacy Rulings 归档
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-00` corresponds to `PR-0400`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0400/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | PREP READY |
@@ -31,7 +35,7 @@
 5. 创建 `docs/reports/v0.4/governance-execution/` 目录结构：
    - `v0.4/README.md`
    - `governance-execution/README.md`（执行总索引）
-   - `PR-GOV-00/` ~ `PR-GOV-06/` 子目录骨架
+   - `PR-0400/` ~ `PR-0406/` 子目录骨架
 6. 验证 Gate A 通过 + CI 通过（`architecture_check.dart` 无悬挂链接）
 
 ### Out of Scope

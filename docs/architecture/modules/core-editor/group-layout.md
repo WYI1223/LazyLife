@@ -2,7 +2,7 @@
 
 > `lib/core/editor/group_layout.dart`
 >
-> 设计来源：[DI-2 D5/D6](../../../reports/v0.3/design-discussions/DI-2-layout-tree-structure.md) · [DI-1 Q1/Q2](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [DI-3](../../../reports/v0.3/design-discussions/DI-3-layout-persistence.md) · [S2 Phase 2](../../rulings/S2-tab-draft-save-ownership.md)
+> 设计来源：[DI-2 D5/D6](../../../reports/v0.3/design-discussions/DI-2-layout-tree-structure.md) · [DI-1 Q1/Q2](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [DI-3](../../../reports/v0.3/design-discussions/DI-3-layout-persistence.md) · [S2 Phase 2](../../rulings-legacy/S2-tab-draft-save-ownership.md)
 
 ---
 

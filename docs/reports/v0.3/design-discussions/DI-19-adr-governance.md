@@ -397,7 +397,7 @@ README 模板使用 `{link}` 占位符标记，实际编写时替换为真实 ma
 # Architecture Decision Records
 
 > 按主题组织的跨版本决策演进记录。
-> ADR 是叙事层，不是规范层。绑定规则见 {link: ../rulings/README.md}。
+> ADR 是叙事层，不是规范层。绑定规则见 {link: ../rulings-legacy/README.md}。
 
 ## 治理规则
 
@@ -488,7 +488,7 @@ architecture_check 的链接正则（`\[text\]\(path\)`）不区分代码块内�
 | 3 | 新建 ADR-0001（从 E1 元数据恢复） | 历史决策旅程 | 步骤 2 |
 | 4 | 新建 ADR-0002（workspace 拓扑演进） | 核心架构旅程 | 步骤 2 |
 | 5 | 新建 ADR-0003（Atom 投影模型演进） | 数据模型旅程 | 步骤 2 |
-| 6 | 更新 `rulings/README.md` 增加 ADR 反向引用说明 | 双向链接 | 步骤 3-5 |
+| 6 | 更新 `rulings-legacy/README.md` 增加 ADR 反向引用说明 | 双向链接 | 步骤 3-5 |
 | 7 | 更新 `docs/index.md` 增加 ADR 入口 | 文档导航同步 | 步骤 2 |
 | 8 | 更新 `design-discussions/README.md` 补充 DI-19 | DI 索引同步 | 步骤 2 |
 | 9 | 更新 CLAUDE.md 文档地图 | Agent 指引 | 步骤 6-8 |
@@ -524,7 +524,7 @@ architecture_check 的链接正则（`\[text\]\(path\)`）不区分代码块内�
 > 压在 ADR README 单点索引上，无法满足修订后的可追溯性要求。保留为原始
 > 方案记录；当前有效追溯要求见 §13。
 
-在 `docs/architecture/rulings/README.md` 中增加一个段落，说明 ADR 的存在和关系：
+在 `docs/architecture/rulings-legacy/README.md` 中增加一个段落，说明 ADR 的存在和关系：
 
 ```text
 ## 决策旅程（ADR）

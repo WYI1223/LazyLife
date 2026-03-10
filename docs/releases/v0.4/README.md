@@ -17,7 +17,7 @@ Canvas、Conversation、Spatial Workspace 整体延期至 v0.5。
 
 本规划仅使用以下来源：
 
-- `docs/architecture/rulings/`（S1-S9）
+- `docs/architecture/rulings-legacy/`（legacy snapshot: S1-S9 + E1）
 - `docs/architecture/modules/`
 - `docs/reports/v0.2.5/frontend-review/09-acceptance-report.md`
 - `docs/reports/v0.3/design-discussions/DI-0` 至 `DI-5`
@@ -88,7 +88,7 @@ Deferred to v0.5:
 
 | PR | 标题 | 状态 |
 |---|---|---|
-| PR-0400 | Legacy Rulings 归档 | PREP READY |
+| PR-0400 | Legacy Rulings 归档 | Merged |
 | PR-0401 | Source Corpus + DN Extraction | Draft |
 | PR-0402 | ADR Infrastructure + Metadata Contract | Draft |
 | PR-0403 | Per-ADR Serial Execution（首批 retrospective ADR） | Draft |

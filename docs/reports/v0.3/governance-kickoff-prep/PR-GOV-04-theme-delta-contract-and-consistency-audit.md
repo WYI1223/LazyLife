@@ -1,5 +1,9 @@
 # PR-GOV-04: Theme Delta Contract 定稿与 Repo-wide 一致性审计
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-04` corresponds to `PR-0404`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0404/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
@@ -74,8 +78,8 @@
    显式记录在 Consistency Audit Report 中，传递给 PR-GOV-05 收口）
 
 审计范围覆盖 PR-GOV-01~03 全部产出物：
-- PR-GOV-01/：Document Inventory + DN Ledger（extraction 原始版）+ Coverage Matrix
-- PR-GOV-03/：DN Ledger（classification 版）+ topic-map working copy + per-iteration run records + ADR + ruling updates
+- PR-0401/：Document Inventory + DN Ledger（extraction 原始版）+ Coverage Matrix
+- PR-0403/：DN Ledger（classification 版）+ topic-map working copy + per-iteration run records + ADR + ruling updates
 - 跨阶段一致性：extraction 版与 classification 版的 DN 字段不冲突
 
 消费输入：
@@ -108,7 +112,7 @@
 
 ## Deliverables
 
-产出物存放于 `docs/reports/v0.4/governance-execution/PR-GOV-04/`。
+产出物存放于 `docs/reports/v0.4/governance-execution/PR-0404/`。
 
 | Action | 产出物 | 说明 |
 |--------|--------|------|

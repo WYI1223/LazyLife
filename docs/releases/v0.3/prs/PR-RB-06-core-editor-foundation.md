@@ -20,8 +20,8 @@
 | Module Spec | `modules/core-editor/editor-group-model.md` | Group state + TabEntry |
 | Module Spec | `modules/core-editor/group-layout.md` | GroupLayout 封装层 API `[PR-RB-06 已修正为 DI-2 二叉树模型]` |
 | Module Spec | `modules/core-editor/edit-buffer.md` | EditBuffer 状态机 + 编辑-保存时序 |
-| Ruling | `rulings/S2-tab-draft-save-ownership.md` Phase 2 | 提取蓝图 + 四条规则 |
-| Ruling | `rulings/S9-cross-feature-infrastructure-placement.md` | TRANSIENT 文件归属 + 删除时机 |
+| Ruling | `rulings-legacy/S2-tab-draft-save-ownership.md` Phase 2 | 提取蓝图 + 四条规则 |
+| Ruling | `rulings-legacy/S9-cross-feature-infrastructure-placement.md` | TRANSIENT 文件归属 + 删除时机 |
 | DI-7 | `DI-7-gates-perf-testing.md` | Gate B M1 验证标准（split/close <50ms） |
 | Rebaseline | `v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-06 | Scope + M1 milestone |
 | Acceptance Report | `09-acceptance-report.md` §7.1 | coordinator_impl 1,537 行 → 提取后减重 |
@@ -372,7 +372,7 @@ Out of scope:
 |------|------|------|------|------|
 | T22 | `CLAUDE.md` 路径表更新：新增 `core/editor/`；更新 WorkspaceProvider TRANSIENT 引用；更新 coordinator 架构节 | `CLAUDE.md` | 编辑 | T4 |
 | T23 | `overview.md` 更新：新增 `core/editor/` 到 Flutter Core 节；更新 coordinator 架构节；更新 WorkspaceProvider 引用 | `docs/architecture/overview.md` | 编辑 | T4 |
-| T24 | S2 ruling 标注 Phase 2 implemented；S9 ruling 标注 EditorShellService 已完成 + TRANSIENT 已删除 | `docs/architecture/rulings/S2-*.md` + `S9-*.md` | 编辑 | T4, T15 |
+| T24 | S2 ruling 标注 Phase 2 implemented；S9 ruling 标注 EditorShellService 已完成 + TRANSIENT 已删除 | `docs/architecture/rulings-legacy/S2-*.md` + `S9-*.md` | 编辑 | T4, T15 |
 
 ### Critical Path
 

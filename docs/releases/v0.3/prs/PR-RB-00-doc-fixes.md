@@ -358,9 +358,9 @@ Out of scope: [明确列出，解释为什么不在本 PR]
 | T5 | A | `features/tags/` → `shared/` | `overview.md:105` | 改 1 行 | — |
 | **Lane B: 文档基础设施** | | | | | |
 | T6 | B | 标准化 9 个 Ruling 文件的 header（状态词汇 + 引入版本 + 废弃者） | `docs/architecture/rulings/S*.md` | 编辑 9 文件 × ~3 行 | — |
-| T7 | B | ADR→Ruling 迁移：创建 `E1-release-and-versioning.md`（从 ADR-0001 迁移+更新） | `docs/architecture/rulings/E1-release-and-versioning.md` | 新文件 ~50 行 | — |
+| T7 | B | ADR→Ruling 迁移：创建 `E1-release-and-versioning.md`（从 ADR-0001 迁移+更新） | `docs/architecture/rulings-legacy/E1-release-and-versioning.md` | 新文件 ~50 行 | — |
 | T8 | B | ADR 引用替换：12 处 ADR→Ruling（CLAUDE.md/AGENTS.md/engineering-standards/data-model/GOVERNANCE/CONTRIBUTING/S1/research） | 7 个文件 | 每处改 1 行 | — |
-| T9 | B | 更新 Ruling README：增加 E 系列说明 + E1 索引 | `docs/architecture/rulings/README.md` | 编辑 ~+10 行 | T7 |
+| T9 | B | 更新 Ruling README：增加 E 系列说明 + E1 索引 | `docs/architecture/rulings-legacy/README.md` | 编辑 ~+10 行 | T7 |
 | T10 | B | `architecture_check.dart` 新增 Check 4：docs 交叉引用完整性检查 | `tools/ci/architecture_check.dart` | ~+120 行 | — |
 | T11 | B | 创建 `tools/ci/docs_link_allowlist.yaml`（含 artifacts/ 路径豁免） | 新文件 | ~10 行 | T10 |
 | **Lane C: 产品与导航文档刷新** | | | | | |
@@ -389,9 +389,9 @@ Lane A~E 之间无依赖，可任意交叉执行。Lane 内部：T9 依赖 T7，
 - `[edit]` `docs/architecture/overview.md`（1 处单行修改）
 
 **Lane B（文档基础设施）：**
-- `[edit]` `docs/architecture/rulings/S1-atom-projection.md` ~ `S9-cross-feature-infrastructure-placement.md`（9 文件 header 标准化）
-- `[add]` `docs/architecture/rulings/E1-release-and-versioning.md`（从 ADR-0001 迁移 ~50 行）
-- `[edit]` `docs/architecture/rulings/README.md`（+E 系列说明）
+- `[edit]` `docs/architecture/rulings-legacy/S1-atom-projection.md` ~ `S9-cross-feature-infrastructure-placement.md`（9 文件 header 标准化）
+- `[add]` `docs/architecture/rulings-legacy/E1-release-and-versioning.md`（从 ADR-0001 迁移 ~50 行）
+- `[edit]` `docs/architecture/rulings-legacy/README.md`（+E 系列说明）
 - `[edit]` `CLAUDE.md`、`AGENTS.md`、`engineering-standards.md`、`data-model.md`、`GOVERNANCE.md`、`CONTRIBUTING.md`、`S1-atom-projection.md`、`research/todo_*.md`（12 处 ADR→Ruling 替换）
 - `[edit]` `tools/ci/architecture_check.dart`（+~120 行 Check 4）
 - `[add]` `tools/ci/docs_link_allowlist.yaml`（~5 行）
@@ -460,7 +460,7 @@ done
 test ! -d docs/architecture/adr
 
 # E1 ruling 已创建
-test -f docs/architecture/rulings/E1-release-and-versioning.md
+test -f docs/architecture/rulings-legacy/E1-release-and-versioning.md
 
 # 活跃文档中不再引用 "docs/architecture/adr/"（历史 PR spec 除外）
 rg "docs/architecture/adr/" CLAUDE.md AGENTS.md docs/architecture/ docs/governance/ docs/development/

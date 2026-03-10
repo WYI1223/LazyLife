@@ -1,5 +1,9 @@
 # PR-GOV-05: 收口审计与治理激活
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-05` corresponds to `PR-0405`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0405/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
@@ -90,7 +94,7 @@ append-only 约束，历史补录 ADR 进入"冻结但可勘误"状态。
 
 ## Deliverables
 
-产出物存放于 `docs/reports/v0.4/governance-execution/PR-GOV-05/`。
+产出物存放于 `docs/reports/v0.4/governance-execution/PR-0405/`。
 
 | Action | 产出物 | 说明 |
 |--------|--------|------|

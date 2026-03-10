@@ -2,7 +2,7 @@
 
 > `lib/core/editor/layout_persistence.dart`
 >
-> 设计来源：[DI-3](../../../reports/v0.3/design-discussions/DI-3-layout-persistence.md) · [S2 Phase 2 布局持久化](../../rulings/S2-tab-draft-save-ownership.md)
+> 设计来源：[DI-3](../../../reports/v0.3/design-discussions/DI-3-layout-persistence.md) · [S2 Phase 2 布局持久化](../../rulings-legacy/S2-tab-draft-save-ownership.md)
 
 ---
 

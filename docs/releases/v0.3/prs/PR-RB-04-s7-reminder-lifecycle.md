@@ -13,7 +13,7 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| Ruling | `docs/architecture/rulings/S7-reminders-infrastructure.md` | v0.3 deferred items：trigger semantic migration + startup recovery |
+| Ruling | `docs/architecture/rulings-legacy/S7-reminders-infrastructure.md` | v0.3 deferred items：trigger semantic migration + startup recovery |
 | Rebaseline | `docs/releases/v0.3/v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-04 | Scope + 依赖 |
 | DI-7 | `docs/reports/v0.3/design-discussions/DI-7-gates-perf-testing.md` | Gate A 验证：Tasks/Calendar 不再承担提醒调度入口 |
 
@@ -223,7 +223,7 @@ T5 无依赖 → T5b → T7~T13 (hook 挂接)
 - `[edit]` `apps/lazynote_flutter/lib/main.dart`
 
 ### Docs
-- `[edit]` `docs/architecture/rulings/S7-reminders-infrastructure.md`
+- `[edit]` `docs/architecture/rulings-legacy/S7-reminders-infrastructure.md`
 - `[edit]` `docs/architecture/modules/core-reminders/reminder-scheduler.md`
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `CLAUDE.md`

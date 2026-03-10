@@ -69,8 +69,8 @@ FFI 层新增 `with_creation_service` helper，共享单一 `Connection`。SQLit
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| Ruling | `docs/architecture/rulings/S4-creation-path-unification.md` | 全部 4 条规则：forced accompaniment / routing / unified operations / view-folder orthogonality |
-| Ruling | `docs/architecture/rulings/S1-atom-projection.md` R5 | atom_ref forced accompaniment：创建必须同时产出 atom_ref |
+| Ruling | `docs/architecture/rulings-legacy/S4-creation-path-unification.md` | 全部 4 条规则：forced accompaniment / routing / unified operations / view-folder orthogonality |
+| Ruling | `docs/architecture/rulings-legacy/S1-atom-projection.md` R5 | atom_ref forced accompaniment：创建必须同时产出 atom_ref |
 | Ruling | 同上 R6 | 默认路径路由表：Tasks/Calendar/Root |
 | Ruling | 同上 R7 | 多引用语义（本 PR 仅开放能力，不实现创建 UI） |
 | Rebaseline | `docs/releases/v0.3/v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-03 | Scope + 依赖 |
@@ -384,8 +384,8 @@ T14 无依赖，可并行
 - `[edit]` `docs/architecture/data-model.md`
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `CLAUDE.md`
-- `[edit]` `docs/architecture/rulings/S4-creation-path-unification.md`
-- `[edit]` `docs/architecture/rulings/S1-atom-projection.md`
+- `[edit]` `docs/architecture/rulings-legacy/S4-creation-path-unification.md`
+- `[edit]` `docs/architecture/rulings-legacy/S1-atom-projection.md`
 
 ## Verification
 

@@ -28,7 +28,8 @@ Translation header template (for future localized pages):
 - `docs/architecture/data-model.md`
 - `docs/architecture/note-schema.md`
 - `docs/architecture/engineering-standards.md`
-- `docs/architecture/rulings/README.md` — S1-S9 semantic rulings + E1 engineering ruling
+- `docs/architecture/rulings/README.md` — current-effective rulings registry rebuilt by v0.4 governance
+- `docs/architecture/rulings-legacy/README.md` — archived S1-S9 semantic rulings + E1 engineering snapshot
 - `docs/architecture/modules/README.md` — module boundary definitions
 
 ## API
