@@ -1,12 +1,12 @@
 # PR-0400: Legacy Rulings 归档
 
 - Proposed title: `docs(governance): archive legacy rulings and bootstrap governance execution workspace`
-- Execution status: Ready for Review
+- Execution status: Merged
 - Spec review status: Review-clean (`docs/releases/v0.4/pr-spec-review-resolution.md`)
 
 | 项目 | 值 |
 |------|-----|
-| **执行状态** | READY FOR REVIEW |
+| **执行状态** | MERGED |
 | **规格评审状态** | Review-clean |
 | **主题覆盖** | `T0` |
 | **依赖** | 无 |

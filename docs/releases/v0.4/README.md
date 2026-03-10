@@ -88,7 +88,7 @@ Deferred to v0.5:
 
 | PR | 标题 | 状态 |
 |---|---|---|
-| PR-0400 | Legacy Rulings 归档 | PREP READY |
+| PR-0400 | Legacy Rulings 归档 | Merged |
 | PR-0401 | Source Corpus + DN Extraction | Draft |
 | PR-0402 | ADR Infrastructure + Metadata Contract | Draft |
 | PR-0403 | Per-ADR Serial Execution（首批 retrospective ADR） | Draft |
