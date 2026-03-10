@@ -5,7 +5,7 @@
 | **状态** | DRAFT |
 | **主题覆盖** | `T3`, `T4`, `T7` |
 | **依赖** | `PR-0400` |
-| **关联** | [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md) |
+| **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
 
 ---
 
@@ -123,6 +123,6 @@ classification 阶段字段（9 项）标记为 `pending`。
 
 ## Reference
 
-- [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T4 最小数据模型 + PR-0401 Actions 汇总）
-- [governance-templates/README.md](governance-templates/README.md)（模板索引）
+- [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)（T4 最小数据模型 + PR-0401 Actions 汇总）
+- governance-templates/README.md（模板索引，planned, not yet created）
 - [PR-0400-legacy-rulings-archive.md](PR-0400-legacy-rulings-archive.md)（前置依赖）

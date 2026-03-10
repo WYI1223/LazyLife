@@ -5,7 +5,7 @@
 | **状态** | DRAFT |
 | **主题覆盖** | `T5`, `T8` |
 | **依赖** | `PR-0405` |
-| **关联** | [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md) |
+| **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
 
 ---
 
@@ -118,7 +118,7 @@ Playbook 约束：
 
 ## Reference
 
-- [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T5/T8 裁决 + Q5 模板抽离计划 + playbook 骨架）
-- [governance-template-drafts.md](governance-template-drafts.md)（prep 层草案集合）
-- [governance-templates/playbook-seed.md](governance-templates/playbook-seed.md)（prep 层 playbook seed）
+- [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)（T5/T8 裁决 + Q5 模板抽离计划 + playbook 骨架）
+- [governance-template-drafts.md](../../../reports/v0.3/governance-kickoff-prep/governance-template-drafts.md)（prep 层草案集合）
+- governance-templates/playbook-seed.md（prep 层 playbook seed，planned, not yet created）
 - [PR-0405-closure-audit-and-governance-activation.md](PR-0405-closure-audit-and-governance-activation.md)（治理激活来源 + playbook 边界确认）

@@ -5,7 +5,7 @@
 | **状态** | DRAFT |
 | **主题覆盖** | `T1`, `T2`, `T3` |
 | **依赖** | `PR-0401` |
-| **关联** | [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md) |
+| **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
 
 ---
 
@@ -105,8 +105,8 @@ classification 自然产生。
 
 ## Reference
 
-- [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T1/T3 裁决补充）
-- [governance-adr-metadata-contract.md](governance-adr-metadata-contract.md)（prep 层筹备）
-- [governance-adr-readme-skeleton.md](governance-adr-readme-skeleton.md)（prep 层骨架）
-- [governance-adr-topic-map-skeleton.md](governance-adr-topic-map-skeleton.md)（prep 层骨架）
+- [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)（T1/T3 裁决补充）
+- [governance-adr-metadata-contract.md](../../../reports/v0.3/governance-kickoff-prep/governance-adr-metadata-contract.md)（prep 层筹备）
+- [governance-adr-readme-skeleton.md](../../../reports/v0.3/governance-kickoff-prep/governance-adr-readme-skeleton.md)（prep 层骨架）
+- [governance-adr-topic-map-skeleton.md](../../../reports/v0.3/governance-kickoff-prep/governance-adr-topic-map-skeleton.md)（prep 层骨架）
 - [PR-0401-source-corpus-and-dn-extraction.md](PR-0401-source-corpus-and-dn-extraction.md)（前置依赖）

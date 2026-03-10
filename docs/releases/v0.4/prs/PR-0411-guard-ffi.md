@@ -417,19 +417,24 @@ PR-0413（Contract，移除旧接口）
 
 | Task | Lane | 内容 | 文件 | 估算 | 依赖 |
 |------|------|------|------|------|------|
-| T1 | Rust | CallerContext + AccessGuard trait + NoopGuard | `crates/lazynote_core/src/` | TBD | — |
-| T2 | Rust | Guarded*Service 全套包装 | `crates/lazynote_core/src/service/` | TBD | T1 |
+| T1 | Rust | CallerContext + AccessGuard trait + NoopGuard | `crates/lazynote_core/src/guard/mod.rs` | TBD | — |
+| T2 | Rust | Guarded*Service 全套包装 | `crates/lazynote_core/src/service/guarded_*.rs` (6 files) | TBD | T1 |
 | T3 | FFI | FFI 新函数导出 | `crates/lazynote_ffi/src/api.rs` | TBD | T2 |
 | T4 | FFI | 旧 FFI 改为薄 wrapper | `crates/lazynote_ffi/src/api.rs` | TBD | T2 |
 | T5 | FFI | FRB 绑定重生成 | `scripts/gen_bindings.ps1` | TBD | T3-T4 |
-| T6 | Rust | 新函数测试 + 旧函数回归测试 | `crates/lazynote_core/tests/` | TBD | T3 |
-| T7 | Rust | DenyGuard 边界测试 | `crates/lazynote_core/tests/` | TBD | T2-T3 |
-| T8 | Docs | 更新 ffi-contracts.md + API_COMPATIBILITY.md + error-codes.md | `docs/api/`, `docs/governance/` | TBD | T3 |
+| T6 | Rust | 新函数测试 + 旧函数回归测试 | `crates/lazynote_core/tests/ffi_new_functions_test.rs` | TBD | T3 |
+| T7 | Rust | DenyGuard 边界测试 | `crates/lazynote_core/tests/guard_test.rs` | TBD | T2-T3 |
+| T8 | Docs | 更新 ffi-contracts.md + API_COMPATIBILITY.md + error-codes.md | `docs/api/ffi-contracts.md`, `docs/api/error-codes.md`, `docs/governance/API_COMPATIBILITY.md` | TBD | T3 |
 
 ## Planned File Changes
 
-- `[add]` crates/lazynote_core/src/guard/ (CallerContext, AccessGuard trait, NoopGuard)
-- `[add]` crates/lazynote_core/src/service/guarded_*.rs (Guarded*Service 包装)
+- `[add]` crates/lazynote_core/src/guard/mod.rs (CallerContext, AccessGuard trait, NoopGuard, AccessError, Capability)
+- `[add]` crates/lazynote_core/src/service/guarded_query_service.rs (GuardedQueryService)
+- `[add]` crates/lazynote_core/src/service/guarded_creation_service.rs (GuardedCreationService)
+- `[add]` crates/lazynote_core/src/service/guarded_atom_service.rs (GuardedAtomService)
+- `[add]` crates/lazynote_core/src/service/guarded_task_service.rs (GuardedTaskService)
+- `[add]` crates/lazynote_core/src/service/guarded_tree_service.rs (GuardedTreeService)
+- `[add]` crates/lazynote_core/src/service/guarded_workspace_service.rs (GuardedWorkspaceService)
 - `[edit]` crates/lazynote_ffi/src/api.rs (新 FFI 函数 + 旧 FFI 改 wrapper)
 - `[regen]` crates/lazynote_ffi/src/frb_generated.rs (FRB 自动生成)
 - `[regen]` apps/lazynote_flutter/lib/core/bindings/ (FRB 自动生成)

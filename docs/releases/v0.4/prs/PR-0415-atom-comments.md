@@ -7,7 +7,7 @@
 
 实现 S1-R11 裁决的 Comment 独立关联实体方案：在 Atom 上附加一条有时间顺序的轻量注释流（append-only，支持 soft-delete）。覆盖 Rust Core（migration + repository + service）、FFI boundary（3 个新函数 + 2 个 response envelopes）和 Flutter UI（编辑器底部 comments panel）。
 
-前置条件：PR-0413（新 FFI 体系已就位，FRB 绑定稳定后本 PR 在其基础上扩展）
+前置条件：PR-0414（migration 13 已落地，本 PR migration 14 接续）、PR-0413（新 FFI 体系已就位，FRB 绑定稳定后本 PR 在其基础上扩展）
 
 ## Execution Contract (Canonical Inputs)
 

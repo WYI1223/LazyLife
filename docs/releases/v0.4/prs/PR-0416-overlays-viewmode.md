@@ -9,7 +9,7 @@
 
 **实现后效果**：用户可通过 Tab 菜单在 source / block / preview 三种模式间切换，切换时 reconciliation 在后台执行（100ms 超时），Block WYSIWYG pane 能持久化 block 元数据并在二次打开时恢复。
 
-前置条件：PR-0413（新 FFI 体系 + Flutter thin client 已就位，`atom_update_content` / `atom_get` 可用）
+前置条件：PR-0415（migration 14 已落地，本 PR migration 15 接续）、PR-0414（migration 13）、PR-0413（新 FFI 体系 + Flutter thin client 已就位，`atom_update_content` / `atom_get` 可用）
 
 ---
 
@@ -95,7 +95,7 @@ CREATE TABLE atom_overlays (
 
 **约束说明**：
 - `content_rev DEFAULT 0`：全量回填为 0，无已有 overlay，stale 判定不受影响
-- `ON DELETE CASCADE`：仅在 hard-delete（vacuum/maintenance）时触发；业务路径的 soft-delete（`is_deleted = 1`）不触发
+- `ON DELETE CASCADE`：仅在 hard-delete（vacuum/maintenance）时触发；业务路径的 soft-delete（`is_deleted = 1`）不触发。**Rule C 合规说明**：Rule C 要求业务路径删除使用 soft-delete；`atom_overlays` 是派生缓存（非独立业务实体），不含 `is_deleted` 列，其生命周期完全从属于宿主 Atom。当 Atom soft-delete 时 overlay 保留（CASCADE 不触发）；当 Atom hard-delete（仅 maintenance/vacuum 路径，已有 Ruling 授权）时 overlay 随之清理。此设计与 Rule C 不冲突。
 - overlay 表不设 `is_deleted`：有损降级（丢失 overlay）安全，overlay 行可硬删除
 
 ### 2. content_rev 自增逻辑
@@ -671,7 +671,7 @@ grep -rn "lib/features/" apps/lazynote_flutter/lib/core/editor/preview_editor_pa
 | content_rev 自增逻辑遗漏某个写 content 路径，导致 stale 判定失效 | MEDIUM | `grep -n "UPDATE atoms SET content"` 全量扫描 + migration 测试断言 stale 正确触发 |
 | LayoutPersistence v1 → v2 升级导致现有用户 layout 丢失 | LOW | fromJson 明确 fallback source，layout 结构不变，仅 tab 新增字段，upgrading 测试覆盖 |
 | EditorResolver 复合 key 重构破坏已有 markdown source pane | MEDIUM | 保持 register(contentType, builder) 默认 source 不变；EditorResolver 测试覆盖 v0.3 已有注册路径 |
-| ON DELETE CASCADE 在 soft-delete 路径误删 overlay | LOW | soft-delete 写 is_deleted=1，不触发 CASCADE；测试断言 soft-delete 后 overlay 仍存在 |
+| ON DELETE CASCADE 在 soft-delete 路径误删 overlay | LOW | soft-delete 写 `is_deleted=1`，不触发 CASCADE（Rule C 合规：overlay 是派生缓存，非独立业务实体）；测试断言 soft-delete 后 overlay 仍存在 |
 | BlockEditorPane 骨架 + OverlayService FFI 路径端到端未验证 | LOW | integration smoke test：创建 atom → atom_get_overlay（无 overlay）→ atom_save_overlay → atom_get_overlay（has overlay, not stale）→ atom_update_content → atom_get_overlay（is_stale=true） |
 
 ---

@@ -134,8 +134,8 @@ pub trait WorkspaceMetaRepository {
 | T1 | Rust | Migration SQL 编写 | `crates/lazynote_core/src/db/migrations/0012_workspace_single_root.sql` | TBD | T0 |
 | T2 | Rust | Migration 注册 | `crates/lazynote_core/src/db/migrations/mod.rs` | TBD | T1 |
 | T3 | Rust | WorkspaceMetaRepository | `crates/lazynote_core/src/repo/` | TBD | T1 |
-| T4 | Rust | 全新安装测试 + 版本升级测试 | `crates/lazynote_core/tests/` | TBD | T1-T3 |
-| T5 | Rust | 触发器负测（5 项） | `crates/lazynote_core/tests/` | TBD | T1 |
+| T4 | Rust | 全新安装测试 + 版本升级测试 | `crates/lazynote_core/tests/migration_0012_test.rs` | TBD | T1-T3 |
+| T5 | Rust | 触发器负测（5 项） | `crates/lazynote_core/tests/migration_0012_test.rs` | TBD | T1 |
 
 ## Planned File Changes
 

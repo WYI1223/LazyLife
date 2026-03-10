@@ -362,7 +362,7 @@ grep -rn "ScopedAtomQuery\|ScopedQueryRepository" crates/lazynote_core/src/servi
 - [ ] 去重正确：同一 atom 在子树中有多个 atom_ref 时查询结果不重复
 - [ ] 契约真值表：`ProjectionMode x include_path` 非法组合返回 `invalid_query_descriptor` 错误
 - [ ] 契约真值表：`include_overdue_deadlines x time_filter` 非法组合返回 `invalid_query_descriptor` 错误
-- [ ] TaskService `list_inbox`/`list_today`/`list_upcoming` 委托到 ScopedAtomQuery
+- [ ] TaskService `list_inbox`/`list_today`/`list_upcoming` 委托到 ScopedQueryRepository
 - [ ] 现有 TaskService/CalendarService 测试全绿（语义不变回归）
 - [ ] `cargo test --all` 全绿
 - [ ] `cargo clippy --all -- -D warnings` 零 warning

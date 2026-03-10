@@ -5,7 +5,7 @@
 | **状态** | DRAFT |
 | **主题覆盖** | `T5`, `T6` |
 | **依赖** | `PR-0402`, `PR-0403` |
-| **关联** | [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md) |
+| **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
 
 ---
 
@@ -132,9 +132,9 @@
 
 ## Reference
 
-- [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T5/T6 裁决 + 四层检查模型）
-- [governance-theme-delta-contract-model.md](governance-theme-delta-contract-model.md)（prep 层合同模型）
-- [governance-backlink-rules.md](governance-backlink-rules.md)（prep 层回链规则）
-- [governance-check-model.md](governance-check-model.md)（prep 层检查模型）
+- [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)（T5/T6 裁决 + 四层检查模型）
+- [governance-theme-delta-contract-model.md](../../../reports/v0.3/governance-kickoff-prep/governance-theme-delta-contract-model.md)（prep 层合同模型）
+- [governance-backlink-rules.md](../../../reports/v0.3/governance-kickoff-prep/governance-backlink-rules.md)（prep 层回链规则）
+- [governance-check-model.md](../../../reports/v0.3/governance-kickoff-prep/governance-check-model.md)（prep 层检查模型）
 - [PR-0401-source-corpus-and-dn-extraction.md](PR-0401-source-corpus-and-dn-extraction.md)（Action 2 审计范围覆盖其 Document Inventory + DN Ledger extraction 版 + Coverage Matrix）
 - [PR-0403-per-adr-serial-execution.md](PR-0403-per-adr-serial-execution.md)（执行产出来源）

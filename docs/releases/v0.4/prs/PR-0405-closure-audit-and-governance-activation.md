@@ -5,7 +5,7 @@
 | **状态** | DRAFT |
 | **主题覆盖** | `T2`, `T6`, `T7` |
 | **依赖** | `PR-0404` |
-| **关联** | [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md) |
+| **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
 
 ---
 
@@ -114,8 +114,8 @@ append-only 约束，历史补录 ADR 进入"冻结但可勘误"状态。
 
 ## Reference
 
-- [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T2/T6/T7 裁决 + Q4 收口标准）
-- [governance-closure-audit-output.md](governance-closure-audit-output.md)（prep 层草稿壳）
-- [governance-activation-draft.md](governance-activation-draft.md)（prep 层草稿）
+- [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)（T2/T6/T7 裁决 + Q4 收口标准）
+- [governance-closure-audit-output.md](../../../reports/v0.3/governance-kickoff-prep/governance-closure-audit-output.md)（prep 层草稿壳）
+- [governance-activation-draft.md](../../../reports/v0.3/governance-kickoff-prep/governance-activation-draft.md)（prep 层草稿）
 - [PR-0401-source-corpus-and-dn-extraction.md](PR-0401-source-corpus-and-dn-extraction.md)（T0-T8 全覆盖验证涉及全部前序产出物）
 - [PR-0404-theme-delta-contract-and-consistency-audit.md](PR-0404-theme-delta-contract-and-consistency-audit.md)（审计基线 + Semantic Review open items 来源）

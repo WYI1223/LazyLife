@@ -121,7 +121,6 @@ PR-0412 不新增 FFI 函数——仅消费 PR-0411 已导出的函数。
 ## Planned File Changes
 
 - `[edit]` apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart (对接新 FFI + 系统节点接口)
-- `[edit]` apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart (加 TreeMutationDelta)
 - `[edit]` apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart (加 TreeMutationDelta + TreeMutationType + WorkspaceResolveDesignatedInvoker + 异常类)
 - `[add]` apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart
 

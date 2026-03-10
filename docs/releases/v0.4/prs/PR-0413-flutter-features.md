@@ -205,17 +205,17 @@ class TasksController extends ChangeNotifier {
 
 | Task | Lane | 内容 | 文件 | 估算 | 依赖 |
 |------|------|------|------|------|------|
-| T1 | Dart | TasksController 迁移到新 invoker | `apps/lazynote_flutter/lib/features/tasks/` | TBD | — |
-| T2 | Dart | CalendarController 迁移到新 invoker | `apps/lazynote_flutter/lib/features/calendar/` | TBD | — |
-| T3 | Dart | Notes/Tag Panel invoker 迁移 | `apps/lazynote_flutter/lib/features/notes/` | TBD | — |
-| T4 | Dart | Entry Search invoker 迁移 | `apps/lazynote_flutter/lib/features/entry/` | TBD | — |
-| T5 | Dart | Editor/Resolver invoker 迁移 | `apps/lazynote_flutter/lib/core/editor/` | TBD | — |
-| T6 | Dart | Explorer 内部分层（基础层/特化层） | `apps/lazynote_flutter/lib/features/notes/` | TBD | — |
-| T7 | Dart | synthetic uncategorized 全量删除 | 8 文件 | TBD | — |
-| T8 | Dart | 删除 workspace_tree_children_loader.dart | `apps/lazynote_flutter/lib/core/workspace/` | TBD | — |
+| T1 | Dart | TasksController 迁移到新 invoker | `apps/lazynote_flutter/lib/features/tasks/tasks_controller.dart` | TBD | — |
+| T2 | Dart | CalendarController 迁移到新 invoker | `apps/lazynote_flutter/lib/features/calendar/calendar_controller.dart` | TBD | — |
+| T3 | Dart | Notes/Tag Panel invoker 迁移 | `apps/lazynote_flutter/lib/features/notes/managers/note_list_manager.dart` | TBD | — |
+| T4 | Dart | Entry Search invoker 迁移 | `apps/lazynote_flutter/lib/features/entry/single_entry_controller.dart` | TBD | — |
+| T5 | Dart | Editor/Resolver invoker 迁移 | `apps/lazynote_flutter/lib/features/notes/notes_coordinator_impl.dart` | TBD | — |
+| T6 | Dart | Explorer 内部分层（基础层/特化层） | `apps/lazynote_flutter/lib/features/notes/explorer_tree_item.dart`, `explorer_tree_builder.dart` | TBD | — |
+| T7 | Dart | synthetic uncategorized 全量删除 | 8 文件（详见 Planned File Changes） | TBD | — |
+| T8 | Dart | 删除 workspace_tree_children_loader.dart | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_children_loader.dart` | TBD | — |
 | T9 | FFI | 移除 15 个旧 FFI 函数 | `crates/lazynote_ffi/src/api.rs` | TBD | T1-T5 |
 | T10 | FFI | FRB 绑定重生成 | `scripts/gen_bindings.ps1` | TBD | T9 |
-| T11 | Dart | 测试更新（controller mock + 负向测试） | `apps/lazynote_flutter/test/` | TBD | T1-T8 |
+| T11 | Dart | 测试更新（controller mock + 负向测试） | 8 test files（详见 Planned File Changes） | TBD | T1-T8 |
 | T12 | Dart | 清理验证 gate 执行 | — | TBD | T1-T10 |
 | T13 | Docs | 更新 ffi-contracts.md（移除旧函数） | `docs/api/ffi-contracts.md` | TBD | T9 |
 
@@ -237,10 +237,14 @@ class TasksController extends ChangeNotifier {
 - `[edit]` crates/lazynote_ffi/src/api.rs (移除 15 个旧 FFI 函数)
 - `[regen]` crates/lazynote_ffi/src/frb_generated.rs (FRB 自动生成)
 - `[regen]` apps/lazynote_flutter/lib/core/bindings/ (FRB 自动生成)
-- `[edit]` apps/lazynote_flutter/test/features/tasks/ (mock 替换为 QueryAtomsInvoker)
-- `[edit]` apps/lazynote_flutter/test/features/calendar/ (mock 替换)
-- `[edit]` apps/lazynote_flutter/test/features/notes/ (synthetic mock → 真实 Inbox folder)
-- `[edit]` apps/lazynote_flutter/test/core/workspace/ (删除 synthetic assert)
+- `[edit]` apps/lazynote_flutter/test/tasks_page_test.dart (mock 替换为 QueryAtomsInvoker)
+- `[edit]` apps/lazynote_flutter/test/calendar_page_test.dart (mock 替换)
+- `[edit]` apps/lazynote_flutter/test/calendar_event_dialog_test.dart (mock 替换)
+- `[edit]` apps/lazynote_flutter/test/note_explorer_tree_test.dart (synthetic mock → 真实 Inbox folder)
+- `[edit]` apps/lazynote_flutter/test/notes_controller_workspace_tree_guards_test.dart (synthetic mock → 真实 Inbox folder)
+- `[edit]` apps/lazynote_flutter/test/note_explorer_workspace_delete_test.dart (synthetic mock → 真实 Inbox folder)
+- `[edit]` apps/lazynote_flutter/test/workspace_contract_smoke_test.dart (删除 synthetic assert)
+- `[edit]` apps/lazynote_flutter/test/workspace_integration_flow_test.dart (删除 synthetic assert)
 - `[edit]` docs/api/ffi-contracts.md (移除 15 个旧函数契约)
 
 ## Verification
