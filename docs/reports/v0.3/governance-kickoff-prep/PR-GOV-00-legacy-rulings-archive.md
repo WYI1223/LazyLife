@@ -5,7 +5,7 @@
 | **状态** | PREP READY |
 | **主题覆盖** | `T0` |
 | **依赖** | 无 |
-| **关联** | [governance-rulings-migration-and-rebuild.md](governance-rulings-migration-and-rebuild.md) |
+| **关联** | governance-rulings-migration-and-rebuild.md (planned, not yet created) |
 
 ---
 
@@ -59,5 +59,5 @@
 
 ## Reference
 
-- [governance-rulings-migration-and-rebuild.md](governance-rulings-migration-and-rebuild.md)（迁移原则）
+- governance-rulings-migration-and-rebuild.md（迁移原则，planned, not yet created）
 - [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T0 定义与 PR-GOV-00 gate）

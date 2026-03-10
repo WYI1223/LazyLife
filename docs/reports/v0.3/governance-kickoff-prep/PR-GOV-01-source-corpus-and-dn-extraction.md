@@ -124,5 +124,5 @@ classification 阶段字段（9 项）标记为 `pending`。
 ## Reference
 
 - [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T4 最小数据模型 + PR-GOV-01 Actions 汇总）
-- [governance-templates/README.md](governance-templates/README.md)（模板索引）
+- governance-templates/README.md（模板索引，planned, not yet created）
 - [PR-GOV-00-legacy-rulings-archive.md](PR-GOV-00-legacy-rulings-archive.md)（前置依赖）

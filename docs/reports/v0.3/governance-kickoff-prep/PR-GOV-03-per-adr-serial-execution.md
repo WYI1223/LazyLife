@@ -108,7 +108,7 @@
 ## Reference
 
 - [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T3/T4 裁决 + per-ADR SOP 主链）
-- [governance-templates/README.md](governance-templates/README.md)（SOP 阶段模板索引）
-- [governance-templates/playbook-seed.md](governance-templates/playbook-seed.md)（整体流程）
+- governance-templates/README.md（SOP 阶段模板索引，planned, not yet created）
+- governance-templates/playbook-seed.md（整体流程，planned, not yet created）
 - [PR-GOV-01-source-corpus-and-dn-extraction.md](PR-GOV-01-source-corpus-and-dn-extraction.md)（DN Ledger 来源）
 - [PR-GOV-02-adr-infrastructure-and-metadata-contract.md](PR-GOV-02-adr-infrastructure-and-metadata-contract.md)（ADR 基础设施 + 元数据合同）

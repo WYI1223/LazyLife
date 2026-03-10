@@ -120,5 +120,5 @@ Playbook 约束：
 
 - [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T5/T8 裁决 + Q5 模板抽离计划 + playbook 骨架）
 - [governance-template-drafts.md](governance-template-drafts.md)（prep 层草案集合）
-- [governance-templates/playbook-seed.md](governance-templates/playbook-seed.md)（prep 层 playbook seed）
+- governance-templates/playbook-seed.md（prep 层 playbook seed，planned, not yet created）
 - [PR-GOV-05-closure-audit-and-governance-activation.md](PR-GOV-05-closure-audit-and-governance-activation.md)（治理激活来源 + playbook 边界确认）
