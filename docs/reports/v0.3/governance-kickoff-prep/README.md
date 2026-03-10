@@ -3,6 +3,10 @@
 > 承载 `DI-19` / `DI-20` 派生出的治理 kickoff 前筹备文档。
 > 这些文件不是普通 design discussion，也不是长期规范源；它们是为后续
 > `v0.4 kickoff` 组织正式 PR spec 时准备的参考输入与 handoff 材料。
+>
+> Historical note: during `v0.4 kickoff`, the mainline governance execution sequence
+> was renumbered from `PR-GOV-00~06` to `PR-0400~0406`. Current execution artifacts
+> belong under `docs/reports/v0.4/governance-execution/PR-040x/`.
 
 ---
 

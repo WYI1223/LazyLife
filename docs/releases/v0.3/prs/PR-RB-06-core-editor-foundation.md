@@ -372,7 +372,7 @@ Out of scope:
 |------|------|------|------|------|
 | T22 | `CLAUDE.md` 路径表更新：新增 `core/editor/`；更新 WorkspaceProvider TRANSIENT 引用；更新 coordinator 架构节 | `CLAUDE.md` | 编辑 | T4 |
 | T23 | `overview.md` 更新：新增 `core/editor/` 到 Flutter Core 节；更新 coordinator 架构节；更新 WorkspaceProvider 引用 | `docs/architecture/overview.md` | 编辑 | T4 |
-| T24 | S2 ruling 标注 Phase 2 implemented；S9 ruling 标注 EditorShellService 已完成 + TRANSIENT 已删除 | `docs/architecture/rulings/S2-*.md` + `S9-*.md` | 编辑 | T4, T15 |
+| T24 | S2 ruling 标注 Phase 2 implemented；S9 ruling 标注 EditorShellService 已完成 + TRANSIENT 已删除 | `docs/architecture/rulings-legacy/S2-*.md` + `S9-*.md` | 编辑 | T4, T15 |
 
 ### Critical Path
 

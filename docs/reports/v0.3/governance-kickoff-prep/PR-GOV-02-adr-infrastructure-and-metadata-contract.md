@@ -1,5 +1,9 @@
 # PR-GOV-02: ADR 基础设施与元数据合同
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-02` corresponds to `PR-0402`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0402/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
@@ -91,7 +95,7 @@ classification 自然产生。
 | Action | 产出物 | 存放路径 |
 |--------|--------|----------|
 | 1 | `adr/README.md` + `adr/topic-map.md` | `docs/architecture/adr/` |
-| 2 | 元数据合同定稿 | `docs/reports/v0.4/governance-execution/PR-GOV-02/` |
+| 2 | 元数据合同定稿 | `docs/reports/v0.4/governance-execution/PR-0402/` |
 
 ---
 

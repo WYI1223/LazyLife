@@ -1,5 +1,9 @@
 # PR-GOV-06: 模板、Playbook 与 Lifecycle 回填
 
+> Historical prep material. Mainline execution was renumbered during `v0.4 kickoff`:
+> `PR-GOV-06` corresponds to `PR-0406`, and execution artifacts belong under
+> `docs/reports/v0.4/governance-execution/PR-0406/`.
+
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
@@ -102,7 +106,7 @@ Playbook 约束：
 | 1 | 定稿模板（最多 6 份） | `docs/development/report-templates/` |
 | 2 | `governance-playbook.md` | `docs/development/` |
 | 3 | `release-lifecycle-template.md` 更新 | 原位更新 |
-| — | 执行记录 | `docs/reports/v0.4/governance-execution/PR-GOV-06/` |
+| — | 执行记录 | `docs/reports/v0.4/governance-execution/PR-0406/` |
 
 ---
 

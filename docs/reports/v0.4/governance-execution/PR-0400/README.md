@@ -1,7 +1,8 @@
 # PR-0400 Execution Log
 
 - Date: 2026-03-10
-- Status: Ready for Review
+- Execution Status: Ready for Review
+- Spec Review Status: Review-clean
 - Scope: archive legacy rulings, bootstrap canonical current-effective rulings registry, initialize governance execution workspace
 
 ## Actions Applied

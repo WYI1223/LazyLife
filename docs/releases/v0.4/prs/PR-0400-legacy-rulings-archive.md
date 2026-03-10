@@ -1,11 +1,13 @@
 # PR-0400: Legacy Rulings 归档
 
 - Proposed title: `docs(governance): archive legacy rulings and bootstrap governance execution workspace`
-- Status: In Progress
+- Execution status: Ready for Review
+- Spec review status: Review-clean (`docs/releases/v0.4/pr-spec-review-resolution.md`)
 
 | 项目 | 值 |
 |------|-----|
-| **状态** | IN PROGRESS |
+| **执行状态** | READY FOR REVIEW |
+| **规格评审状态** | Review-clean |
 | **主题覆盖** | `T0` |
 | **依赖** | 无 |
 | **关联** | [governance-rulings-migration-and-rebuild.md](../../../reports/v0.4/governance-execution/PR-0400/governance-rulings-migration-and-rebuild.md) |
@@ -30,7 +32,7 @@
    - 说明初始为空集
    - 说明只承载 per-ADR workflow 重建出的 current-effective 规则
    - 说明 legacy rulings 已归档至 `rulings-legacy/`
-4. 所有对具体 ruling 文件的引用统一改指 `rulings-legacy/`
+4. 所有对具体 ruling 文件的引用统一改指 `rulings-legacy/`（含代码样式路径与非 Markdown 文本路径）
 5. 创建 `docs/reports/v0.4/governance-execution/` 目录结构：
    - `v0.4/README.md`
    - `governance-execution/README.md`（执行总索引）
@@ -114,8 +116,9 @@ find docs/architecture/rulings-legacy -maxdepth 1 -type f | wc -l
 # 预期：11
 
 # 仓库内不再引用已迁移的具体 ruling 旧路径
-rg -n "docs/architecture/rulings/(S[1-9]|E1)-.*\\.md|[./]rulings/(S[1-9]|E1)-.*\\.md" docs CLAUDE.md
-# 预期：0 匹配，或仅剩明确说明 current-effective/rebuilt 的文档样例
+# 排除本 PR 自身的 move inventory，避免把迁移清单误判为残留引用
+rg -n "docs/architecture/rulings/(S[1-9]|E1)-.*\\.md|[./]rulings/(S[1-9]|E1)-.*\\.md" docs CLAUDE.md -g '!docs/releases/v0.4/prs/PR-0400-legacy-rulings-archive.md'
+# 预期：0 匹配
 ```
 
 ## Risk
@@ -130,7 +133,7 @@ rg -n "docs/architecture/rulings/(S[1-9]|E1)-.*\\.md|[./]rulings/(S[1-9]|E1)-.*\
 
 - [x] `docs/architecture/rulings-legacy/` 包含全部原始 ruling 文件
 - [x] `docs/architecture/rulings/` 仅含新建 README
-- [x] 全部对具体 ruling 文件的引用已更新为指向 `rulings-legacy/`
+- [x] 全部对具体 ruling 文件的引用已更新为指向 `rulings-legacy/`（不含本 PR 的 move inventory）
 - [x] `docs/reports/v0.4/governance-execution/` 目录结构已创建（含 README 与 PR-0400~06 子目录）
 - [x] `architecture_check.dart` 无悬挂链接
 - [x] [`governance-rulings-migration-and-rebuild.md`](../../../reports/v0.4/governance-execution/PR-0400/governance-rulings-migration-and-rebuild.md) Gate A（Archive Ready）条件满足：
