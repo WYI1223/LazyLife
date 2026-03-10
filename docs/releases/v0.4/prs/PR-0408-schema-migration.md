@@ -1,20 +1,20 @@
-# PR-1: Schema Migration 0012 — 单根树 + Workspace 元数据 + Designated Folders
+# PR-0408: Schema Migration 0012 — 单根树 + Workspace 元数据 + Designated Folders
 
 - Proposed title: `feat(core): migration 0012 single-root workspace tree with designated folders`
 - Status: Draft
 
 ## Goal
 
-新增 Migration 0012，建立单根 workspace 树结构：`workspaces` 表、designated folders 映射、`atoms.origin_workspace_id` 字段、系统节点回填、DB 触发器保护。为后续 PR-2~6 提供 schema 基础。
+新增 Migration 0012，建立单根 workspace 树结构：`workspaces` 表、designated folders 映射、`atoms.origin_workspace_id` 字段、系统节点回填、DB 触发器保护。为后续 PR-0409~0413 提供 schema 基础。
 
-前置条件：PR-0b（CI 增强应先就位）
+前置条件：PR-0407（CI 增强应先就位）
 
 ## Execution Contract (Canonical Inputs)
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-15-rust-data-model-single-root.md` | Schema 设计、系统节点定义、触发器定义、回填逻辑的完整依据 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-1 行）、Q4（Migration 测试） | PR 定位、测试要求 |
+| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0408 行）、Q4（Migration 测试） | PR 定位、测试要求 |
 | 现有 schema | `crates/lazynote_core/src/db/migrations/` | 当前 11 个 migration，本 PR 新增第 12 个 |
 
 ## Scope
@@ -32,9 +32,9 @@ In scope:
 - Migration 测试（全新安装 + 版本升级 + 触发器负测）
 
 Out of scope:
-- ScopedQueryRepository（PR-2）
-- TreeService 增强 / CreationService（PR-3）
-- FFI 函数变更（PR-4）
+- ScopedQueryRepository（PR-0409）
+- TreeService 增强 / CreationService（PR-0410）
+- FFI 函数变更（PR-0411）
 
 ## Design
 
@@ -134,8 +134,8 @@ pub trait WorkspaceMetaRepository {
 | T1 | Rust | Migration SQL 编写 | `crates/lazynote_core/src/db/migrations/0012_workspace_single_root.sql` | TBD | T0 |
 | T2 | Rust | Migration 注册 | `crates/lazynote_core/src/db/migrations/mod.rs` | TBD | T1 |
 | T3 | Rust | WorkspaceMetaRepository | `crates/lazynote_core/src/repo/` | TBD | T1 |
-| T4 | Rust | 全新安装测试 + 版本升级测试 | `crates/lazynote_core/tests/` | TBD | T1-T3 |
-| T5 | Rust | 触发器负测（5 项） | `crates/lazynote_core/tests/` | TBD | T1 |
+| T4 | Rust | 全新安装测试 + 版本升级测试 | `crates/lazynote_core/tests/migration_0012_test.rs` | TBD | T1-T3 |
+| T5 | Rust | 触发器负测（5 项） | `crates/lazynote_core/tests/migration_0012_test.rs` | TBD | T1 |
 
 ## Planned File Changes
 

@@ -1,11 +1,11 @@
-# PR-GOV-06: 模板、Playbook 与 Lifecycle 回填
+# PR-0406: 模板、Playbook 与 Lifecycle 回填
 
 | 项目 | 值 |
 |------|-----|
 | **状态** | DRAFT |
 | **主题覆盖** | `T5`, `T8` |
-| **依赖** | `PR-GOV-05` |
-| **关联** | [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md) |
+| **依赖** | `PR-0405` |
+| **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
 
 ---
 
@@ -39,7 +39,7 @@
 
 ### Action 1: 稳定模板定稿与沉淀
 
-将 PR-GOV-04 起草的模板草稿与 PR-GOV-05 验证过的审计/激活模板定稿，
+将 PR-0404 起草的模板草稿与 PR-0405 验证过的审计/激活模板定稿，
 沉淀到 `docs/development/report-templates/`：
 
 定稿候选（按 DI-20 Q5 模板抽离计划）：
@@ -57,7 +57,7 @@
 
 ### Action 2: Governance Playbook 起草与定稿
 
-基于 PR-GOV-05 确认的边界与已闭合的执行经验，起草并定稿 `governance-playbook.md`：
+基于 PR-0405 确认的边界与已闭合的执行经验，起草并定稿 `governance-playbook.md`：
 
 必备章节（按 DI-20 Q5 骨架）：
 1. Purpose and Boundaries
@@ -102,7 +102,7 @@ Playbook 约束：
 | 1 | 定稿模板（最多 6 份） | `docs/development/report-templates/` |
 | 2 | `governance-playbook.md` | `docs/development/` |
 | 3 | `release-lifecycle-template.md` 更新 | 原位更新 |
-| — | 执行记录 | `docs/reports/v0.4/governance-execution/PR-GOV-06/` |
+| — | 执行记录 | `docs/reports/v0.4/governance-execution/PR-0406/` |
 
 ---
 
@@ -118,7 +118,7 @@ Playbook 约束：
 
 ## Reference
 
-- [DI-20-governance-execution-plan.md](../design-discussions/DI-20-governance-execution-plan.md)（T5/T8 裁决 + Q5 模板抽离计划 + playbook 骨架）
-- [governance-template-drafts.md](governance-template-drafts.md)（prep 层草案集合）
+- [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)（T5/T8 裁决 + Q5 模板抽离计划 + playbook 骨架）
+- [governance-template-drafts.md](../../../reports/v0.3/governance-kickoff-prep/governance-template-drafts.md)（prep 层草案集合）
 - governance-templates/playbook-seed.md（prep 层 playbook seed，planned, not yet created）
-- [PR-GOV-05-closure-audit-and-governance-activation.md](PR-GOV-05-closure-audit-and-governance-activation.md)（治理激活来源 + playbook 边界确认）
+- [PR-0405-closure-audit-and-governance-activation.md](PR-0405-closure-audit-and-governance-activation.md)（治理激活来源 + playbook 边界确认）
