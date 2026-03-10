@@ -8,7 +8,7 @@ This directory holds execution records for the v0.4 governance workflow defined 
 |----|-------|------------------|-------------|-----------|
 | PR-0400 | Legacy Rulings Archive | Merged | Review-clean | `PR-0400/` |
 | PR-0401 | Source Corpus + DN Extraction | Merged | Review-clean | `PR-0401/` |
-| PR-0402 | ADR Infrastructure + Metadata Contract | Not Started | Review-clean | `PR-0402/` |
+| PR-0402 | ADR Infrastructure + Metadata Contract | Merged | Review-clean | `PR-0402/` |
 | PR-0403 | Per-ADR Serial Execution | Not Started | Review-clean | `PR-0403/` |
 | PR-0404 | Theme Delta Contract + Consistency Audit | Not Started | Review-clean | `PR-0404/` |
 | PR-0405 | Closure Audit + Governance Activation | Not Started | Review-clean | `PR-0405/` |
