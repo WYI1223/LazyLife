@@ -1,20 +1,20 @@
-# PR-5: Flutter Core — WorkspaceTreeService B+ 改造
+# PR-0412: Flutter Core — WorkspaceTreeService B+ 改造
 
 - Proposed title: `feat(workspace): workspace tree service enhancement with mutation delta`
 - Status: Draft
 
 ## Goal
 
-改造 WorkspaceTreeService 对接新 tree FFI（`workspace_resolve_designated`、`workspace_reassign_designated` 等树操作），引入 TreeMutationDelta 变更通知机制，新增 `loadSystemNodes` / `getSystemNodeId` 系统节点接口。`query_atoms` 消费迁移属于 PR-6（feature 层）。
+改造 WorkspaceTreeService 对接新 tree FFI（`workspace_resolve_designated`、`workspace_reassign_designated` 等树操作），引入 TreeMutationDelta 变更通知机制，新增 `loadSystemNodes` / `getSystemNodeId` 系统节点接口。`query_atoms` 消费迁移属于 PR-0413（feature 层）。
 
-前置条件：PR-4（需要新 FFI 函数就绪）
+前置条件：PR-0411（需要新 FFI 函数就绪）
 
 ## Execution Contract (Canonical Inputs)
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-17-flutter-thin-client.md` Q1-Q4 | WorkspaceTreeService B+ 改造、TreeMutationDelta、系统节点解析 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-5 行）、Q4（Flutter 测试 + delta 载荷断言） | PR 定位、测试要求 |
+| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0412 行）、Q4（Flutter 测试 + delta 载荷断言） | PR 定位、测试要求 |
 | 现有实现 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart` | 需改造的目标文件 |
 | 现有实现 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart` | 需扩展（加 TreeMutationDelta） |
 
@@ -28,10 +28,10 @@ In scope:
 - Mock invoker 测试
 
 Out of scope:
-- `query_atoms` 消费迁移 / QueryAtomsInvoker（PR-6 feature 层）
-- Tasks/Calendar/Notes/Entry controller 适配（PR-6）
-- 旧 FFI 移除（PR-6）
-- Explorer UI 变更 / 内部分层（PR-6）
+- `query_atoms` 消费迁移 / QueryAtomsInvoker（PR-0413 feature 层）
+- Tasks/Calendar/Notes/Entry controller 适配（PR-0413）
+- 旧 FFI 移除（PR-0413）
+- Explorer UI 变更 / 内部分层（PR-0413）
 
 ## Design
 
@@ -75,7 +75,7 @@ String getSystemNodeId(String workspaceId, String role);
 ```
 
 **缓存结构**：`Map<(String workspaceId, String role), String nodeUUID>`
-**FFI 调用**：每个 role 调用 `workspace_resolve_designated(workspaceId, role)`（PR-4 导出）
+**FFI 调用**：每个 role 调用 `workspace_resolve_designated(workspaceId, role)`（PR-0411 导出）
 **幂等性**：同一 workspaceId 二次调用为 no-op（early return）
 
 ### FFI 适配模式
@@ -90,7 +90,7 @@ typedef WorkspaceResolveDesignatedInvoker =
     });
 ```
 
-PR-5 不新增 FFI 函数——仅消费 PR-4 已导出的函数。
+PR-0412 不新增 FFI 函数——仅消费 PR-0411 已导出的函数。
 
 ### reassignDesignated 流程
 
@@ -169,7 +169,7 @@ grep -rn "DesignatedRoleNotFoundException\|WorkspaceInitException" apps/lazynote
 
 | 风险 | 严重度 | 缓解 |
 |------|--------|------|
-| 新旧 FFI 路径共存期间状态不一致 | LOW | PR-5 对接新 FFI，旧路径仍在但不被 WorkspaceTreeService 使用 |
+| 新旧 FFI 路径共存期间状态不一致 | LOW | PR-0412 对接新 FFI，旧路径仍在但不被 WorkspaceTreeService 使用 |
 | loadSystemNodes 在 FFI 失败时 UI 无法启动 | MEDIUM | 测试覆盖成功/失败路径，失败时有明确错误处理 |
 
 ## Acceptance Criteria

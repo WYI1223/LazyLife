@@ -1,11 +1,11 @@
-# PR-0b: CI 跨 Feature 代码重复检测 + Check 输出补强
+# PR-0407: CI 跨 Feature 代码重复检测 + Check 输出补强
 
 - Proposed title: `feat(ci): cross-feature duplication detection and check output enhancement`
 - Status: Draft
 
 ## Goal
 
-在代码 PR（PR-1~6）开始之前，增强 `architecture_check.dart`：新增跨 feature 代码重复检测（Check N），并补强现有 Check 1-3 输出为 WHAT/WHY/HOW 三层上下文格式。
+在代码 PR（PR-0408~0413）开始之前，增强 `architecture_check.dart`：新增跨 feature 代码重复检测（Check N），并补强现有 Check 1-3 输出为 WHAT/WHY/HOW 三层上下文格式。
 
 前置条件：无（Phase 0，可立即执行）
 
@@ -14,7 +14,7 @@
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-21-ci-duplication-detection.md` Q1-Q3 | 检测范围、算法、阈值、输出格式的完整设计依据 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0b 行） | PR 定位与 CI 要求 |
+| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0407 行） | PR 定位与 CI 要求 |
 | 规范源 | `docs/architecture/engineering-standards.md` Rule E | 本 Check 是 Rule E 的执行延伸 |
 | 现有实现 | `tools/ci/architecture_check.dart` | 需修改的目标文件 |
 
@@ -71,7 +71,7 @@ class _DuplicationResult {
 ```yaml
 - fileA: "lib/features/notes/dialogs/create_folder_dialog.dart"
   fileB: "lib/features/tasks/dialogs/folder_picker.dart"
-  reason: "Tree/picker widget boilerplate (extraction tracked in PR-5)"
+  reason: "Tree/picker widget boilerplate (extraction tracked in PR-0412)"
 ```
 
 匹配规则：fileA + fileB 任意顺序命中即豁免。
