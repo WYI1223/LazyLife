@@ -17,8 +17,8 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| S1 裁决（R14） | `docs/architecture/rulings/S1-atom-projection.md` §R14 | overlay 表结构、stale 判定、content_rev 约束、reconciliation 协议约束 |
-| S2 裁决（Phase 3 扩展） | `docs/architecture/rulings/S2-tab-draft-save-ownership.md` §View Mode 扩展 | ViewMode 枚举定义、resolve 签名扩展、TabEntry.viewMode 字段 |
+| S1 裁决（R14） | `docs/architecture/rulings-legacy/S1-atom-projection.md` §R14 | overlay 表结构、stale 判定、content_rev 约束、reconciliation 协议约束 |
+| S2 裁决（Phase 3 扩展） | `docs/architecture/rulings-legacy/S2-tab-draft-save-ownership.md` §View Mode 扩展 | ViewMode 枚举定义、resolve 签名扩展、TabEntry.viewMode 字段 |
 | DI-4 Q1 补充 | `docs/reports/v0.3/design-discussions/DI-4-buffer-sync-model.md` §Q1 补充 | Reconciliation 协议完整约束（多维匹配信号、orphan 处理、超时策略、三路 EditOp、运行时层级模型） |
 | 模块规范 | `docs/architecture/modules/core-editor/editor-resolver.md` | View Mode 扩展的 Dart 侧接口规范 |
 | 现有实现 | `apps/lazynote_flutter/lib/core/editor/editor_resolver.dart` | 需扩展：`resolve()` 签名 + 注册表结构 |

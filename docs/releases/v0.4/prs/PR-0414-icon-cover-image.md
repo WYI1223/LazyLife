@@ -13,7 +13,7 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| S1 Ruling | `docs/architecture/rulings/S1-atom-projection.md` R9/R10 | icon / cover_image 语义定义、`cover_image` vs `preview_image` 区别、列表渲染优先级规则 |
+| S1 Ruling | `docs/architecture/rulings-legacy/S1-atom-projection.md` R9/R10 | icon / cover_image 语义定义、`cover_image` vs `preview_image` 区别、列表渲染优先级规则 |
 | 现有 schema | `crates/lazynote_core/src/db/migrations/` | 当前 12 个 migration（PR-0408 新增 0012），本 PR 新增第 13 个 |
 | 现有 model | `crates/lazynote_core/src/model/atom.rs` | Atom struct，需新增两字段 |
 | 现有 repo | `crates/lazynote_core/src/repo/atom_repo.rs` | ATOM_SELECT_SQL、SECTION_SELECT_SQL、parse_atom_row、create_atom、update_atom，全部需感知新字段 |

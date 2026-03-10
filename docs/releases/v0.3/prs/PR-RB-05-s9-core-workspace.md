@@ -25,7 +25,7 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| **Ruling** | [`S9-cross-feature-infrastructure-placement.md`](../../../architecture/rulings/S9-cross-feature-infrastructure-placement.md) | 定义 `core/workspace/` 目标结构；规则 1（被 2+ feature 消费 → core/）、裁决实例表（WorkspaceTreeService 条目） |
+| **Ruling** | [`S9-cross-feature-infrastructure-placement.md`](../../../architecture/rulings-legacy/S9-cross-feature-infrastructure-placement.md) | 定义 `core/workspace/` 目标结构；规则 1（被 2+ feature 消费 → core/）、裁决实例表（WorkspaceTreeService 条目） |
 | **Module Spec** | [`core-workspace/workspace-tree-service.md`](../../../architecture/modules/core-workspace/workspace-tree-service.md) | 定义职责范围、提取范围、语义依据（S1 R5/R6、S3、DI-12）、约束条件 |
 | **Ruling** | Rule E ([`engineering-standards.md`](../../../architecture/engineering-standards.md)) | 跨 feature import 禁止规则，本 PR 消除 `notes → workspace` 违规 |
 
@@ -350,7 +350,7 @@ DartEventLogger.log(module: 'core.workspace_tree_service', ...);
 |------|------|------|------|------|
 | T19 | 更新 `CLAUDE.md` 路径表：`features/workspace/` → `core/workspace/`；`WorkspaceTreeManager` → `WorkspaceTreeService`；添加 `core/workspace/` 条目 | `CLAUDE.md` | 编辑 | T16 |
 | T20 | 更新 `overview.md`：§Runtime flow 中 WorkspaceTreeManager → WorkspaceTreeService；§Module map 中路径更新；§v0.3 infrastructure 标注已完成 | `docs/architecture/overview.md` | 编辑 | T16 |
-| T21 | S9 ruling 实施状态表：`WorkspaceTreeService → core/workspace/` 标注 **已完成** | `docs/architecture/rulings/S9-cross-feature-infrastructure-placement.md` | 编辑 | T16 |
+| T21 | S9 ruling 实施状态表：`WorkspaceTreeService → core/workspace/` 标注 **已完成** | `docs/architecture/rulings-legacy/S9-cross-feature-infrastructure-placement.md` | 编辑 | T16 |
 | T22 | Module spec：标注 PR-RB-05 执行状态；更新目标文件结构为 6 文件（含 TRANSIENT 标记） | `docs/architecture/modules/core-workspace/workspace-tree-service.md` | 编辑 | T16 |
 
 ### Critical Path
@@ -396,7 +396,7 @@ T1 → T2~T7 (并行移动) → T8/T9/T10 → T11~T14 (并行) → T15 → T16/T
 | `[edit]` | `tools/ci/rule_e_allowlist.yaml` | 移除 `notes → workspace` 条目 |
 | `[edit]` | `CLAUDE.md` | 路径表 + 控制器表更新 |
 | `[edit]` | `docs/architecture/overview.md` | 路径引用 + 模块描述更新 |
-| `[edit]` | `docs/architecture/rulings/S9-cross-feature-infrastructure-placement.md` | 实施状态 |
+| `[edit]` | `docs/architecture/rulings-legacy/S9-cross-feature-infrastructure-placement.md` | 实施状态 |
 | `[edit]` | `docs/architecture/modules/core-workspace/workspace-tree-service.md` | 执行状态 + 文件结构 |
 
 ---

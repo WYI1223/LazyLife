@@ -102,7 +102,7 @@ Required baseline (v0.2):
 
 Required baseline (v0.2.5, completed 2026-02-27):
 
-- Semantic rulings S1-S8 documented (`PR-0256`, see `docs/architecture/rulings/`)
+- Semantic rulings S1-S8 documented (`PR-0256`, see `docs/architecture/rulings-legacy/`)
 - Dart god-object decomposition — NotesCoordinator + 6 managers (`PR-0252`)
 - Pane-aware NoteTabStateManager with per-pane tab isolation (`PR-0257`)
 - Notes-workspace decoupling — coordinator is sole state source,

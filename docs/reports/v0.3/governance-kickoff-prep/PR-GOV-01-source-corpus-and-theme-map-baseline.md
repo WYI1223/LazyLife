@@ -56,7 +56,7 @@
 | PR Replanning | `docs/reports/v0.2.5/frontend-review/08d-pr-replanning.md` | 历史 PR 编排与执行边界来源 |
 | Acceptance | `docs/reports/v0.2.5/frontend-review/09-acceptance-report.md` | 08 系列闭合与历史执行结果 |
 | PR Spec | `docs/releases/v0.3/prs/PR-RB-00-doc-fixes.md` | ADR 废弃、E1 迁移、v0.3 文档治理动作事实来源 |
-| Ruling | `docs/architecture/rulings/E1-release-and-versioning.md` | ADR-0001 迁移与 release/versioning 语义背景 |
+| Ruling | `docs/architecture/rulings-legacy/E1-release-and-versioning.md` | ADR-0001 迁移与 release/versioning 语义背景 |
 | Release Evidence | `docs/releases/v0.3/v0.3-release-evidence.md` | v0.3 收口完成、DI-12~18 处于 v0.4 planning boundary 的证据 |
 | Index | `docs/reports/v0.3/design-discussions/README.md` | 执行文档入口与状态同步 |
 

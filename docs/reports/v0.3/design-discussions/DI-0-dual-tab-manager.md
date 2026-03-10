@@ -45,7 +45,7 @@
 
 ### 关键参考：S2 裁决
 
-S2 Phase 2（`docs/architecture/rulings/S2-tab-draft-save-ownership.md`）已定义提取路径：
+S2 Phase 2（`docs/architecture/rulings-legacy/S2-tab-draft-save-ownership.md`）已定义提取路径：
 
 > 从 coordinator 提取 `NoteTabManager` → `EditorGroupModel[]`
 
@@ -80,7 +80,7 @@ S2 Phase 2（`docs/architecture/rulings/S2-tab-draft-save-ownership.md`）已定
 ## 关联
 
 - → DI-1（EditorShellService 接口，**RESOLVED**）：提取源 = `NoteTabStateManager`，目标 = `EditorGroupModel`（含 `TabEntry { atomId, title }`），位置 = `lib/core/editor/`
-- ← S2 裁决（`docs/architecture/rulings/S2-tab-draft-save-ownership.md`）
+- ← S2 裁决（`docs/architecture/rulings-legacy/S2-tab-draft-save-ownership.md`）
 - ← 01 审计报告 §2.2 + §4.1
 
 ---

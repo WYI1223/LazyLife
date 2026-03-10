@@ -13,7 +13,7 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| 架构裁决 | `docs/architecture/rulings/S1-atom-projection.md` R11 | Comment 语义定义、目标表结构、独立关联实体方案的完整依据 |
+| 架构裁决 | `docs/architecture/rulings-legacy/S1-atom-projection.md` R11 | Comment 语义定义、目标表结构、独立关联实体方案的完整依据 |
 | 现有 schema | `crates/lazynote_core/src/db/migrations/` | 当前 migration 序列（11 个已落地，12-13 在 PR-0408/PR-0409 规划中），本 PR 新增第 14 个 |
 | 现有 repo 实现 | `crates/lazynote_core/src/repo/atom_repo.rs` | Repository trait + SQLite 实现模式、RepoError 类型、`try_new` 校验模式 |
 | 现有 FFI 实现 | `crates/lazynote_ffi/src/api.rs` | Response envelope 定义模式、`*FfiError` 类型模式、`#[flutter_rust_bridge::frb]` async 函数模式 |

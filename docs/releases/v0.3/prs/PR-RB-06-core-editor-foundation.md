@@ -20,8 +20,8 @@
 | Module Spec | `modules/core-editor/editor-group-model.md` | Group state + TabEntry |
 | Module Spec | `modules/core-editor/group-layout.md` | GroupLayout 封装层 API `[PR-RB-06 已修正为 DI-2 二叉树模型]` |
 | Module Spec | `modules/core-editor/edit-buffer.md` | EditBuffer 状态机 + 编辑-保存时序 |
-| Ruling | `rulings/S2-tab-draft-save-ownership.md` Phase 2 | 提取蓝图 + 四条规则 |
-| Ruling | `rulings/S9-cross-feature-infrastructure-placement.md` | TRANSIENT 文件归属 + 删除时机 |
+| Ruling | `rulings-legacy/S2-tab-draft-save-ownership.md` Phase 2 | 提取蓝图 + 四条规则 |
+| Ruling | `rulings-legacy/S9-cross-feature-infrastructure-placement.md` | TRANSIENT 文件归属 + 删除时机 |
 | DI-7 | `DI-7-gates-perf-testing.md` | Gate B M1 验证标准（split/close <50ms） |
 | Rebaseline | `v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-06 | Scope + M1 milestone |
 | Acceptance Report | `09-acceptance-report.md` §7.1 | coordinator_impl 1,537 行 → 提取后减重 |

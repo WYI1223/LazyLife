@@ -13,7 +13,7 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| Ruling | `docs/architecture/rulings/S8-noteitem-unification.md` | 定义四条规则：Single DTO / Information completeness / UI-layer decision authority / EntrySearchItem preserved |
+| Ruling | `docs/architecture/rulings-legacy/S8-noteitem-unification.md` | 定义四条规则：Single DTO / Information completeness / UI-layer decision authority / EntrySearchItem preserved |
 | Rebaseline | `docs/releases/v0.3/v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-01 | 定义 scope 和依赖 |
 | Acceptance Report | `docs/reports/v0.2.5/frontend-review/09-acceptance-report.md` §4.1-4.2 | S8 disposition：timeline corrected to v0.3 |
 | DI-7 | `docs/reports/v0.3/design-discussions/DI-7-gates-perf-testing.md` | Gate A 验证项：手写代码 NoteItem 归零 |
@@ -185,7 +185,7 @@ pub struct AtomItemResponse {
 | T18 | 更新 `ffi-contracts.md`：移除 migration note，更新 notes API 返回类型 | `docs/api/ffi-contracts.md` | 编辑 | T8 |
 | T19 | 更新 `API_COMPATIBILITY.md`：标注 migration completed | `docs/governance/API_COMPATIBILITY.md` | 编辑 | T8 |
 | T20 | 更新 `CLAUDE.md` FFI API Surface：`NoteResponse`/`NotesListResponse` → `AtomItemResponse`/`AtomListResponse` | `CLAUDE.md` | 编辑 | T8 |
-| T21 | 更新 `S8-noteitem-unification.md` 状态为 implemented | `docs/architecture/rulings/S8-noteitem-unification.md` | 编辑状态字段 | T8 |
+| T21 | 更新 `S8-noteitem-unification.md` 状态为 implemented | `docs/architecture/rulings-legacy/S8-noteitem-unification.md` | 编辑状态字段 | T8 |
 
 ### Critical Path
 
@@ -227,7 +227,7 @@ T4 无依赖，可与 T1~T3 并行
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `docs/governance/API_COMPATIBILITY.md`
 - `[edit]` `CLAUDE.md`
-- `[edit]` `docs/architecture/rulings/S8-noteitem-unification.md`
+- `[edit]` `docs/architecture/rulings-legacy/S8-noteitem-unification.md`
 
 ## Verification
 

@@ -45,7 +45,7 @@ Current status:
 
 ## Three-Layer Responsibility Separation (S6 Ruling)
 
-See [S6: Provider SPI → external_mappings 交互](rulings/S6-provider-spi-interaction.md) for full ruling.
+See [S6: Provider SPI → external_mappings 交互](rulings-legacy/S6-provider-spi-interaction.md) for full ruling.
 
 | Layer | Component | Responsibility | Touches external_mappings? |
 |-------|-----------|----------------|---------------------------|
@@ -152,8 +152,8 @@ See: `docs/compliance/google-calendar.md` and `docs/compliance/privacy.md`.
 
 ## References
 
-- [S6: Provider SPI → external_mappings 交互](rulings/S6-provider-spi-interaction.md)
-- [S1: Atom 投影语义](rulings/S1-atom-projection.md)
+- [S6: Provider SPI → external_mappings 交互](rulings-legacy/S6-provider-spi-interaction.md)
+- [S1: Atom 投影语义](rulings-legacy/S1-atom-projection.md)
 - `docs/releases/v0.1/prs/PR-0014-local-task-calendar-projection.md`
 - `docs/releases/v0.1/prs/PR-0015-google-calendar-provider-plugin.md`
 - `docs/releases/v0.2/prs/PR-0215-provider-spi-and-sync-contract.md`

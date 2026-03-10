@@ -25,7 +25,7 @@
 | v0.3 Kickoff | `docs/releases/v0.3/v0.3-kickoff.md` | §1-§9 完成 |
 | 现有 PR spec（12 个） | `docs/releases/v0.3/prs/` | 12 个文件存在 |
 | v0.2.5 代码体检 | `docs/reports/v0.2.5/frontend-review/01-code-health-report.md` | M4 完成 |
-| v0.2.5 语义裁决 | `docs/architecture/rulings/` | S1-S8 完成 |
+| v0.2.5 语义裁决 | `docs/architecture/rulings-legacy/` | S1-S8 完成 |
 
 ### 审计范围
 

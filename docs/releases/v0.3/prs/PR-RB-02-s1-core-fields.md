@@ -13,7 +13,7 @@
 
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
-| Ruling | `docs/architecture/rulings/S1-atom-projection.md` R2/R3/R8 | 定义 `content_type`/`view_hint`/`title` 语义和推导规则 |
+| Ruling | `docs/architecture/rulings-legacy/S1-atom-projection.md` R2/R3/R8 | 定义 `content_type`/`view_hint`/`title` 语义和推导规则 |
 | Ruling | 同上 R4 | 定义渲染行为矩阵（Flutter 层参考，无 Core 代码变更） |
 | Rebaseline | `docs/releases/v0.3/v0.3-pr-spec-rebaseline-2026-03-01.md` §4 PR-RB-02 | 定义 scope：migration 0010 + Core 推导 + FFI/Dart 贯通 |
 | Data Model | `docs/architecture/data-model.md` | 当前 schema 参考 + 需更新 |
@@ -274,7 +274,7 @@ fn derive_view_hint(
 | T19 | 更新 `data-model.md`：schema + 字段说明 + migration 0010 | `docs/architecture/data-model.md` | 编辑 | T1 |
 | T20 | 更新 `ffi-contracts.md`：`AtomListItem`/`EntrySearchItem` 字段 | `docs/api/ffi-contracts.md` | 编辑 | T10 |
 | T21 | 更新 `CLAUDE.md`：Atom struct 说明 + FFI API Surface | `CLAUDE.md` | 编辑 | T10 |
-| T22 | 更新 `S1-atom-projection.md`：R2/R3/R8 标注为 implemented | `docs/architecture/rulings/S1-atom-projection.md` | 编辑 | T13 |
+| T22 | 更新 `S1-atom-projection.md`：R2/R3/R8 标注为 implemented | `docs/architecture/rulings-legacy/S1-atom-projection.md` | 编辑 | T13 |
 
 ### Critical Path
 
@@ -308,7 +308,7 @@ T6 无依赖，可与 T1~T5 并行
 - `[edit]` `docs/architecture/data-model.md`
 - `[edit]` `docs/api/ffi-contracts.md`
 - `[edit]` `CLAUDE.md`
-- `[edit]` `docs/architecture/rulings/S1-atom-projection.md`
+- `[edit]` `docs/architecture/rulings-legacy/S1-atom-projection.md`
 
 ## Verification
 

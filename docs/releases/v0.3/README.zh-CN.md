@@ -105,7 +105,7 @@ v0.2 基线要求：
 
 v0.2.5 基线要求（2026-02-27 已完成）：
 
-- 语义裁决 S1-S8 文档化（`PR-0256`，见 `docs/architecture/rulings/`）
+- 语义裁决 S1-S8 文档化（`PR-0256`，见 `docs/architecture/rulings-legacy/`）
 - Dart god-object 分解 — NotesCoordinator + 6 managers（`PR-0252`）
 - Pane-aware NoteTabStateManager + per-pane tab 隔离（`PR-0257`）
 - Notes-workspace 解耦 — coordinator 为唯一状态源，

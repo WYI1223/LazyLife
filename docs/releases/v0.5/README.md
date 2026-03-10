@@ -13,7 +13,7 @@ v0.5 的定位是「延期能力接续 + 模型统一评估 + 性能稳定化」
 
 本规划仅使用以下来源：
 
-- `docs/architecture/rulings/`（S1-S9）
+- `docs/architecture/rulings-legacy/`（legacy snapshot: S1-S9 + E1；current-effective rebuilds land under `docs/architecture/rulings/`）
 - `docs/architecture/modules/`
 - `docs/reports/v0.2.5/frontend-review/09-acceptance-report.md`
 - `docs/reports/v0.3/design-discussions/DI-0` 至 `DI-5`
