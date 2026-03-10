@@ -1,8 +1,13 @@
 # PR-0401: Source Corpus 盘点与 DN Extraction
 
+- Proposed title: `docs(governance): establish source corpus inventory and first-pass DN ledger baseline`
+- Execution status: In Progress
+- Spec review status: Review-clean (`docs/releases/v0.4/pr-spec-review-resolution.md`)
+
 | 项目 | 值 |
 |------|-----|
-| **状态** | DRAFT |
+| **执行状态** | IN PROGRESS |
+| **规格评审状态** | Review-clean |
 | **主题覆盖** | `T3`, `T4`, `T7` |
 | **依赖** | `PR-0400` |
 | **关联** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
@@ -36,6 +41,33 @@
 
 ---
 
+## Execution Contract (Canonical Inputs)
+
+| 类型 | 引用 | 与本 PR 的关系 |
+|------|------|---------------|
+| 历史审计链 | `docs/reports/v0.2.5/frontend-review/08a-audit-findings.md` 至 `09-acceptance-report.md` | 提供 trigger / decision / execution / closure 基线 |
+| v0.3 文档治理链 | `docs/releases/v0.3/prs/PR-RB-00-doc-fixes.md`, `docs/releases/v0.3/v0.3-release-evidence.md` | 提供 ADR→Ruling 演进、release closure 与 handoff 边界 |
+| 设计讨论主链 | `docs/reports/v0.3/design-discussions/DI-0` 至 `DI-21` | 必须按顺序纳入 source corpus；`DI-9` 作为缺失槽位显式记录 |
+| 治理执行裁决 | `docs/reports/v0.3/design-discussions/DI-20-governance-execution-plan.md` | 提供 T4 的最小字段模型、source corpus / decision line 抽取规则 |
+| 前置主线 PR | `docs/releases/v0.4/prs/PR-0400-legacy-rulings-archive.md` | legacy snapshot 已归档，为 source corpus 范围提供边界 |
+
+## Source Corpus Baseline
+
+PR-0401 的主线 source corpus 按以下顺序建立：
+
+1. `08a` → `08b` → `08c` → `08d` → `09`
+2. `PR-RB-00-doc-fixes.md`
+3. `v0.3-release-evidence.md`
+4. `DI-0` → `DI-21`（按编号顺序逐项写入）
+
+补充边界：
+
+- `DI-9` 当前无实体文件，必须作为缺失槽位写入 inventory，不能静默跳过。
+- `docs/architecture/rulings-legacy/` 不进入主 inventory 行，但允许在 `Notes` / `Current Normative Anchor` 中作为当前规范锚点引用。
+- `DI-0~DI-21` 的顺序要求高于“只挑已 resolved 的文档”；`pending` / `deferred` / `in_progress` 项同样必须入表。
+
+---
+
 ## Execution Model
 
 - **全局步骤**：Action 1（Document Inventory，一次性）
@@ -57,7 +89,8 @@
 
 - `Doc ID` 使用 `DOC-xxx` 命名空间
 - `Normative Status`：`historical` / `current_effective` / `deferred` / `pending`
-- legacy rulings 不进入 inventory（已由 PR-0400 归档）
+- `DI-0` 至 `DI-21` 必须按编号顺序连续入表；`DI-9` 使用缺失槽位占位
+- legacy rulings 不进入 inventory 主表（已由 PR-0400 归档），但可在 `Notes` 中声明 current normative anchor
 
 ### Action 2a: Document Structure Survey
 
@@ -110,6 +143,56 @@ classification 阶段字段（9 项）标记为 `pending`。
 | 4 | `template-extraction-backlog.md` | `PR-0401/` |
 
 ---
+
+## Task Breakdown
+
+| Task | Lane | 内容 | 文件 | 估算 | 依赖 |
+|------|------|------|------|------|------|
+| T1 | Docs | 将 PR-0401 spec 补全为可执行合同，写明 expanded source corpus 与 DI-0~DI-21 顺序要求 | `docs/releases/v0.4/prs/PR-0401-source-corpus-and-dn-extraction.md` | TBD | — |
+| T2 | Docs | 建立 `document-inventory.md`，覆盖 08a-09、PR-RB-00、release evidence、DI-0~DI-21（含 DI-9 占位） | `docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md` | TBD | T1 |
+| T3 | Docs | 建立 `coverage-matrix.md`，按 inventory 同步 survey / extraction 进度 | `docs/reports/v0.4/governance-execution/PR-0401/coverage-matrix.md` | TBD | T2 |
+| T4 | Docs | 建立 `template-extraction-backlog.md`，确认 3 项计划模板并补录 survey / extraction SOP 缺口 | `docs/reports/v0.4/governance-execution/PR-0401/template-extraction-backlog.md` | TBD | T2 |
+| T5 | Docs | 初始化 `dn-ledger.md`，先落第一批治理核心文档的 extraction seed | `docs/reports/v0.4/governance-execution/PR-0401/dn-ledger.md` | TBD | T2 |
+| T6 | Docs | 更新 `PR-0401/README.md` 执行日志，记录已落地范围与待继续项 | `docs/reports/v0.4/governance-execution/PR-0401/README.md` | TBD | T2-T5 |
+| T7 | Verify | 运行 docs 结构检查，确认新增执行物无 broken links | `tools/ci/architecture_check.dart` | TBD | T1-T6 |
+
+## Planned File Changes
+
+- `[edit]` `docs/releases/v0.4/prs/PR-0401-source-corpus-and-dn-extraction.md`
+- `[edit]` `docs/reports/v0.4/governance-execution/PR-0401/README.md`
+- `[add]` `docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md`
+- `[add]` `docs/reports/v0.4/governance-execution/PR-0401/coverage-matrix.md`
+- `[add]` `docs/reports/v0.4/governance-execution/PR-0401/template-extraction-backlog.md`
+- `[add]` `docs/reports/v0.4/governance-execution/PR-0401/dn-ledger.md`
+- `[add]` `docs/reports/v0.4/governance-execution/PR-0401/surveys/README.md`
+- `[add]` initial survey files under `docs/reports/v0.4/governance-execution/PR-0401/surveys/`
+
+## Verification
+
+### CI gates
+
+```bash
+cd apps/lazynote_flutter/
+dart run ../../tools/ci/architecture_check.dart
+```
+
+### Structural verification
+
+```bash
+# inventory 中应包含 DI-0 ~ DI-21 顺序链
+rg -n "DI-0|DI-1|DI-2|DI-3|DI-4|DI-5|DI-6|DI-7|DI-8|DI-9|DI-10|DI-11|DI-12|DI-13|DI-14|DI-15|DI-16|DI-17|DI-18|DI-19|DI-20|DI-21" docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md
+
+# 缺失槽位 DI-9 必须显式存在
+rg -n "DI-9|缺失槽位|missing slot" docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md docs/reports/v0.4/governance-execution/PR-0401/coverage-matrix.md
+```
+
+## Risk
+
+| 风险 | 严重度 | 缓解 |
+|------|--------|------|
+| source corpus 只覆盖治理链，遗漏 DI-0~DI-18 的历史设计上下文 | HIGH | 将 `DI-0~DI-21` 作为顺序主链整体纳入 inventory |
+| `DI-9` 无文件导致后续执行误以为链条完整 | MEDIUM | 在 inventory / coverage matrix 中显式写为缺失槽位 |
+| 旧 prep 产物与 mainline 命名不一致 | MEDIUM | PR-0401 仅在 `docs/reports/v0.4/governance-execution/PR-0401/` 产出主线版本，prep 仅作输入 |
 
 ## Exit Gate
 
