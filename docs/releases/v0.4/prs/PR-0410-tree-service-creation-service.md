@@ -11,6 +11,11 @@
 
 ## Execution Contract (Canonical Inputs)
 
+Shared promotion register:
+
+- `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`
+- This PR must leave evidence sufficient for `CPR-001`, but may not publish carrier text directly.
+
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-16-rust-service-ffi-contract.md` Q2-Q4 | TreeService 增强、CreationService 设计、保护规则 |

@@ -11,6 +11,11 @@
 
 ## Execution Contract (Canonical Inputs)
 
+Shared promotion register:
+
+- `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`
+- This PR must leave evidence sufficient for `CPR-001`, but may not publish carrier text directly.
+
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-15-rust-data-model-single-root.md` | Schema 设计、系统节点定义、触发器定义、回填逻辑的完整依据 |
