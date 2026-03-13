@@ -1,8 +1,12 @@
 # Module Spec: LayoutPersistence
 
+> Current normative line: [S10 Layout Tree Structure and Resolve](../../rulings/S10-layout-tree-structure-and-resolve.md)
+>
+> Journey record: [ADR-0010 Layout Tree Structure and Resolve](../../adr/ADR-0010-layout-tree-structure-and-resolve.md)
+>
 > `lib/core/editor/layout_persistence.dart`
 >
-> 设计来源：[DI-3](../../../reports/v0.3/design-discussions/DI-3-layout-persistence.md) · [S2 Phase 2 布局持久化](../../rulings-legacy/S2-tab-draft-save-ownership.md)
+> 设计来源：[DI-3](../../../reports/v0.3/design-discussions/DI-3-layout-persistence.md) · [DI-2](../../../reports/v0.3/design-discussions/DI-2-layout-tree-structure.md) · [S10](../../rulings/S10-layout-tree-structure-and-resolve.md)
 
 ---
 

@@ -35,6 +35,15 @@ Every such ADR must explicitly state:
 
 `Native ADR` remains outside this contract's direct template scope and only becomes active after governance activation.
 
+## ADR Admission Gate
+
+A retrospective ADR may be admitted only when governance replay can prove both:
+
+1. a stable why-question; and
+2. an independently traceable decision line.
+
+Raw source volume, document count, or general topic importance is not enough by itself.
+
 ## Required Metadata
 
 | Field | Required | Purpose | Notes |

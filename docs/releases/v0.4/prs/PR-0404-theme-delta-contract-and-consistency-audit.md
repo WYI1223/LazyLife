@@ -17,6 +17,24 @@
 本 PR 不发明新规则，而是把 PR-0403 实际验证过的执行模式固化为可复用的合同模型
 与审计规则。
 
+同时，本 PR 也是 `DOC-023 / DI-15` workspace topology handoff 的正式审计消费方：
+`PR-0408 ~ PR-0413` 只负责落地实现并更新 coverage ledger；
+是否允许把这些 accepted-but-unlanded bundle 提升为 mainline ADR / ruling / topic-map carrier，
+必须由本 PR 基于审计结果给出显式结论。
+
+---
+
+## Current Landed Interpretation
+
+`DOC-028 / DI-20` confirms the current landed audit interpretation for this PR:
+
+1. `Theme Delta Contract` has a PR-level header and a separate row-level schema; both are mandatory;
+2. the T6 governance closure stack is `Structural Checks -> Graph Checks -> Policy Checks -> Semantic Review -> Closure Audit Output`;
+3. automation may cover structure, graph, and part of policy validation, but semantic closure still requires accountable human review;
+4. this PR is the explicit consumer of governance-spec handoff from `DOC-028`, including the final decision on whether any accepted-but-unlanded bundle may be promoted into a mainline carrier.
+
+This PR therefore remains the current audit and closure-check surface for DI-20's landed governance execution model.
+
 ---
 
 ## Scope
@@ -69,6 +87,8 @@
    - `adr_carrier_update` 同步更新 `Current Status` / `ADR Carrier State` / `ADR Carrier Reference`
    - `split / merge / supersede / redirect` 同步更新主题地图关系字段
    - `Docs Touched` 能在输出文档中找到对应落点
+   - `workspace-topology-carrier-promotion-workflow.md` 的 ledger 状态与 `PR-0408 ~ PR-0413` 的实际输出一致，且 `DOC-024 / DI-16` 的 `OI-034 ~ OI-038` supporting bundles、`DOC-025 / DI-17` 的 `OI-039 ~ OI-044` supporting bundles、以及 `DOC-026 / DI-18` 的 `OI-045 ~ OI-050` execution bundles 已被相关 PR 正确消费
+   - `PR-0408 ~ PR-0413` 未在 promotion gate 满足前提前发布 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 4. **Semantic Review**（人工 gate，由 governance owner 在 PR-0404 内执行；
    structural / graph / policy 必须 pass，Semantic Review 允许产出 open items，
    显式记录在 Consistency Audit Report 中，传递给 PR-0405 收口）
@@ -124,6 +144,9 @@
 - [ ] Theme Delta Contract 模型基于 PR-0403 实际执行经验定稿
 - [ ] Repo-wide 一致性审计已执行（跨 ADR 结构/图/政策检查）
 - [ ] 跨 ADR 的 DN→DN 关系完整性已验证
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 ledger 已对 `PR-0408 ~ PR-0413` 执行 coverage 与证据审计
+- [ ] `OI-034 ~ OI-038`、`OI-039 ~ OI-044`、以及 `OI-045 ~ OI-050` 已被对应实现 PR 显式引用并与 workflow ledger 保持一致
+- [ ] `DI-15` active bundle 的 carrier promotion 结论已显式记录（继续阻塞 / 允许提升）
 - [ ] 索引同步策略形成可执行规则
 - [ ] 前序模板字段模型审计确认完成（3 份）
 - [ ] closure-audit-template 规划完成（字段与章节结构确认）
@@ -136,5 +159,6 @@
 - [governance-theme-delta-contract-model.md](../../../reports/v0.3/governance-kickoff-prep/governance-theme-delta-contract-model.md)（prep 层合同模型）
 - [governance-backlink-rules.md](../../../reports/v0.3/governance-kickoff-prep/governance-backlink-rules.md)（prep 层回链规则）
 - [governance-check-model.md](../../../reports/v0.3/governance-kickoff-prep/governance-check-model.md)（prep 层检查模型）
+- [workspace-topology-carrier-promotion-workflow.md](../../../reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md)（DI-15 / DI-16 / DI-17 / DI-18 handoff workflow）
 - [PR-0401-source-corpus-and-dn-extraction.md](PR-0401-source-corpus-and-dn-extraction.md)（Action 2 审计范围覆盖其 Document Inventory + DN Ledger extraction 版 + Coverage Matrix）
 - [PR-0403-per-adr-serial-execution.md](PR-0403-per-adr-serial-execution.md)（执行产出来源）

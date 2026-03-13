@@ -17,6 +17,19 @@
 
 ---
 
+## Current Landed Interpretation
+
+`DOC-028 / DI-20` confirms the current landed backfill interpretation for this PR:
+
+1. `DI-20` remains an execution-report and context source rather than a reusable long-term template asset;
+2. template extraction, playbook drafting, and lifecycle backfill are allowed only after governance activation;
+3. `governance-playbook.md` is an action-oriented entry surface and does not replace `DI`, `ADR`, or `Ruling` as the underlying rule sources;
+4. only governance flows proven in execution may be backfilled into long-term templates.
+
+This PR therefore remains the current post-activation backfill surface for DI-20's landed governance execution model.
+
+---
+
 ## Scope
 
 ### In Scope

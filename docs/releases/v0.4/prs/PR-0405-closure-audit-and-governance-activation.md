@@ -17,6 +17,19 @@ append-only 约束，历史补录 ADR 进入"冻结但可勘误"状态。
 
 ---
 
+## Current Landed Interpretation
+
+`DOC-028 / DI-20` confirms the current landed activation interpretation for this PR:
+
+1. `Theme Coverage Closure` is the only version-level closeout gate for governance replay;
+2. governance activation may occur only after `PR-0404` produces a closure-audit result with no blocking failure;
+3. after activation, native ADR work becomes append-only while retrospective reconstruction ADRs move to a frozen-but-correctable state;
+4. template, playbook, and lifecycle backfill remain downstream work and are not allowed to move ahead of activation.
+
+This PR therefore remains the current activation boundary surface for DI-20's landed governance execution model.
+
+---
+
 ## Scope
 
 ### In Scope

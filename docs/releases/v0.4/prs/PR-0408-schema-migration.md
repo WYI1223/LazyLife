@@ -16,6 +16,7 @@
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-15-rust-data-model-single-root.md` | Schema 设计、系统节点定义、触发器定义、回填逻辑的完整依据 |
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0408 行）、Q4（Migration 测试） | PR 定位、测试要求 |
 | 现有 schema | `crates/lazynote_core/src/db/migrations/` | 当前 11 个 migration，本 PR 新增第 12 个 |
+| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `schema-model` 与 schema 侧 `migration-protection` ledger，同时更新 `execution-order` 与 `verification-gates` rows，并显式消费 `OI-045` 与本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
 
@@ -30,11 +31,13 @@ In scope:
 - WorkspaceMetaRepository（Rust：`resolve_designated`、workspace 元数据查询）
 - Migration 注册到 `mod.rs` MIGRATIONS 数组
 - Migration 测试（全新安装 + 版本升级 + 触发器负测）
+- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `schema-model`、schema 侧 `migration-protection`、`execution-order`、以及本 PR 负责的 `verification-gates` rows，写入 landed/partial 状态与证据路径，并说明本 PR 为 `OI-034~OI-038` 和 `OI-045 / OI-048` 提供了哪些 schema / trigger 与 migration-test 前置条件
 
 Out of scope:
 - ScopedQueryRepository（PR-0409）
 - TreeService 增强 / CreationService（PR-0410）
 - FFI 函数变更（PR-0411）
+- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
 
 ## Design
 
@@ -194,4 +197,9 @@ grep -c "protect_workspace_root" crates/lazynote_core/src/db/migrations/0012_wor
 - [ ] WorkspaceMetaRepository 可查询 designated folder 映射（`resolve_designated`）
 - [ ] `cargo test --all` 全绿
 - [ ] `cargo clippy --all -- -D warnings` 零 warning
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `schema-model` row 已更新为本 PR 的实际落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `migration-protection` row 已写明本 PR 覆盖的 schema / trigger 部分与证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 migration-test 部分与证据路径
+- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 - [ ] PR spec Status updated to Merged

@@ -1,12 +1,12 @@
 # PR-0403: Per-ADR 串行全链执行
 
 - Proposed title: `docs(governance): execute serial per-document replay for retrospective ADR outputs`
-- Execution status: In Progress
+- Execution status: Merged
 - Spec review status: Review-clean (`docs/releases/v0.4/pr-spec-review-resolution.md`)
 
 | 项目 | 值 |
 |------|-----|
-| **执行状态** | IN PROGRESS |
+| **执行状态** | MERGED |
 | **规格评审状态** | Review-clean |
 | **主题覆盖** | `T3`, `T4` |
 | **依赖** | `PR-0401`, `PR-0402` |
@@ -20,14 +20,27 @@
 
 ---
 
+## Current Landed Interpretation
+
+`DOC-028 / DI-20` confirms the current landed execution interpretation for this PR:
+
+1. active replay is `single-active-doc`, not per-theme execution;
+2. `Theme Delta Contract` and `Theme Delta Rows` are still mandatory, but they are outputs of each document run rather than a pre-run theme-lock step;
+3. anti-downgrade protection is enforced through explicit contract fields, structural or policy checks, and review-lead or owner sign-off rather than through informal executor judgment;
+4. historical `PR-GOV-*` naming remains source-layer lineage only and does not replace the current `PR-0401` to `PR-0406` mainline execution chain.
+
+This PR therefore remains the current execution surface for DI-20's landed replay model.
+
+---
+
 ## Scope
 
 ### In Scope
 
-1. **Action 0: 首批文档批次锁定 + working-copy bootstrap**
+1. **Action 0: Single-active-doc queue bootstrap + working-copy bootstrap**
 2. **Action 1: 按文档顺序执行串行 replay runs**
 3. **Action 2: 在 execution working copy 中填充 classification 与 topic-map rows**
-4. **Action 3: 产出首批 retrospective ADR + rebuilt rulings**
+4. **Action 3: 产出 publish-complete retrospective ADR + rebuilt rulings**
 5. **Action 4: 记录未闭合文档组、deviation 与后续 handoff**
 
 ### Out of Scope
@@ -49,17 +62,19 @@
 | 当前执行规则 | `docs/reports/v0.3/design-discussions/DI-20-governance-execution-plan.md` | 定义 `PR-0403` 的位置、exit gate、模板抽离边界、per-PR 最低 `Theme Delta Contract` |
 | 上游 source baseline | `docs/reports/v0.4/governance-execution/PR-0401/document-inventory.md`, `dn-ledger.md`, `coverage-matrix.md`, `surveys/` | 提供 source corpus、文档顺序、clause-node extraction baseline 与 source anchors |
 | 上游 ADR shell / contract | `docs/architecture/adr/README.md`, `docs/architecture/adr/topic-map.md`, `docs/reports/v0.4/governance-execution/PR-0402/adr-metadata-contract.md` | 提供 mainline shell、topic-map field contract、retrospective ADR metadata contract |
-| prep first-pass theme map | `docs/reports/v0.3/governance-kickoff-prep/governance-theme-map-first-pass.md` | 仅作为 post-classification comparison source；不得作为 doc-run queue 输入，也不得变成独立的“先建主题”步骤 |
 | 规范锚点 | `docs/architecture/rulings-legacy/`, `docs/architecture/rulings/README.md` | 提供 historical normative anchors 与 current-effective rebuilt rulings 的目标目录边界 |
 
 边界规则：
 
 1. `PR-0403` 的执行单元是 **文档组**，不是主题组。
-2. 文档组必须按 `document-inventory.md` 的 `Time Position` 顺序推进；不得因为 `DI-19` 样例或 prep first-pass map 而跳到后期文档。
-3. `08a` 是 trigger/evidence source，`08b` 是最早的成体系 decision-source；如果进入“首批裁定落地”，应从 `08b` 及其紧邻上游输入开始，而不是从 `DI-19` 开始。
+2. 文档组必须按 `document-inventory.md` 的 `Time Position` 顺序推进；不得因为 `DI-19` 样例或任何后期治理文档而跳到后期文档。
+3. `08a` 是 trigger/evidence source，`08b` 是最早的成体系 decision-source；如果进入最早的裁定落地 run，应从 `08b` 及其紧邻上游输入开始，而不是从 `DI-19` 开始。
 4. `docs/architecture/adr/topic-map.md` 在执行期间保持 mainline 发布面；working rows 在 `PR-0403/` 下维护，只有当某个文档组推动出 publish-complete ADR / ruling 结果时，才允许把对应行同步回 mainline。
 5. 本 PR 不存在 planning-start 前的独立“新建主题 / 确认主题”步骤；任何 `TH-xxx` 行的创建或更新，只能作为某个 active `DOC-xxx` 在 `05 DN classification to decision line` 阶段的产物被记录。
-6. `PR-0402` 的 metadata contract 是本 PR 的硬约束；若执行中发现合同不足，必须显式记录 deviation，而不是静默修改 mainline contract。
+6. 仅当当前文档组的 node 无法归入 `docs/architecture/adr/topic-map.md` 或 `topic-map-working-copy.md` 中已存在的稳定 decision line 时，才允许在 `05` 阶段创建新的 `TH-xxx` 行。
+7. 新主题编号使用 `max(existing TH id in mainline topic-map and active working copy) + 1`；历史空号保留，不得回填。
+8. 历史 prep-layer theme-map 产物不是本 PR 的执行输入；不得用它们决定 queue 顺序、主题创建、split / merge 结论，或 `Theme Delta Rows` 的 `Before Status`。
+9. `PR-0402` 的 metadata contract 是本 PR 的硬约束；若执行中发现合同不足，必须显式记录 deviation，而不是静默修改 mainline contract。
 
 ---
 
@@ -87,6 +102,7 @@
 
 - `ready_next`
 - `active`
+- `awaiting_signoff`
 - `completed`
 - `parked_later`
 - `deferred`
@@ -184,11 +200,16 @@
 | TH-... | ... | ... | ... | ... | ... | ... |
 ```
 
+其中：
+
+1. `Before Status` 只能反映当前 replay 前的真实执行态，如 `no_existing_row`、`existing_working_copy_row`、`existing_published_row`。
+2. 不得把 historical prep-layer 的 candidate / pending / split 状态写入 `Theme Delta Rows`。
+
 ---
 
 ## Actions Detail
 
-### Action 0: Batch Lock + Working-Copy Bootstrap
+### Action 0: Single-Active-Doc Queue Bootstrap + Working-Copy Bootstrap
 
 产出物：
 
@@ -200,7 +221,7 @@
 
 要求：
 
-1. `doc-run-queue.md` 必须记录 `ready_next` / `active` / `completed` / `parked_later` / `deferred` / `escalate_to_governance` / `context_only` disposition。
+1. `doc-run-queue.md` 必须记录 `ready_next` / `active` / `awaiting_signoff` / `completed` / `parked_later` / `deferred` / `escalate_to_governance` / `context_only` disposition。
 2. `dn-ledger-classification.md` 必须从 `PR-0401/dn-ledger.md` 派生，不得回改 extraction 原件。
 3. `topic-map-working-copy.md` 必须从 `PR-0402` 的 mainline header contract 派生，保留 `Current Normative Source` dedicated 列。
 4. `open-items.md` 必须收纳：
@@ -297,18 +318,18 @@
 
 ## Task Breakdown
 
-| Task | Lane | 内容 | 文件 | 估算 | 依赖 |
+| Task | Lane | 内容 | 文件 | 状态 | 依赖 |
 |------|------|------|------|------|------|
-| T1 | Docs | 将 PR-0403 spec 收敛为按文档顺序推进的 single-active-doc 执行合同，明确严格顺序、working copy / mainline 分离规则 | `docs/releases/v0.4/prs/PR-0403-per-adr-serial-execution.md` | TBD | `PR-0402` |
-| T2 | Docs | 建立 PR-0403 planning kickoff log，记录“规划已启动、实际 replay 未开始”的当前状态 | `docs/reports/v0.4/governance-execution/PR-0403/README.md` | TBD | T1 |
-| T3 | Docs | 建立 doc-run queue，记录按 `Time Position` 的 next-run 顺序、terminal state 与 context-only docs | `docs/reports/v0.4/governance-execution/PR-0403/doc-run-queue.md` | TBD | T1 |
-| T4 | Docs | 派生 classification working copy 与 topic-map working copy | `docs/reports/v0.4/governance-execution/PR-0403/dn-ledger-classification.md`, `topic-map-working-copy.md` | TBD | T3 |
-| T5 | Docs | 为每个 accepted doc group 建立 02-08 阶段记录并串行执行 | `docs/reports/v0.4/governance-execution/PR-0403/iterations/DOC-xxx-<slug>/` | TBD | T4 |
-| T6 | Docs | 发布 retrospective ADR 与 rebuilt ruling，并做 selective mainline topic-map sync | `docs/architecture/adr/`, `docs/architecture/rulings/`, `docs/architecture/adr/topic-map.md` | TBD | T5 |
-| T7 | Docs | 收口 open items / deviation / carry-forward handoff | `docs/reports/v0.4/governance-execution/PR-0403/open-items.md`, `README.md` | TBD | T5-T6 |
-| T8 | Verify | 运行 docs 结构检查与 PR-0403 专项验证 | `tools/ci/architecture_check.dart` | TBD | T1-T7 |
+| T1 | Docs | 将 PR-0403 spec 收敛为按文档顺序推进的 single-active-doc 执行合同，明确严格顺序、working copy / mainline 分离规则 | `docs/releases/v0.4/prs/PR-0403-per-adr-serial-execution.md` | Complete | `PR-0402` |
+| T2 | Docs | 建立并收口 PR-0403 execution log，记录完整 replay 链、terminal states 与 closeout 结论 | `docs/reports/v0.4/governance-execution/PR-0403/README.md` | Complete | T1 |
+| T3 | Docs | 建立 doc-run queue，记录按 `Time Position` 的 next-run 顺序、terminal state 与 context-only docs | `docs/reports/v0.4/governance-execution/PR-0403/doc-run-queue.md` | Complete | T1 |
+| T4 | Docs | 派生 classification working copy 与 topic-map working copy | `docs/reports/v0.4/governance-execution/PR-0403/dn-ledger-classification.md`, `topic-map-working-copy.md` | Complete | T3 |
+| T5 | Docs | 为每个 accepted doc group 建立 02-08 阶段记录并串行执行 | `docs/reports/v0.4/governance-execution/PR-0403/iterations/DOC-xxx-<slug>/` | Complete | T4 |
+| T6 | Docs | 发布 retrospective ADR 与 rebuilt ruling，并做 selective mainline topic-map sync | `docs/architecture/adr/`, `docs/architecture/rulings/`, `docs/architecture/adr/topic-map.md` | Complete | T5 |
+| T7 | Docs | 收口 open items / deviation / carry-forward handoff | `docs/reports/v0.4/governance-execution/PR-0403/open-items.md`, `README.md` | Complete | T5-T6 |
+| T8 | Verify | 运行 docs 结构检查与 PR-0403 专项验证 | `tools/ci/architecture_check.dart` | Complete | T1-T7 |
 
-## Planned File Changes
+## Actual File Changes
 
 - `[edit]` `docs/releases/v0.4/prs/PR-0403-per-adr-serial-execution.md`
 - `[edit]` `docs/reports/v0.4/governance-execution/PR-0403/README.md`
@@ -350,24 +371,25 @@ foreach ($row in $published) { $row }
 
 1. 真正的逐行图结构与回链一致性审计由 `PR-0404` 负责。
 2. `PR-0403` 本阶段只要求每个已发布文档组达到最小 publish-complete consistency。
+3. Latest closeout verification result: `dart run tools/ci/architecture_check.dart` => `PASSED`, `0 broken links / 0 violations`.
 
 ## Risk
 
 | 风险 | 严重度 | 缓解 |
 |------|--------|------|
-| 因为 `DI-19` 样例或 prep first-pass map 而跳过更早文档，破坏历史顺序 | HIGH | 将 `doc-run-queue.md` 设为唯一 run-order 事实来源，只允许按 `Time Position` 选择 next doc |
+| 因为 `DI-19` 样例或后期治理文档而跳过更早文档，破坏历史顺序 | HIGH | 将 `doc-run-queue.md` 设为唯一 run-order 事实来源，只允许按 `Time Position` 选择 next doc |
 | working copy 与 mainline topic-map 混写，导致 `PR-0404` 无法区分执行中状态与已发布状态 | HIGH | 执行层维护 `topic-map-working-copy.md`，mainline 只同步 publish-complete rows |
-| 把 too many docs 硬塞进首批，导致 PR-0403 变成无限扩张 PR | HIGH | 首批只接受 earliest accepted docs，后续文档一律显式 parked / deferred / escalated |
+| 把 too many docs 一次塞进同轮执行，导致 PR-0403 变成无限扩张 PR | HIGH | 一次只允许一个 active doc；其余文档显式停留在 ready_next / parked_later / deferred / escalated |
 | 执行中静默修改 PR-0402 contract，破坏 ADR 元数据稳定性 | MEDIUM | 要求 deviation 显式记录并回收到治理层，而不是静默修 contract |
 
 ## Exit Gate
 
-- [ ] `doc-run-queue.md` 已建立，且 `ready_next` / `active` / `completed` / `parked_later` / `deferred` / `escalate_to_governance` / `context_only` 均有明确定义
-- [ ] 每个 accepted doc group 已按 `02 -> 08` 顺序完成全链执行，或被显式 parked / escalated
-- [ ] 每篇已发布 retrospective ADR 均满足 `PR-0402` metadata contract
-- [ ] 每篇已发布 ADR 均已建立对应 rebuilt ruling 与双向 backlink
-- [ ] mainline `docs/architecture/adr/topic-map.md` 只包含 publish-complete rows，且每行具备稳定 `Published ADR` / `Current Normative Source`
-- [ ] 未完成文档组、split / merge 争议、deviation、accepted debt 已写入 `open-items.md`
+- [x] `doc-run-queue.md` 已建立，且 `ready_next` / `active` / `awaiting_signoff` / `completed` / `parked_later` / `deferred` / `escalate_to_governance` / `context_only` 均有明确定义
+- [x] 每个 accepted doc group 已按 `02 -> 08` 顺序完成全链执行，或被显式 parked / escalated
+- [x] 每篇已发布 retrospective ADR 均满足 `PR-0402` metadata contract
+- [x] 每篇已发布 ADR 均已建立对应 rebuilt ruling 与双向 backlink
+- [x] mainline `docs/architecture/adr/topic-map.md` 只包含 publish-complete rows，且每行具备稳定 `Published ADR` / `Current Normative Source`
+- [x] 未完成文档组、split / merge 争议、deviation、accepted debt 已写入 `open-items.md`
 
 ---
 
@@ -375,6 +397,5 @@ foreach ($row in $published) { $row }
 
 - [DI-19-adr-governance.md](../../../reports/v0.3/design-discussions/DI-19-adr-governance.md)
 - [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md)
-- [governance-theme-map-first-pass.md](../../../reports/v0.3/governance-kickoff-prep/governance-theme-map-first-pass.md)
 - [PR-0401-source-corpus-and-dn-extraction.md](PR-0401-source-corpus-and-dn-extraction.md)
 - [PR-0402-adr-infrastructure-and-metadata-contract.md](PR-0402-adr-infrastructure-and-metadata-contract.md)

@@ -18,6 +18,7 @@
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0413 行）、Q2（A+ R2/R4 contract 规则）、Q4（清理验证 gate） | PR 定位、迁移策略、清理验证要求 |
 | 附录 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` 附录 A | 15 个旧 FFI 函数完整清单 + 验证命令 |
 | 规范源 | `docs/api/ffi-contracts.md` | 需更新：移除旧函数契约 |
+| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-025 / DI-17` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `flutter-features` ledger，同时更新 `execution-order`、`cutover-cleanup`、`api-doc-ownership`、`verification-gates`、`no-move-ci-enforcement`、以及 `legacy-ffi-removal` rows，并显式消费 `OI-035` / `OI-036` / `OI-038`、`OI-040` / `OI-041` / `OI-042` / `OI-043` / `OI-044`、以及 `OI-045` / `OI-046` / `OI-047` / `OI-048` / `OI-049` / `OI-050` 中的 feature-consumer与contract-stage部分，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
 
@@ -36,11 +37,13 @@ In scope:
 - 旧 FFI 引用的测试代码同步迁移或删除
 - 更新 `docs/api/ffi-contracts.md`（移除旧函数）
 - 清理验证 gate（grep 零匹配、文件删除断言、uncategorized 清零）
+- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `flutter-features`、`execution-order`、`cutover-cleanup`、`api-doc-ownership`、`verification-gates`、`no-move-ci-enforcement`、以及 `legacy-ffi-removal` rows，显式对齐 `OI-035` / `OI-036` / `OI-038`、`OI-040` / `OI-041` / `OI-042` / `OI-043` / `OI-044`、以及 `OI-045` / `OI-046` / `OI-047` / `OI-048` / `OI-049` / `OI-050`，写入 landed/partial 状态与证据路径
 
 Out of scope:
 - Rust Core 层变更（PR-0408~0410 已完成）
 - Guard/FFI 新增（PR-0411 已完成）
 - WorkspaceTreeService 基础设施（PR-0412 已完成）
+- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
 
 ## Design
 
@@ -307,4 +310,12 @@ grep -rn "uncategorized\|synthetic" apps/ --include="*.dart" | grep -v "test" | 
 - [ ] `cargo test --all` 全绿
 - [ ] `flutter test` 全绿
 - [ ] `cargo clippy --all -- -D warnings` 零 warning
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `flutter-features` row 已更新为本 PR 的实际落地状态并附证据路径，且已显式覆盖 `OI-040` / `OI-041` / `OI-042` / `OI-043` / `OI-044`
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `cutover-cleanup` row 已写明本 PR 覆盖的 contract 阶段 cleanup 责任并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `api-doc-ownership` row 已写明本 PR 覆盖的 API 文档清理责任并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 Flutter feature 测试与 cleanup gate 责任并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `no-move-ci-enforcement` row 已写明本 PR 对 no-move 规则与 `DI-21` CI handoff 的实际落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `legacy-ffi-removal` row 已写明本 PR 对 Appendix A 旧 FFI 清单的实际删除状态并附证据路径
+- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 - [ ] PR spec Status updated to Merged

@@ -1,8 +1,12 @@
 # Module Spec: EditBuffer
 
+> Current normative line: [S2 Tab Draft Save Ownership](../../rulings/S2-tab-draft-save-ownership.md)
+>
+> Journey record: [ADR-0002 Editor Shell Ownership](../../adr/ADR-0002-editor-shell-ownership.md)
+>
 > `lib/core/editor/edit_buffer.dart`
 >
-> 设计来源：[DI-1 Q3](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [DI-4 D10/D11/D12](../../../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md) · [S2 EditBuffer 节](../../rulings-legacy/S2-tab-draft-save-ownership.md)
+> 设计来源：[DI-1 Q3](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [DI-4 D10/D11/D12](../../../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md) · [S2 EditBuffer 节](../../rulings/S2-tab-draft-save-ownership.md)
 
 ---
 
@@ -212,7 +216,7 @@ void _onTextChanged(String newText) {
 
 - ← [EditorShellService](editor-shell-service.md) — 拥有 buffers Map
 - → [EditorResolver](editor-resolver.md) — EditorPane 通过 buffer 参数获取内容
-- → [S1 R14](../../rulings-legacy/S1-atom-projection.md) — atom_overlays sidecar（_rev 用于 stale 判定）
+- → [S1 R14](../../rulings/S1-atom-projection.md) — atom_overlays sidecar（_rev 用于 stale 判定）
 
 ---
 

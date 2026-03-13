@@ -2,7 +2,7 @@
 
 > `lib/core/reminders/` — 本地通知调度基础设施
 >
-> 设计来源：[S7](../../rulings-legacy/S7-reminders-infrastructure.md) · [08b S7 节](../../../reports/v0.2.5/frontend-review/08b-semantic-decisions.md)
+> 设计来源：[S7](../../rulings/S7-reminders-infrastructure.md) · [08b S7 节](../../../reports/v0.2.5/frontend-review/08b-semantic-decisions.md)
 
 ---
 

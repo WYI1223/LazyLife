@@ -18,6 +18,26 @@
 | 规范源 | `docs/architecture/engineering-standards.md` Rule E | 本 Check 是 Rule E 的执行延伸 |
 | 现有实现 | `tools/ci/architecture_check.dart` | 需修改的目标文件 |
 
+## Current Handoff From PR-0403 / DOC-029
+
+`DOC-029 / DI-21` has now completed replay and recorded an explicit no-publication handoff because the current repo still lacks the landed duplication detector and CI output contract.
+
+This PR must therefore consume all three carry-forward bundles directly:
+
+| Bundle | Carry-Forward ID | Source DN IDs | Required Landing Surface |
+|------|------|------|------|
+| Rule E extension and general-governance path | `OI-051` | `DN-604-DN-606` | `docs/architecture/engineering-standards.md` plus this PR's execution notes |
+| Detector, threshold, scan boundary, and allowlist contract | `OI-052` | `DN-607-DN-610` | `tools/ci/architecture_check.dart` plus the landed allowlist surface |
+| Three-layer output contract and check 1-3 reinforcement | `OI-053` | `DN-611-DN-615` | `tools/ci/architecture_check.dart` plus this PR's execution notes |
+
+Mandatory downstream references:
+
+- `docs/reports/v0.4/governance-execution/PR-0403/ci-duplication-policy-promotion-workflow.md`
+- `docs/reports/v0.4/governance-execution/PR-0403/open-items.md`
+- `docs/reports/v0.4/governance-execution/PR-0403/iterations/DOC-029-di-21-ci-duplication-detection/05-dn-classification-to-decision-line.md`
+
+This PR must update the workflow ledger in `ci-duplication-policy-promotion-workflow.md`. If it lands code without updating that ledger, the `DOC-029` handoff remains incomplete.
+
 ## Scope
 
 In scope:
@@ -112,6 +132,8 @@ HOW: Extract to lib/shared/ (UI) or lib/core/ (logic).
 
 - `[edit]` tools/ci/architecture_check.dart (新增 Check N + 补强 Check 1-3 输出)
 - `[add]` tools/ci/duplication_allowlist.yaml (跨 feature 重复豁免清单)
+- `[edit]` docs/architecture/engineering-standards.md (sync the landed Rule E extension only after implementation behavior is present)
+- `[edit]` docs/reports/v0.4/governance-execution/PR-0403/ci-duplication-policy-promotion-workflow.md (mark the `DOC-029` carry-forward rows as landed or partial with evidence)
 
 ## Verification
 

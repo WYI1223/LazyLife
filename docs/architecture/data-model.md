@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the canonical data model used by LazyNote core. Covers the current schema (v0.1–v0.2) and planned v0.3 schema evolution driven by [S1 Atom 投影语义](rulings-legacy/S1-atom-projection.md).
+This document defines the canonical data model used by LazyNote core. Covers the current schema (v0.1–v0.2) and planned v0.3 schema evolution driven by [S1 Atom 投影语义](rulings/S1-atom-projection.md).
 
 ---
 
@@ -132,7 +132,7 @@ Replaces the earlier "Smart Folder" concept. A designated folder is a **normal f
 
 Configuration: view → folder mapping stored in settings. User-changeable. Not setting a designated folder → atom_ref falls to root level (valid state).
 
-See [S1 R6](rulings-legacy/S1-atom-projection.md) for full lifecycle (re-designate, un-designate, delete protection).
+See [S1 R6](rulings/S1-atom-projection.md) for full lifecycle (re-designate, un-designate, delete protection).
 
 ### Title/Label Semantics (v0.2 → v0.3 Evolution)
 
@@ -197,7 +197,7 @@ Classification for list views is **driven entirely by `start_at`/`end_at` nullab
 
 All query contexts use field-based queries, not view_hint filtering. This ensures consistent Atom visibility across different query entry points.
 
-See [S1 R3–R4](rulings-legacy/S1-atom-projection.md) for the full rendering behavior matrix.
+See [S1 R3–R4](rulings/S1-atom-projection.md) for the full rendering behavior matrix.
 
 ---
 
@@ -337,7 +337,7 @@ Uniqueness constraints: `(provider, external_id)` and `(provider, atom_uuid)`.
 
 Mapping is **Atom-level** (not atom_ref-level) — a single Atom maps to one external record per provider. atom_ref multi-references do not affect mapping (S6 ruling).
 
-**Three-layer responsibility separation** (S6): Provider (API adapter) → Orchestrator (sync coordination, mapping management) → Mapping persistence (table CRUD). ProviderSpi implementations must not directly access `external_mappings` table. See [S6](rulings-legacy/S6-provider-spi-interaction.md).
+**Three-layer responsibility separation** (S6): Provider (API adapter) → Orchestrator (sync coordination, mapping management) → Mapping persistence (table CRUD). ProviderSpi implementations must not directly access `external_mappings` table. See [S6](rulings/S6-provider-spi-interaction.md).
 
 ---
 
@@ -365,9 +365,9 @@ Mapping is **Atom-level** (not atom_ref-level) — a single Atom maps to one ext
 
 ## References
 
-- [S1: Atom 投影语义](rulings-legacy/S1-atom-projection.md) — canonical ruling for Atom model evolution
-- [S4: 创建入口统一](rulings-legacy/S4-creation-path-unification.md) — creation path routing
-- [S6: Provider SPI 交互](rulings-legacy/S6-provider-spi-interaction.md) — external mapping ownership
+- [S1: Atom 投影语义](rulings/S1-atom-projection.md) — canonical ruling for Atom model evolution
+- [S4: 创建入口统一](rulings/S4-creation-path-unification.md) — creation path routing
+- [S6: Provider SPI 交互](rulings/S6-provider-spi-interaction.md) — external mapping ownership
 - `docs/releases/v0.1/prs/PR-0004-atom-model.md`
 - `docs/releases/v0.1/prs/PR-0005-sqlite-schema-migrations.md`
 - `docs/releases/v0.1/prs/PR-0006-core-crud.md`

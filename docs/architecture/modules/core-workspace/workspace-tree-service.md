@@ -2,7 +2,7 @@
 
 > `lib/core/workspace/workspace_tree_service.dart`
 >
-> 设计来源：[DI-1 Q4.3](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings-legacy/S9-cross-feature-infrastructure-placement.md) · [S1 R5/R6](../../rulings-legacy/S1-atom-projection.md) · [DI-12](../../../reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md)
+> 设计来源：[DI-1 Q4.3](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings/S9-cross-feature-infrastructure-placement.md) · [S1 R5/R6](../../rulings/S1-atom-projection.md) · [DI-12](../../../reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md)
 
 ---
 
@@ -82,7 +82,7 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 | List（Tag 查询） | 选中 tag | 扁平 Atom 列表 + 目录面包屑 |
 | Spatial（S1 R12） | 用户切换视图 | 文件夹内容空间化布局（v0.4+） |
 
-详见 [S3](../../rulings-legacy/S3-tag-workspace-orthogonality.md)。
+详见 [S3](../../rulings/S3-tag-workspace-orthogonality.md)。
 
 ---
 
@@ -108,7 +108,7 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 - ← `NotesCoordinator` — 消费者（notes 视图）
 - ← `TasksController` — 消费者（tasks 视图创建时路由到指定文件夹）
 - ← `CalendarController` — 消费者（calendar 视图创建时路由到指定文件夹）
-- → [S1 R6 指定文件夹](../../rulings-legacy/S1-atom-projection.md) — 创建路径路由表
+- → [S1 R6 指定文件夹](../../rulings/S1-atom-projection.md) — 创建路径路由表
 
 ---
 
@@ -142,3 +142,13 @@ WorkspaceTreeService 提供**结构归档**维度。Tag 提供**语义分类**�
 2. DI-14 Q2：subtree 查询接口设计 — `workspace_tree_children_loader.dart` 的 BFS tree walk + subtree projection 是天然基础。
 3. DI-14 Q3：变更通知模型 — `WorkspaceTreeService` 已是 `ChangeNotifier`，可扩展为 scoped notification。
 4. 5 个设计问题全部 open，不做提前实现。
+
+## PR-0403 Replay Addendum (DOC-022 / DI-14)
+
+- `DI-14` now closes the placement-line answer that shared workspace-tree state and service infrastructure belongs in `lib/core/workspace/`, not under `features/notes/`.
+- The shared service contract is interpreted as subtree-rooted primitives:
+  - `listChildren(parentNodeId)` for one-level browsing
+  - `listSubtreeAtomRefs(rootNodeId)` for flattened collection
+  - `getNode`, `getAncestorPath`, and `listAtomRefsForAtom` as supporting queries
+- Feature-local expand/collapse state, filtering/grouping, and concrete tree/list rendering remain outside this module.
+- Change notification and cache consistency, shared tree-UI layering, and system-node-resolution ownership stay explicitly carried forward to `DI-17`.

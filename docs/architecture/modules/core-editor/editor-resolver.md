@@ -2,7 +2,7 @@
 
 > `lib/core/editor/editor_resolver.dart` + `lib/core/editor/markdown_editor_pane.dart`
 >
-> 设计来源：[DI-10](../../../reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md) · [S2 Phase 3](../../rulings-legacy/S2-tab-draft-save-ownership.md)
+> 设计来源：[DI-10](../../../reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md) · [S2 Phase 3](../../rulings/S2-tab-draft-save-ownership.md)
 
 ---
 
@@ -168,5 +168,5 @@ class MarkdownEditorPane extends StatefulWidget {
 
 - ← [EditorShellService](editor-shell-service.md) — EditorResolver 是 Service 成员
 - ← [EditBuffer](edit-buffer.md) — EditorPaneBuilder 的唯一桥接参数
-- → [S1 R2](../../rulings-legacy/S1-atom-projection.md) — content_type 枚举定义
-- → [NoteTabStrip](../../rulings-legacy/S2-tab-draft-save-ownership.md) — UI widget，渲染 tab 条
+- → [S1 R2](../../rulings/S1-atom-projection.md) — content_type 枚举定义
+- → [NoteTabStrip](../../rulings/S2-tab-draft-save-ownership.md) — UI widget，渲染 tab 条
