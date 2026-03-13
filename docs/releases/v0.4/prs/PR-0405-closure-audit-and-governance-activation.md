@@ -19,7 +19,13 @@ It has three closeout responsibilities:
 2. decide whether shared carrier-promotion register rows are closed, still blocked, or explicitly carried forward;
 3. declare the governance activation boundary once closure conditions are satisfied.
 
-The shared closeout sink is [carrier-promotion-decision-register.md](../../../reports/v0.4/governance-execution/carrier-promotion-decision-register.md). PR-0405 must consume every open row in that register, but only after PR-0404 has replaced its current scaffolds with finalized audit outputs.
+The shared closeout sink is [carrier-promotion-decision-register.md](../../../reports/v0.4/governance-execution/carrier-promotion-decision-register.md). PR-0405 must consume every open row in that register using finalized PR-0404 outputs:
+
+- `theme-delta-contract.md`
+- `consistency-audit-report.md`
+- `index-sync-strategy.md`
+- `template-audit-confirmation.md`
+- audited rows in `carrier-promotion-decision-register.md`
 
 ---
 

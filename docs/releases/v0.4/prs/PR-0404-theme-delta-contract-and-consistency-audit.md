@@ -2,7 +2,7 @@
 
 | Field | Value |
 |------|-----|
-| **Status** | Merged |
+| **Status** | Ready for Review |
 | **Theme Coverage** | `T5`, `T6` |
 | **Dependencies** | `PR-0402`, `PR-0403` |
 | **Related Decision** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
@@ -11,16 +11,16 @@
 
 ## Purpose
 
-PR-0404 is currently in its initialization pass. This pass turns the landed PR-0403 replay pattern into an auditable scaffold and prepares the first repo-wide consistency audit across the governance surfaces produced by PR-0401 through PR-0403.
+PR-0404 turns the landed PR-0403 replay pattern into a finalized audit package and runs the first repo-wide consistency audit across the governance surfaces produced by PR-0401 through PR-0403.
 
 This PR does not publish new retrospective ADR content. It does four narrower things:
 
-1. initialize the minimum `Theme Delta Contract` scaffold that later governance PRs will finalize and follow;
-2. prepare the structural, graph, policy, and semantic audit surfaces across the current governance outputs;
-3. establish one shared decision point for accepted-but-unlanded bundle families so later implementation PRs know exactly what still blocks carrier promotion;
-4. produce scaffolded handoff artifacts for later PR-0405 closeout and PR-0407 through PR-0413 implementation work.
+1. finalize the minimum `Theme Delta Contract` that later governance PRs will follow;
+2. run the structural, graph, policy, and semantic audit over the current governance outputs;
+3. record the audited decision point for accepted-but-unlanded bundle families so later implementation PRs know exactly what still blocks carrier promotion;
+4. produce finalized handoff artifacts for later PR-0405 closeout and PR-0407 through PR-0413 implementation work.
 
-The new shared decision point is [carrier-promotion-decision-register.md](../../../reports/v0.4/governance-execution/carrier-promotion-decision-register.md). PR-0404 initializes and later updates that register. PR-0405 must consume it during final closure only after PR-0404 has produced finalized audit outputs. Later implementation PRs must leave evidence that keeps the relevant register row auditable.
+The shared decision point is [carrier-promotion-decision-register.md](../../../reports/v0.4/governance-execution/carrier-promotion-decision-register.md). PR-0404 updates that register with audited decisions. PR-0405 must consume it during final closure. Later implementation PRs must leave evidence that keeps the relevant register row auditable.
 
 ---
 
@@ -39,10 +39,10 @@ The new shared decision point is [carrier-promotion-decision-register.md](../../
 
 ### In Scope
 
-1. Initialize the executable `Theme Delta Contract` scaffold from PR-0403 execution evidence.
-2. Initialize the repo-wide structural, graph, policy, and semantic consistency audit scaffold over PR-0401 through PR-0403 outputs.
-3. Initialize and maintain the shared carrier-promotion decision point for later implementation PRs.
-4. Produce scaffolded index-sync and template-audit artifacts needed by PR-0405 and PR-0406.
+1. Finalize the executable `Theme Delta Contract` from PR-0403 execution evidence.
+2. Run the repo-wide structural, graph, policy, and semantic consistency audit over PR-0401 through PR-0403 outputs.
+3. Update the shared carrier-promotion decision point with audited current-state conclusions.
+4. Produce finalized index-sync and template-audit artifacts needed by PR-0405 and PR-0406.
 
 ### Out of Scope
 
@@ -55,7 +55,7 @@ The new shared decision point is [carrier-promotion-decision-register.md](../../
 
 ## Actions
 
-### Action 1: Initialize Theme Delta Contract Scaffold
+### Action 1: Finalize Theme Delta Contract
 
 Use PR-0403's actual execution history to initialize the minimum contract scaffold for:
 
@@ -71,25 +71,25 @@ Primary inputs:
 - [PR-0403/README.md](../../../reports/v0.4/governance-execution/PR-0403/README.md)
 - PR-0403 iteration records and topic-map working copy
 
-### Action 2: Initialize Repo-wide Consistency Audit Scaffold
+### Action 2: Run Repo-wide Consistency Audit
 
-Prepare the audit structure for PR-0401 through PR-0403 outputs using the landed DI-20 stack:
+Audit PR-0401 through PR-0403 outputs using the landed DI-20 stack:
 
 1. `Structural Checks`
 2. `Graph Checks`
 3. `Policy Checks`
 4. `Semantic Review`
 
-When the full audit content is filled in later in PR-0404, its scope must cover at least:
+This audit must cover at least:
 
 - PR-0401 extraction artifacts
 - PR-0403 classification artifacts
 - current published ADR, ruling, and topic-map surfaces
 - PR-0403 workflow ledgers for accepted-but-unlanded bundles
 
-### Action 3: Maintain Shared Carrier Promotion Decision Point
+### Action 3: Update Shared Carrier Promotion Decision Point
 
-Initialize and update the shared register:
+Update the shared register:
 
 - [carrier-promotion-decision-register.md](../../../reports/v0.4/governance-execution/carrier-promotion-decision-register.md)
 
@@ -100,7 +100,7 @@ This action must:
 3. define the blocking conditions, downstream owners, and final promotion owner for each family;
 4. leave PR-0405 with one clean closeout surface instead of forcing it to reconstruct decisions from multiple workflow files.
 
-### Action 4: Initialize Index and Template Audit Artifacts
+### Action 4: Finalize Index and Template Audit Artifacts
 
 Produce:
 
@@ -108,7 +108,7 @@ Produce:
 - consistency audit report
 - template audit confirmation
 
-These scaffolds should make later PR-0405 closeout and PR-0406 template backfill mechanical rather than interpretive.
+These artifacts should make later PR-0405 closeout and PR-0406 template backfill mechanical rather than interpretive.
 
 ---
 
@@ -118,15 +118,15 @@ All outputs live under `docs/reports/v0.4/governance-execution/PR-0404/`.
 
 | Action | Deliverable | Purpose |
 |------|------|------|
-| 1 | `theme-delta-contract.md` | Initialized contract scaffold to be filled and finalized inside PR-0404 |
-| 2 | `consistency-audit-report.md` | Initialized repo-wide audit scaffold for structural, graph, policy, and semantic sections |
-| 3 | shared register update | Initialized governance decision point recorded in `carrier-promotion-decision-register.md` |
-| 4 | `index-sync-strategy.md` | Initialized execution-rule scaffold for later published-index synchronization |
-| 4 | `template-audit-confirmation.md` | Initialized template-audit scaffold and PR-0406 handoff surface |
+| 1 | `theme-delta-contract.md` | Finalized PR-level and row-level contract for governance audit and later closeout |
+| 2 | `consistency-audit-report.md` | Finalized repo-wide audit result for structural, graph, policy, and semantic sections |
+| 3 | shared register update | Audited governance decision point recorded in `carrier-promotion-decision-register.md` |
+| 4 | `index-sync-strategy.md` | Finalized synchronization rule for mainline, execution, workflow, and status surfaces |
+| 4 | `template-audit-confirmation.md` | Finalized template-boundary audit and PR-0406 handoff surface |
 
 ---
 
-## Planned File Changes
+## Actual File Changes
 
 - `[edit]` `docs/releases/v0.4/prs/PR-0404-theme-delta-contract-and-consistency-audit.md`
 - `[edit]` `docs/reports/v0.4/governance-execution/PR-0404/README.md`
@@ -153,25 +153,25 @@ All outputs live under `docs/reports/v0.4/governance-execution/PR-0404/`.
 
 ## Verification
 
-Minimum verification for this planning-and-contract pass:
+Minimum verification for this audit pass:
 
 1. shared register is referenced by PR-0404, PR-0405, both PR-0403 workflow files, and PR-0407 through PR-0413 specs;
-2. PR-0404 artifacts exist and are linked from the execution README;
-3. status surfaces mark PR-0404 as active work;
+2. PR-0404 artifacts are finalized and linked from the execution README;
+3. status surfaces mark PR-0404 as active audit work rather than merged scaffold work;
 4. `dart run tools/ci/architecture_check.dart` passes after the doc updates.
 
 ---
 
 ## Exit Gate
 
-- [ ] `theme-delta-contract.md` initialized and linked from PR-0404 execution README
-- [ ] repo-wide audit report scaffold initialized
-- [ ] shared carrier-promotion decision register initialized
-- [ ] workspace-topology and CI-duplication workflow documents reference the shared register
-- [ ] PR-0405 explicitly consumes the shared register for closeout
-- [ ] PR-0407 through PR-0413 explicitly cite the shared register as a downstream audit surface
-- [ ] PR-0404 status synced to active planning surfaces
-- [ ] `dart run tools/ci/architecture_check.dart` passes
+- [x] `theme-delta-contract.md` finalized and linked from PR-0404 execution README
+- [x] repo-wide audit report finalized
+- [x] shared carrier-promotion decision register updated with audited current-state decisions
+- [x] workspace-topology and CI-duplication workflow documents reference the shared register
+- [x] PR-0405 explicitly consumes finalized PR-0404 outputs for closeout
+- [x] PR-0407 through PR-0413 explicitly cite the shared register as a downstream audit surface
+- [x] PR-0404 status synced to active audit surfaces
+- [x] `dart run tools/ci/architecture_check.dart` passes
 
 ---
 
