@@ -2,7 +2,7 @@
 
 | Field | Value |
 |------|-----|
-| **Status** | Ready for Review |
+| **Status** | Merged |
 | **Theme Coverage** | `T5`, `T6` |
 | **Dependencies** | `PR-0402`, `PR-0403` |
 | **Related Decision** | [DI-20-governance-execution-plan.md](../../../reports/v0.3/design-discussions/DI-20-governance-execution-plan.md) |
@@ -57,7 +57,7 @@ The shared decision point is [carrier-promotion-decision-register.md](../../../r
 
 ### Action 1: Finalize Theme Delta Contract
 
-Use PR-0403's actual execution history to initialize the minimum contract scaffold for:
+Use PR-0403's actual execution history to finalize the minimum contract for:
 
 - PR-level delta header fields
 - row-level delta schema
@@ -157,7 +157,7 @@ Minimum verification for this audit pass:
 
 1. shared register is referenced by PR-0404, PR-0405, both PR-0403 workflow files, and PR-0407 through PR-0413 specs;
 2. PR-0404 artifacts are finalized and linked from the execution README;
-3. status surfaces mark PR-0404 as active audit work rather than merged scaffold work;
+3. status surfaces mark PR-0404 as merged substantive audit work rather than merged scaffold work;
 4. `dart run tools/ci/architecture_check.dart` passes after the doc updates.
 
 ---
@@ -170,7 +170,7 @@ Minimum verification for this audit pass:
 - [x] workspace-topology and CI-duplication workflow documents reference the shared register
 - [x] PR-0405 explicitly consumes finalized PR-0404 outputs for closeout
 - [x] PR-0407 through PR-0413 explicitly cite the shared register as a downstream audit surface
-- [x] PR-0404 status synced to active audit surfaces
+- [x] PR-0404 status synced to merged audit surfaces
 - [x] `dart run tools/ci/architecture_check.dart` passes
 
 ---

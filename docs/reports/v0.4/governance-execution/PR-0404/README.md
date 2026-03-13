@@ -1,12 +1,12 @@
 # PR-0404 Execution Log
 
 - Date: 2026-03-12
-- Execution Status: Ready for Review
+- Execution Status: Merged
 - Spec Review Status: Review-clean
 
 ## Current Focus
 
-PR-0404 is the first substantive governance audit pass after PR-0403 merged. The current work is:
+PR-0404 is the first substantive governance audit pass after PR-0403 merged. This PR completed:
 
 1. finalize the `Theme Delta Contract`;
 2. run the first repo-wide structural, graph, policy, and semantic consistency audit;
