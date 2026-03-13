@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the canonical note data shape used by Rust core and exposed through FFI. Notes are one projection of the Atom entity — see [data-model.md](data-model.md) for the unified Atom schema and [S1](rulings-legacy/S1-atom-projection.md) for the full projection semantics.
+Define the canonical note data shape used by Rust core and exposed through FFI. Notes are one projection of the Atom entity — see [data-model.md](data-model.md) for the unified Atom schema and [S1](rulings/S1-atom-projection.md) for the full projection semantics.
 
 ## Storage Model
 
@@ -96,5 +96,5 @@ Notes:
 ## References
 
 - [data-model.md](data-model.md) — canonical Atom entity and schema
-- [S1: Atom 投影语义](rulings-legacy/S1-atom-projection.md) — R8 title, R5 atom_ref
-- [S4: 创建入口统一](rulings-legacy/S4-creation-path-unification.md) — creation path routing
+- [S1: Atom 投影语义](rulings/S1-atom-projection.md) — R8 title, R5 atom_ref
+- [S4: 创建入口统一](rulings/S4-creation-path-unification.md) — creation path routing

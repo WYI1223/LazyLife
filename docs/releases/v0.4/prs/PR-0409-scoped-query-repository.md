@@ -17,6 +17,7 @@
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0409 行）、Q4（Service 测试） | PR 定位、测试要求（契约真值表） |
 | 现有实现 | `crates/lazynote_core/src/service/task_service.rs` | 查询路径改造目标 |
 | 现有实现 | `crates/lazynote_core/src/service/atom_service.rs` | 查询路径改造目标 |
+| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `scoped-query` ledger，同时更新 `execution-order` 与 `verification-gates` rows，并显式消费 `OI-034`、`OI-045`、以及本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
 
@@ -27,11 +28,13 @@ In scope:
 - CalendarService 查询路径改造：`list_by_range` 委托到 ScopedAtomQuery
 - 契约真值表测试：descriptor 合法/非法组合覆盖
 - overdue T1 补偿逻辑
+- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `scoped-query`、`execution-order`、以及本 PR 负责的 `verification-gates` rows，显式对齐 `OI-034`、`OI-045`、`OI-048`，写入 landed/partial 状态与证据路径
 
 Out of scope:
 - TreeService 增强 / CreationService（PR-0410）
 - FFI 层变更（PR-0411）
 - Flutter 消费方变更（PR-0412/6）
+- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
 
 ## Design
 
@@ -366,4 +369,8 @@ grep -rn "ScopedAtomQuery\|ScopedQueryRepository" crates/lazynote_core/src/servi
 - [ ] 现有 TaskService/CalendarService 测试全绿（语义不变回归）
 - [ ] `cargo test --all` 全绿
 - [ ] `cargo clippy --all -- -D warnings` 零 warning
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `scoped-query` row 已更新为本 PR 的实际落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 service-test / truth-table 部分与证据路径
+- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 - [ ] PR spec Status updated to Merged

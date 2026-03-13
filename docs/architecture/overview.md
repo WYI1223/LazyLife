@@ -124,7 +124,7 @@ Non-responsibilities:
 
 ### Flutter Core Infrastructure — v0.3 Planned (S9)
 
-Cross-feature infrastructure modules are placed in `lib/core/` per [S9 ruling](rulings-legacy/S9-cross-feature-infrastructure-placement.md):
+Cross-feature infrastructure modules are placed in `lib/core/` per [S9 ruling](rulings/S9-cross-feature-infrastructure-placement.md):
 
 ```
 lib/core/editor/                        ← EditorShellService (S2 Phase 2/3, PR-RB-06)
@@ -185,11 +185,11 @@ v0.3 extracts tab, draft, save, and pane layout from notes-specific code into wo
 - `activeAtomId: String?` — currently active tab
 - `previewTabId: String?` — preview tab (per-group)
 
-**EditorResolver** (`lib/core/editor/editor_resolver.dart`): Maps `content_type` to EditorPane widget builder. v0.3 registers `markdown` only. Unknown content_type → error placeholder (no fallback to markdown — prevents data corruption). See [S2 Phase 3](rulings-legacy/S2-tab-draft-save-ownership.md), [DI-10](../reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md).
+**EditorResolver** (`lib/core/editor/editor_resolver.dart`): Maps `content_type` to EditorPane widget builder. v0.3 registers `markdown` only. Unknown content_type → error placeholder (no fallback to markdown — prevents data corruption). See [S2 Phase 3](rulings/S2-tab-draft-save-ownership.md), [DI-10](../reports/v0.3/design-discussions/DI-10-editor-resolver-shell.md).
 
 **Communication pattern**: Coordinator → Service (direct call), Service → FFI (`loadContentFn` + `persistFn` dual closures), Service → Coordinator (`onBufferSaved` callback).
 
-Design details: [S2](rulings-legacy/S2-tab-draft-save-ownership.md), [DI-1](../reports/v0.3/design-discussions/DI-1-editor-shell-service.md), [DI-4](../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md).
+Design details: [S2](rulings/S2-tab-draft-save-ownership.md), [DI-1](../reports/v0.3/design-discussions/DI-1-editor-shell-service.md), [DI-4](../reports/v0.3/design-discussions/DI-4-buffer-sync-model.md).
 
 ## Extension Kernel (Declaration-Only)
 
@@ -200,7 +200,7 @@ v0.2 defines contracts without runtime execution:
 - Capability model: `command`, `parser`, `provider`, `ui_slot`
 - Runtime security capabilities: `network`, `file`, `notification`, `calendar`
 
-**S5 ruling (v0.2.5)**: First-party commands (SingleEntry CommandParser/CommandRouter/CommandRegistry) are **not** registered through ExtensionManifest/ExtensionRegistry. They are direct in-process registrations. Extension Kernel is a third-party security contract; first-party does not go through it. See `docs/architecture/rulings-legacy/S5-extension-kernel-boundary.md`.
+**S5 ruling (v0.2.5)**: First-party commands (SingleEntry CommandParser/CommandRouter/CommandRegistry) are **not** registered through ExtensionManifest/ExtensionRegistry. They are direct in-process registrations. Extension Kernel is a third-party security contract; first-party does not go through it. See `docs/architecture/rulings/S5-extension-kernel-boundary.md`.
 
 See: `docs/architecture/extension-kernel.md`
 

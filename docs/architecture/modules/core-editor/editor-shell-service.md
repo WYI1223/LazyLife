@@ -1,8 +1,12 @@
 # Module Spec: EditorShellService
 
+> Current normative line: [S2 Tab Draft Save Ownership](../../rulings/S2-tab-draft-save-ownership.md)
+>
+> Journey record: [ADR-0002 Editor Shell Ownership](../../adr/ADR-0002-editor-shell-ownership.md)
+>
 > `lib/core/editor/editor_shell_service.dart`
 >
-> 设计来源：[S2 Phase 2](../../rulings-legacy/S2-tab-draft-save-ownership.md) · [DI-1](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings-legacy/S9-cross-feature-infrastructure-placement.md)
+> 设计来源：[S2 Phase 2](../../rulings/S2-tab-draft-save-ownership.md) · [DI-1](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S9](../../rulings/S9-cross-feature-infrastructure-placement.md)
 
 ---
 

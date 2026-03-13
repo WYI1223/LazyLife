@@ -18,6 +18,7 @@
 | 规范源 | `docs/api/ffi-contracts.md` | 需更新：新增 FFI 函数契约 |
 | 规范源 | `docs/governance/API_COMPATIBILITY.md` | 需更新：breaking change 记录 |
 | 现有实现 | `crates/lazynote_ffi/src/api.rs` | 需修改的目标文件 |
+| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `guarded-ffi` 与已实际落地的 `security-surface` ledger，同时更新 `execution-order`、`cutover-cleanup`、`api-doc-ownership`、以及本 PR 负责的 `verification-gates` rows，并显式消费 `OI-037`、`OI-038`、`OI-045`、`OI-046`、`OI-047`、`OI-048`，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
 
@@ -32,10 +33,12 @@ In scope:
 - 更新 `docs/api/ffi-contracts.md`（新函数）
 - 更新 `docs/governance/API_COMPATIBILITY.md`（breaking change 记录）
 - 更新 `docs/api/error-codes.md`（新增 Guard 相关错误码，DI-16 要求）
+- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `guarded-ffi`、如有实际安全落地则更新 `security-surface`、以及 `execution-order` / `cutover-cleanup` / `api-doc-ownership` / 本 PR 负责的 `verification-gates` rows，显式对齐 `OI-037` / `OI-038` / `OI-045` / `OI-046` / `OI-047` / `OI-048`，写入 landed/partial 状态与证据路径
 
 Out of scope:
 - 旧 FFI 函数移除（PR-0413 contract 阶段）
 - Flutter 消费方变更（PR-0412/6）
+- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
 
 ## Design
 
@@ -500,4 +503,11 @@ grep -rn "DenyGuard\|deny_guard" crates/lazynote_core/tests/ --include="*.rs"
 - [ ] `docs/api/error-codes.md` 已注册新增错误码（如 `access_denied`、`invalid_query_descriptor`）
 - [ ] `cargo test --all` 全绿
 - [ ] `cargo clippy --all -- -D warnings` 零 warning
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `guarded-ffi` row 已更新为本 PR 的实际落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `security-surface` row 已明确写明本 PR 是否实际落地安全门禁；若未落地则保持 `pending`/`partial` 并附说明
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `cutover-cleanup` row 已写明本 PR 覆盖的 expand 阶段与 cleanup 责任并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `api-doc-ownership` row 已写明本 PR 覆盖的 API 文档与兼容性文档更新责任并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 FFI / DenyGuard 测试部分与证据路径
+- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 - [ ] PR spec Status updated to Merged

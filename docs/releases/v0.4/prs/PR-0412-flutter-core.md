@@ -17,6 +17,7 @@
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0412 行）、Q4（Flutter 测试 + delta 载荷断言） | PR 定位、测试要求 |
 | 现有实现 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart` | 需改造的目标文件 |
 | 现有实现 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart` | 需扩展（加 TreeMutationDelta） |
+| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-025 / DI-17` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `flutter-core` ledger，同时更新 `execution-order` 与本 PR 负责的 `verification-gates` rows，并显式消费 `OI-035` / `OI-036` / `OI-038`、`OI-039` / `OI-040` / `OI-042` 的 core-consumer 部分，以及 `OI-045` / 本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
 
@@ -26,12 +27,14 @@ In scope:
 - `loadSystemNodes` / `getSystemNodeId` 系统节点接口
 - `reassignDesignated` 成功后刷新本地系统节点映射（DI-17 Q2）
 - Mock invoker 测试
+- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `flutter-core`、`execution-order`、以及本 PR 负责的 `verification-gates` rows，显式对齐 `OI-035` / `OI-036` / `OI-038`、`OI-039` / `OI-040` / `OI-042`、以及 `OI-045` / `OI-048` 的 core-consumer 部分，写入 landed/partial 状态与证据路径
 
 Out of scope:
 - `query_atoms` 消费迁移 / QueryAtomsInvoker（PR-0413 feature 层）
 - Tasks/Calendar/Notes/Entry controller 适配（PR-0413）
 - 旧 FFI 移除（PR-0413）
 - Explorer UI 变更 / 内部分层（PR-0413）
+- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
 
 ## Design
 
@@ -185,4 +188,8 @@ grep -rn "DesignatedRoleNotFoundException\|WorkspaceInitException" apps/lazynote
 - [ ] `reassignDesignated` 成功后本地系统节点映射已刷新
 - [ ] `flutter analyze` 零 warning
 - [ ] `flutter test` 全绿
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `flutter-core` row 已更新为本 PR 的实际落地状态并附证据路径，且已显式覆盖 `OI-039` / `OI-040` / `OI-042`
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 Flutter core 测试部分与证据路径
+- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 - [ ] PR spec Status updated to Merged

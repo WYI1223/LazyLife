@@ -91,7 +91,7 @@ Deferred to v0.5:
 | PR-0400 | Legacy Rulings 归档 | Merged |
 | PR-0401 | Source Corpus + DN Extraction | Merged |
 | PR-0402 | ADR Infrastructure + Metadata Contract | Merged |
-| PR-0403 | Per-ADR Serial Execution（首批 retrospective ADR） | Draft |
+| PR-0403 | Per-ADR Serial Execution（首批 retrospective ADR） | Merged |
 | PR-0404 | Theme Delta Contract + Consistency Audit | Draft |
 | PR-0405 | Closure Audit + Governance Activation | Draft |
 | PR-0406 | Template Playbook + Lifecycle Backfill | Draft |

@@ -2,7 +2,7 @@
 
 > `lib/core/editor/editor_group_model.dart`
 >
-> 设计来源：[DI-1 Q1/Q2](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S2 Phase 2](../../rulings-legacy/S2-tab-draft-save-ownership.md)
+> 设计来源：[DI-1 Q1/Q2](../../../reports/v0.3/design-discussions/DI-1-editor-shell-service.md) · [S2 Phase 2](../../rulings/S2-tab-draft-save-ownership.md)
 
 ---
 

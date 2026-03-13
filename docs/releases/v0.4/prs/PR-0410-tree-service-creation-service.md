@@ -17,6 +17,7 @@
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-15-rust-data-model-single-root.md` Q9、Q12 | 系统节点保护规则、designated folder 语义 |
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0410 行）、Q4（Service 测试） | PR 定位、测试要求 |
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md` Q6 | 创建路由优先级 |
+| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `service-routing` 与 service 侧 `migration-protection` ledger，同时更新 `execution-order` 与 `verification-gates` rows，并显式消费 `OI-035`、`OI-036`、`OI-045`、以及本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
 
@@ -29,11 +30,13 @@ In scope:
 - `reassign_designated` repo 方法 + service 层实现（DI-16 Q4）
 - 跨 workspace 保护
 - Service 层测试
+- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `service-routing`、service 侧 `migration-protection`、`execution-order`、以及本 PR 负责的 `verification-gates` rows，显式对齐 `OI-035` / `OI-036` / `OI-045` / `OI-048`，写入 landed/partial 状态与证据路径
 
 Out of scope:
 - ScopedQueryRepository（PR-0409）
 - Guard / FFI（PR-0411）
 - Flutter 层变更（PR-0412/6）
+- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
 
 ## Design
 
@@ -355,4 +358,9 @@ grep -rn "system_node\|designated" crates/lazynote_core/src/service/tree_service
 - [ ] 现有 TreeService 测试全绿（语义不变回归）
 - [ ] `cargo test --all` 全绿
 - [ ] `cargo clippy --all -- -D warnings` 零 warning
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `service-routing` row 已更新为本 PR 的实际落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `migration-protection` row 已写明本 PR 覆盖的 runtime / service 保护部分与证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
+- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 service-test 部分与证据路径
+- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
 - [ ] PR spec Status updated to Merged
