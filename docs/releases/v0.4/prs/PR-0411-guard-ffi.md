@@ -5,6 +5,16 @@
 
 ## Goal
 
+### Dependency Clarification (2026-03-13)
+
+This PR assumes `PR-0409` and `PR-0410` already consume the post-`0012` schema contract from `PR-0408`. At the FFI boundary, the schema should therefore be treated as an upstream fact, not a design surface to reopen.
+
+Canonical implication:
+
+- guarded FFI consumes workspace-aware query and creation services;
+- designated-folder lookup is consumed through repository/service contracts, not raw schema access;
+- `PR-0411` must not add migration-specific fallback logic.
+
 引入 CallerContext + AccessGuard 体系，包装全套 Guarded*Service，新增 FFI 函数（`query_atoms`、`atom_create`、`workspace_resolve_designated` 等）。旧 FFI 保留为薄 wrapper（expand-contract 的 expand 阶段），保证 Flutter 侧编译通过。
 
 前置条件：PR-0409 + PR-0410（需要 ScopedQueryRepository + CreationService + TreeService 增强）

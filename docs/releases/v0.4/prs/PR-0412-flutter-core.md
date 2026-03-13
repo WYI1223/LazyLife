@@ -5,6 +5,16 @@
 
 ## Goal
 
+### Dependency Clarification (2026-03-13)
+
+This PR assumes the post-`0012` workspace contract has already been mediated through `PR-0409` to `PR-0411`. Flutter core should therefore consume:
+
+- workspace/designated-node behavior through FFI contracts;
+- workspace mutations through service-level deltas;
+- system-node lookup through dedicated APIs.
+
+It should not depend on raw migration details such as trigger names, backfill order, or direct table semantics.
+
 改造 WorkspaceTreeService 对接新 tree FFI（`workspace_resolve_designated`、`workspace_reassign_designated` 等树操作），引入 TreeMutationDelta 变更通知机制，新增 `loadSystemNodes` / `getSystemNodeId` 系统节点接口。`query_atoms` 消费迁移属于 PR-0413（feature 层）。
 
 前置条件：PR-0411（需要新 FFI 函数就绪）

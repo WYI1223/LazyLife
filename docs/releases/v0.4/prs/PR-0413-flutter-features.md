@@ -5,6 +5,16 @@
 
 ## Goal
 
+### Dependency Clarification (2026-03-13)
+
+This PR sits at the end of the workspace-topology chain. It should treat the post-`0012` schema contract from `PR-0408` as already absorbed by `PR-0409` through `PR-0412`.
+
+Canonical implication:
+
+- feature controllers consume query/creation/tree APIs, not migration details;
+- Flutter feature code must not depend on raw schema concepts such as `designated_folders` tables or `origin_workspace_id` writes;
+- any remaining workspace topology assumptions should be cited through the earlier PR specs or the workflow ledger, not duplicated here.
+
 全部 Flutter 消费方迁移到新接口（Tasks/Calendar/Notes/Tag Panel/Entry Search/Editor），Explorer 内部分层重构（DI-17 Q3），移除 synthetic uncategorized 逻辑，删除 `workspace_tree_children_loader.dart`，移除全部 15 个旧 FFI 函数（expand-contract 的 contract 阶段）。代码库净减。
 
 前置条件：PR-0412（需要 WorkspaceTreeService B+ 已就位）

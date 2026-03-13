@@ -5,6 +5,17 @@
 
 ## Goal
 
+### Dependency Clarification (2026-03-13)
+
+This PR consumes the **post-0012 schema contract** from `PR-0408`, rather than restating migration internals. It may assume:
+
+- `workspace_nodes.kind` includes `workspace`;
+- `workspaces` exists and current migrated data contains one default workspace;
+- `designated_folders` exists and current migrated data contains `inbox/tasks/calendar`;
+- `WorkspaceMetaRepository` is the read-side bridge for designated-folder resolution.
+
+This PR must build scoped-query behavior on top of those landed schema guarantees, but must not reopen migration/backfill design inside `PR-0409`.
+
 引入统一查询引擎 ScopedQueryRepository，支持按 workspace 子树范围查询 atoms。替代 TaskService/CalendarService 的直查 atoms 路径，为 PR-0411 FFI 层的 `query_atoms` 提供后端。
 
 前置条件：PR-0408（需要 Migration 0012 的 schema）
