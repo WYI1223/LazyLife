@@ -11,6 +11,11 @@
 
 ## Execution Contract (Canonical Inputs)
 
+Shared promotion register:
+
+- `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`
+- This PR must leave evidence sufficient for `CPR-001`, but may not publish carrier text directly.
+
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-17-flutter-thin-client.md` Q3/Q5-Q6 | 全部消费方适配、Explorer 内部分层、synthetic 移除 |

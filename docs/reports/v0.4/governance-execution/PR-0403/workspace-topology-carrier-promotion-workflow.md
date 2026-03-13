@@ -147,6 +147,20 @@ If a PR also consumes one of the `DOC-026 / DI-18` supporting bundles, it must e
 
 If a PR lands code but does not update this ledger, the handoff is incomplete.
 
+## Shared Governance Decision Point
+
+This workflow ledger is not the final promotion decision surface.
+
+The shared governance decision point is:
+
+- [`../carrier-promotion-decision-register.md`](../carrier-promotion-decision-register.md)
+
+Update rule:
+
+1. implementation PRs update this workflow ledger with landed or partial evidence;
+2. `PR-0404` records the current audit decision in the shared register;
+3. `PR-0405` consumes the same register for final closeout and any eventual carrier promotion decision.
+
 ## Landing Coverage Ledger
 
 | PR | Landing Surface | Carry-Forward Inputs | Required Update In This File | Carrier Effect |
@@ -211,6 +225,7 @@ If the team later decides a specific workspace PR should also do the carrier upd
 
 - [`open-items.md`](open-items.md)
 - [`dn-ledger-classification.md`](dn-ledger-classification.md)
+- [`../carrier-promotion-decision-register.md`](../carrier-promotion-decision-register.md)
 - [`iterations/DOC-023-di-15-rust-data-model-single-root/05-dn-classification-to-decision-line.md`](iterations/DOC-023-di-15-rust-data-model-single-root/05-dn-classification-to-decision-line.md)
 - [`iterations/DOC-026-di-18-execution-plan/05-dn-classification-to-decision-line.md`](iterations/DOC-026-di-18-execution-plan/05-dn-classification-to-decision-line.md)
 - [`../../../../releases/v0.4/v0.4-kickoff.md`](../../../../releases/v0.4/v0.4-kickoff.md)

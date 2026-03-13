@@ -11,6 +11,11 @@
 
 ## Execution Contract (Canonical Inputs)
 
+Shared promotion register:
+
+- `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`
+- This PR must leave evidence sufficient for `CPR-002`, but may not claim final promotion by code landing alone.
+
 | 类型 | 引用 | 与本 PR 的关系 |
 |------|------|---------------|
 | DI 裁决 | `docs/reports/v0.3/design-discussions/DI-21-ci-duplication-detection.md` Q1-Q3 | 检测范围、算法、阈值、输出格式的完整设计依据 |

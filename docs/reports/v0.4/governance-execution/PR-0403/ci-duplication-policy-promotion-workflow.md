@@ -65,6 +65,20 @@ Current publication is blocked for these surfaces until the promotion gate below
 
 If `PR-0407` lands code but does not update this ledger, the handoff is incomplete.
 
+## Shared Governance Decision Point
+
+This workflow ledger is not the final promotion decision surface.
+
+The shared governance decision point is:
+
+- [`../carrier-promotion-decision-register.md`](../carrier-promotion-decision-register.md)
+
+Update rule:
+
+1. `PR-0407` updates this workflow ledger with landed or partial evidence;
+2. `PR-0404` records the current audit decision in the shared register;
+3. `PR-0405` consumes the same register for final closeout if anything remains blocked or needs explicit carry-forward.
+
 ## Landing Coverage Ledger
 
 | PR | Landing Surface | Carry-Forward Inputs | Required Update In This File | Policy Effect |
@@ -110,5 +124,6 @@ No ADR, ruling, or topic-map publication is expected for `DI-21`.
 
 - [`open-items.md`](open-items.md)
 - [`dn-ledger-classification.md`](dn-ledger-classification.md)
+- [`../carrier-promotion-decision-register.md`](../carrier-promotion-decision-register.md)
 - [`iterations/DOC-029-di-21-ci-duplication-detection/05-dn-classification-to-decision-line.md`](iterations/DOC-029-di-21-ci-duplication-detection/05-dn-classification-to-decision-line.md)
 - [`../../../../releases/v0.4/prs/PR-0407-ci-duplication-detection.md`](../../../../releases/v0.4/prs/PR-0407-ci-duplication-detection.md)
