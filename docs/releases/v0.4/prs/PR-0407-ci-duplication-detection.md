@@ -1,7 +1,7 @@
 # PR-0407: CI 跨 Feature 代码重复检测 + Check 输出补强
 
 - Proposed title: `feat(ci): cross-feature duplication detection and check output enhancement`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 
@@ -13,7 +13,7 @@
 
 前置条件：无（Phase 0，可立即执行）。
 
-## Current Baseline
+## Entry Baseline
 
 截至 2026-03-13，当前仓库基线状态如下：
 
@@ -24,6 +24,19 @@
 - `docs/reports/v0.4/governance-execution/PR-0403/ci-duplication-policy-promotion-workflow.md` 中 `governance-rule-surface`、`detector-and-allowlist`、`output-contract` 三个 slice 仍为 `pending`。
 
 本 PR 的任务不是修复当前 CI 失败，而是在**当前全绿基线之上**补齐新的检测能力与输出合同，并确保首轮落地后仓库仍保持全绿。
+
+## Landing Result
+
+当前分支中的已落地结果：
+
+- `tools/ci/architecture_check.dart` 已新增 Cross-feature duplication check；
+- `tools/ci/duplication_allowlist.yaml` 已创建并接入；
+- Check 1-3 已补强到当前输出合同；
+- `docs/architecture/engineering-standards.md` 已同步 Rule E 执行延伸；
+- `docs/reports/v0.4/governance-execution/PR-0403/ci-duplication-policy-promotion-workflow.md` 已更新 landed coverage rows；
+- 当前仓库在新 detector 打开后仍保持 `dart run tools/ci/architecture_check.dart` 全绿。
+
+本 PR 已为 `CPR-002` 提供 in-repo 落地证据，但最终 promotion / carry-forward closeout 仍由 `PR-0405` 负责。
 
 ## Execution Contract (Canonical Inputs)
 
@@ -332,17 +345,17 @@ rg -n "Rule E" docs/architecture/engineering-standards.md
 
 ## Acceptance Criteria
 
-- [ ] `architecture_check.dart` 包含跨 feature 重复检测 Check（Check N）
-- [ ] Check N 以 `>=101` 条 normalized lines 为 failure threshold
-- [ ] 检测只扫描 `apps/lazynote_flutter/lib/features/**/*.dart` 中跨顶层 feature 的文件对
-- [ ] 检测排除 `*.g.dart`、`*.freezed.dart` 与 `test/` 路径
-- [ ] allowlist 机制存在，且为 file-pair 粒度、带 `reason`
-- [ ] Check N 只报告 maximal run，不重复报告被覆盖的子区间
-- [ ] Check 1 输出包含 `REFERENCE` 与 `HOW`
-- [ ] Check 2 输出包含 `HOW`
-- [ ] Check 3 输出包含 `REFERENCE` 与 `HOW`
-- [ ] `docs/architecture/engineering-standards.md` 已在行为落地后同步 Rule E 延伸
-- [ ] `ci-duplication-policy-promotion-workflow.md` 的相关 ledger row 已更新为 landed 或显式 partial，并附 evidence
-- [ ] `dart analyze` 零 warning
-- [ ] `dart run tools/ci/architecture_check.dart` 在当前代码库运行全绿（无误报）
-- [ ] PR spec Status updated to `Merged` after landing
+- [x] `architecture_check.dart` 包含跨 feature 重复检测 Check（Check N）
+- [x] Check N 以 `>=101` 条 normalized lines 为 failure threshold
+- [x] 检测只扫描 `apps/lazynote_flutter/lib/features/**/*.dart` 中跨顶层 feature 的文件对
+- [x] 检测排除 `*.g.dart`、`*.freezed.dart` 与 `test/` 路径
+- [x] allowlist 机制存在，且为 file-pair 粒度、带 `reason`
+- [x] Check N 只报告 maximal run，不重复报告被覆盖的子区间
+- [x] Check 1 输出包含 `REFERENCE` 与 `HOW`
+- [x] Check 2 输出包含 `HOW`
+- [x] Check 3 输出包含 `REFERENCE` 与 `HOW`
+- [x] `docs/architecture/engineering-standards.md` 已在行为落地后同步 Rule E 延伸
+- [x] `ci-duplication-policy-promotion-workflow.md` 的相关 ledger row 已更新为 landed 或显式 partial，并附 evidence
+- [x] `dart analyze` 零 warning
+- [x] `dart run tools/ci/architecture_check.dart` 在当前代码库运行全绿（无误报）
+- [x] PR spec Status updated to `Merged` after landing

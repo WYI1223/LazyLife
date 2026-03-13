@@ -31,6 +31,7 @@ final Directory _featuresDir = Directory('${_appRoot.path}/lib/features');
 
 const int _warnLineThreshold = 1500;
 const int _failLineThreshold = 2200;
+const int _duplicationThreshold = 101;
 
 // ---------------------------------------------------------------------------
 // Main
@@ -46,6 +47,7 @@ Future<void> main() async {
 
   final ruleEAllowlist = _loadRuleEAllowlist();
   final fileSizeExemptions = _loadFileSizeExemptions();
+  final duplicationAllowlist = _loadDuplicationAllowlist();
 
   var hasFailure = false;
 
@@ -54,8 +56,21 @@ Future<void> main() async {
   final violations = _checkRuleE(ruleEAllowlist);
   if (violations.isNotEmpty) {
     for (final v in violations) {
-      stderr.writeln('VIOLATION: ${v.file}  imports  ${v.importPath}');
-      stderr.writeln('  feature pair: ${v.sourceFeature} → ${v.targetFeature}');
+      stderr.writeln('VIOLATION: Cross-feature import detected.');
+      stderr.writeln('  File: ${v.file}');
+      stderr.writeln('  Import: ${v.importPath}');
+      stderr.writeln(
+        'WHAT: feature pair ${v.sourceFeature} -> ${v.targetFeature}',
+      );
+      stderr.writeln(
+        'WHY: Rule E requires feature slices to remain independent and forbids direct cross-feature imports.',
+      );
+      stderr.writeln(
+        'REFERENCE: docs/architecture/engineering-standards.md (Rule E)',
+      );
+      stderr.writeln(
+        'HOW: Move shared capability to lib/shared/ or lib/core/ instead of importing another feature directly.',
+      );
     }
     hasFailure = true;
   }
@@ -69,6 +84,24 @@ Future<void> main() async {
   // ── Check 2: File size ─────────────────────────────────────────────────
   stdout.writeln('\n=== File size check ===');
   final sizeResult = _checkFileSize(fileSizeExemptions);
+  for (final warning in sizeResult.warningDetails) {
+    stdout.writeln('WARNING: File size warning.');
+    stdout.writeln(
+      'WHAT: ${warning.path} (${warning.lineCount} lines, exceeds ${warning.threshold})',
+    );
+    stdout.writeln(
+      'HOW: Split by responsibility, prefer coordinator -> manager or service extraction before the file grows further.',
+    );
+  }
+  for (final failure in sizeResult.failureDetails) {
+    stderr.writeln('VIOLATION: File size limit exceeded.');
+    stderr.writeln(
+      'WHAT: ${failure.path} (${failure.lineCount} lines, exceeds ${failure.threshold})',
+    );
+    stderr.writeln(
+      'HOW: Split by responsibility, prefer coordinator -> manager or service extraction before crossing the hard limit.',
+    );
+  }
   if (sizeResult.hasFailure) {
     hasFailure = true;
   }
@@ -83,12 +116,53 @@ Future<void> main() async {
   final structuralViolations = _checkStructuralLayer();
   if (structuralViolations.isNotEmpty) {
     for (final msg in structuralViolations) {
-      stderr.writeln('VIOLATION: $msg');
+      stderr.writeln('VIOLATION: Structural layer violation detected.');
+      stderr.writeln('WHAT: $msg');
+      stderr.writeln(
+        'WHY: Layer-specific files must stay decoupled from forbidden UI and raw-boundary imports.',
+      );
+      stderr.writeln(
+        'REFERENCE: docs/architecture/engineering-standards.md (Rule A/B)',
+      );
+      stderr.writeln(
+        'HOW: Inject an invoker or facade instead of importing raw FRB or UI-layer dependencies directly.',
+      );
     }
     hasFailure = true;
   }
   stdout.writeln(
     'Structural layer result: ${structuralViolations.length} violation(s)',
+  );
+  stdout.writeln('\n=== Cross-feature duplication check ===');
+  final duplicationResult = _checkCrossFeatureDuplication(duplicationAllowlist);
+  if (duplicationResult.matches.isNotEmpty) {
+    for (final match in duplicationResult.matches) {
+      stderr.writeln(
+        'VIOLATION: Cross-feature code duplication detected (Rule E extension).',
+      );
+      stderr.writeln(
+        '  File A: ${match.fileA}:${match.startLineA}-${match.endLineA}',
+      );
+      stderr.writeln(
+        '  File B: ${match.fileB}:${match.startLineB}-${match.endLineB}',
+      );
+      stderr.writeln(
+        'WHAT: ${match.normalizedLineCount} matching normalized lines (threshold: >=$_duplicationThreshold).',
+      );
+      stderr.writeln(
+        'WHY: Cross-feature substantive duplication creates hidden shared logic while bypassing Rule E import boundaries.',
+      );
+      stderr.writeln(
+        'REFERENCE: docs/architecture/engineering-standards.md (Rule E)',
+      );
+      stderr.writeln(
+        'HOW: Extract shared code to lib/shared/ (UI) or lib/core/ (logic); if the duplication is explicitly accepted for a later PR, add a narrow entry to tools/ci/duplication_allowlist.yaml.',
+      );
+    }
+    hasFailure = true;
+  }
+  stdout.writeln(
+    'Duplication result: ${duplicationResult.failures} failure(s), ${duplicationResult.allowlistedPairs} allowlisted pair(s)',
   );
 
   // ── Check 4: Docs cross-reference ──────────────────────────────────────
@@ -296,6 +370,254 @@ int _countAllowlisted(Map<String, Set<String>> allowlist) {
   return allowlist.length;
 }
 
+class _DuplicationAllowlistEntry {
+  final String fileA;
+  final String fileB;
+  final String reason;
+
+  _DuplicationAllowlistEntry({
+    required this.fileA,
+    required this.fileB,
+    required this.reason,
+  });
+}
+
+class _NormalizedLine {
+  final String text;
+  final int originalLineNumber;
+
+  _NormalizedLine({required this.text, required this.originalLineNumber});
+}
+
+class _DuplicationMatch {
+  final String fileA;
+  final String fileB;
+  final int startLineA;
+  final int endLineA;
+  final int startLineB;
+  final int endLineB;
+  final int normalizedLineCount;
+
+  _DuplicationMatch({
+    required this.fileA,
+    required this.fileB,
+    required this.startLineA,
+    required this.endLineA,
+    required this.startLineB,
+    required this.endLineB,
+    required this.normalizedLineCount,
+  });
+}
+
+class _DuplicationResult {
+  int failures = 0;
+  int allowlistedPairs = 0;
+  final List<_DuplicationMatch> matches = <_DuplicationMatch>[];
+}
+
+class _DuplicationCandidateFile {
+  final String featureName;
+  final String relativePath;
+  final List<_NormalizedLine> normalizedLines;
+
+  _DuplicationCandidateFile({
+    required this.featureName,
+    required this.relativePath,
+    required this.normalizedLines,
+  });
+}
+
+_DuplicationResult _checkCrossFeatureDuplication(
+  List<_DuplicationAllowlistEntry> allowlist,
+) {
+  final result = _DuplicationResult();
+  final candidates = _loadDuplicationCandidateFiles();
+  final allowlistedHits = <String>{};
+
+  for (var i = 0; i < candidates.length; i++) {
+    for (var j = i + 1; j < candidates.length; j++) {
+      final fileA = candidates[i];
+      final fileB = candidates[j];
+      if (fileA.featureName == fileB.featureName) {
+        continue;
+      }
+
+      final pairKey = _canonicalFilePair(
+        fileA.relativePath,
+        fileB.relativePath,
+      );
+      final allowlisted = _findDuplicationAllowlistEntry(
+        allowlist,
+        fileA.relativePath,
+        fileB.relativePath,
+      );
+
+      final matches = _findDuplicationMatches(fileA, fileB);
+      if (matches.isEmpty) {
+        continue;
+      }
+
+      if (allowlisted != null) {
+        allowlistedHits.add(pairKey);
+        continue;
+      }
+
+      result.failures += matches.length;
+      result.matches.addAll(matches);
+    }
+  }
+
+  result.allowlistedPairs = allowlistedHits.length;
+  result.matches.sort((left, right) {
+    final fileCompare = left.fileA.compareTo(right.fileA);
+    if (fileCompare != 0) return fileCompare;
+    final otherFileCompare = left.fileB.compareTo(right.fileB);
+    if (otherFileCompare != 0) return otherFileCompare;
+    final lineCompare = left.startLineA.compareTo(right.startLineA);
+    if (lineCompare != 0) return lineCompare;
+    return left.startLineB.compareTo(right.startLineB);
+  });
+  return result;
+}
+
+List<_DuplicationCandidateFile> _loadDuplicationCandidateFiles() {
+  final candidates = <_DuplicationCandidateFile>[];
+  final dartFiles = _featuresDir
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((file) => _isDuplicationCandidateFile(file.path));
+
+  for (final file in dartFiles) {
+    final featureName = _extractTargetFeatureFromPath(file.path);
+    if (featureName == null) continue;
+
+    candidates.add(
+      _DuplicationCandidateFile(
+        featureName: featureName,
+        relativePath: _relativePath(file.path),
+        normalizedLines: _normalizeFileForDuplication(file),
+      ),
+    );
+  }
+
+  return candidates;
+}
+
+bool _isDuplicationCandidateFile(String filePath) {
+  final normalized = filePath.replaceAll(r'\', '/');
+  if (!normalized.endsWith('.dart')) return false;
+  if (normalized.endsWith('.g.dart')) return false;
+  if (normalized.endsWith('.freezed.dart')) return false;
+  if (normalized.contains('/test/')) return false;
+  return true;
+}
+
+List<_NormalizedLine> _normalizeFileForDuplication(File file) {
+  final normalizedLines = <_NormalizedLine>[];
+  final lines = file.readAsLinesSync();
+
+  for (var index = 0; index < lines.length; index++) {
+    final trimmed = lines[index].trim();
+    if (trimmed.isEmpty) continue;
+    if (_isPureCommentLine(trimmed)) continue;
+
+    normalizedLines.add(
+      _NormalizedLine(text: trimmed, originalLineNumber: index + 1),
+    );
+  }
+
+  return normalizedLines;
+}
+
+bool _isPureCommentLine(String trimmed) {
+  return trimmed.startsWith('//') ||
+      trimmed.startsWith('///') ||
+      trimmed.startsWith('/*') ||
+      trimmed.startsWith('*') ||
+      trimmed.startsWith('*/');
+}
+
+List<_DuplicationMatch> _findDuplicationMatches(
+  _DuplicationCandidateFile fileA,
+  _DuplicationCandidateFile fileB,
+) {
+  if (fileA.normalizedLines.isEmpty || fileB.normalizedLines.isEmpty) {
+    return const <_DuplicationMatch>[];
+  }
+
+  final previous = List<int>.filled(fileB.normalizedLines.length + 1, 0);
+  final collected = <String, _DuplicationMatch>{};
+
+  for (var i = 1; i <= fileA.normalizedLines.length; i++) {
+    final current = List<int>.filled(fileB.normalizedLines.length + 1, 0);
+    for (var j = 1; j <= fileB.normalizedLines.length; j++) {
+      final left = fileA.normalizedLines[i - 1];
+      final right = fileB.normalizedLines[j - 1];
+      if (left.text != right.text) {
+        current[j] = 0;
+        continue;
+      }
+
+      final runLength = previous[j - 1] + 1;
+      current[j] = runLength;
+
+      final nextContinues =
+          i < fileA.normalizedLines.length &&
+          j < fileB.normalizedLines.length &&
+          fileA.normalizedLines[i].text == fileB.normalizedLines[j].text;
+      if (nextContinues || runLength < _duplicationThreshold) {
+        continue;
+      }
+
+      final startIndexA = i - runLength;
+      final startIndexB = j - runLength;
+      final match = _DuplicationMatch(
+        fileA: fileA.relativePath,
+        fileB: fileB.relativePath,
+        startLineA: fileA.normalizedLines[startIndexA].originalLineNumber,
+        endLineA: fileA.normalizedLines[i - 1].originalLineNumber,
+        startLineB: fileB.normalizedLines[startIndexB].originalLineNumber,
+        endLineB: fileB.normalizedLines[j - 1].originalLineNumber,
+        normalizedLineCount: runLength,
+      );
+      final key = [
+        match.fileA,
+        match.startLineA,
+        match.endLineA,
+        match.fileB,
+        match.startLineB,
+        match.endLineB,
+      ].join('|');
+      collected[key] = match;
+    }
+
+    for (var j = 0; j < previous.length; j++) {
+      previous[j] = current[j];
+    }
+  }
+
+  return collected.values.toList();
+}
+
+_DuplicationAllowlistEntry? _findDuplicationAllowlistEntry(
+  List<_DuplicationAllowlistEntry> allowlist,
+  String fileA,
+  String fileB,
+) {
+  final requestedKey = _canonicalFilePair(fileA, fileB);
+  for (final entry in allowlist) {
+    if (_canonicalFilePair(entry.fileA, entry.fileB) == requestedKey) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+String _canonicalFilePair(String fileA, String fileB) {
+  final ordered = [fileA, fileB]..sort();
+  return '${ordered[0]}|${ordered[1]}';
+}
+
 // ---------------------------------------------------------------------------
 // File size check
 // ---------------------------------------------------------------------------
@@ -305,6 +627,20 @@ class _FileSizeResult {
   int failures = 0;
   int exemptions = 0;
   bool hasFailure = false;
+  final List<_FileSizeMessage> warningDetails = <_FileSizeMessage>[];
+  final List<_FileSizeMessage> failureDetails = <_FileSizeMessage>[];
+}
+
+class _FileSizeMessage {
+  final String path;
+  final int lineCount;
+  final int threshold;
+
+  _FileSizeMessage({
+    required this.path,
+    required this.lineCount,
+    required this.threshold,
+  });
 }
 
 _FileSizeResult _checkFileSize(Set<String> exemptions) {
@@ -325,8 +661,12 @@ _FileSizeResult _checkFileSize(Set<String> exemptions) {
         );
         result.exemptions++;
       } else {
-        stderr.writeln(
-          '  FAIL: $relPath ($lineCount lines, exceeds $_failLineThreshold)',
+        result.failureDetails.add(
+          _FileSizeMessage(
+            path: relPath,
+            lineCount: lineCount,
+            threshold: _failLineThreshold,
+          ),
         );
         result.failures++;
         result.hasFailure = true;
@@ -338,8 +678,12 @@ _FileSizeResult _checkFileSize(Set<String> exemptions) {
         );
         result.exemptions++;
       } else {
-        stdout.writeln(
-          '  WARNING: $relPath ($lineCount lines, exceeds $_warnLineThreshold)',
+        result.warningDetails.add(
+          _FileSizeMessage(
+            path: relPath,
+            lineCount: lineCount,
+            threshold: _warnLineThreshold,
+          ),
         );
         result.warnings++;
       }
@@ -680,6 +1024,54 @@ List<String> _loadDocsLinkAllowlist() {
       if (pattern.isNotEmpty) result.add(pattern);
     }
   }
+  return result;
+}
+
+List<_DuplicationAllowlistEntry> _loadDuplicationAllowlist() {
+  final scriptDir = File(Platform.script.toFilePath()).parent;
+  final file = File('${scriptDir.path}/duplication_allowlist.yaml');
+  if (!file.existsSync()) return const <_DuplicationAllowlistEntry>[];
+
+  final result = <_DuplicationAllowlistEntry>[];
+  String? currentFileA;
+  String? currentFileB;
+  String? currentReason;
+
+  void flush() {
+    if (currentFileA == null || currentFileB == null || currentReason == null) {
+      return;
+    }
+    final fileA = currentFileA;
+    final fileB = currentFileB;
+    final reason = currentReason;
+    result.add(
+      _DuplicationAllowlistEntry(
+        fileA: fileA,
+        fileB: fileB,
+        reason: reason,
+      ),
+    );
+  }
+
+  for (final line in file.readAsLinesSync()) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    if (trimmed.startsWith('- fileA:')) {
+      flush();
+      currentFileA = _stripYamlString(trimmed.substring('- fileA:'.length));
+      currentFileB = null;
+      currentReason = null;
+    } else if (trimmed.startsWith('fileB:')) {
+      currentFileB = _stripYamlString(trimmed.substring('fileB:'.length));
+    } else if (trimmed.startsWith('reason:')) {
+      currentReason = _stripYamlString(trimmed.substring('reason:'.length));
+    }
+  }
+
+  flush();
   return result;
 }
 

@@ -30,6 +30,11 @@
 ### Rule E: Flutter features are vertical slices only
 
 - `features/<name>` 之间禁止直接依赖对方内部实现。
+- `features/<name>` 之间也禁止保留实质性跨 feature 重复实现。
+- 当前 CI 通过 `tools/ci/architecture_check.dart` 检测两类 Rule E 违规：
+  1. 跨 feature import；
+  2. 跨顶层 feature 的大段实质性重复（normalized line run `>=101`）。
+- 已知合理重复若需短期保留，必须通过 `tools/ci/duplication_allowlist.yaml` 做**窄 file-pair 豁免**，并写明原因；不得通过放宽阈值或扩大排除范围规避。
 - 共享能力只能通过 `shared/` 或 Core API 访问。
 - **`lib/core/` 豁免**（S7 裁决，v0.2.5）：`lib/core/` 是平台基础设施层，所有 feature 均可直接导入。`lib/core/` 下的模块（如 RustBridge、LocalSettingsStore、Reminders）不受 Rule E 约束。详见 `docs/reports/v0.2.5/frontend-review/08b-semantic-decisions.md` §S7。
 

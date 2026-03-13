@@ -2,7 +2,7 @@
 
 - Owner: governance audit and closeout chain (`PR-0404` -> `PR-0405`)
 - Status: audited by PR-0404
-- Last Updated: 2026-03-12
+- Last Updated: 2026-03-13
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Implementation PRs update workflow ledgers and leave evidence. Governance PRs up
 | Register ID | Family | Workflow Source | Carry-Forward Inputs | Current Decision | PR-0404 Audit Result | Blocking Conditions | Remaining Owners | PR-0405 Closeout Rule | Final Promotion Owner | Notes |
 |------|------|------|------|------|------|------|------|------|------|------|
 | `CPR-001` | Workspace topology carrier promotion | [PR-0403 workspace-topology workflow](PR-0403/workspace-topology-carrier-promotion-workflow.md) | `OI-031` through `OI-050` | `blocked_pending_landing` | Current published carriers remain consistent only because DI-15/16/17/18 families are still kept out of mainline publication. Promotion remains blocked. | `PR-0408` through `PR-0413` landed, workflow ledger rows updated, and PR-0404/PR-0405 closeout confirms the promotion gate | `PR-0408` through `PR-0413`, then governance audit | carry forward unless every required workflow row is landed before PR-0405 closeout | default `PR-0405` | Covers DI-15 active bundles plus DI-16/17/18 supporting bundles |
-| `CPR-002` | CI duplication policy promotion | [PR-0403 CI-duplication workflow](PR-0403/ci-duplication-policy-promotion-workflow.md) | `OI-051` through `OI-053` | `blocked_pending_landing` | Current CI-governance surfaces remain consistent only because DI-21 bundles are still kept out of current-policy publication. Promotion remains blocked. | `PR-0407` landed, workflow ledger rows updated, and PR-0404/PR-0405 closeout confirms the promotion gate | `PR-0407`, then governance audit | carry forward unless PR-0407 lands before PR-0405 closeout | default `PR-0405` if additional closeout is required | No ADR or ruling publication is expected; this row governs current CI-policy sync |
+| `CPR-002` | CI duplication policy promotion | [PR-0403 CI-duplication workflow](PR-0403/ci-duplication-policy-promotion-workflow.md) | `OI-051` through `OI-053` | `blocked_pending_audit` | PR-0404 audited this family as `blocked_pending_landing` because DI-21 had not landed yet. PR-0407 has now landed the detector, allowlist, and output-contract surfaces, so the shared row is waiting closeout consumption rather than further implementation landing. | PR-0405 closeout must confirm the landed PR-0407 evidence, record the final promotion-or-carry-forward outcome, and keep current CI-policy sync aligned with this shared register. | `PR-0405` governance closeout | promote only if PR-0407 landed evidence remains valid at PR-0405 closeout time; otherwise explicitly carry forward | default `PR-0405` | PR-0407 supplied the in-repo landing evidence for `OI-051` through `OI-053`; no ADR or ruling publication is expected |
 
 ## Update Rules
 

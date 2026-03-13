@@ -2,7 +2,7 @@
 
 - Owner: `PR-0403` replay output, consumed by `PR-0407`
 - Status: active handoff contract
-- Last Updated: 2026-03-12
+- Last Updated: 2026-03-13
 
 ## Purpose and Boundary
 
@@ -42,13 +42,13 @@ Authoritative references:
 
 `PR-0407` is the first allowed implementation and sync surface for `DI-21`.
 
-Until `PR-0407` lands the required behavior, the repo must treat `DI-21` as:
+Before `PR-0407` landed the required behavior, the repo treated `DI-21` as:
 
 - `accepted policy direction`
 - `implementation not yet landed`
 - `not yet reflected in current CI-governance surfaces`
 
-Current publication is blocked for these surfaces until the promotion gate below is satisfied:
+Current publication was blocked for these surfaces until the promotion gate below was satisfied:
 
 1. `tools/ci/architecture_check.dart`
 2. `tools/ci/duplication_allowlist.yaml` or the equivalent landed allowlist surface chosen by `PR-0407`
@@ -85,15 +85,13 @@ Update rule:
 |------|------|------|------|------|
 | `PR-0407` | Rule E extension sync, duplication detector, allowlist mechanism, and CI failure-output reinforcement | `OI-051`, `OI-052`, `OI-053` | mark governance-rule, detector-and-allowlist, and output-contract coverage as landed or partial, with evidence path | current CI-governance sync becomes allowed only for landed rows |
 
-## Coverage Ledger Template
-
-`PR-0407` updates the relevant row(s) using this format:
+## Coverage Ledger
 
 | Slice ID | Owned By | Status | Evidence | Notes |
 |------|------|------|------|------|
-| `governance-rule-surface` | `PR-0407` | `pending` | `pending` | Rule E extension and DI-21 reference are not yet reflected in current CI-governance docs |
-| `detector-and-allowlist` | `PR-0407` | `pending` | `pending` | `architecture_check.dart` still lacks the landed duplication detector and its allowlist surface |
-| `output-contract` | `PR-0407` | `pending` | `pending` | Check output still lacks the landed WHAT-WHY-HOW duplication output and the planned reinforcement for existing checks |
+| `governance-rule-surface` | `PR-0407` | `landed` | `docs/architecture/engineering-standards.md`; `docs/releases/v0.4/prs/PR-0407-ci-duplication-detection.md` | Rule E current-doc surface now explicitly covers cross-feature substantive duplication and the narrow allowlist rule without claiming final `CPR-002` promotion |
+| `detector-and-allowlist` | `PR-0407` | `landed` | `tools/ci/architecture_check.dart`; `tools/ci/duplication_allowlist.yaml`; `apps/lazynote_flutter/test/tools/architecture_check_test.dart` | `architecture_check.dart` now contains the landed duplication detector, normalized-line threshold, and file-pair allowlist surface |
+| `output-contract` | `PR-0407` | `landed` | `tools/ci/architecture_check.dart`; `apps/lazynote_flutter/test/tools/architecture_check_test.dart`; `docs/releases/v0.4/prs/PR-0407-ci-duplication-detection.md` | Check N now emits WHAT / WHY / REFERENCE / HOW, and Check 1-3 have the landed reinforcement expected by `DI-21` |
 
 ## Promotion Gate
 
@@ -103,6 +101,15 @@ Current CI-governance sync is allowed only when all of the following are true:
 2. `architecture_check.dart` passes with the landed detector/output behavior in repo;
 3. the landed rule surface is synchronized into current docs with evidence;
 4. `PR-0407` explicitly records the update in this workflow and its own execution notes.
+
+Current landed status in this branch:
+
+- all three coverage rows are marked `landed`;
+- `dart run tools/ci/architecture_check.dart` passes with the landed detector/output behavior;
+- current Rule E docs have been synchronized;
+- this workflow ledger and `PR-0407` spec both record the landing.
+
+This satisfies the in-repo promotion gate for current CI-governance sync, but **does not** by itself promote `CPR-002`; final closeout remains owned by `PR-0405`.
 
 Until all four are satisfied:
 
