@@ -1,7 +1,7 @@
 use lazynote_core::db::open_db_in_memory;
 use lazynote_core::{
     Atom, AtomRepository, FolderDeleteMode, SqliteAtomRepository, SqliteTreeRepository,
-    TreeService, TreeServiceError, ViewHint, WorkspaceNodeKind,
+    TreeRepoError, TreeRepository, TreeService, TreeServiceError, ViewHint, WorkspaceNodeKind,
 };
 // Note: after migration 0011, workspace nodes use `atom_ref` (not `note_ref`)
 // and accept any active atom type (not just notes).
@@ -14,6 +14,17 @@ fn setup() -> rusqlite::Connection {
 fn insert_atom(conn: &rusqlite::Connection, atom: &Atom) {
     let repo = SqliteAtomRepository::try_new(conn).unwrap();
     repo.create_atom(atom).unwrap();
+}
+
+fn default_workspace_id(conn: &rusqlite::Connection) -> Uuid {
+    let workspace_id: String = conn
+        .query_row(
+            "SELECT workspace_id FROM workspaces WHERE is_default = 1;",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    Uuid::parse_str(&workspace_id).unwrap()
 }
 
 #[test]
@@ -47,10 +58,53 @@ fn migration_7_creates_workspace_nodes_table() {
 }
 
 #[test]
+fn list_children_at_root_surfaces_default_workspace_root_only() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let root_children = service.list_children(None).unwrap();
+    assert_eq!(root_children.len(), 1);
+    assert_eq!(root_children[0].display_name, "Default Workspace");
+    assert_eq!(root_children[0].parent_uuid, None);
+}
+
+#[test]
+fn root_level_creates_fall_back_to_default_workspace_root() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+    let default_workspace_id = default_workspace_id(&conn);
+
+    let note_atom = Atom::new(ViewHint::Note, "Note row");
+    insert_atom(&conn, &note_atom);
+
+    let created_folder = service.create_folder(None, "Loose folder").unwrap();
+    assert_eq!(created_folder.parent_uuid, Some(default_workspace_id));
+
+    let created_ref = service
+        .create_atom_ref(None, note_atom.uuid, Some("Loose ref".to_string()))
+        .unwrap();
+    assert_eq!(created_ref.parent_uuid, Some(default_workspace_id));
+
+    let root_children = service.list_children(None).unwrap();
+    assert_eq!(root_children.len(), 1);
+
+    let workspace_children = service.list_children(Some(default_workspace_id)).unwrap();
+    assert!(workspace_children
+        .iter()
+        .any(|node| node.node_uuid == created_folder.node_uuid));
+    assert!(workspace_children
+        .iter()
+        .any(|node| node.node_uuid == created_ref.node_uuid));
+}
+
+#[test]
 fn create_and_list_children_keeps_deterministic_order() {
     let conn = setup();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
+    let default_workspace_id = default_workspace_id(&conn);
 
     let root = service.create_folder(None, "Root").unwrap();
     let child_a = service
@@ -60,7 +114,12 @@ fn create_and_list_children_keeps_deterministic_order() {
 
     let root_children = service.list_children(None).unwrap();
     assert_eq!(root_children.len(), 1);
-    assert_eq!(root_children[0].node_uuid, root.node_uuid);
+    assert_eq!(root_children[0].node_uuid, default_workspace_id);
+
+    let workspace_children = service.list_children(Some(default_workspace_id)).unwrap();
+    assert!(workspace_children
+        .iter()
+        .any(|node| node.node_uuid == root.node_uuid));
 
     let children = service.list_children(Some(root.node_uuid)).unwrap();
     assert_eq!(children.len(), 2);
@@ -153,6 +212,35 @@ fn move_rejects_atom_ref_parent() {
 }
 
 #[test]
+fn move_rejects_root_level_parent_after_0012() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+
+    let folder = service.create_folder(None, "Folder").unwrap();
+
+    let err = service.move_node(folder.node_uuid, None, None).unwrap_err();
+    assert!(matches!(
+        err,
+        TreeServiceError::CannotMoveToRoot(node_uuid) if node_uuid == folder.node_uuid
+    ));
+}
+
+#[test]
+fn repository_move_rejects_root_level_parent_after_0012() {
+    let conn = setup();
+    let repo = SqliteTreeRepository::try_new(&conn).unwrap();
+
+    let folder = repo.create_folder(None, "Folder").unwrap();
+
+    let err = repo.move_node(folder.node_uuid, None, None).unwrap_err();
+    assert!(matches!(
+        err,
+        TreeRepoError::CannotMoveToRoot(node_uuid) if node_uuid == folder.node_uuid
+    ));
+}
+
+#[test]
 fn move_with_target_order_reorders_siblings() {
     let conn = setup();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
@@ -179,6 +267,40 @@ fn move_with_target_order_reorders_siblings() {
     assert_eq!(children[0].sort_order, 0);
     assert_eq!(children[1].sort_order, 1);
     assert_eq!(children[2].sort_order, 2);
+}
+
+#[test]
+fn rename_workspace_root_keeps_workspace_metadata_in_sync() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let service = TreeService::new(tree_repo);
+    let workspace_id = default_workspace_id(&conn);
+
+    service
+        .rename_node(workspace_id, "Renamed Workspace")
+        .unwrap();
+
+    let node_name: String = conn
+        .query_row(
+            "SELECT display_name
+             FROM workspace_nodes
+             WHERE node_uuid = ?1;",
+            [workspace_id.to_string()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let metadata_name: String = conn
+        .query_row(
+            "SELECT name
+             FROM workspaces
+             WHERE workspace_id = ?1;",
+            [workspace_id.to_string()],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    assert_eq!(node_name, "Renamed Workspace");
+    assert_eq!(metadata_name, "Renamed Workspace");
 }
 
 #[test]
@@ -305,6 +427,7 @@ fn delete_folder_dissolve_moves_direct_children_to_root() {
     let conn = setup();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
+    let default_workspace_id = default_workspace_id(&conn);
 
     let note_a = Atom::new(ViewHint::Note, "A");
     let note_b = Atom::new(ViewHint::Note, "B");
@@ -334,11 +457,14 @@ fn delete_folder_dissolve_moves_direct_children_to_root() {
         .delete_folder(folder.node_uuid, FolderDeleteMode::Dissolve)
         .unwrap();
 
-    let root_children = service.list_children(None).unwrap();
-    let root_ids: Vec<_> = root_children.iter().map(|item| item.node_uuid).collect();
-    assert!(root_ids.contains(&direct_note_ref.node_uuid));
-    assert!(root_ids.contains(&child_folder.node_uuid));
-    assert!(!root_ids.contains(&folder.node_uuid));
+    let workspace_children = service.list_children(Some(default_workspace_id)).unwrap();
+    let workspace_ids: Vec<_> = workspace_children
+        .iter()
+        .map(|item| item.node_uuid)
+        .collect();
+    assert!(workspace_ids.contains(&direct_note_ref.node_uuid));
+    assert!(workspace_ids.contains(&child_folder.node_uuid));
+    assert!(!workspace_ids.contains(&folder.node_uuid));
 
     let nested_children = service.list_children(Some(child_folder.node_uuid)).unwrap();
     assert_eq!(nested_children.len(), 1);
@@ -351,6 +477,7 @@ fn delete_folder_delete_all_soft_deletes_unique_atoms_only() {
     let atom_repo = SqliteAtomRepository::try_new(&conn).unwrap();
     let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
     let service = TreeService::new(tree_repo);
+    let default_workspace_id = default_workspace_id(&conn);
 
     let note_only_in_target = Atom::new(ViewHint::Note, "target-only");
     let note_shared = Atom::new(ViewHint::Note, "shared");
@@ -394,10 +521,13 @@ fn delete_folder_delete_all_soft_deletes_unique_atoms_only() {
         TreeServiceError::ParentNotFound(id) if id == target_folder.node_uuid
     ));
 
-    let root_children = service.list_children(None).unwrap();
-    let root_ids: Vec<_> = root_children.iter().map(|item| item.node_uuid).collect();
-    assert!(!root_ids.contains(&target_folder.node_uuid));
-    assert!(root_ids.contains(&other_folder.node_uuid));
+    let workspace_children = service.list_children(Some(default_workspace_id)).unwrap();
+    let workspace_ids: Vec<_> = workspace_children
+        .iter()
+        .map(|item| item.node_uuid)
+        .collect();
+    assert!(!workspace_ids.contains(&target_folder.node_uuid));
+    assert!(workspace_ids.contains(&other_folder.node_uuid));
 
     let shared_in_other_children = service.list_children(Some(other_folder.node_uuid)).unwrap();
     assert_eq!(shared_in_other_children.len(), 1);
@@ -406,7 +536,7 @@ fn delete_folder_delete_all_soft_deletes_unique_atoms_only() {
         shared_ref_in_other.node_uuid
     );
 
-    let deleted_ref_in_target_visible = root_children
+    let deleted_ref_in_target_visible = workspace_children
         .iter()
         .any(|item| item.node_uuid == shared_ref_in_target.node_uuid);
     assert!(!deleted_ref_in_target_visible);

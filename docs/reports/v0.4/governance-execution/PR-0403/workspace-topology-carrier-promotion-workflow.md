@@ -178,18 +178,18 @@ Each PR updates the relevant row(s) using this format:
 
 | Slice ID | Owned By | Status | Evidence | Notes |
 |------|------|------|------|------|
-| `schema-model` | `PR-0408` | `pending` | `pending` | `workspaces`, `designated_folders`, `origin_workspace_id` not yet landed |
-| `migration-protection` | `PR-0408`, `PR-0410` | `pending` | `pending` | migration flow plus runtime/service protection model |
+| `schema-model` | `PR-0408` | `landed` | `crates/lazynote_core/src/db/migrations/mod.rs`; `crates/lazynote_core/src/db/migrations/migration_0012.rs`; `crates/lazynote_core/src/db/migrations/0012_workspace_single_root.sql`; `crates/lazynote_core/src/repo/workspace_meta_repo.rs`; `crates/lazynote_core/tests/migration_0012_test.rs` | `workspaces`, `designated_folders`, `origin_workspace_id`, default-workspace backfill, and read-side workspace metadata bridge are in-repo |
+| `migration-protection` | `PR-0408`, `PR-0410` | `partial` | `crates/lazynote_core/src/db/migrations/0012_workspace_single_root.sql`; `crates/lazynote_core/tests/migration_0012_test.rs` | schema/trigger guards landed in `PR-0408`; runtime/service protection model remains for `PR-0410` |
 | `scoped-query` | `PR-0409` | `pending` | `pending` | subtree-rooted queries and designated-folder-scoped reads |
 | `service-routing` | `PR-0410` | `pending` | `pending` | creation routing, reassign, move/delete protection, origin write-path |
 | `guarded-ffi` | `PR-0411` | `pending` | `pending` | guarded exported contracts and origin-aware access surface |
 | `flutter-core` | `PR-0412` | `pending` | `pending` | core tree service, designated-folder consumption, WorkspaceTreeService B+ shape, mutation-delta ownership, and system-node resolution |
 | `flutter-features` | `PR-0413` | `pending` | `pending` | feature adoption, targeted reload consumption, tree UI layering, controller migration, synthetic removal, and end-to-end workspace consumers |
 | `security-surface` | `PR-0411` and later security work | `pending` | `pending` | only mark landed if actual origin-based gate or explicit security-stage work is implemented |
-| `execution-order` | `PR-0408` through `PR-0413` | `pending` | `pending` | DI-18 sequencing and dependency-order obligations stay explicit until each implementation PR records compliant landing evidence |
+| `execution-order` | `PR-0408` through `PR-0413` | `partial` | `docs/releases/v0.4/prs/PR-0408-schema-migration.md`; `crates/lazynote_core/src/db/migrations/mod.rs`; `crates/lazynote_core/tests/migration_0012_test.rs` | `PR-0408` prerequisite slice is landed with migration-first sequencing evidence; later PR dependencies remain pending |
 | `cutover-cleanup` | `PR-0411` and `PR-0413` | `pending` | `pending` | expand-contract bridge plus strict cleanup rules and contract-stage deletion |
 | `api-doc-ownership` | `PR-0411`, `PR-0413`, and governance audit | `pending` | `pending` | ownership of `ffi-contracts.md`, `API_COMPATIBILITY.md`, `error-codes.md`, and retrospective ADR replay boundaries |
-| `verification-gates` | `PR-0408` through `PR-0413` | `pending` | `pending` | per-PR migration, service, FFI, Flutter, and cleanup verification obligations from `DI-18` |
+| `verification-gates` | `PR-0408` through `PR-0413` | `partial` | `crates/lazynote_core/tests/migration_0012_test.rs`; `crates/lazynote_core/tests/workspace_tree.rs`; `crates/lazynote_core/tests/db_migrations.rs` | `PR-0408` migration/install/upgrade/guard/workspace-compat verification is landed; later per-PR service/FFI/Flutter gates remain pending |
 | `no-move-ci-enforcement` | `PR-0413`, later `DOC-029 / DI-21`, and `PR-0404` | `pending` | `pending` | no additional file moves plus explicit DI-21 CI-enforcement handoff |
 | `legacy-ffi-removal` | `PR-0413` | `pending` | `pending` | Appendix A zero-match removal inventory and cleanup evidence |
 

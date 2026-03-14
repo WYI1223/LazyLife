@@ -54,6 +54,10 @@ pub use repo::tree_repo::{
     SqliteTreeRepository, TreeRepoError, TreeRepoResult, TreeRepository, WorkspaceNode,
     WorkspaceNodeId, WorkspaceNodeKind,
 };
+/// Re-export workspace metadata repository contracts and implementation.
+pub use repo::workspace_meta_repo::{
+    SqliteWorkspaceMetaRepository, WorkspaceMetaRepository, WorkspaceMetadata,
+};
 /// Re-export search query/result models and search entry point.
 pub use search::fts::{search_all, SearchError, SearchHit, SearchQuery, SearchResult};
 /// Re-export atom service facade.

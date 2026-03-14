@@ -1,7 +1,7 @@
 # PR-0408: Schema Migration 0012 — 单根树 + Workspace 元数据 + Designated Folders
 
 - Proposed title: `feat(core): migration 0012 single-root workspace tree with designated folders`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 ### Canonical Clarification (2026-03-13)

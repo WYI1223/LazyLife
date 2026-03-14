@@ -277,10 +277,21 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
 
     assert_eq!(existing_count, 1);
     assert_eq!(missing_count, 1);
-    // Migration 11 backfills task atoms with root-level atom_ref.
+    // Migration 11 backfills task atoms with atom_ref; migration 12 then
+    // re-parents active top-level nodes under the default workspace root.
     assert_eq!(task_count, 1);
 
-    let backfilled_parent: Option<String> = conn
+    let default_workspace_id: String = conn
+        .query_row(
+            "SELECT workspace_id
+             FROM workspaces
+             WHERE is_default = 1;",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    let backfilled_parent: String = conn
         .query_row(
             "SELECT parent_uuid
              FROM workspace_nodes
@@ -292,7 +303,7 @@ fn migration_9_backfills_missing_root_note_refs_for_active_notes() {
             |row| row.get(0),
         )
         .unwrap();
-    assert!(backfilled_parent.is_none());
+    assert_eq!(backfilled_parent, default_workspace_id);
 }
 
 #[test]
@@ -442,6 +453,14 @@ fn migration_11_upgrades_note_ref_to_atom_ref_and_backfills_tasks() {
         .unwrap();
     assert_eq!(deleted_ref_count, 0);
 
+    let default_workspace_id: String = conn
+        .query_row(
+            "SELECT workspace_id FROM workspaces WHERE is_default = 1;",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+
     // Verify: new trigger allows atom_ref for task atoms.
     let new_task_id = Uuid::new_v4().to_string();
     conn.execute(
@@ -452,8 +471,8 @@ fn migration_11_upgrades_note_ref_to_atom_ref_and_backfills_tasks() {
     let new_ref_id = Uuid::new_v4().to_string();
     let insert_result = conn.execute(
         "INSERT INTO workspace_nodes (node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order)
-         VALUES (?1, 'atom_ref', NULL, ?2, 'New Task', 0);",
-        [&new_ref_id, &new_task_id],
+         VALUES (?1, 'atom_ref', ?2, ?3, 'New Task', 0);",
+        [&new_ref_id, &default_workspace_id, &new_task_id],
     );
     assert!(insert_result.is_ok(), "atom_ref should accept task atoms");
 
@@ -462,8 +481,8 @@ fn migration_11_upgrades_note_ref_to_atom_ref_and_backfills_tasks() {
     let ghost_ref_id = Uuid::new_v4().to_string();
     let bad_insert = conn.execute(
         "INSERT INTO workspace_nodes (node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order)
-         VALUES (?1, 'atom_ref', NULL, ?2, 'Ghost', 0);",
-        [&ghost_ref_id, &ghost_id],
+         VALUES (?1, 'atom_ref', ?2, ?3, 'Ghost', 0);",
+        [&ghost_ref_id, &default_workspace_id, &ghost_id],
     );
     assert!(
         bad_insert.is_err(),

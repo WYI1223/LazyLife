@@ -5,7 +5,7 @@
 //! - Provide folder/atom_ref create, rename, move, and list operations.
 //!
 //! # Invariants
-//! - Parent node must exist and be a folder when provided.
+//! - Parent node must exist and be a container node when provided.
 //! - Move operations must not create parent-child cycles.
 //! - `atom_ref` must target an active atom (any view_hint).
 
@@ -46,6 +46,8 @@ pub enum TreeServiceError {
         node_uuid: WorkspaceNodeId,
         parent_uuid: WorkspaceNodeId,
     },
+    /// Root level is reserved for workspace roots after migration 0012.
+    CannotMoveToRoot(WorkspaceNodeId),
     /// Repository-level failure.
     Repo(TreeRepoError),
 }
@@ -68,6 +70,9 @@ impl Display for TreeServiceError {
                 f,
                 "move would create cycle: node {node_uuid} under parent {parent_uuid}"
             ),
+            Self::CannotMoveToRoot(node_uuid) => {
+                write!(f, "workspace node cannot move to root level: {node_uuid}")
+            }
             Self::Repo(err) => write!(f, "{err}"),
         }
     }
@@ -87,6 +92,7 @@ impl From<TreeRepoError> for TreeServiceError {
         match value {
             TreeRepoError::NodeNotFound(node_uuid) => Self::NodeNotFound(node_uuid),
             TreeRepoError::NodeNotFolder(node_uuid) => Self::NodeMustBeFolder(node_uuid),
+            TreeRepoError::CannotMoveToRoot(node_uuid) => Self::CannotMoveToRoot(node_uuid),
             other => Self::Repo(other),
         }
     }
@@ -111,7 +117,7 @@ impl<R: TreeRepository> TreeService<R> {
     ) -> Result<WorkspaceNode, TreeServiceError> {
         let normalized = normalize_display_name(display_name.into())?;
         if let Some(parent_uuid) = parent_uuid {
-            self.ensure_parent_is_folder(parent_uuid)?;
+            self.ensure_parent_is_container(parent_uuid)?;
         }
         self.repo
             .create_folder(parent_uuid, normalized.as_str())
@@ -126,7 +132,7 @@ impl<R: TreeRepository> TreeService<R> {
         display_name: Option<String>,
     ) -> Result<WorkspaceNode, TreeServiceError> {
         if let Some(parent_uuid) = parent_uuid {
-            self.ensure_parent_is_folder(parent_uuid)?;
+            self.ensure_parent_is_container(parent_uuid)?;
         }
         self.ensure_atom_exists(atom_uuid)?;
 
@@ -146,7 +152,7 @@ impl<R: TreeRepository> TreeService<R> {
         parent_uuid: Option<WorkspaceNodeId>,
     ) -> Result<Vec<WorkspaceNode>, TreeServiceError> {
         if let Some(parent_uuid) = parent_uuid {
-            self.ensure_parent_is_folder(parent_uuid)?;
+            self.ensure_parent_is_container(parent_uuid)?;
         }
         self.repo
             .list_children(parent_uuid, false)
@@ -175,6 +181,9 @@ impl<R: TreeRepository> TreeService<R> {
         self.repo
             .get_node(node_uuid, false)?
             .ok_or(TreeServiceError::NodeNotFound(node_uuid))?;
+        if new_parent_uuid.is_none() {
+            return Err(TreeServiceError::CannotMoveToRoot(node_uuid));
+        }
 
         if let Some(parent_uuid) = new_parent_uuid {
             if parent_uuid == node_uuid {
@@ -184,7 +193,7 @@ impl<R: TreeRepository> TreeService<R> {
                 });
             }
 
-            self.ensure_parent_is_folder(parent_uuid)?;
+            self.ensure_parent_is_container(parent_uuid)?;
             if self.would_create_cycle(node_uuid, parent_uuid)? {
                 return Err(TreeServiceError::CycleDetected {
                     node_uuid,
@@ -229,7 +238,7 @@ impl<R: TreeRepository> TreeService<R> {
         self.repo.ancestor_path(atom_uuid).map_err(Into::into)
     }
 
-    fn ensure_parent_is_folder(
+    fn ensure_parent_is_container(
         &self,
         parent_uuid: WorkspaceNodeId,
     ) -> Result<(), TreeServiceError> {
@@ -237,7 +246,7 @@ impl<R: TreeRepository> TreeService<R> {
             .repo
             .get_node(parent_uuid, false)?
             .ok_or(TreeServiceError::ParentNotFound(parent_uuid))?;
-        if parent.kind != WorkspaceNodeKind::Folder {
+        if parent.kind != WorkspaceNodeKind::Folder && parent.kind != WorkspaceNodeKind::Workspace {
             return Err(TreeServiceError::ParentMustBeFolder(parent_uuid));
         }
         Ok(())

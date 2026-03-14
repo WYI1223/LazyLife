@@ -11,61 +11,73 @@
 //! # See also
 //! - docs/releases/v0.1/prs/PR-0005-sqlite-schema-migrations.md
 
+mod migration_0012;
+
 use crate::db::{DbError, DbResult};
 use log::{error, info, warn};
-use rusqlite::Connection;
+use rusqlite::{Connection, Transaction};
 use std::time::Instant;
 
 #[derive(Debug, Clone, Copy)]
 struct Migration {
     version: u32,
-    sql: &'static str,
+    body: MigrationBody,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum MigrationBody {
+    Sql(&'static str),
+    RustFn(fn(&Transaction<'_>) -> DbResult<()>),
 }
 
 const MIGRATIONS: &[Migration] = &[
     Migration {
         version: 1,
-        sql: include_str!("0001_init.sql"),
+        body: MigrationBody::Sql(include_str!("0001_init.sql")),
     },
     Migration {
         version: 2,
-        sql: include_str!("0002_tags.sql"),
+        body: MigrationBody::Sql(include_str!("0002_tags.sql")),
     },
     Migration {
         version: 3,
-        sql: include_str!("0003_external_mappings.sql"),
+        body: MigrationBody::Sql(include_str!("0003_external_mappings.sql")),
     },
     Migration {
         version: 4,
-        sql: include_str!("0004_fts.sql"),
+        body: MigrationBody::Sql(include_str!("0004_fts.sql")),
     },
     Migration {
         version: 5,
-        sql: include_str!("0005_note_preview.sql"),
+        body: MigrationBody::Sql(include_str!("0005_note_preview.sql")),
     },
     Migration {
         version: 6,
-        sql: include_str!("0006_time_matrix.sql"),
+        body: MigrationBody::Sql(include_str!("0006_time_matrix.sql")),
     },
     Migration {
         version: 7,
-        sql: include_str!("0007_workspace_tree.sql"),
+        body: MigrationBody::Sql(include_str!("0007_workspace_tree.sql")),
     },
     Migration {
         version: 8,
-        sql: include_str!("0008_workspace_tree_delete_policy.sql"),
+        body: MigrationBody::Sql(include_str!("0008_workspace_tree_delete_policy.sql")),
     },
     Migration {
         version: 9,
-        sql: include_str!("0009_workspace_note_ref_backfill.sql"),
+        body: MigrationBody::Sql(include_str!("0009_workspace_note_ref_backfill.sql")),
     },
     Migration {
         version: 10,
-        sql: include_str!("0010_s1_core_fields.sql"),
+        body: MigrationBody::Sql(include_str!("0010_s1_core_fields.sql")),
     },
     Migration {
         version: 11,
-        sql: include_str!("0011_atom_ref_upgrade.sql"),
+        body: MigrationBody::Sql(include_str!("0011_atom_ref_upgrade.sql")),
+    },
+    Migration {
+        version: 12,
+        body: MigrationBody::RustFn(migration_0012::apply_migration_0012),
     },
 ];
 
@@ -137,15 +149,7 @@ pub fn apply_migrations(conn: &mut Connection) -> DbResult<()> {
             migration.version
         );
 
-        tx.execute_batch(migration.sql).map_err(|err| {
-            error!(
-                "event=db_migrate_step_done module=db status=error target_version={} duration_ms={} error_code=migration_sql_failed error={}",
-                migration.version,
-                step_started_at.elapsed().as_millis(),
-                err
-            );
-            DbError::Sqlite(err)
-        })?;
+        execute_migration_body(&tx, *migration, &step_started_at)?;
 
         tx.execute_batch(&format!("PRAGMA user_version = {};", migration.version))
             .map_err(|err| {
@@ -194,6 +198,33 @@ fn current_user_version(conn: &Connection) -> DbResult<u32> {
     Ok(version)
 }
 
+fn execute_migration_body(
+    tx: &Transaction<'_>,
+    migration: Migration,
+    step_started_at: &Instant,
+) -> DbResult<()> {
+    match migration.body {
+        MigrationBody::Sql(sql) => tx.execute_batch(sql).map_err(|err| {
+            error!(
+                "event=db_migrate_step_done module=db status=error target_version={} duration_ms={} error_code=migration_sql_failed error={}",
+                migration.version,
+                step_started_at.elapsed().as_millis(),
+                err
+            );
+            DbError::Sqlite(err)
+        }),
+        MigrationBody::RustFn(run) => run(tx).map_err(|err| {
+            error!(
+                "event=db_migrate_step_done module=db status=error target_version={} duration_ms={} error_code=migration_rust_failed error={}",
+                migration.version,
+                step_started_at.elapsed().as_millis(),
+                err
+            );
+            err
+        }),
+    }
+}
+
 fn validate_registry(migrations: &[Migration]) -> DbResult<()> {
     let mut previous = 0;
     for migration in migrations {
@@ -217,7 +248,7 @@ fn validate_registry(migrations: &[Migration]) -> DbResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_registry, Migration};
+    use super::{validate_registry, Migration, MigrationBody};
     use crate::db::DbError;
 
     #[test]
@@ -225,11 +256,11 @@ mod tests {
         let migrations = [
             Migration {
                 version: 1,
-                sql: "SELECT 1;",
+                body: MigrationBody::Sql("SELECT 1;"),
             },
             Migration {
                 version: 1,
-                sql: "SELECT 1;",
+                body: MigrationBody::Sql("SELECT 1;"),
             },
         ];
 
@@ -241,7 +272,7 @@ mod tests {
     fn registry_rejects_zero_version() {
         let migrations = [Migration {
             version: 0,
-            sql: "SELECT 1;",
+            body: MigrationBody::Sql("SELECT 1;"),
         }];
 
         let err = validate_registry(&migrations).unwrap_err();
