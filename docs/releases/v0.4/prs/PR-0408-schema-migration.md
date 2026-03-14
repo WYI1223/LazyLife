@@ -1,9 +1,19 @@
 # PR-0408: Schema Migration 0012 — 单根树 + Workspace 元数据 + Designated Folders
 
 - Proposed title: `feat(core): migration 0012 single-root workspace tree with designated folders`
-- Status: Draft
+- Status: Merged
 
 ## Goal
+### Canonical Clarification (2026-03-13)
+
+This PR now targets a **multi-root-capable** workspace schema while migrating current data into one default workspace. The historical `single_root` wording remains part of the PR/file naming lineage, but the landed schema direction for this PR follows the active DI-15 model:
+
+- `workspace_nodes.kind` supports `workspace`;
+- `workspaces` and `designated_folders` are added;
+- `atoms.origin_workspace_id` is added and backfilled;
+- workspace-root and designated-folder guards are installed;
+- downstream schema assumptions are left explicit for `PR-0409` through `PR-0413`.
+
 
 新增 Migration 0012，建立单根 workspace 树结构：`workspaces` 表、designated folders 映射、`atoms.origin_workspace_id` 字段、系统节点回填、DB 触发器保护。为后续 PR-0409~0413 提供 schema 基础。
 
@@ -24,6 +34,15 @@ Shared promotion register:
 | Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `schema-model` 与 schema 侧 `migration-protection` ledger，同时更新 `execution-order` 与 `verification-gates` rows，并显式消费 `OI-045` 与本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
 
 ## Scope
+### Scope Clarification (2026-03-13)
+
+Canonical execution boundary for this PR:
+
+- `0012` is the first consumer of a reusable `MigrationBody::{Sql, RustFn}` framework;
+- `tree_repo` receives only the minimum latest-schema compatibility changes needed for `kind='workspace'`;
+- designated-folder-aware creation routing remains out of scope;
+- later workspace PRs should consume the post-0012 schema through a short downstream contract, not by restating migration internals.
+
 
 In scope:
 - 新增 `0012_workspace_single_root.sql`
@@ -123,6 +142,13 @@ enum MigrationBody {
 }
 ```
 
+Canonical execution rule:
+
+- versions `1` through `11` remain SQL-backed entries;
+- `0012` becomes the first `RustFn` migration;
+- `apply_migrations()` must not gain a version-specific special case such as `if version == 12`;
+- transaction scope, migration ordering, logging, and `PRAGMA user_version` semantics must remain unchanged.
+
 ### WorkspaceMetaRepository 接口
 
 ```rust
@@ -135,6 +161,47 @@ pub trait WorkspaceMetaRepository {
 ```
 
 ## Task Breakdown
+### Latest-Schema Compatibility Boundary
+
+After `0012`, latest schema no longer means "arbitrary user folder / atom_ref can live directly at global root". The canonical latest-schema model becomes:
+
+- top level = workspace roots;
+- user nodes live under a workspace root;
+- current migrated data has exactly one default workspace root.
+
+This PR therefore includes the minimum compatibility surface required for latest-schema consumers:
+
+1. `WorkspaceNodeKind` adds `Workspace`;
+2. `tree_repo` can parse and return `kind='workspace'`;
+3. `create_folder(None)` and `create_atom_ref(None)` fall back to the default workspace root;
+4. designated-folder-aware routing remains out of scope for this PR.
+
+### Downstream Contract For PR-0409 Through PR-0413
+
+Later workspace PRs may rely on the following post-0012 assumptions without restating migration internals:
+
+1. `workspace_nodes.kind` includes `workspace`;
+2. `workspaces` exists and current migrated data has exactly one default workspace;
+3. `designated_folders` exists and current migrated data includes `inbox/tasks/calendar`;
+4. `atoms.origin_workspace_id` exists and legacy atoms are backfilled;
+5. workspace roots cannot be re-parented or have kind changed;
+6. designated folders cannot be deleted while still designated;
+7. `WorkspaceMetaRepository` is the read-side bridge for default workspace and designated-folder lookup.
+
+This downstream contract should be cited by `PR-0409` through `PR-0413` together with the workspace-topology workflow ledger.
+
+### Refined Task Breakdown (Canonical)
+
+| Task | Lane | Content | Files | Dependency |
+|------|------|------|------|------|
+| T0 | Rust | migration framework upgrade to `MigrationBody::{Sql, RustFn}` | `crates/lazynote_core/src/db/migrations/mod.rs` | — |
+| T1 | Rust | static SQL fragments for schema, rebuild, triggers, assertions | `crates/lazynote_core/src/db/migrations/0012_workspace_single_root.sql` | T0 |
+| T2 | Rust | migration 12 Rust orchestration: UUIDs, execution order, bound updates, assertions | `crates/lazynote_core/src/db/migrations/migration_0012.rs` | T0-T1 |
+| T3 | Rust | `WorkspaceMetaRepository` | `crates/lazynote_core/src/repo/workspace_meta_repo.rs` | T2 |
+| T4 | Rust | latest-schema compatibility for `tree_repo` and workspace read/write fallback | `crates/lazynote_core/src/repo/tree_repo.rs` | T2 |
+| T5 | Rust | migration tests, upgrade tests, trigger negative tests | `crates/lazynote_core/tests/migration_0012_test.rs` | T2-T4 |
+| T6 | Docs | workflow ledger, downstream contract, and spec sync | workspace workflow + this spec | T2-T5 |
+| T7 | Verification | `cargo fmt`, `clippy`, `cargo test`, diff audit | `crates/` + docs | T6 |
 
 | Task | Lane | 内容 | 文件 | 估算 | 依赖 |
 |------|------|------|------|------|------|
@@ -146,6 +213,14 @@ pub trait WorkspaceMetaRepository {
 | T5 | Rust | 触发器负测（5 项） | `crates/lazynote_core/tests/migration_0012_test.rs` | TBD | T1 |
 
 ## Planned File Changes
+### Additional Canonical File Changes
+
+- `[add]` `crates/lazynote_core/src/db/migrations/migration_0012.rs`
+- `[edit]` `crates/lazynote_core/src/db/migrations/mod.rs` for reusable migration-body dispatch
+- `[edit]` `crates/lazynote_core/src/repo/tree_repo.rs` for `kind='workspace'` compatibility
+- `[edit]` `crates/lazynote_core/tests/workspace_tree.rs`
+- `[edit]` `crates/lazynote_core/tests/db_migrations.rs`
+- `[edit]` `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md`
 
 - `[add]` crates/lazynote_core/src/db/migrations/0012_workspace_single_root.sql
 - `[edit]` crates/lazynote_core/src/db/migrations/mod.rs (注册 migration 12)
@@ -207,4 +282,11 @@ grep -c "protect_workspace_root" crates/lazynote_core/src/db/migrations/0012_wor
 - [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
 - [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 migration-test 部分与证据路径
 - [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
+### Additional Canonical Acceptance Criteria
+
+- [ ] migration registry supports `MigrationBody::{Sql, RustFn}` without a version-12 special case
+- [ ] `0012` is implemented as the first Rust-backed migration consumer
+- [ ] latest-schema `tree_repo` consumers can parse `kind='workspace'`
+- [ ] `create_folder(None)` and `create_atom_ref(None)` remain usable through default-workspace fallback
+- [ ] this spec records a downstream contract sufficient for `PR-0409` through `PR-0413`
 - [ ] PR spec Status updated to Merged

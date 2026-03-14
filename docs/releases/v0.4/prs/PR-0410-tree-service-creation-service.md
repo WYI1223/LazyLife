@@ -5,6 +5,16 @@
 
 ## Goal
 
+### Dependency Clarification (2026-03-13)
+
+This PR consumes the **post-0012 schema contract** from `PR-0408`. It may rely on:
+
+- workspace roots being first-class `workspace_nodes`;
+- designated folders already existing as protected schema state;
+- `WorkspaceMetaRepository` already covering the read-side metadata needed for default-workspace and designated-folder lookup.
+
+This PR is where service-routing and designated reassignment semantics land. It should not re-specify migration/backfill behavior from `PR-0408`.
+
 增强 TreeService（签名修复、保护规则、move 硬约束），引入 CreationService 统一 atom 创建路由（`resolve_creation_role` + `origin_workspace_id` 事务写入），实现 `reassign_designated` repo/service 层。
 
 前置条件：PR-0408（需要 Migration 0012 的 schema 和系统节点）

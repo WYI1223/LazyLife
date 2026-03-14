@@ -29,6 +29,8 @@ pub enum DbError {
     Sqlite(rusqlite::Error),
     /// Internal migration registry definition is malformed.
     InvalidMigrationRegistry(&'static str),
+    /// One migration step completed SQL execution but violated required invariants.
+    MigrationInvariantFailed(&'static str),
     /// Database schema version is newer than this binary supports.
     UnsupportedSchemaVersion {
         db_version: u32,
@@ -42,6 +44,9 @@ impl Display for DbError {
             Self::Sqlite(err) => write!(f, "{err}"),
             Self::InvalidMigrationRegistry(details) => {
                 write!(f, "invalid migration registry: {details}")
+            }
+            Self::MigrationInvariantFailed(details) => {
+                write!(f, "migration invariant failed: {details}")
             }
             Self::UnsupportedSchemaVersion {
                 db_version,
@@ -59,6 +64,7 @@ impl Error for DbError {
         match self {
             Self::Sqlite(err) => Some(err),
             Self::InvalidMigrationRegistry(_) => None,
+            Self::MigrationInvariantFailed(_) => None,
             Self::UnsupportedSchemaVersion { .. } => None,
         }
     }

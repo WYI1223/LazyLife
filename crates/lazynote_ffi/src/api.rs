@@ -413,6 +413,7 @@ enum WorkspaceFfiError {
     ParentNotFolder(String),
     AtomNotFound(String),
     CycleDetected(String),
+    CannotMoveToRoot(String),
     DbBusy(String),
     DbError(String),
     Internal(String),
@@ -432,6 +433,7 @@ impl WorkspaceFfiError {
             Self::ParentNotFolder(_) => "parent_not_folder",
             Self::AtomNotFound(_) => "atom_not_found",
             Self::CycleDetected(_) => "cycle_detected",
+            Self::CannotMoveToRoot(_) => "cannot_move_to_root",
             Self::DbBusy(_) => "db_busy",
             Self::DbError(_) => "db_error",
             Self::Internal(_) => "internal_error",
@@ -453,6 +455,9 @@ impl WorkspaceFfiError {
             Self::ParentNotFolder(value) => format!("workspace parent is not a folder: {value}"),
             Self::AtomNotFound(value) => format!("workspace atom not found: {value}"),
             Self::CycleDetected(value) => format!("workspace cycle detected: {value}"),
+            Self::CannotMoveToRoot(value) => {
+                format!("workspace node cannot move to root level: {value}")
+            }
             Self::DbBusy(value) => format!("workspace database busy: {value}"),
             Self::DbError(value) => format!("workspace database error: {value}"),
             Self::Internal(value) => format!("workspace internal error: {value}"),
@@ -1024,7 +1029,7 @@ fn workspace_rename_node_impl(node_id: String, new_name: String) -> WorkspaceAct
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - `new_parent_id = None` moves node to root level.
+/// - `new_parent_id = None` is rejected because root level is reserved for workspace roots.
 #[flutter_rust_bridge::frb]
 pub async fn workspace_move_node(
     node_id: String,
@@ -1260,6 +1265,7 @@ fn to_atom_list_item_from_note(nr: NoteRecord) -> AtomListItem {
 
 fn workspace_node_kind_label(kind: WorkspaceNodeKind) -> &'static str {
     match kind {
+        WorkspaceNodeKind::Workspace => "workspace",
         WorkspaceNodeKind::Folder => "folder",
         WorkspaceNodeKind::AtomRef => "atom_ref",
     }
@@ -1397,6 +1403,9 @@ fn map_tree_repo_error(err: TreeRepoError) -> WorkspaceFfiError {
             format!("missing required column `{column}` in table `{table}`"),
         ),
         TreeRepoError::InvalidData(details) => WorkspaceFfiError::Internal(details),
+        TreeRepoError::CannotMoveToRoot(node_id) => {
+            WorkspaceFfiError::CannotMoveToRoot(node_id.to_string())
+        }
     }
 }
 
@@ -1424,6 +1433,9 @@ fn map_tree_service_error(err: TreeServiceError) -> WorkspaceFfiError {
             node_uuid,
             parent_uuid,
         } => WorkspaceFfiError::CycleDetected(format!("node={node_uuid} parent={parent_uuid}")),
+        TreeServiceError::CannotMoveToRoot(node_uuid) => {
+            WorkspaceFfiError::CannotMoveToRoot(node_uuid.to_string())
+        }
         TreeServiceError::Repo(repo_err) => map_tree_repo_error(repo_err),
     }
 }
@@ -2332,11 +2344,12 @@ mod tests {
             .node_uuid
             .expect("note_create should return node_uuid");
         let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+        let default_workspace_id = default_workspace_node_id();
 
-        // Root level must contain exactly one atom_ref for this atom.
-        let root_children = workspace_list_children_impl(None);
-        assert!(root_children.ok, "{}", root_children.message);
-        let root_refs: Vec<_> = root_children
+        // Default workspace root must contain exactly one atom_ref for this atom.
+        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
+        assert!(workspace_children.ok, "{}", workspace_children.message);
+        let root_refs: Vec<_> = workspace_children
             .items
             .iter()
             .filter(|n| n.atom_id.as_deref() == Some(atom_id.as_str()))
@@ -2362,14 +2375,18 @@ mod tests {
         let node_uuid = created
             .node_uuid
             .expect("entry_create_note should return node_uuid");
+        let default_workspace_id = default_workspace_node_id();
 
-        // Verify atom_ref exists at root level.
-        let root_children = workspace_list_children_impl(None);
-        assert!(root_children.ok, "{}", root_children.message);
-        let found = root_children.items.iter().any(|n| n.node_id == node_uuid);
+        // Verify atom_ref exists under the default workspace root.
+        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
+        assert!(workspace_children.ok, "{}", workspace_children.message);
+        let found = workspace_children
+            .items
+            .iter()
+            .any(|n| n.node_id == node_uuid);
         assert!(
             found,
-            "atom_ref from entry_create_note must appear at root; node_uuid={}",
+            "atom_ref from entry_create_note must appear under default workspace; node_uuid={}",
             node_uuid
         );
     }
@@ -2383,14 +2400,18 @@ mod tests {
         let node_uuid = created
             .node_uuid
             .expect("entry_create_task should return node_uuid");
+        let default_workspace_id = default_workspace_node_id();
 
-        // Verify atom_ref exists at root level.
-        let root_children = workspace_list_children_impl(None);
-        assert!(root_children.ok, "{}", root_children.message);
-        let found = root_children.items.iter().any(|n| n.node_id == node_uuid);
+        // Verify atom_ref exists under the default workspace root.
+        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
+        assert!(workspace_children.ok, "{}", workspace_children.message);
+        let found = workspace_children
+            .items
+            .iter()
+            .any(|n| n.node_id == node_uuid);
         assert!(
             found,
-            "atom_ref from entry_create_task must appear at root; node_uuid={}",
+            "atom_ref from entry_create_task must appear under default workspace; node_uuid={}",
             node_uuid
         );
     }
@@ -2408,14 +2429,18 @@ mod tests {
         let node_uuid = created
             .node_uuid
             .expect("entry_schedule should return node_uuid");
+        let default_workspace_id = default_workspace_node_id();
 
-        // Verify atom_ref exists at root level.
-        let root_children = workspace_list_children_impl(None);
-        assert!(root_children.ok, "{}", root_children.message);
-        let found = root_children.items.iter().any(|n| n.node_id == node_uuid);
+        // Verify atom_ref exists under the default workspace root.
+        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
+        assert!(workspace_children.ok, "{}", workspace_children.message);
+        let found = workspace_children
+            .items
+            .iter()
+            .any(|n| n.node_id == node_uuid);
         assert!(
             found,
-            "atom_ref from entry_schedule must appear at root; node_uuid={}",
+            "atom_ref from entry_schedule must appear under default workspace; node_uuid={}",
             node_uuid
         );
     }
@@ -2627,6 +2652,18 @@ mod tests {
             .to_string()
     }
 
+    fn default_workspace_node_id() -> String {
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        conn.query_row(
+            "SELECT workspace_id
+             FROM workspaces
+             WHERE is_default = 1;",
+            [],
+            |row| row.get(0),
+        )
+        .expect("default workspace id")
+    }
+
     fn create_workspace_atom_ref_node() -> String {
         let response = note_create_impl("workspace note".to_string(), None);
         assert!(response.ok, "{}", response.message);
@@ -2650,10 +2687,14 @@ mod tests {
         let response = workspace_create_folder_impl(None, name.clone());
         assert!(response.ok, "{}", response.message);
         let node = response.node.expect("workspace node payload");
+        let default_workspace_id = default_workspace_node_id();
         assert_eq!(node.kind, "folder");
         assert_eq!(node.display_name, name);
         assert!(uuid::Uuid::parse_str(node.node_id.as_str()).is_ok());
-        assert!(node.parent_node_id.is_none());
+        assert_eq!(
+            node.parent_node_id.as_deref(),
+            Some(default_workspace_id.as_str())
+        );
         assert!(node.atom_id.is_none());
     }
 
@@ -2696,15 +2737,16 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let name = unique_token("workspace-list-root");
         let created_id = create_workspace_folder_via_ffi(name.as_str());
+        let default_workspace_id = default_workspace_node_id();
 
-        let response = workspace_list_children_impl(None);
+        let response = workspace_list_children_impl(Some(default_workspace_id));
         assert!(response.ok, "{}", response.message);
         assert!(
             response
                 .items
                 .iter()
                 .any(|item| item.node_id == created_id && item.display_name == name),
-            "created root folder should appear in list_children(None)"
+            "created folder should appear under the default workspace root"
         );
     }
 
@@ -2751,6 +2793,47 @@ mod tests {
     }
 
     #[test]
+    fn workspace_rename_root_keeps_workspace_metadata_in_sync() {
+        let _guard = acquire_test_db_lock();
+        let conn = open_db(super::resolve_entry_db_path()).unwrap();
+        let workspace_id: String = conn
+            .query_row(
+                "SELECT workspace_id FROM workspaces WHERE is_default = 1;",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        drop(conn);
+
+        let response =
+            workspace_rename_node_impl(workspace_id.clone(), "Renamed Workspace".to_string());
+        assert!(response.ok, "{}", response.message);
+
+        let verify_conn = open_db(super::resolve_entry_db_path()).unwrap();
+        let node_name: String = verify_conn
+            .query_row(
+                "SELECT display_name
+                 FROM workspace_nodes
+                 WHERE node_uuid = ?1;",
+                [workspace_id.as_str()],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let metadata_name: String = verify_conn
+            .query_row(
+                "SELECT name
+                 FROM workspaces
+                 WHERE workspace_id = ?1;",
+                [workspace_id.as_str()],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(node_name, "Renamed Workspace");
+        assert_eq!(metadata_name, "Renamed Workspace");
+    }
+
+    #[test]
     fn workspace_move_node_rejects_cycle() {
         let _guard = acquire_test_db_lock();
         let parent_id = create_workspace_folder_via_ffi("move-parent");
@@ -2766,6 +2849,16 @@ mod tests {
         let move_response = workspace_move_node_impl(parent_id, Some(child_id), None);
         assert!(!move_response.ok);
         assert_eq!(move_response.error_code.as_deref(), Some("cycle_detected"));
+    }
+
+    #[test]
+    fn workspace_move_node_rejects_root_level_target() {
+        let _guard = acquire_test_db_lock();
+        let node_id = create_workspace_folder_via_ffi("move-root-target");
+
+        let response = workspace_move_node_impl(node_id, None, None);
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("cannot_move_to_root"));
     }
 
     #[test]
