@@ -112,26 +112,27 @@ bool _runGateA() {
     excludeGlobs: ['bindings', 'frb_generated'],
   );
 
-  // A2: atom_ref observability — Rust integration tests exist
+  // A2: atom_ref observability — Rust integration tests exist for
+  // designated-folder routing after PR-0410.
   _checkRustTestExists(
     'atom_ref: note_create with parent',
     'note_create_with_parent_places_atom_ref_under_folder',
   );
   _checkRustTestExists(
-    'atom_ref: note_create at root',
-    'note_create_without_parent_places_atom_ref_at_root',
+    'atom_ref: note_create without parent routes to inbox',
+    'note_create_without_parent_routes_atom_ref_to_inbox_designated_folder',
   );
   _checkRustTestExists(
-    'atom_ref: entry_create_note',
-    'entry_create_note_places_atom_ref_at_root',
+    'atom_ref: entry_create_note routes to inbox',
+    'entry_create_note_routes_atom_ref_to_inbox_designated_folder',
   );
   _checkRustTestExists(
-    'atom_ref: entry_create_task',
-    'entry_create_task_places_atom_ref_at_root',
+    'atom_ref: entry_create_task routes to tasks',
+    'entry_create_task_routes_atom_ref_to_tasks_designated_folder',
   );
   _checkRustTestExists(
-    'atom_ref: entry_schedule',
-    'entry_schedule_places_atom_ref_at_root',
+    'atom_ref: entry_schedule routes to calendar',
+    'entry_schedule_routes_atom_ref_to_calendar_designated_folder',
   );
 
   // A3: Tasks/Calendar zero direct scheduler imports (S7)
