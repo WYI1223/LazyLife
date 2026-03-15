@@ -29,9 +29,7 @@ void main() {
 
     expect(
       content,
-      isNot(
-        contains('note_create_without_parent_places_atom_ref_at_root'),
-      ),
+      isNot(contains('note_create_without_parent_places_atom_ref_at_root')),
     );
     expect(
       content,
@@ -41,9 +39,6 @@ void main() {
       content,
       isNot(contains('entry_create_task_places_atom_ref_at_root')),
     );
-    expect(
-      content,
-      isNot(contains('entry_schedule_places_atom_ref_at_root')),
-    );
+    expect(content, isNot(contains('entry_schedule_places_atom_ref_at_root')));
   });
 }
