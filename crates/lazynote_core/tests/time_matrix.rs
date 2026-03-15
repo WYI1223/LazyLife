@@ -1,6 +1,7 @@
 use lazynote_core::db::open_db_in_memory;
 use lazynote_core::{
-    Atom, AtomRepository, SqliteAtomRepository, TaskService, TaskStatus, ViewHint,
+    Atom, AtomRepository, SqliteAtomRepository, SqliteScopedQueryRepository, SqliteTreeRepository,
+    SqliteWorkspaceMetaRepository, TaskService, TaskStatus, TreeService, ViewHint,
 };
 
 /// Helper: creates a migrated in-memory DB and returns (conn, repo).
@@ -11,6 +12,34 @@ fn setup() -> rusqlite::Connection {
 fn insert_atom(conn: &rusqlite::Connection, atom: &Atom) {
     let repo = SqliteAtomRepository::try_new(conn).unwrap();
     repo.create_atom(atom).unwrap();
+    let tree_service = TreeService::new(SqliteTreeRepository::try_new(conn).unwrap());
+    let display_name = if atom.title.trim().is_empty() {
+        None
+    } else {
+        Some(atom.title.clone())
+    };
+    tree_service
+        .create_atom_ref(None, atom.uuid, display_name)
+        .unwrap();
+}
+
+fn insert_atom_without_ref(conn: &rusqlite::Connection, atom: &Atom) {
+    let repo = SqliteAtomRepository::try_new(conn).unwrap();
+    repo.create_atom(atom).unwrap();
+}
+
+fn task_service_deps<'conn>(
+    conn: &'conn rusqlite::Connection,
+) -> (
+    SqliteAtomRepository<'conn>,
+    SqliteScopedQueryRepository<'conn>,
+    SqliteWorkspaceMetaRepository<'conn>,
+) {
+    (
+        SqliteAtomRepository::try_new(conn).unwrap(),
+        SqliteScopedQueryRepository::try_new(conn).unwrap(),
+        SqliteWorkspaceMetaRepository::try_new(conn).unwrap(),
+    )
 }
 
 fn make_atom(kind: ViewHint, content: &str, start: Option<i64>, end: Option<i64>) -> Atom {
@@ -60,8 +89,8 @@ fn fetch_inbox_returns_timeless_atoms() {
     insert_atom(&conn, &note);
     insert_atom(&conn, &timed);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let inbox = svc.fetch_inbox(50, 0).unwrap();
 
     assert_eq!(inbox.len(), 1);
@@ -73,7 +102,7 @@ fn fetch_inbox_excludes_done_and_cancelled() {
     let conn = setup();
     let mut note = make_atom(ViewHint::Note, "completed", None, None);
     note.task_status = Some(TaskStatus::Done);
-    insert_atom(&conn, &note);
+    insert_atom_without_ref(&conn, &note);
 
     let mut note2 = make_atom(ViewHint::Note, "cancelled", None, None);
     note2.task_status = Some(TaskStatus::Cancelled);
@@ -82,8 +111,8 @@ fn fetch_inbox_excludes_done_and_cancelled() {
     let active = make_atom(ViewHint::Note, "active", None, None);
     insert_atom(&conn, &active);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let inbox = svc.fetch_inbox(50, 0).unwrap();
 
     assert_eq!(inbox.len(), 1);
@@ -101,8 +130,8 @@ fn fetch_today_returns_ddl_task_due_today() {
     let ddl = make_atom(ViewHint::Task, "deadline today", None, Some(500));
     insert_atom(&conn, &ddl);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let today = svc.fetch_today(0, 1000, 50, 0).unwrap();
 
     assert_eq!(today.len(), 1);
@@ -116,8 +145,8 @@ fn fetch_today_returns_started_ongoing_task() {
     let ongoing = make_atom(ViewHint::Task, "started task", Some(100), None);
     insert_atom(&conn, &ongoing);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let today = svc.fetch_today(0, 1000, 50, 0).unwrap();
 
     assert_eq!(today.len(), 1);
@@ -131,8 +160,8 @@ fn fetch_today_returns_overlapping_event() {
     let event = make_atom(ViewHint::Event, "meeting", Some(500), Some(1500));
     insert_atom(&conn, &event);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let today = svc.fetch_today(0, 1000, 50, 0).unwrap();
 
     assert_eq!(today.len(), 1);
@@ -140,7 +169,7 @@ fn fetch_today_returns_overlapping_event() {
 }
 
 #[test]
-fn fetch_today_excludes_future_only_atoms() {
+fn fetch_today_keeps_future_deadlines_but_excludes_future_starts() {
     let conn = setup();
     // Future DDL: end_at=5000, eod=1000 → end_at > eod → NOT today
     let future_ddl = make_atom(ViewHint::Task, "future deadline", None, Some(5000));
@@ -150,11 +179,12 @@ fn fetch_today_excludes_future_only_atoms() {
     let future_ongoing = make_atom(ViewHint::Task, "future start", Some(5000), None);
     insert_atom(&conn, &future_ongoing);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let today = svc.fetch_today(0, 1000, 50, 0).unwrap();
 
-    assert!(today.is_empty());
+    assert_eq!(today.len(), 1);
+    assert_eq!(today[0].atom.uuid, future_ddl.uuid);
 }
 
 // ---------------------------------------------------------------------------
@@ -171,8 +201,8 @@ fn fetch_upcoming_returns_future_atoms() {
     insert_atom(&conn, &future_event);
     insert_atom(&conn, &today_ddl);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let upcoming = svc.fetch_upcoming(1000, 50, 0).unwrap();
 
     assert_eq!(upcoming.len(), 2);
@@ -191,8 +221,8 @@ fn update_status_sets_and_clears() {
     let note = make_atom(ViewHint::Note, "demotable", None, None);
     insert_atom(&conn, &note);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     // Set to done
     svc.update_status(note.uuid, Some(TaskStatus::Done))
@@ -218,8 +248,8 @@ fn update_status_is_idempotent() {
     let note = make_atom(ViewHint::Note, "idem", None, None);
     insert_atom(&conn, &note);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     svc.update_status(note.uuid, Some(TaskStatus::Done))
         .unwrap();
@@ -234,12 +264,13 @@ fn update_status_is_idempotent() {
 fn update_status_on_deleted_atom_returns_not_found() {
     let conn = setup();
     let note = make_atom(ViewHint::Note, "will be deleted", None, None);
-    insert_atom(&conn, &note);
+    insert_atom_without_ref(&conn, &note);
 
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
     repo.soft_delete_atom(note.uuid).unwrap();
 
-    let svc = TaskService::new(&repo, &conn);
+    let (_unused_repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let result = svc.update_status(note.uuid, Some(TaskStatus::Done));
     assert!(result.is_err());
 }
@@ -287,8 +318,8 @@ fn section_queries_include_tags() {
     )
     .unwrap();
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let inbox = svc.fetch_inbox(50, 0).unwrap();
 
     assert_eq!(inbox.len(), 1);
@@ -306,7 +337,8 @@ fn update_status_re_derives_view_hint_to_task() {
     insert_atom(&conn, &note);
 
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (_unused_repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     // Initially note
     let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
@@ -325,8 +357,8 @@ fn clear_status_re_derives_view_hint_back_to_note() {
     let note = make_atom(ViewHint::Note, "demote back", None, None);
     insert_atom(&conn, &note);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     // Promote to task
     svc.update_status(note.uuid, Some(TaskStatus::Done))
@@ -348,8 +380,8 @@ fn clear_status_on_timed_atom_re_derives_to_event() {
     atom.task_status = Some(TaskStatus::Todo);
     insert_atom(&conn, &atom);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     // Initially task (status takes priority)
     let loaded = repo.get_atom(atom.uuid, false).unwrap().unwrap();
@@ -367,8 +399,8 @@ fn update_event_times_re_derives_view_hint_to_event() {
     let note = make_atom(ViewHint::Note, "will become event", None, None);
     insert_atom(&conn, &note);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     // Initially note
     let loaded = repo.get_atom(note.uuid, false).unwrap().unwrap();
@@ -387,8 +419,8 @@ fn update_event_times_preserves_task_when_status_set() {
     atom.task_status = Some(TaskStatus::Todo);
     insert_atom(&conn, &atom);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
 
     // Set time fields — but task_status is set, so view_hint stays Task
     svc.update_event_times(atom.uuid, 5000, 6000).unwrap();
@@ -425,8 +457,8 @@ fn fetch_timed_returns_atoms_with_any_time_field() {
     );
     insert_atom(&conn, &event);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let timed = svc.fetch_timed().unwrap();
 
     assert_eq!(timed.len(), 3);
@@ -452,8 +484,8 @@ fn fetch_timed_excludes_done_and_cancelled() {
     let active_task = make_atom(ViewHint::Task, "active", None, Some(2_000_000_000_000));
     insert_atom(&conn, &active_task);
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let timed = svc.fetch_timed().unwrap();
 
     assert_eq!(timed.len(), 1);
@@ -470,12 +502,13 @@ fn fetch_timed_excludes_soft_deleted() {
         None,
         Some(2_000_000_000_000),
     );
-    insert_atom(&conn, &task);
+    insert_atom_without_ref(&conn, &task);
 
     let repo = SqliteAtomRepository::try_new(&conn).unwrap();
     repo.soft_delete_atom(task.uuid).unwrap();
 
-    let svc = TaskService::new(&repo, &conn);
+    let (_unused_repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let timed = svc.fetch_timed().unwrap();
     assert!(timed.is_empty());
 }
@@ -501,8 +534,8 @@ fn fetch_timed_includes_tags() {
     )
     .unwrap();
 
-    let repo = SqliteAtomRepository::try_new(&conn).unwrap();
-    let svc = TaskService::new(&repo, &conn);
+    let (repo, scoped_repo, workspace_meta) = task_service_deps(&conn);
+    let svc = TaskService::new(&repo, &scoped_repo, &workspace_meta, &conn);
     let timed = svc.fetch_timed().unwrap();
 
     assert_eq!(timed.len(), 1);

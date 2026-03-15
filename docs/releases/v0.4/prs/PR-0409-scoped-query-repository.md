@@ -1,7 +1,7 @@
 # PR-0409: ScopedAtomQuery + ScopedQueryRepository
 
 - Proposed title: `feat(core): scoped atom query engine with CTE pipeline`
-- Status: Draft
+- Status: Merged
 
 ## Goal
 
@@ -15,6 +15,15 @@ This PR consumes the **post-0012 schema contract** from `PR-0408`, rather than r
 - `WorkspaceMetaRepository` is the read-side bridge for designated-folder resolution.
 
 This PR must build scoped-query behavior on top of those landed schema guarantees, but must not reopen migration/backfill design inside `PR-0409`.
+
+### Transitional Compatibility Clarification (2026-03-14)
+
+`PR-0409` lands the canonical `ScopedQueryRepository` and subtree-query contract, but it also carries a temporary compatibility bridge for the current pre-`PR-0410` runtime:
+
+- existing creation paths still place new `atom_ref` rows under the default workspace root when no explicit parent is provided;
+- `PR-0409` therefore must not make current FFI-consumed section views silently drop those root-scoped refs;
+- the bridge is limited to current service-consumer compatibility and does not weaken the canonical query contract itself;
+- `PR-0410` is the first PR allowed to tighten, replace, or explicitly retire this bridge once service-routing and creation-role ownership land.
 
 引入统一查询引擎 ScopedQueryRepository，支持按 workspace 子树范围查询 atoms。替代 TaskService/CalendarService 的直查 atoms 路径，为 PR-0411 FFI 层的 `query_atoms` 提供后端。
 
@@ -68,6 +77,21 @@ TaskService / CalendarService
 ```
 
 `AtomRepository` 保留写路径（CRUD / status / time update），不再承载读查询逻辑。`ScopedQueryRepository` 只读，不依赖其他 repo。
+
+### Transitional Query Bridge (2026-03-14)
+
+Because `PR-0410` has not yet landed creation routing, current runtime writes can still leave newly created refs under the default workspace root rather than a designated folder. To avoid a silent behavior regression while still landing the scoped-query engine in this PR:
+
+- `ScopedQueryRepository` itself remains fully subtree-scoped and designated-folder-capable;
+- `TaskService` may temporarily route current FFI-consumed section reads through a compatibility scope that preserves pre-`PR-0410` visibility for root-scoped refs;
+- this bridge must be explicit in code and tests, not hidden in ad-hoc SQL branches;
+- `PR-0410` must consume this bridge and either replace it with service-routing-backed designated semantics or preserve an intentional compatibility rule with explicit rationale.
+
+Current landed shape in this branch:
+
+- `ScopedQueryRepository` itself is fully subtree-scoped and accepts any folder or workspace root as `folder_id`;
+- `TaskService` currently implements the bridge by resolving the default workspace root and using that root as the compatibility scope for existing section reads;
+- the bridge is covered by `crates/lazynote_core/tests/scoped_query_repo.rs`, updated `time_matrix.rs`, and `lazynote_ffi` tests for `tasks_list_inbox` / `tasks_list_today` / `tasks_list_upcoming`, so later PRs can tighten it against explicit evidence rather than inference.
 
 ---
 
@@ -332,13 +356,15 @@ where
 
 ## Planned File Changes
 
-- `[add]` crates/lazynote_core/src/repo/scoped_query_repo.rs (ScopedQueryRepository)
-- `[add]` crates/lazynote_core/src/model/scoped_atom_query.rs (ScopedAtomQuery + 枚举)
-- `[edit]` crates/lazynote_core/src/service/task_service.rs (委托到 ScopedAtomQuery)
-- `[edit]` crates/lazynote_core/src/service/atom_service.rs (calendar 查询委托)
-- `[edit]` crates/lazynote_core/src/repo/mod.rs (导出新 repo)
-- `[edit]` crates/lazynote_core/src/model/mod.rs (导出新 model)
-- `[add]` crates/lazynote_core/tests/scoped_query_test.rs
+- `[add]` crates/lazynote_core/src/repo/scoped_query_repo.rs (landed scoped-query contract + CTE implementation)
+- `[edit]` crates/lazynote_core/src/repo/atom_repo.rs (remove legacy section-read surface; keep write paths and shared row parsers)
+- `[edit]` crates/lazynote_core/src/service/task_service.rs (delegate section reads through ScopedQueryRepository with explicit pre-PR-0410 compatibility scope)
+- `[edit]` crates/lazynote_core/src/repo/mod.rs (export scoped query repo module)
+- `[edit]` crates/lazynote_core/src/lib.rs (re-export scoped query contracts)
+- `[add]` crates/lazynote_core/tests/scoped_query_repo.rs (truth-table, dedup, subtree, and bridge coverage)
+- `[edit]` crates/lazynote_core/tests/time_matrix.rs (service-level regression coverage)
+- `[edit]` crates/lazynote_ffi/src/api.rs (TaskService bridge wiring + inbox/today/upcoming regression tests)
+- `[edit]` docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md (landed evidence sync)
 
 ## Verification
 
@@ -363,6 +389,25 @@ grep -rn "ScopedAtomQuery\|ScopedQueryRepository" crates/lazynote_core/src/servi
 # 预期：至少 1 匹配
 ```
 
+### Closeout Verification (2026-03-14)
+
+```bash
+cd crates/
+cargo fmt --all -- --check
+cargo clippy --all -- -D warnings
+cargo test --all
+
+cd ..
+dart run tools/ci/architecture_check.dart
+```
+
+Confirmed on 2026-03-14:
+
+- `cargo fmt --all -- --check` exits `0`
+- `cargo clippy --all -- -D warnings` exits `0`
+- `cargo test --all` passes
+- `dart run tools/ci/architecture_check.dart` passes with `0 violations / 0 broken links / 2 allowlisted exemptions`
+
 ## Risk
 
 | 风险 | 严重度 | 缓解 |
@@ -372,21 +417,14 @@ grep -rn "ScopedAtomQuery\|ScopedQueryRepository" crates/lazynote_core/src/servi
 
 ## Acceptance Criteria
 
-- [ ] ScopedAtomQuery struct 和全套枚举定义完成
-- [ ] ScopedQueryRepository CTE 管线可按子树范围查询 atoms
-- [ ] time-matrix 四象限（T0/T1/T2/T3）正确过滤
-- [ ] overdue T1 补偿逻辑正确
-- [ ] scope 限定：只返回指定子树内的 atom
-- [ ] 分页正确：limit/offset 参数按预期截断结果集
-- [ ] 去重正确：同一 atom 在子树中有多个 atom_ref 时查询结果不重复
-- [ ] 契约真值表：`ProjectionMode x include_path` 非法组合返回 `invalid_query_descriptor` 错误
-- [ ] 契约真值表：`include_overdue_deadlines x time_filter` 非法组合返回 `invalid_query_descriptor` 错误
-- [ ] TaskService `list_inbox`/`list_today`/`list_upcoming` 委托到 ScopedQueryRepository
-- [ ] 现有 TaskService/CalendarService 测试全绿（语义不变回归）
-- [ ] `cargo test --all` 全绿
-- [ ] `cargo clippy --all -- -D warnings` 零 warning
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `scoped-query` row 已更新为本 PR 的实际落地状态并附证据路径
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 service-test / truth-table 部分与证据路径
-- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
-- [ ] PR spec Status updated to Merged
+- [x] `ScopedAtomQuery`, its enums, and `ScopedQueryRepository` land in `crates/lazynote_core/src/repo/scoped_query_repo.rs`
+- [x] subtree scope, dedup, stable ref ordering, and open-ended range semantics are covered by `crates/lazynote_core/tests/scoped_query_repo.rs`
+- [x] overdue T1 compensation and time-matrix regressions remain covered by `crates/lazynote_core/tests/time_matrix.rs`
+- [x] `TaskService` routes `list_inbox` / `list_today` / `list_upcoming` / `fetch_by_time_range` through `ScopedQueryRepository`
+- [x] the pre-`PR-0410` default-workspace compatibility bridge remains explicit in service code and tests
+- [x] the old `AtomRepository` section-read surface is removed from the canonical read path
+- [x] FFI bridge coverage exists for `tasks_list_inbox`, `tasks_list_today`, and `tasks_list_upcoming`
+- [x] `workspace-topology-carrier-promotion-workflow.md` records landed `scoped-query` evidence plus updated `execution-order` and `verification-gates` rows
+- [x] this PR does not publish or amend `DI-15` active-bundle ADR / ruling / `topic-map.md` carrier text
+- [x] `cargo fmt --all -- --check`, `cargo clippy --all -- -D warnings`, `cargo test --all`, and `dart run tools/ci/architecture_check.dart` all passed on 2026-03-14
+- [x] PR spec Status updated to Merged

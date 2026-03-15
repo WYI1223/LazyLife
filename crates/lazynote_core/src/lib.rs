@@ -49,6 +49,11 @@ pub use repo::note_repo::{
     load_tags_for_atoms, normalize_note_limit, normalize_tag, normalize_tags, NoteListQuery,
     NoteRecord, NoteRepository, SqliteNoteRepository,
 };
+/// Re-export scoped subtree query contracts and implementation.
+pub use repo::scoped_query_repo::{
+    ProjectionMode, ScopedAtomQuery, ScopedAtomResult, ScopedQueryError, ScopedQueryRepository,
+    SortSpec, SqliteScopedQueryRepository, StatusFilter, TimeFilter, TimeShapeFilter,
+};
 /// Re-export workspace tree repository contracts and implementation.
 pub use repo::tree_repo::{
     SqliteTreeRepository, TreeRepoError, TreeRepoResult, TreeRepository, WorkspaceNode,
