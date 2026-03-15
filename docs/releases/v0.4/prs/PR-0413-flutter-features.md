@@ -15,6 +15,16 @@ Canonical implication:
 - Flutter feature code must not depend on raw schema concepts such as `designated_folders` tables or `origin_workspace_id` writes;
 - any remaining workspace topology assumptions should be cited through the earlier PR specs or the workflow ledger, not duplicated here.
 
+### Structural Cleanup Handoff (2026-03-15)
+
+`PR-0413` should leave the workspace repo and integration-test surfaces ready
+for downstream cleanup PR `PR-0413A`.
+
+`PR-0413A` owns the refactor-only split of
+`crates/lazynote_core/src/repo/tree_repo.rs` into a `tree_repo/` module tree
+and the decomposition of `crates/lazynote_core/tests/workspace_tree.rs` into
+focused integration test files plus shared helpers.
+
 全部 Flutter 消费方迁移到新接口（Tasks/Calendar/Notes/Tag Panel/Entry Search/Editor），Explorer 内部分层重构（DI-17 Q3），移除 synthetic uncategorized 逻辑，删除 `workspace_tree_children_loader.dart`，移除全部 15 个旧 FFI 函数（expand-contract 的 contract 阶段）。代码库净减。
 
 前置条件：PR-0412（需要 WorkspaceTreeService B+ 已就位）

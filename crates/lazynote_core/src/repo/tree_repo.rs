@@ -14,6 +14,7 @@ use crate::db::migrations::latest_version;
 use crate::db::DbError;
 use crate::model::atom::{AtomId, ViewHint};
 use rusqlite::{params, Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
@@ -140,6 +141,19 @@ pub struct WorkspaceNode {
     pub updated_at: i64,
 }
 
+/// One active workspace location for an atom_ref.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomRefLocation {
+    /// Stable atom_ref node identifier.
+    pub node_uuid: WorkspaceNodeId,
+    /// Workspace root that owns this ref subtree.
+    pub workspace_id: WorkspaceNodeId,
+    /// Slash-joined folder path beneath the workspace root.
+    pub path: String,
+    /// User-facing display name stored on the atom_ref node.
+    pub display_name: String,
+}
+
 /// Repository interface for workspace tree operations.
 pub trait TreeRepository {
     /// Creates one folder node.
@@ -182,6 +196,15 @@ pub trait TreeRepository {
     fn delete_folder_delete_all(&self, folder_uuid: WorkspaceNodeId) -> TreeRepoResult<()>;
     /// Loads atom type for active atom, if present.
     fn atom_view_hint(&self, atom_uuid: AtomId) -> TreeRepoResult<Option<ViewHint>>;
+
+    /// Returns ancestor segments from workspace root to direct parent for one node.
+    fn get_ancestor_path(
+        &self,
+        node_uuid: WorkspaceNodeId,
+    ) -> TreeRepoResult<Vec<(WorkspaceNodeId, String)>>;
+
+    /// Returns every active atom_ref location for one atom.
+    fn list_atom_refs_for_atom(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<AtomRefLocation>>;
 
     /// Returns ancestor folder display_names from root to direct parent
     /// for the first active `atom_ref` of the given atom.
@@ -584,40 +607,102 @@ impl TreeRepository for SqliteTreeRepository<'_> {
         }
     }
 
-    fn ancestor_path(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<String>> {
-        let mut stmt = self.conn.prepare(
-            "WITH RECURSIVE ancestors(node_uuid, kind, display_name, parent_uuid, depth) AS (
-                SELECT node_uuid, kind, display_name, parent_uuid, 0
-                FROM (
-                    SELECT f.node_uuid, f.kind, f.display_name, f.parent_uuid
-                    FROM workspace_nodes r
-                    JOIN workspace_nodes f ON f.node_uuid = r.parent_uuid
-                    WHERE r.atom_uuid = ?1
-                      AND r.kind = 'atom_ref'
-                      AND r.is_deleted = 0
-                      AND f.is_deleted = 0
-                    ORDER BY r.sort_order ASC, r.node_uuid ASC
-                    LIMIT 1
-                )
-                UNION ALL
-                SELECT w.node_uuid, w.kind, w.display_name, w.parent_uuid, a.depth + 1
-                FROM workspace_nodes w
-                JOIN ancestors a ON w.node_uuid = a.parent_uuid
-                WHERE w.is_deleted = 0
-            )
-            SELECT display_name
-            FROM ancestors
-            WHERE kind = 'folder'
-            ORDER BY depth DESC;",
-        )?;
-
-        let mut rows = stmt.query([atom_uuid.to_string()])?;
-        let mut path = Vec::new();
-        while let Some(row) = rows.next()? {
-            path.push(row.get::<_, String>(0)?);
-        }
-        Ok(path)
+    fn get_ancestor_path(
+        &self,
+        node_uuid: WorkspaceNodeId,
+    ) -> TreeRepoResult<Vec<(WorkspaceNodeId, String)>> {
+        collect_ancestor_nodes(self.conn, node_uuid).map(|segments| {
+            segments
+                .into_iter()
+                .map(|segment| (segment.node_uuid, segment.display_name))
+                .collect()
+        })
     }
+
+    fn list_atom_refs_for_atom(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<AtomRefLocation>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT node_uuid, display_name
+             FROM workspace_nodes
+             WHERE kind = 'atom_ref'
+               AND atom_uuid = ?1
+               AND is_deleted = 0
+             ORDER BY node_uuid ASC;",
+        )?;
+        let mut rows = stmt.query([atom_uuid.to_string()])?;
+        let mut locations = Vec::new();
+
+        while let Some(row) = rows.next()? {
+            let node_uuid_text: String = row.get(0)?;
+            let node_uuid = parse_uuid(&node_uuid_text, "workspace_nodes.node_uuid")?;
+            let display_name: String = row.get(1)?;
+            let ancestors = collect_ancestor_nodes(self.conn, node_uuid)?;
+            let workspace_id = ancestors
+                .iter()
+                .find(|segment| segment.kind == WorkspaceNodeKind::Workspace)
+                .map(|segment| segment.node_uuid)
+                .ok_or_else(|| {
+                    TreeRepoError::InvalidData(format!(
+                        "workspace root not found for atom_ref `{node_uuid}`"
+                    ))
+                })?;
+            let path = ancestors
+                .iter()
+                .filter(|segment| segment.kind == WorkspaceNodeKind::Folder)
+                .map(|segment| segment.display_name.as_str())
+                .collect::<Vec<_>>()
+                .join("/");
+
+            locations.push(AtomRefLocation {
+                node_uuid,
+                workspace_id,
+                path,
+                display_name,
+            });
+        }
+
+        locations.sort_by(|left, right| {
+            left.workspace_id
+                .cmp(&right.workspace_id)
+                .then_with(|| left.path.cmp(&right.path))
+                .then_with(|| left.display_name.cmp(&right.display_name))
+                .then_with(|| left.node_uuid.cmp(&right.node_uuid))
+        });
+        Ok(locations)
+    }
+
+    fn ancestor_path(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<String>> {
+        let first_ref_uuid: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT node_uuid
+                 FROM workspace_nodes
+                 WHERE atom_uuid = ?1
+                   AND kind = 'atom_ref'
+                   AND is_deleted = 0
+                 ORDER BY sort_order ASC, node_uuid ASC
+                 LIMIT 1;",
+                [atom_uuid.to_string()],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(first_ref_uuid) = first_ref_uuid else {
+            return Ok(vec![]);
+        };
+        let first_ref_uuid = parse_uuid(&first_ref_uuid, "workspace_nodes.node_uuid")?;
+        let segments = collect_ancestor_nodes(self.conn, first_ref_uuid)?;
+        Ok(segments
+            .into_iter()
+            .filter(|segment| segment.kind == WorkspaceNodeKind::Folder)
+            .map(|segment| segment.display_name)
+            .collect())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AncestorNode {
+    node_uuid: WorkspaceNodeId,
+    kind: WorkspaceNodeKind,
+    display_name: String,
 }
 
 fn load_required_node(
@@ -938,6 +1023,71 @@ fn resolve_workspace_root_for_node(
             "workspace root not found for node `{node_uuid}`"
         ))),
     }
+}
+
+fn collect_ancestor_nodes(
+    conn: &Connection,
+    node_uuid: WorkspaceNodeId,
+) -> TreeRepoResult<Vec<AncestorNode>> {
+    let start_node =
+        load_active_node(conn, node_uuid)?.ok_or(TreeRepoError::NodeNotFound(node_uuid))?;
+    let mut visited = HashSet::new();
+    let mut cursor = start_node.parent_uuid;
+    let mut ancestors = Vec::new();
+
+    while let Some(current) = cursor {
+        if !visited.insert(current) {
+            return Err(TreeRepoError::InvalidData(
+                "workspace tree contains cycle while resolving ancestor path".to_string(),
+            ));
+        }
+
+        let Some(node) = load_active_node(conn, current)? else {
+            break;
+        };
+        if node.kind == WorkspaceNodeKind::Workspace || node.kind == WorkspaceNodeKind::Folder {
+            ancestors.push(AncestorNode {
+                node_uuid: node.node_uuid,
+                kind: node.kind,
+                display_name: node.display_name.clone(),
+            });
+        }
+        cursor = node.parent_uuid;
+    }
+
+    ancestors.reverse();
+    Ok(ancestors)
+}
+
+fn load_active_node(
+    conn: &Connection,
+    node_uuid: WorkspaceNodeId,
+) -> TreeRepoResult<Option<WorkspaceNode>> {
+    let mut stmt = conn.prepare(
+        "SELECT
+            n.node_uuid AS node_uuid,
+            n.kind AS kind,
+            n.parent_uuid AS parent_uuid,
+            n.atom_uuid AS atom_uuid,
+            n.display_name AS display_name,
+            n.sort_order AS sort_order,
+            n.is_deleted AS is_deleted,
+            n.created_at AS created_at,
+            n.updated_at AS updated_at
+         FROM workspace_nodes n
+         LEFT JOIN atoms a ON a.uuid = n.atom_uuid
+         WHERE n.node_uuid = ?1
+           AND n.is_deleted = 0
+           AND (
+             n.kind IN ('folder', 'workspace')
+             OR (n.kind = 'atom_ref' AND a.is_deleted = 0)
+           );",
+    )?;
+    let mut rows = stmt.query([node_uuid.to_string()])?;
+    if let Some(row) = rows.next()? {
+        return Ok(Some(parse_workspace_node_row(row)?));
+    }
+    Ok(None)
 }
 
 fn parse_uuid(value: &str, column: &'static str) -> TreeRepoResult<Uuid> {

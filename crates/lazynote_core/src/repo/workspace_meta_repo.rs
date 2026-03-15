@@ -34,6 +34,17 @@ pub trait WorkspaceMetaRepository {
         workspace_id: WorkspaceNodeId,
         role: &str,
     ) -> TreeRepoResult<Option<WorkspaceNodeId>>;
+
+    /// Returns whether one node is currently designated for any role.
+    fn is_designated(&self, node_uuid: WorkspaceNodeId) -> TreeRepoResult<bool>;
+
+    /// Reassigns one designated role to another folder in the same workspace tree.
+    fn reassign_designated(
+        &self,
+        workspace_id: WorkspaceNodeId,
+        role: &str,
+        new_node_uuid: WorkspaceNodeId,
+    ) -> TreeRepoResult<()>;
 }
 
 /// SQLite-backed workspace metadata repository.
@@ -119,6 +130,70 @@ impl WorkspaceMetaRepository for SqliteWorkspaceMetaRepository<'_> {
             .map(|value| parse_uuid(&value, "designated_folders.node_uuid"))
             .transpose()
     }
+
+    fn is_designated(&self, node_uuid: WorkspaceNodeId) -> TreeRepoResult<bool> {
+        let exists: i64 = self.conn.query_row(
+            "SELECT EXISTS(
+                SELECT 1
+                FROM designated_folders
+                WHERE node_uuid = ?1
+            );",
+            [node_uuid.to_string()],
+            |row| row.get(0),
+        )?;
+        Ok(exists == 1)
+    }
+
+    fn reassign_designated(
+        &self,
+        workspace_id: WorkspaceNodeId,
+        role: &str,
+        new_node_uuid: WorkspaceNodeId,
+    ) -> TreeRepoResult<()> {
+        let target_kind: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT kind
+                 FROM workspace_nodes
+                 WHERE node_uuid = ?1
+                   AND is_deleted = 0;",
+                [new_node_uuid.to_string()],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        match target_kind.as_deref() {
+            Some("folder") => {}
+            Some(_) => return Err(TreeRepoError::NodeNotFolder(new_node_uuid)),
+            None => return Err(TreeRepoError::NodeNotFound(new_node_uuid)),
+        }
+
+        let resolved_workspace = workspace_root_for_node(self.conn, new_node_uuid)?
+            .ok_or(TreeRepoError::NodeNotFound(new_node_uuid))?;
+        if resolved_workspace != workspace_id {
+            return Err(TreeRepoError::InvalidData(
+                "designated folder must belong to the same workspace subtree".to_string(),
+            ));
+        }
+
+        let updated = self.conn.execute(
+            "UPDATE designated_folders
+             SET node_uuid = ?1
+             WHERE workspace_id = ?2
+               AND role = ?3;",
+            [
+                new_node_uuid.to_string(),
+                workspace_id.to_string(),
+                role.to_string(),
+            ],
+        )?;
+        if updated == 0 {
+            return Err(TreeRepoError::InvalidData(format!(
+                "designated role `{role}` not found for workspace `{workspace_id}`"
+            )));
+        }
+        Ok(())
+    }
 }
 
 fn ensure_workspace_meta_connection_ready(conn: &Connection) -> TreeRepoResult<()> {
@@ -182,4 +257,35 @@ fn table_has_column(conn: &Connection, table: &str, column: &str) -> TreeRepoRes
 fn parse_uuid(value: &str, column: &'static str) -> TreeRepoResult<Uuid> {
     Uuid::parse_str(value)
         .map_err(|_| TreeRepoError::InvalidData(format!("invalid uuid `{value}` in {column}")))
+}
+
+fn workspace_root_for_node(
+    conn: &Connection,
+    node_uuid: WorkspaceNodeId,
+) -> TreeRepoResult<Option<WorkspaceNodeId>> {
+    let workspace_id: Option<String> = conn
+        .query_row(
+            "WITH RECURSIVE ancestors(node_uuid, kind, parent_uuid) AS (
+                SELECT node_uuid, kind, parent_uuid
+                FROM workspace_nodes
+                WHERE node_uuid = ?1
+                  AND is_deleted = 0
+                UNION ALL
+                SELECT parent.node_uuid, parent.kind, parent.parent_uuid
+                FROM workspace_nodes parent
+                JOIN ancestors child ON parent.node_uuid = child.parent_uuid
+                WHERE parent.is_deleted = 0
+            )
+            SELECT node_uuid
+            FROM ancestors
+            WHERE kind = 'workspace'
+            LIMIT 1;",
+            [node_uuid.to_string()],
+            |row| row.get(0),
+        )
+        .optional()?;
+
+    workspace_id
+        .map(|value| parse_uuid(&value, "workspace_nodes.node_uuid"))
+        .transpose()
 }

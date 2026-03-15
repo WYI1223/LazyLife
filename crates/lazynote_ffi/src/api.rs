@@ -930,7 +930,7 @@ fn workspace_list_children_impl(parent_node_id: Option<String>) -> WorkspaceList
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - `parent_node_id` is optional UUID string; `None` creates root-level folder.
+/// - `parent_node_id` is optional UUID string; `None` creates a folder under the default workspace root.
 #[flutter_rust_bridge::frb]
 pub async fn workspace_create_folder(
     parent_node_id: Option<String>,
@@ -1191,12 +1191,16 @@ fn with_note_service<T>(
 }
 
 fn with_tree_service<T>(
-    f: impl FnOnce(&TreeService<SqliteTreeRepository<'_>>) -> Result<T, TreeServiceError>,
+    f: impl FnOnce(
+        &TreeService<SqliteTreeRepository<'_>, SqliteWorkspaceMetaRepository<'_>>,
+    ) -> Result<T, TreeServiceError>,
 ) -> Result<T, WorkspaceFfiError> {
     let db_path = resolve_entry_db_path();
     let conn = open_db(&db_path).map_err(map_workspace_db_error)?;
     let repo = SqliteTreeRepository::try_new(&conn).map_err(map_tree_repo_error)?;
-    let service = TreeService::new(repo);
+    let workspace_meta =
+        SqliteWorkspaceMetaRepository::try_new(&conn).map_err(map_tree_repo_error)?;
+    let service = TreeService::with_workspace_meta(repo, workspace_meta);
     f(&service).map_err(map_tree_service_error)
 }
 
@@ -1433,9 +1437,30 @@ fn map_tree_service_error(err: TreeServiceError) -> WorkspaceFfiError {
             node_uuid,
             parent_uuid,
         } => WorkspaceFfiError::CycleDetected(format!("node={node_uuid} parent={parent_uuid}")),
+        TreeServiceError::WorkspaceRootProtected(node_uuid) => {
+            WorkspaceFfiError::Internal(format!("workspace root is protected: {node_uuid}"))
+        }
+        TreeServiceError::DesignatedFolderProtected(node_uuid) => WorkspaceFfiError::Internal(
+            format!("designated folder must be reassigned before delete: {node_uuid}"),
+        ),
+        TreeServiceError::CannotMoveWorkspaceRoot(node_uuid) => {
+            WorkspaceFfiError::Internal(format!("workspace root cannot be moved: {node_uuid}"))
+        }
         TreeServiceError::CannotMoveToRoot(node_uuid) => {
             WorkspaceFfiError::CannotMoveToRoot(node_uuid.to_string())
         }
+        TreeServiceError::CrossWorkspaceMoveNotAllowed {
+            node_uuid,
+            target_parent,
+        } => WorkspaceFfiError::Internal(format!(
+            "cross-workspace move rejected: node={node_uuid} target={target_parent}"
+        )),
+        TreeServiceError::DesignatedFolderWrongWorkspace {
+            workspace_id,
+            node_uuid,
+        } => WorkspaceFfiError::Internal(format!(
+            "designated folder must stay in workspace: workspace={workspace_id} node={node_uuid}"
+        )),
         TreeServiceError::Repo(repo_err) => map_tree_repo_error(repo_err),
     }
 }
@@ -1959,7 +1984,10 @@ mod tests {
     };
     use lazynote_core::db::open_db;
     use lazynote_core::LogDartEventError;
-    use lazynote_core::{SqliteTreeRepository, TreeService};
+    use lazynote_core::{
+        Atom, AtomRepository, SqliteAtomRepository, SqliteTreeRepository, TaskStatus, TreeService,
+        ViewHint,
+    };
     use std::sync::{Mutex, MutexGuard};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -2354,7 +2382,7 @@ mod tests {
     }
 
     #[test]
-    fn note_create_without_parent_places_atom_ref_at_root() {
+    fn note_create_without_parent_routes_atom_ref_to_inbox_designated_folder() {
         let _guard = acquire_test_db_lock();
 
         let created = note_create_impl("# root note".to_string(), None);
@@ -2363,30 +2391,29 @@ mod tests {
             .node_uuid
             .expect("note_create should return node_uuid");
         let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
-        let default_workspace_id = default_workspace_node_id();
+        let inbox_folder_id = designated_folder_node_id("inbox");
 
-        // Default workspace root must contain exactly one atom_ref for this atom.
-        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
-        assert!(workspace_children.ok, "{}", workspace_children.message);
-        let root_refs: Vec<_> = workspace_children
+        let inbox_children = workspace_list_children_impl(Some(inbox_folder_id));
+        assert!(inbox_children.ok, "{}", inbox_children.message);
+        let inbox_refs: Vec<_> = inbox_children
             .items
             .iter()
             .filter(|n| n.atom_id.as_deref() == Some(atom_id.as_str()))
             .collect();
         assert_eq!(
-            root_refs.len(),
+            inbox_refs.len(),
             1,
-            "exactly one root ref expected; found {}",
-            root_refs.len()
+            "exactly one inbox ref expected; found {}",
+            inbox_refs.len()
         );
-        assert_eq!(root_refs[0].node_id, node_uuid);
+        assert_eq!(inbox_refs[0].node_id, node_uuid);
     }
 
     // T5 (PR-RB-11): atom_ref consistency — all creation entry points
     // produce an atom_ref in the workspace tree.
 
     #[test]
-    fn entry_create_note_places_atom_ref_at_root() {
+    fn entry_create_note_routes_atom_ref_to_inbox_designated_folder() {
         let _guard = acquire_test_db_lock();
 
         let created = entry_create_note_impl("entry note content".to_string());
@@ -2394,24 +2421,20 @@ mod tests {
         let node_uuid = created
             .node_uuid
             .expect("entry_create_note should return node_uuid");
-        let default_workspace_id = default_workspace_node_id();
+        let inbox_folder_id = designated_folder_node_id("inbox");
 
-        // Verify atom_ref exists under the default workspace root.
-        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
-        assert!(workspace_children.ok, "{}", workspace_children.message);
-        let found = workspace_children
-            .items
-            .iter()
-            .any(|n| n.node_id == node_uuid);
+        let inbox_children = workspace_list_children_impl(Some(inbox_folder_id));
+        assert!(inbox_children.ok, "{}", inbox_children.message);
+        let found = inbox_children.items.iter().any(|n| n.node_id == node_uuid);
         assert!(
             found,
-            "atom_ref from entry_create_note must appear under default workspace; node_uuid={}",
+            "atom_ref from entry_create_note must appear under inbox designated folder; node_uuid={}",
             node_uuid
         );
     }
 
     #[test]
-    fn entry_create_task_places_atom_ref_at_root() {
+    fn entry_create_task_routes_atom_ref_to_tasks_designated_folder() {
         let _guard = acquire_test_db_lock();
 
         let created = entry_create_task_impl("entry task content".to_string());
@@ -2419,24 +2442,20 @@ mod tests {
         let node_uuid = created
             .node_uuid
             .expect("entry_create_task should return node_uuid");
-        let default_workspace_id = default_workspace_node_id();
+        let tasks_folder_id = designated_folder_node_id("tasks");
 
-        // Verify atom_ref exists under the default workspace root.
-        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
-        assert!(workspace_children.ok, "{}", workspace_children.message);
-        let found = workspace_children
-            .items
-            .iter()
-            .any(|n| n.node_id == node_uuid);
+        let tasks_children = workspace_list_children_impl(Some(tasks_folder_id));
+        assert!(tasks_children.ok, "{}", tasks_children.message);
+        let found = tasks_children.items.iter().any(|n| n.node_id == node_uuid);
         assert!(
             found,
-            "atom_ref from entry_create_task must appear under default workspace; node_uuid={}",
+            "atom_ref from entry_create_task must appear under tasks designated folder; node_uuid={}",
             node_uuid
         );
     }
 
     #[test]
-    fn entry_schedule_places_atom_ref_at_root() {
+    fn entry_schedule_routes_atom_ref_to_calendar_designated_folder() {
         let _guard = acquire_test_db_lock();
 
         let created = entry_schedule_impl(
@@ -2448,18 +2467,17 @@ mod tests {
         let node_uuid = created
             .node_uuid
             .expect("entry_schedule should return node_uuid");
-        let default_workspace_id = default_workspace_node_id();
+        let calendar_folder_id = designated_folder_node_id("calendar");
 
-        // Verify atom_ref exists under the default workspace root.
-        let workspace_children = workspace_list_children_impl(Some(default_workspace_id));
-        assert!(workspace_children.ok, "{}", workspace_children.message);
-        let found = workspace_children
+        let calendar_children = workspace_list_children_impl(Some(calendar_folder_id));
+        assert!(calendar_children.ok, "{}", calendar_children.message);
+        let found = calendar_children
             .items
             .iter()
             .any(|n| n.node_id == node_uuid);
         assert!(
             found,
-            "atom_ref from entry_schedule must appear under default workspace; node_uuid={}",
+            "atom_ref from entry_schedule must appear under calendar designated folder; node_uuid={}",
             node_uuid
         );
     }
@@ -2489,8 +2507,7 @@ mod tests {
     #[test]
     fn tasks_list_inbox_keeps_root_scoped_refs_visible_before_pr_0410() {
         let _guard = acquire_test_db_lock();
-        let created = entry_create_note_impl("ffi inbox bridge".to_string());
-        assert!(created.ok, "{}", created.message);
+        create_legacy_root_scoped_atom(ViewHint::Note, "ffi inbox bridge", None, None, None);
 
         let list = tasks_list_inbox_impl(Some(50), Some(0));
         assert!(list.ok, "{}", list.message);
@@ -2507,8 +2524,13 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let start = 11_000_i64;
         let end = 12_000_i64;
-        let created = entry_schedule_impl("ffi today bridge".to_string(), start, Some(end));
-        assert!(created.ok, "{}", created.message);
+        create_legacy_root_scoped_atom(
+            ViewHint::Event,
+            "ffi today bridge",
+            None,
+            Some(start),
+            Some(end),
+        );
 
         let list = tasks_list_today_impl(9_000, 13_000, Some(50), Some(0));
         assert!(list.ok, "{}", list.message);
@@ -2525,8 +2547,13 @@ mod tests {
         let _guard = acquire_test_db_lock();
         let start = 20_000_i64;
         let end = 22_000_i64;
-        let created = entry_schedule_impl("ffi upcoming bridge".to_string(), start, Some(end));
-        assert!(created.ok, "{}", created.message);
+        create_legacy_root_scoped_atom(
+            ViewHint::Event,
+            "ffi upcoming bridge",
+            None,
+            Some(start),
+            Some(end),
+        );
 
         let list = tasks_list_upcoming_impl(13_000, Some(50), Some(0));
         assert!(list.ok, "{}", list.message);
@@ -2733,6 +2760,49 @@ mod tests {
             |row| row.get(0),
         )
         .expect("default workspace id")
+    }
+
+    fn designated_folder_node_id(role: &str) -> String {
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        conn.query_row(
+            "SELECT node_uuid
+             FROM designated_folders
+             WHERE workspace_id = (
+                 SELECT workspace_id
+                 FROM workspaces
+                 WHERE is_default = 1
+             )
+               AND role = ?1;",
+            [role],
+            |row| row.get(0),
+        )
+        .expect("designated folder id")
+    }
+
+    fn create_legacy_root_scoped_atom(
+        view_hint: ViewHint,
+        content: &str,
+        task_status: Option<TaskStatus>,
+        start_at: Option<i64>,
+        end_at: Option<i64>,
+    ) -> String {
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        let mut atom = Atom::new(view_hint, content.to_string());
+        atom.title = content.to_string();
+        atom.task_status = task_status;
+        atom.start_at = start_at;
+        atom.end_at = end_at;
+
+        let atom_repo = SqliteAtomRepository::try_new(&conn).expect("atom repo");
+        atom_repo
+            .create_atom(&atom)
+            .expect("legacy root atom create");
+
+        let tree_repo = SqliteTreeRepository::try_new(&conn).expect("tree repo");
+        TreeService::new(tree_repo)
+            .create_atom_ref(None, atom.uuid, Some(content.to_string()))
+            .expect("legacy root atom_ref");
+        atom.uuid.to_string()
     }
 
     fn create_workspace_atom_ref_node() -> String {
@@ -2966,6 +3036,20 @@ mod tests {
         let response = workspace_delete_folder_impl(node_id, "dissolve".to_string());
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("node_not_folder"));
+    }
+
+    #[test]
+    fn workspace_delete_folder_rejects_designated_folder_via_service_guard() {
+        let _guard = acquire_test_db_lock();
+        let inbox_folder_id = designated_folder_node_id("inbox");
+
+        let response = workspace_delete_folder_impl(inbox_folder_id, "dissolve".to_string());
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("internal_error"));
+        assert!(
+            response.message.contains("designated folder"),
+            "FFI should surface designated-folder protection instead of raw DB trigger failure"
+        );
     }
 
     #[test]
