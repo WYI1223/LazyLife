@@ -1,7 +1,8 @@
 use lazynote_core::db::open_db_in_memory;
 use lazynote_core::{
     Atom, AtomRepository, FolderDeleteMode, SqliteAtomRepository, SqliteTreeRepository,
-    TreeRepoError, TreeRepository, TreeService, TreeServiceError, ViewHint, WorkspaceNodeKind,
+    SqliteWorkspaceMetaRepository, TreeRepoError, TreeRepository, TreeService, TreeServiceError,
+    ViewHint, WorkspaceNodeKind,
 };
 // Note: after migration 0011, workspace nodes use `atom_ref` (not `note_ref`)
 // and accept any active atom type (not just notes).
@@ -25,6 +26,61 @@ fn default_workspace_id(conn: &rusqlite::Connection) -> Uuid {
         )
         .unwrap();
     Uuid::parse_str(&workspace_id).unwrap()
+}
+
+fn designated_folder_id(conn: &rusqlite::Connection, role: &str) -> Uuid {
+    let workspace_id = default_workspace_id(conn);
+    let node_id: String = conn
+        .query_row(
+            "SELECT node_uuid
+             FROM designated_folders
+             WHERE workspace_id = ?1
+               AND role = ?2;",
+            [workspace_id.to_string(), role.to_string()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    Uuid::parse_str(&node_id).unwrap()
+}
+
+fn insert_workspace_root(conn: &rusqlite::Connection, name: &str) -> Uuid {
+    let workspace_id = Uuid::new_v4();
+    conn.execute(
+        "INSERT INTO workspace_nodes (
+            node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order, is_deleted
+         ) VALUES (?1, 'workspace', NULL, NULL, ?2, 10, 0);",
+        rusqlite::params![workspace_id.to_string(), name],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO workspaces (workspace_id, name, is_default)
+         VALUES (?1, ?2, 0);",
+        rusqlite::params![workspace_id.to_string(), name],
+    )
+    .unwrap();
+    workspace_id
+}
+
+fn insert_folder_node(
+    conn: &rusqlite::Connection,
+    parent_uuid: Uuid,
+    display_name: &str,
+    sort_order: i64,
+) -> Uuid {
+    let node_id = Uuid::new_v4();
+    conn.execute(
+        "INSERT INTO workspace_nodes (
+            node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order, is_deleted
+         ) VALUES (?1, 'folder', ?2, NULL, ?3, ?4, 0);",
+        rusqlite::params![
+            node_id.to_string(),
+            parent_uuid.to_string(),
+            display_name,
+            sort_order
+        ],
+    )
+    .unwrap();
+    node_id
 }
 
 #[test]
@@ -224,6 +280,201 @@ fn move_rejects_root_level_parent_after_0012() {
         err,
         TreeServiceError::CannotMoveToRoot(node_uuid) if node_uuid == folder.node_uuid
     ));
+}
+
+#[test]
+fn delete_workspace_root_surfaces_service_protection_instead_of_folder_kind_error() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let workspace_id = default_workspace_id(&conn);
+
+    let err = service
+        .delete_folder(workspace_id, FolderDeleteMode::Dissolve)
+        .unwrap_err();
+    assert!(
+        !matches!(err, TreeServiceError::NodeMustBeFolder(id) if id == workspace_id),
+        "workspace root should be blocked by dedicated service protection, not generic folder-kind validation",
+    );
+}
+
+#[test]
+fn delete_designated_folder_surfaces_service_protection_instead_of_repo_error() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let inbox_folder_id = designated_folder_id(&conn, "inbox");
+
+    let err = service
+        .delete_folder(inbox_folder_id, FolderDeleteMode::Dissolve)
+        .unwrap_err();
+    assert!(
+        !matches!(err, TreeServiceError::Repo(_)),
+        "designated folder should be blocked by service protection before hitting repo/trigger errors",
+    );
+}
+
+#[test]
+fn move_workspace_root_surfaces_service_protection_instead_of_repo_error() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let default_workspace = default_workspace_id(&conn);
+    let other_workspace = insert_workspace_root(&conn, "Other Workspace");
+    let target_folder = insert_folder_node(&conn, other_workspace, "Drop Zone", 0);
+
+    let err = service
+        .move_node(default_workspace, Some(target_folder), None)
+        .unwrap_err();
+    assert!(
+        !matches!(err, TreeServiceError::Repo(_)),
+        "workspace root move should be blocked by service protection before repo/trigger errors",
+    );
+}
+
+#[test]
+fn move_folder_across_workspaces_is_rejected_and_keeps_original_parent() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let default_workspace = default_workspace_id(&conn);
+    let other_workspace = insert_workspace_root(&conn, "Other Workspace");
+    let source_folder = service.create_folder(None, "Projects").unwrap();
+    let target_folder = insert_folder_node(&conn, other_workspace, "Target", 0);
+
+    let move_result = service.move_node(source_folder.node_uuid, Some(target_folder), None);
+    assert!(
+        move_result.is_err(),
+        "cross-workspace move should be rejected by TreeService",
+    );
+
+    let persisted_parent: String = conn
+        .query_row(
+            "SELECT parent_uuid
+             FROM workspace_nodes
+             WHERE node_uuid = ?1;",
+            [source_folder.node_uuid.to_string()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(persisted_parent, default_workspace.to_string());
+}
+
+#[test]
+fn reassign_designated_allows_same_workspace_nested_folder() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let workspace_id = default_workspace_id(&conn);
+
+    let parent = service.create_folder(None, "Projects").unwrap();
+    let nested = service
+        .create_folder(Some(parent.node_uuid), "Inbox Archive")
+        .unwrap();
+
+    service
+        .reassign_designated(workspace_id, "inbox", nested.node_uuid)
+        .unwrap();
+
+    assert_eq!(designated_folder_id(&conn, "inbox"), nested.node_uuid);
+}
+
+#[test]
+fn reassign_designated_rejects_cross_workspace_folder() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let workspace_id = default_workspace_id(&conn);
+    let other_workspace = insert_workspace_root(&conn, "Other Workspace");
+    let other_folder = insert_folder_node(&conn, other_workspace, "Elsewhere", 0);
+
+    let err = service
+        .reassign_designated(workspace_id, "tasks", other_folder)
+        .unwrap_err();
+    assert!(
+        !matches!(err, TreeServiceError::Repo(_)),
+        "cross-workspace designated reassign should fail at service contract level",
+    );
+}
+
+#[test]
+fn get_ancestor_path_returns_workspace_root_and_folders() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let workspace_id = default_workspace_id(&conn);
+
+    let note = Atom::new(ViewHint::Note, "deep note");
+    insert_atom(&conn, &note);
+
+    let projects = service.create_folder(None, "Projects").unwrap();
+    let child = service
+        .create_folder(Some(projects.node_uuid), "Backend")
+        .unwrap();
+    let note_ref = service
+        .create_atom_ref(Some(child.node_uuid), note.uuid, Some("Note".to_string()))
+        .unwrap();
+
+    let path = service.get_ancestor_path(note_ref.node_uuid).unwrap();
+
+    assert_eq!(
+        path,
+        vec![
+            (workspace_id, "Default Workspace".to_string()),
+            (projects.node_uuid, "Projects".to_string()),
+            (child.node_uuid, "Backend".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn list_atom_refs_for_atom_returns_all_locations() {
+    let conn = setup();
+    let tree_repo = SqliteTreeRepository::try_new(&conn).unwrap();
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn).unwrap();
+    let service = TreeService::with_workspace_meta(tree_repo, workspace_meta);
+    let workspace_id = default_workspace_id(&conn);
+
+    let note = Atom::new(ViewHint::Note, "shared note");
+    insert_atom(&conn, &note);
+
+    let projects = service.create_folder(None, "Projects").unwrap();
+    let child = service
+        .create_folder(Some(projects.node_uuid), "Backend")
+        .unwrap();
+    let root_ref = service
+        .create_atom_ref(Some(workspace_id), note.uuid, Some("Root Ref".to_string()))
+        .unwrap();
+    let nested_ref = service
+        .create_atom_ref(
+            Some(child.node_uuid),
+            note.uuid,
+            Some("Nested Ref".to_string()),
+        )
+        .unwrap();
+
+    let locations = service.list_atom_refs_for_atom(note.uuid).unwrap();
+
+    assert_eq!(locations.len(), 2);
+    assert!(locations.iter().any(|location| {
+        location.node_uuid == root_ref.node_uuid
+            && location.workspace_id == workspace_id
+            && location.path.is_empty()
+            && location.display_name == "Root Ref"
+    }));
+    assert!(locations.iter().any(|location| {
+        location.node_uuid == nested_ref.node_uuid
+            && location.workspace_id == workspace_id
+            && location.path == "Projects/Backend"
+            && location.display_name == "Nested Ref"
+    }));
 }
 
 #[test]

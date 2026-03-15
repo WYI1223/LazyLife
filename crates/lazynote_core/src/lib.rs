@@ -56,8 +56,8 @@ pub use repo::scoped_query_repo::{
 };
 /// Re-export workspace tree repository contracts and implementation.
 pub use repo::tree_repo::{
-    SqliteTreeRepository, TreeRepoError, TreeRepoResult, TreeRepository, WorkspaceNode,
-    WorkspaceNodeId, WorkspaceNodeKind,
+    AtomRefLocation, SqliteTreeRepository, TreeRepoError, TreeRepoResult, TreeRepository,
+    WorkspaceNode, WorkspaceNodeId, WorkspaceNodeKind,
 };
 /// Re-export workspace metadata repository contracts and implementation.
 pub use repo::workspace_meta_repo::{
@@ -69,7 +69,8 @@ pub use search::fts::{search_all, SearchError, SearchHit, SearchQuery, SearchRes
 pub use service::atom_service::{AtomService, ScheduleEventRequest};
 /// Re-export unified creation service facade and errors.
 pub use service::creation_service::{
-    CreateEventWithRefRequest, CreationService, CreationServiceError,
+    CreateAtomRequest, CreateAtomResult, CreateEventWithRefRequest, CreationService,
+    CreationServiceError,
 };
 /// Re-export notes service facade and models.
 pub use service::note_service::{

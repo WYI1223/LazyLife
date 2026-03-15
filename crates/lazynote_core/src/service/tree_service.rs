@@ -11,8 +11,10 @@
 
 use crate::model::atom::AtomId;
 use crate::repo::tree_repo::{
-    TreeRepoError, TreeRepository, WorkspaceNode, WorkspaceNodeId, WorkspaceNodeKind,
+    AtomRefLocation, TreeRepoError, TreeRepository, WorkspaceNode, WorkspaceNodeId,
+    WorkspaceNodeKind,
 };
+use crate::repo::workspace_meta_repo::{WorkspaceMetaRepository, WorkspaceMetadata};
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -46,8 +48,24 @@ pub enum TreeServiceError {
         node_uuid: WorkspaceNodeId,
         parent_uuid: WorkspaceNodeId,
     },
+    /// Workspace root node cannot be deleted.
+    WorkspaceRootProtected(WorkspaceNodeId),
+    /// Designated folder cannot be deleted until role is reassigned.
+    DesignatedFolderProtected(WorkspaceNodeId),
+    /// Workspace root node cannot be moved.
+    CannotMoveWorkspaceRoot(WorkspaceNodeId),
     /// Root level is reserved for workspace roots after migration 0012.
     CannotMoveToRoot(WorkspaceNodeId),
+    /// Source node and target parent belong to different workspaces.
+    CrossWorkspaceMoveNotAllowed {
+        node_uuid: WorkspaceNodeId,
+        target_parent: WorkspaceNodeId,
+    },
+    /// Designated folder target belongs to another workspace.
+    DesignatedFolderWrongWorkspace {
+        workspace_id: WorkspaceNodeId,
+        node_uuid: WorkspaceNodeId,
+    },
     /// Repository-level failure.
     Repo(TreeRepoError),
 }
@@ -70,9 +88,32 @@ impl Display for TreeServiceError {
                 f,
                 "move would create cycle: node {node_uuid} under parent {parent_uuid}"
             ),
+            Self::WorkspaceRootProtected(node_uuid) => {
+                write!(f, "workspace root node is protected: {node_uuid}")
+            }
+            Self::DesignatedFolderProtected(node_uuid) => {
+                write!(f, "designated folder is protected until reassigned: {node_uuid}")
+            }
+            Self::CannotMoveWorkspaceRoot(node_uuid) => {
+                write!(f, "workspace root node cannot be moved: {node_uuid}")
+            }
             Self::CannotMoveToRoot(node_uuid) => {
                 write!(f, "workspace node cannot move to root level: {node_uuid}")
             }
+            Self::CrossWorkspaceMoveNotAllowed {
+                node_uuid,
+                target_parent,
+            } => write!(
+                f,
+                "workspace node cannot move across workspaces: node {node_uuid} target {target_parent}"
+            ),
+            Self::DesignatedFolderWrongWorkspace {
+                workspace_id,
+                node_uuid,
+            } => write!(
+                f,
+                "designated folder must belong to workspace {workspace_id}: {node_uuid}"
+            ),
             Self::Repo(err) => write!(f, "{err}"),
         }
     }
@@ -98,15 +139,67 @@ impl From<TreeRepoError> for TreeServiceError {
     }
 }
 
-/// Workspace tree service facade.
-pub struct TreeService<R: TreeRepository> {
-    repo: R,
+/// No-op workspace metadata adapter used by legacy tree-only call sites.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct NoopWorkspaceMetaRepository;
+
+impl WorkspaceMetaRepository for NoopWorkspaceMetaRepository {
+    fn get_default_workspace(&self) -> Result<Option<WorkspaceNodeId>, TreeRepoError> {
+        Ok(None)
+    }
+
+    fn list_workspaces(&self) -> Result<Vec<WorkspaceMetadata>, TreeRepoError> {
+        Ok(vec![])
+    }
+
+    fn resolve_designated(
+        &self,
+        _workspace_id: WorkspaceNodeId,
+        _role: &str,
+    ) -> Result<Option<WorkspaceNodeId>, TreeRepoError> {
+        Ok(None)
+    }
+
+    fn is_designated(&self, _node_uuid: WorkspaceNodeId) -> Result<bool, TreeRepoError> {
+        Ok(false)
+    }
+
+    fn reassign_designated(
+        &self,
+        _workspace_id: WorkspaceNodeId,
+        _role: &str,
+        _new_node_uuid: WorkspaceNodeId,
+    ) -> Result<(), TreeRepoError> {
+        Err(TreeRepoError::InvalidData(
+            "workspace metadata repository not configured".to_string(),
+        ))
+    }
 }
 
-impl<R: TreeRepository> TreeService<R> {
+/// Workspace tree service facade.
+pub struct TreeService<R: TreeRepository, W: WorkspaceMetaRepository = NoopWorkspaceMetaRepository>
+{
+    repo: R,
+    workspace_meta: W,
+}
+
+impl<R: TreeRepository> TreeService<R, NoopWorkspaceMetaRepository> {
     /// Creates service from repository implementation.
     pub fn new(repo: R) -> Self {
-        Self { repo }
+        Self {
+            repo,
+            workspace_meta: NoopWorkspaceMetaRepository,
+        }
+    }
+}
+
+impl<R: TreeRepository, W: WorkspaceMetaRepository> TreeService<R, W> {
+    /// Creates service from repository and workspace metadata implementations.
+    pub fn with_workspace_meta(repo: R, workspace_meta: W) -> Self {
+        Self {
+            repo,
+            workspace_meta,
+        }
     }
 
     /// Creates one folder under optional parent.
@@ -178,9 +271,13 @@ impl<R: TreeRepository> TreeService<R> {
         new_parent_uuid: Option<WorkspaceNodeId>,
         target_order: Option<i64>,
     ) -> Result<(), TreeServiceError> {
-        self.repo
+        let node = self
+            .repo
             .get_node(node_uuid, false)?
             .ok_or(TreeServiceError::NodeNotFound(node_uuid))?;
+        if node.kind == WorkspaceNodeKind::Workspace {
+            return Err(TreeServiceError::CannotMoveWorkspaceRoot(node_uuid));
+        }
         if new_parent_uuid.is_none() {
             return Err(TreeServiceError::CannotMoveToRoot(node_uuid));
         }
@@ -194,6 +291,14 @@ impl<R: TreeRepository> TreeService<R> {
             }
 
             self.ensure_parent_is_container(parent_uuid)?;
+            let source_workspace = self.workspace_root_for_node(node_uuid)?;
+            let target_workspace = self.workspace_root_for_node(parent_uuid)?;
+            if source_workspace != target_workspace {
+                return Err(TreeServiceError::CrossWorkspaceMoveNotAllowed {
+                    node_uuid,
+                    target_parent: parent_uuid,
+                });
+            }
             if self.would_create_cycle(node_uuid, parent_uuid)? {
                 return Err(TreeServiceError::CycleDetected {
                     node_uuid,
@@ -221,8 +326,14 @@ impl<R: TreeRepository> TreeService<R> {
             .repo
             .get_node(folder_uuid, false)?
             .ok_or(TreeServiceError::NodeNotFound(folder_uuid))?;
+        if folder.kind == WorkspaceNodeKind::Workspace {
+            return Err(TreeServiceError::WorkspaceRootProtected(folder_uuid));
+        }
         if folder.kind != WorkspaceNodeKind::Folder {
             return Err(TreeServiceError::NodeMustBeFolder(folder_uuid));
+        }
+        if self.workspace_meta.is_designated(folder_uuid)? {
+            return Err(TreeServiceError::DesignatedFolderProtected(folder_uuid));
         }
 
         match mode {
@@ -236,6 +347,62 @@ impl<R: TreeRepository> TreeService<R> {
     /// for the given atom's first active `atom_ref`.
     pub fn ancestor_path(&self, atom_uuid: AtomId) -> Result<Vec<String>, TreeServiceError> {
         self.repo.ancestor_path(atom_uuid).map_err(Into::into)
+    }
+
+    /// Returns ancestor segments from workspace root to direct parent for one node.
+    pub fn get_ancestor_path(
+        &self,
+        node_uuid: WorkspaceNodeId,
+    ) -> Result<Vec<(WorkspaceNodeId, String)>, TreeServiceError> {
+        self.repo.get_ancestor_path(node_uuid).map_err(Into::into)
+    }
+
+    /// Returns every active atom_ref location for one atom.
+    pub fn list_atom_refs_for_atom(
+        &self,
+        atom_uuid: AtomId,
+    ) -> Result<Vec<AtomRefLocation>, TreeServiceError> {
+        self.repo
+            .list_atom_refs_for_atom(atom_uuid)
+            .map_err(Into::into)
+    }
+
+    /// Reassigns one designated role to another folder in the same workspace tree.
+    pub fn reassign_designated(
+        &self,
+        workspace_id: WorkspaceNodeId,
+        role: &str,
+        new_node_uuid: WorkspaceNodeId,
+    ) -> Result<(), TreeServiceError> {
+        let workspace = self
+            .repo
+            .get_node(workspace_id, false)?
+            .ok_or(TreeServiceError::NodeNotFound(workspace_id))?;
+        if workspace.kind != WorkspaceNodeKind::Workspace {
+            return Err(TreeServiceError::Repo(TreeRepoError::InvalidData(
+                "designated reassign requires a workspace root id".to_string(),
+            )));
+        }
+
+        let node = self
+            .repo
+            .get_node(new_node_uuid, false)?
+            .ok_or(TreeServiceError::NodeNotFound(new_node_uuid))?;
+        if node.kind != WorkspaceNodeKind::Folder {
+            return Err(TreeServiceError::NodeMustBeFolder(new_node_uuid));
+        }
+
+        let target_workspace = self.workspace_root_for_node(new_node_uuid)?;
+        if target_workspace != workspace_id {
+            return Err(TreeServiceError::DesignatedFolderWrongWorkspace {
+                workspace_id,
+                node_uuid: new_node_uuid,
+            });
+        }
+
+        self.workspace_meta
+            .reassign_designated(workspace_id, role, new_node_uuid)?;
+        Ok(())
     }
 
     fn ensure_parent_is_container(
@@ -281,6 +448,34 @@ impl<R: TreeRepository> TreeService<R> {
             cursor = node.parent_uuid;
         }
         Ok(false)
+    }
+
+    pub(crate) fn workspace_root_for_node(
+        &self,
+        node_uuid: WorkspaceNodeId,
+    ) -> Result<WorkspaceNodeId, TreeServiceError> {
+        let mut visited = HashSet::new();
+        let mut cursor = Some(node_uuid);
+        while let Some(current) = cursor {
+            if !visited.insert(current) {
+                return Err(TreeServiceError::Repo(TreeRepoError::InvalidData(
+                    "workspace tree contains cycle while resolving workspace root".to_string(),
+                )));
+            }
+
+            let node = self
+                .repo
+                .get_node(current, false)?
+                .ok_or(TreeServiceError::NodeNotFound(current))?;
+            if node.kind == WorkspaceNodeKind::Workspace {
+                return Ok(node.node_uuid);
+            }
+            cursor = node.parent_uuid;
+        }
+
+        Err(TreeServiceError::Repo(TreeRepoError::InvalidData(
+            "workspace root not found for node".to_string(),
+        )))
     }
 }
 

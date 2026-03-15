@@ -15,6 +15,31 @@ Canonical implication:
 - designated-folder lookup is consumed through repository/service contracts, not raw schema access;
 - `PR-0411` must not add migration-specific fallback logic.
 
+### Additional Handoff From PR-0410 (2026-03-15)
+
+`PR-0410` leaves these upstream Rust Core contracts ready for guarded export:
+
+- canonical tree navigation now lives in `TreeService` as:
+  - `get_ancestor_path(node_uuid)`
+  - `list_atom_refs_for_atom(atom_uuid)`
+- `reassign_designated(...)` is now a service-level operation, not a schema-only assumption;
+- `CreationService::create_atom(CreateAtomRequest)` is the canonical business write path;
+- the old atom-based `workspace_ancestor_path(atom_id)` path remains temporary compatibility only and should not be expanded into new public surface.
+
+Implication for `PR-0411`:
+
+- guarded FFI should export the new node-based contracts and canonical creation request;
+- error mapping should consume the service-level protection errors landed in `PR-0410`;
+- guarded wrappers must preserve the `PR-0409` legacy-read bridge as compatibility behavior only, not as a new write path.
+
+### Structural Cleanup Handoff (2026-03-15)
+
+`PR-0411` should leave the FFI surface ready for downstream cleanup PR
+`PR-0411A`.
+
+`PR-0411A` owns the refactor-only split of `crates/lazynote_ffi/src/api.rs`
+into an `api/` module tree without changing the public FFI contract.
+
 引入 CallerContext + AccessGuard 体系，包装全套 Guarded*Service，新增 FFI 函数（`query_atoms`、`atom_create`、`workspace_resolve_designated` 等）。旧 FFI 保留为薄 wrapper（expand-contract 的 expand 阶段），保证 Flutter 侧编译通过。
 
 前置条件：PR-0409 + PR-0410（需要 ScopedQueryRepository + CreationService + TreeService 增强）

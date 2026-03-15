@@ -1,394 +1,539 @@
-# PR-0410: TreeService 增强 + CreationService
+# PR-0410: TreeService 增强 + CreationService 收口
 
-- Proposed title: `feat(core): tree service protection rules and unified creation service`
-- Status: Draft
+- Proposed title: `feat(core): land tree protection rules and designated creation routing`
+- Status: Merged
+
+## Implementation Update (2026-03-15)
+
+The `PR-0410` landing slice is now represented in-repo by these concrete contracts:
+
+- `TreeRepository` and `TreeService` expose canonical node-based path and ref-location helpers:
+  - `get_ancestor_path(node_uuid)`
+  - `list_atom_refs_for_atom(atom_uuid)`
+- `TreeService` now enforces runtime protection above the `0012` schema guards:
+  - reject workspace-root delete
+  - reject workspace-root move
+  - reject designated-folder delete until reassign
+  - reject `move_node(..., None, ...)` for ordinary nodes
+  - reject cross-workspace move
+  - allow same-workspace `reassign_designated(...)`
+- `CreationService` now exposes canonical business creation input via `CreateAtomRequest` and `create_atom(...)`.
+- Business creation writes now route to explicit target folders or designated folders only; they no longer create new root-scoped refs.
+- The `PR-0409` default-workspace compatibility bridge remains read-only legacy behavior for section queries. `PR-0410` consumes that bridge explicitly rather than extending it for new writes.
+
+Downstream handoff for `PR-0411`:
+
+- keep the old atom-based `workspace_ancestor_path(atom_id)` wrapper only as temporary compatibility surface;
+- export node-based path and ref-location contracts through guarded FFI instead of reopening schema decisions;
+- map the new service-side protection and creation errors at the FFI boundary without changing the Rust Core semantics landed here.
+
+### Verification Snapshot (2026-03-15)
+
+Passed on the current branch:
+
+- `cargo fmt --all -- --check`
+- `cargo clippy --all -- -D warnings`
+- `cargo test --all`
+- `dart run tools/ci/architecture_check.dart`
+
+### Closeout Snapshot (2026-03-15)
+
+Current closeout state on this branch:
+
+- all pre-merge implementation acceptance criteria are satisfied;
+- workflow ledger rows for `service-routing`, `migration-protection`,
+  `execution-order`, and `verification-gates` are already synchronized;
+- the only remaining status transition is to update `Status` to `Merged` after
+  the branch is actually merged.
 
 ## Goal
 
-### Dependency Clarification (2026-03-13)
+在 `PR-0408` 的 post-`0012` schema 和 `PR-0409` 的 scoped-query bridge 之上，完成 Rust Core service 层收口：
 
-This PR consumes the **post-0012 schema contract** from `PR-0408`. It may rely on:
+- 让 `TreeService` 具备 workspace root / designated folder 感知能力；
+- 让 `CreationService` 成为统一的新写入入口，完成 designated routing 和 `origin_workspace_id` 写入；
+- 落地 `reassign_designated`；
+- 显式消费 `PR-0409` 的兼容 bridge，而不是让它以“历史残留”形式继续存在；
+- 为 `PR-0411` 的 guarded FFI、`PR-0412` / `PR-0413` 的 Flutter 消费改造提供稳定上游契约。
 
-- workspace roots being first-class `workspace_nodes`;
-- designated folders already existing as protected schema state;
-- `WorkspaceMetaRepository` already covering the read-side metadata needed for default-workspace and designated-folder lookup.
+本 PR 只负责 Core service / repo 层，不直接发布 carrier 文本，也不做 Flutter 侧消费收口。
 
-This PR is where service-routing and designated reassignment semantics land. It should not re-specify migration/backfill behavior from `PR-0408`.
+## Why This PR Exists
 
-### Transitional Compatibility Consumption (2026-03-14)
+当前 upstream 状态已经形成明确分工：
 
-`PR-0409` is allowed to carry a temporary section-query compatibility bridge because current creation paths still place new refs under the default workspace root. `PR-0410` must explicitly consume that bridge:
+- `PR-0408` 已落 schema、default workspace backfill、designated folder schema truth、`origin_workspace_id` 列，以及 DB triggers；
+- `PR-0409` 已落 `ScopedQueryRepository`，并通过 default-workspace-root bridge 暂时保住 root-scoped legacy refs 的可见性；
+- workflow ledger 里 `service-routing` 仍是 `pending`，`migration-protection` 仍是 `partial`，说明 `PR-0410` 正是负责把 service 语义补齐的那一段；
+- `PR-0411` 以后要消费的不是“草案中的理想接口”，而是本 PR 实际落地后的 tree / creation / designated contract。
 
-- by landing creation routing (`resolve_creation_role` + designated target resolution) for new writes;
-- by deciding whether the `PR-0409` compatibility bridge can be removed, narrowed, or must remain explicit for legacy root-scoped refs;
-- by writing the chosen cutover rule into this spec and the workflow ledger rather than relying on implicit carry-over behavior.
+## Upstream Facts To Consume
 
-Current upstream fact from `PR-0409`:
+### `PR-0408` 已经保证的事实
 
-- the landed bridge is not an abstract placeholder; `TaskService` currently scopes section reads to the default workspace root so pre-`PR-0410` root-scoped refs remain visible;
-- `PR-0410` therefore must treat this as an active compatibility behavior to consume, not as undocumented historical residue.
+- `workspaces`、`designated_folders`、`origin_workspace_id` 已存在；
+- 每个 workspace 都已有 `inbox / tasks / calendar` designated folders；
+- workspace root 和 designated folder 的 DB trigger 保护已经生效；
+- latest-schema 的拓扑不变量是“top level 只允许 workspace roots”。
 
-增强 TreeService（签名修复、保护规则、move 硬约束），引入 CreationService 统一 atom 创建路由（`resolve_creation_role` + `origin_workspace_id` 事务写入），实现 `reassign_designated` repo/service 层。
+### `PR-0409` 已经落地且必须被消费的 bridge
 
-前置条件：PR-0408（需要 Migration 0012 的 schema 和系统节点）
+- `ScopedQueryRepository` 已成为 canonical subtree query engine；
+- `TaskService` 当前仍保留一个显式 bridge：section reads 先从 default workspace root 起查，以保证 pre-`PR-0410` root-scoped refs 仍可见；
+- 这个 bridge 不是抽象占位符，而是当前在代码中的 active behavior；
+- `PR-0410` 必须决定它在服务层 cutover 之后的语义边界。
+
+### 本 PR 在 workflow 中必须消费的 open items
+
+| Open Item | 本 PR 责任 |
+|------|------|
+| `OI-035` | Tree / creation service contract 落地 |
+| `OI-036` | designated folder reassign 与 service-side protection 落地 |
+| `OI-045` | execution-order handoff 显式收敛 |
+| `OI-048` | verification / evidence path 回填 |
 
 ## Execution Contract (Canonical Inputs)
 
-Shared promotion register:
+本 PR 以以下文档为约束输入，不重新定义它们已经确定的事实：
 
-- `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`
-- This PR must leave evidence sufficient for `CPR-001`, but may not publish carrier text directly.
-
-| 类型 | 引用 | 与本 PR 的关系 |
-|------|------|---------------|
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-16-rust-service-ffi-contract.md` Q2-Q4 | TreeService 增强、CreationService 设计、保护规则 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-15-rust-data-model-single-root.md` Q9、Q12 | 系统节点保护规则、designated folder 语义 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0410 行）、Q4（Service 测试） | PR 定位、测试要求 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-12-workspace-tree-single-root.md` Q6 | 创建路由优先级 |
-| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `service-routing` 与 service 侧 `migration-protection` ledger，同时更新 `execution-order` 与 `verification-gates` rows，并显式消费 `OI-035`、`OI-036`、`OI-045`、以及本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
+| 类型 | 引用 | 本 PR 的消费方式 |
+|------|------|------|
+| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-15-rust-data-model-single-root.md` | 消费 workspace root / designated folder / `origin_workspace_id` / trigger protection 语义 |
+| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-16-rust-service-ffi-contract.md` | 消费 tree service、creation routing、workspace meta repo、FFI handoff 方向 |
+| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` | 消费 `PR-0410` 在执行序列中的定位和 service-test 责任 |
+| PR 规格 | `docs/releases/v0.4/prs/PR-0408-schema-migration.md` | 消费 post-`0012` schema contract 和 designated pre-create 事实 |
+| PR 规格 | `docs/releases/v0.4/prs/PR-0409-scoped-query-repository.md` | 消费 scoped-query bridge 的现状和 cutover 责任 |
+| Workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | 回填 `service-routing`、`migration-protection`、`execution-order`、`verification-gates` |
+| Shared register | `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md` | 留下 `CPR-001` 所需实现证据，但不直接发布 carrier |
 
 ## Scope
 
-In scope:
-- `get_ancestor_path` 签名修复（DI-16 Q2）
-- `list_atom_refs_for_atom` 新方法
-- TreeService 保护规则：系统节点不可删除/移出
-- move 硬约束：不可移入非本 workspace
-- CreationService：`resolve_creation_role` 优先级（指定 folder > designated > root）+ `origin_workspace_id` 事务写入（DI-16 Q3）
-- `reassign_designated` repo 方法 + service 层实现（DI-16 Q4）
-- 跨 workspace 保护
-- Service 层测试
-- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `service-routing`、service 侧 `migration-protection`、`execution-order`、以及本 PR 负责的 `verification-gates` rows，显式对齐 `OI-035` / `OI-036` / `OI-045` / `OI-048`，写入 landed/partial 状态与证据路径
+### In Scope
 
-Out of scope:
-- ScopedQueryRepository（PR-0409）
-- Guard / FFI（PR-0411）
-- Flutter 层变更（PR-0412/6）
-- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
+- `TreeRepository` / `TreeService` 的 node-based path contract 补齐；
+- `list_atom_refs_for_atom` 读侧能力补齐；
+- `TreeService` 的 workspace-aware protection：
+  - workspace root 不可删；
+  - workspace root 不可 move；
+  - designated folder 不可删，必须先 reassign；
+  - 所有普通节点 `move_node(..., None, ...)` 一律拒绝；
+  - 禁止 cross-workspace move；
+- `WorkspaceMetaRepository` 增补 `is_designated` / `reassign_designated`；
+- `CreationService` 统一创建入口、designated routing、`origin_workspace_id` 事务写入；
+- 将 `PR-0409` 的 bridge 定义为“legacy-read compatibility only”；
+- service / repo / integration tests；
+- workflow ledger 与本 spec 的同步。
 
-## Design
+### Out Of Scope
 
-### 1. TreeRepo 层：签名修复 + 新查询方法（T1）
+- 新 public FFI surface、error-code 扩散、export contract 收口：留给 `PR-0411`；
+- Flutter core / feature 消费适配：留给 `PR-0412` / `PR-0413`；
+- schema migration、trigger SQL 改写：不在本 PR 主路径，除非发现必须修复的 blocker；
+- carrier publication、ADR/ruling/topic-map 更新。
 
-#### 1.1 `get_ancestor_path` 签名修复（DI-16 Q4.4）
+## Canonical Decisions
 
-当前 `ancestor_path` 按 `atom_uuid` 查路径，同一 atom 有多个 `atom_ref` 时无法确定唯一路径。修正后按 `node_uuid` 查，消费方（Editor 面包屑）已持有当前打开的具体节点 ID：
+### 1. `PR-0409` bridge 的 cutover 规则
 
-```rust
-// 旧（v0.3）— tree_repo.rs TreeRepository trait
-fn ancestor_path(&self, atom_uuid: AtomId) -> TreeRepoResult<Vec<String>>;
+本 PR 采用以下明确决策：
 
-// 新（v0.4）
-fn get_ancestor_path(&self, node_uuid: WorkspaceNodeId)
-    -> TreeRepoResult<Vec<(WorkspaceNodeId, String)>>;
-```
+1. `CreationService` 在 `PR-0410` 之后创建的新 refs，必须落到显式 target folder 或 designated folder。
+2. 新写入不允许再依赖 default-workspace-root bridge。
+3. `PR-0409` bridge 继续保留，但语义收窄为：
+   - 仅用于读取历史 root-scoped refs；
+   - 仅作为 `PR-0410` 之后的 legacy compatibility；
+   - 不再作为任何新写路径的默认目标。
+4. 是否在后续版本移除 bridge，由 `PR-0411` / `PR-0413` 在完成 export contract 和 Flutter 消费收口后再决定。
 
-返回类型从 `Vec<String>` 改为 `Vec<(WorkspaceNodeId, String)>`，提供结构化路径（workspace root → 直接父节点方向），支持 Flutter 层点击导航。
+换句话说，`PR-0410` 的职责不是“立刻删掉 bridge”，而是“让 bridge 变成显式、受限、只服务历史数据的兼容层”。
 
-#### 1.2 `list_atom_refs_for_atom` 新方法（DI-16 Q2.3）
+### 2. 原始 tree API 与业务创建路径分离
 
-按 `atom_uuid` 查该 atom 在所有 workspace 树中的出现位置。归入 `TreeRepository` trait（操作对象是 `workspace_nodes`，纯树读查询）：
+为避免把“通用拓扑操作”和“业务写入语义”混在一起，本 PR 明确区分两类入口：
+
+- `TreeService::create_folder(None, ...)` / `create_atom_ref(None, ...)`
+  - 仍视为低层 topology helper；
+  - 允许继续沿用 default workspace fallback；
+  - 目的是保证通用树工具与现有 FFI/测试可平滑过渡。
+- `CreationService`
+  - 视为业务写入唯一 canonical path；
+  - 不允许 root fallback；
+  - 只允许显式 target folder 或 designated folder routing。
+
+这条区分是本 PR 的关键边界。后续 `PR-0411` / `PR-0413` 应持续把上层消费迁移到业务路径，而不是继续扩散 raw tree fallback。
+
+### 3. `TreeRepository` 保持纯拓扑，workspace 语义留在 `WorkspaceMetaRepository`
+
+本 PR 不把 designated / workspace 语义塞回 `TreeRepository`。边界保持为：
+
+- `TreeRepository`
+  - 纯 `workspace_nodes` 拓扑；
+  - create / list / move / rename / delete；
+  - node-based path 和 atom-ref location 查询。
+- `WorkspaceMetaRepository`
+  - workspace metadata；
+  - designated folder resolve / reassign / status query。
+- `TreeService` / `CreationService`
+  - 组合两个 repo，落业务规则和 protection。
+
+### 4. canonical path contract 改为 node-based，但保留临时兼容 wrapper
+
+`DI-16` 要求 canonical breadcrumb contract 改成按 `node_uuid` 解析，而不是按 `atom_uuid` 猜一条路径。本 PR 的落地方式是：
+
+- 新增 canonical API：
+  - `get_ancestor_path(node_uuid) -> Vec<(WorkspaceNodeId, String)>`
+- 新增 canonical helper：
+  - `list_atom_refs_for_atom(atom_uuid) -> Vec<AtomRefLocation>`
+- 旧的 atom-based `ancestor_path(atom_uuid)` 不在本 PR 里直接删除；
+  - 允许在 Core 内部保留一层 temporary compatibility wrapper；
+  - 由后续 `PR-0411` / `PR-0413` 在 FFI 和 Flutter consumer 完成改造后移除。
+
+这能同时满足“本 PR 把 canonical contract 立起来”和“当前 public FFI 还没扩面”的两个约束。
+
+### 5. `CreationService` 不再有“designated 失败就退回 root”语义
+
+旧草案里“指定 folder > designated > root”的描述不再作为业务创建规则。
+
+本 PR 的最终规则是：
+
+1. `target_folder = Some(_)`：直接使用显式目标；
+2. `target_folder = None`：由 `resolve_creation_role` 解析 role，再去 `designated_folders` 查目标；
+3. designated resolve 失败：返回错误，视为不变量破坏；
+4. 业务创建不允许 fallback 到 workspace root。
+
+理由：
+
+- `PR-0408` 已经保证 designated folders 必然存在；
+- root fallback 会继续制造 `PR-0409` bridge 依赖；
+- 一旦 designated 丢失，更合理的处理是显式报错，而不是静默把新数据写错地方。
+
+### 6. cross-workspace move 永久禁止，跨 workspace 迁移不走 `move_node`
+
+`move_node` 的契约在本 PR 收紧为：
+
+- `new_parent_uuid = None`：拒绝；
+- source / target parent 不在同一 workspace tree：拒绝；
+- workspace root：拒绝移动；
+- designated folder：允许同 workspace 内改位置，但不自动改变 designated 映射；
+- 跨 workspace 迁移留给未来专门的 transfer/copy API，不在本 PR 发明半套语义。
+
+### 7. designated folder 只能 reassign，不能 unassign
+
+本 PR 保持 `DI-15` / `DI-16` 的 designated 语义：
+
+- `designated_folders` 是 DB truth；
+- 可以把 role 重指向同一 workspace 子树内的另一个 active folder；
+- 不允许删除映射；
+- 不允许把 role 指向非 folder；
+- 不允许指向别的 workspace。
+
+## Target Data Contracts
+
+### `AtomRefLocation`
 
 ```rust
 pub struct AtomRefLocation {
     pub node_uuid: WorkspaceNodeId,
-    pub workspace_id: WorkspaceNodeId,   // 所属 workspace root 的 node_uuid
-    pub path: String,                    // workspace root → 该 ref 的路径，纯展示
+    pub workspace_id: WorkspaceNodeId,
+    pub path: String,
     pub display_name: String,
 }
-
-// TreeRepository trait 新增
-fn list_atom_refs_for_atom(&self, atom_uuid: AtomId)
-    -> TreeRepoResult<Vec<AtomRefLocation>>;
 ```
 
-SQL：先 `WHERE atom_uuid = ? AND kind = 'atom_ref'` 收集所有 ref，每条向上 CTE 拼路径。单 atom 通常 1-3 个 ref，逐条上溯可接受。`workspace_id` 通过向上遍历祖先链到 `kind = 'workspace'` 的节点获取。
-
----
-
-### 2. TreeService 增强：保护规则 + move 硬约束（T2）
-
-#### 2.1 泛型签名扩展（DI-16 Q4.3）
-
-TreeService 增加 `W: WorkspaceMetaRepository` 泛型参数，用于 designated folder 状态查询：
-
-```rust
-pub struct TreeService<R: TreeRepository, W: WorkspaceMetaRepository> {
-    repo: R,
-    workspace_meta: W,
-}
-```
-
-`WorkspaceMetaRepository` 提供的保护相关方法（由 PR-0408 的 `workspace_meta_repo.rs` 实现）：
-
-```rust
-fn is_designated(&self, node_uuid: WorkspaceNodeId) -> Result<bool>;
-fn resolve_designated(&self, workspace_id: WorkspaceNodeId, role: &str)
-    -> Result<Option<WorkspaceNodeId>>;
-fn reassign_designated(&self, workspace_id: WorkspaceNodeId, role: &str,
-    new_node_uuid: WorkspaceNodeId) -> Result<()>;
-```
-
-#### 2.2 新增 `TreeServiceError` 变体（DI-16 Q4.1）
-
-```rust
-/// Cannot delete or move workspace root node.
-WorkspaceRootProtected(WorkspaceNodeId),
-/// Cannot delete a designated folder; reassign role to another folder first.
-DesignatedFolderProtected(WorkspaceNodeId),
-/// Cannot move workspace root node.
-CannotMoveWorkspaceRoot(WorkspaceNodeId),
-/// Node cannot be moved to root level (parent=None reserved for workspace roots).
-CannotMoveToRoot(WorkspaceNodeId),
-/// Move rejected: source and target parent belong to different workspace trees.
-CrossWorkspaceMoveNotAllowed {
-    node_uuid: WorkspaceNodeId,
-    target_parent: WorkspaceNodeId,
-},
-```
-
-#### 2.3 保护规则一览表（DI-16 Q4.1）
-
-| 操作 | workspace root (`kind='workspace'`) | designated folder | 普通节点 |
-|------|--------------------------------------|-------------------|---------|
-| `delete_folder` | 拦截 → `WorkspaceRootProtected` | 拦截 → `DesignatedFolderProtected` | 放行 |
-| `move_node`（同 workspace） | 拦截 → `CannotMoveWorkspaceRoot` | 放行（仅改位置，不改映射） | 放行 |
-| `move_node`（跨 workspace） | 拦截 → `CrossWorkspaceMoveNotAllowed` | 拦截 → `CrossWorkspaceMoveNotAllowed` | 拦截 → `CrossWorkspaceMoveNotAllowed` |
-| `move_node`（`new_parent=None`） | 拦截 → `CannotMoveToRoot` | 拦截 → `CannotMoveToRoot` | 拦截 → `CannotMoveToRoot` |
-
-DB 触发器（由 Migration 0012 创建）保留为最终兜底防线；Service 层前置检查提供语义清晰的错误变体，便于 FFI 层映射结构化错误码（DI-16 Q4.1 理由）。
-
-#### 2.4 跨 workspace 判断逻辑
-
-`move_node` 的跨 workspace 检查：向上遍历被移动节点和目标 parent 的祖先链，各自找到第一个 `kind = 'workspace'` 的祖先节点（即所属 workspace root）。若两者的 workspace root `node_uuid` 不同，拒绝操作返回 `CrossWorkspaceMoveNotAllowed`。
-
-跨 workspace 移动不走 `move_node`；未来跨 workspace 迁移走专用 transfer/copy API。
-
-#### 2.5 `move_node` 硬约束说明（DI-16 Q4.1）
-
-`new_parent_uuid = None` 在 v0.4 中对普通节点无条件拒绝。`parent_uuid IS NULL` 只有 workspace root 节点（`kind = 'workspace'`）才合法；普通节点移到 None 会脱离所有 workspace 树，ScopedAtomQuery 的 CTE 从 workspace root 出发永远遍历不到该节点。
-
----
-
-### 3. CreationService 重构：统一创建路由 + `origin_workspace_id`（T3）
-
-#### 3.1 请求模型（DI-16 Q3.1）
+### `CreateAtomRequest`
 
 ```rust
 pub struct CreateAtomRequest {
-    pub workspace_id: WorkspaceNodeId,             // 必传，定位 workspace
+    pub workspace_id: WorkspaceNodeId,
     pub content: String,
-    pub content_type: String,                       // v0.4 白名单：仅接受 "markdown"
-    pub task_status: Option<TaskStatus>,            // 有值 → view_hint 推导为 Task
-    pub start_at: Option<i64>,                      // 时间属性，影响路由推导
+    pub content_type: String,
+    pub task_status: Option<TaskStatus>,
+    pub start_at: Option<i64>,
     pub end_at: Option<i64>,
-    pub tags: Option<Vec<String>>,                  // 创建时原子绑定 tag，同事务
-    pub target_folder: Option<WorkspaceNodeId>,     // 显式路由目标；None → 按属性推导
-    pub display_name: Option<String>,               // atom_ref 展示名；None → derive_title
+    pub tags: Option<Vec<String>>,
+    pub target_folder: Option<WorkspaceNodeId>,
+    pub display_name: Option<String>,
 }
 ```
 
-`view_hint` 不作为输入字段，由 S1 R3 内部推导（`task_status` 优先规则）。`origin_workspace_id` 由 CreationService 自动填入 `workspace_id`（DI-15 Q10），不由调用方传入。
+补充约束：
 
-#### 3.2 `resolve_creation_role` 路由函数（DI-16 Q3.2 + DI-12 Q6）
+- `view_hint` 不作为输入，由服务层推导；
+- `origin_workspace_id` 不由调用方传入，由服务层在事务内写入；
+- `content_type` 在本 PR 仍只接受当前白名单；
+- `end_at >= start_at` 在 service 入口校验。
 
-路由优先级（高 → 低）：
-
-| 优先级 | 条件 | 目标 |
-|--------|------|------|
-| 1（最高） | `request.target_folder = Some(_)` | 显式指定的 folder（直接使用，跳过推导） |
-| 2 | `task_status.is_some()` | `designated_folders WHERE role = 'tasks'` |
-| 3 | `start_at.is_some() \|\| end_at.is_some()` | `designated_folders WHERE role = 'calendar'` |
-| 4（兜底） | 以上均不满足 | `designated_folders WHERE role = 'inbox'` |
+### `resolve_creation_role`
 
 ```rust
-/// 纯函数：根据 request 属性推导 designated folder role（DI-16 Q3.2）
-fn resolve_creation_role(request: &CreateAtomRequest) -> &str {
-    if request.task_status.is_some() { "tasks" }
-    else if request.start_at.is_some() || request.end_at.is_some() { "calendar" }
-    else { "inbox" }
+fn resolve_creation_role(request: &CreateAtomRequest) -> &'static str {
+    if request.task_status.is_some() {
+        "tasks"
+    } else if request.start_at.is_some() || request.end_at.is_some() {
+        "calendar"
+    } else {
+        "inbox"
+    }
 }
 ```
 
-`target_folder` 为 `Some` 时跳过此函数，直接使用显式目标。`resolve_creation_role` 是纯函数，路由规则变更只改此函数，不影响事务/校验逻辑。
+规则：
 
-#### 3.3 创建流程（4 步事务，DI-16 Q3.2）
-
-```
-BEGIN IMMEDIATE;
-  1. 校验：content_type 白名单、end_at >= start_at（两者都存在时）
-  2. 推导 view_hint：按 S1 R3（task_status 优先 → Task；start_at/end_at → Event；其余 → Note）
-  3. 路由 + 边界校验：
-       target = request.target_folder
-                .unwrap_or_else(|| workspace_meta.resolve_designated(
-                    workspace_id, resolve_creation_role(&request)))
-       // 跨 workspace 防护：校验 target 属于 workspace_id 的树
-       // 失败 → CreationServiceError::TargetFolderNotInWorkspace
-  4. 事务内执行：
-       INSERT INTO atoms (... origin_workspace_id = workspace_id ...)
-       INSERT INTO workspace_nodes (atom_ref → target folder)
-       // if tags: INSERT atom_tags（同事务）
-COMMIT;
-```
-
-`origin_workspace_id` 在 INSERT 时一次性写入，v0.4 写入但不消费（DI-15 Q10 C+）；字段打好数据基础，升级为应用层门禁或 v1.x 加密索引时无需改列。
-
-#### 3.4 CreationService 泛型签名
-
-```rust
-pub struct CreationService<'conn> {
-    conn: &'conn Connection,
-}
-```
-
-现有 `CreationService` 通过 `&Connection` 持有连接并在内部构造 repo。v0.4 重构时在内部构造 `WorkspaceMetaRepository` 用于路由解析，保持外部接口一致（`conn` 注入模式不变）。
-
-新增公开方法：
-
-```rust
-/// 统一创建入口：atom + atom_ref + optional tags，事务内完成（S4 ruling）。
-pub fn create_atom(&self, request: &CreateAtomRequest)
-    -> Result<(AtomId, WorkspaceNode), CreationServiceError>;
-```
-
-现有 `create_note_with_ref` / `create_task_with_ref` / `create_event_with_ref` 在 PR-0410 阶段保留，由 PR-0411（Guard+FFI expand 阶段）改为薄 wrapper 委托 `create_atom`，PR-0413（contract 阶段）移除。
-
----
-
-### 4. WorkspaceMetaRepository：`reassign_designated` 实现（T4）
-
-`WorkspaceMetaRepository` trait 由 PR-0408 引入（`workspace_meta_repo.rs`）。本 PR 为 `reassign_designated` 添加完整实现：
-
-```rust
-/// 将 role 重指定到同 workspace 下的另一个 active folder。
-/// 不允许删除映射（DI-15 Q9.1），只允许 reassign。
-/// 失败条件：new_node_uuid 不在 workspace_id 的树内 → CrossWorkspaceDesignated
-///          new_node_uuid 的 kind != folder → DesignatedTargetMustBeFolder
-fn reassign_designated(
-    &self,
-    workspace_id: WorkspaceNodeId,
-    role: &str,
-    new_node_uuid: WorkspaceNodeId,
-) -> Result<()>;
-```
-
-实现要点：
-- 先校验 `new_node_uuid` 属于 `workspace_id` 的子树（向上遍历祖先，确认 workspace root 匹配），防止旁路 SQL 绕过 DB 触发器
-- 再执行 `UPDATE designated_folders SET node_uuid = ? WHERE workspace_id = ? AND role = ?`
-- DB 触发器 `validate_designated_folder_workspace_update` 作为最终兜底（DI-15 Q9.1）
-
----
-
-### 5. 数据流总结
-
-```
-[调用方传入 CreateAtomRequest]
-        │
-        ▼
-CreationService::create_atom()
-  ├── 校验 content_type / end_at >= start_at
-  ├── 推导 view_hint（S1 R3）
-  ├── 路由目标解析：
-  │     target_folder Some ──────────────────────────┐
-  │     target_folder None → resolve_creation_role() │
-  │       → WorkspaceMetaRepository::resolve_designated() → folder_id
-  │                                                   │
-  ├── 跨 workspace 校验（folder_id 的祖先链确认属于 workspace_id）
-  │                                                   │
-  └── BEGIN IMMEDIATE 事务 ◄──────────────────────────┘
-        ├── INSERT atoms (含 origin_workspace_id)
-        ├── INSERT workspace_nodes (atom_ref → resolved folder)
-        └── INSERT atom_tags (if tags present)
-      COMMIT
-```
-
-```
-[调用方传入 move_node(node_uuid, new_parent_uuid)]
-        │
-        ▼
-TreeService::move_node()
-  ├── new_parent_uuid == None → CannotMoveToRoot（硬拒绝）
-  ├── get_node(node_uuid).kind == Workspace → CannotMoveWorkspaceRoot
-  ├── 跨 workspace 校验（两端祖先链 workspace root 是否相同）
-  │     不同 → CrossWorkspaceMoveNotAllowed
-  └── 通过 → TreeRepository::move_node()（现有排序逻辑不变）
-
-[调用方传入 delete_folder(folder_uuid, mode)]
-        │
-        ▼
-TreeService::delete_folder()
-  ├── get_node(folder_uuid).kind == Workspace → WorkspaceRootProtected
-  ├── WorkspaceMetaRepository::is_designated(folder_uuid) == true
-  │     → DesignatedFolderProtected（需先 reassign）
-  └── 通过 → 现有 dissolve / delete_all 逻辑不变
-```
-
-## Task Breakdown
-
-| Task | Lane | 内容 | 文件 | 估算 | 依赖 |
-|------|------|------|------|------|------|
-| T1 | Rust | `get_ancestor_path` 签名修复 + `list_atom_refs_for_atom` | `crates/lazynote_core/src/repo/tree_repo.rs` | TBD | — |
-| T2 | Rust | TreeService 保护规则 + move 硬约束 | `crates/lazynote_core/src/service/tree_service.rs` | TBD | T1 |
-| T3 | Rust | CreationService（`resolve_creation_role` + `origin_workspace_id` 写入） | `crates/lazynote_core/src/service/creation_service.rs` | TBD | — |
-| T4 | Rust | `reassign_designated` repo + service | `crates/lazynote_core/src/repo/`, `crates/lazynote_core/src/service/` | TBD | — |
-| T5 | Rust | 保护规则测试 + 创建路由优先级测试 + reassign 测试 | `crates/lazynote_core/tests/` | TBD | T2-T4 |
+- 显式 `target_folder` 的优先级高于一切；
+- 没有显式 target 时，才走 role 解析；
+- role 解析结果只影响 designated 目标，不改变 atom 的属性真相。
 
 ## Planned File Changes
 
-- `[edit]` crates/lazynote_core/src/repo/tree_repo.rs (签名修复 + 新方法)
-- `[edit]` crates/lazynote_core/src/repo/workspace_meta_repo.rs (`reassign_designated` repo 实现，DI-16 Q2)
-- `[edit]` crates/lazynote_core/src/service/tree_service.rs (保护规则 + move 硬约束)
-- `[edit]` crates/lazynote_core/src/service/creation_service.rs (resolve_creation_role 优先级 + origin_workspace_id 写入)
-- `[edit]` crates/lazynote_core/src/service/mod.rs (导出)
-- `[add]` crates/lazynote_core/tests/tree_service_protection_test.rs (或合入现有测试文件)
+- `[edit]` `crates/lazynote_core/src/repo/tree_repo.rs`
+- `[edit]` `crates/lazynote_core/src/repo/workspace_meta_repo.rs`
+- `[edit]` `crates/lazynote_core/src/service/tree_service.rs`
+- `[edit]` `crates/lazynote_core/src/service/creation_service.rs`
+- `[edit]` `crates/lazynote_core/src/service/mod.rs`
+- `[edit]` `crates/lazynote_core/src/lib.rs`
+- `[edit]` `crates/lazynote_core/tests/workspace_tree.rs`
+- `[edit]` `crates/lazynote_core/tests/time_matrix.rs`
+- `[add or edit]` `crates/lazynote_core/tests/creation_service_routing.rs`
+- `[conditional edit]` `crates/lazynote_ffi/src/api.rs`
+  - 仅当内部 service 构造或临时兼容 wrapper 需要同步时允许修改；
+  - 不新增 public FFI endpoint。
 
-## Verification
+## Executable Plan
 
-### CI gates
+### Chunk 1: 先写 RED 测试，锁定 `PR-0410` 契约
+
+**目标**
+
+- 把 tree protection、designated reassign、creation routing、bridge consumption 的预期行为先写成失败测试；
+- 避免实现过程中再次回到“边写边猜语义”。
+
+**文件**
+
+- `crates/lazynote_core/tests/workspace_tree.rs`
+- `crates/lazynote_core/tests/time_matrix.rs`
+- `crates/lazynote_core/tests/creation_service_routing.rs`
+
+**必须先写出来的测试**
+
+1. `move_node(..., None, ...)` 拒绝普通节点。
+2. workspace root 不能 delete / move。
+3. designated folder 不能 delete，必须先 `reassign_designated`。
+4. `reassign_designated` 允许 same-workspace nested folder，拒绝 cross-workspace / non-folder。
+5. `CreationService`：
+   - 显式 `target_folder` 优先；
+   - `task_status` 路由到 `tasks`；
+   - `start_at/end_at` 路由到 `calendar`；
+   - 默认路由到 `inbox`；
+   - 不再 fallback 到 root；
+   - 事务内写入 `origin_workspace_id`。
+6. `PR-0409` bridge 回归：
+   - legacy root-scoped refs 仍可被 section read 看到；
+   - 通过 `CreationService` 新创建的 atoms 不再落 root。
+
+**阶段验证**
 
 ```bash
-cd crates/
+cd crates
+cargo test -p lazynote_core --test workspace_tree -- --nocapture
+cargo test -p lazynote_core --test creation_service_routing -- --nocapture
+cargo test -p lazynote_core --test time_matrix -- --nocapture
+```
+
+预期：先 RED，再进入实现。
+
+### Chunk 2: 补齐 repo contract，不碰 public FFI
+
+**目标**
+
+- 在 repo 层先把 canonical 查询和 workspace meta 能力补齐；
+- 保持 `TreeRepository` 纯拓扑、`WorkspaceMetaRepository` 纯元数据。
+
+**实现项**
+
+- `tree_repo.rs`
+  - 新增 `get_ancestor_path(node_uuid)`
+  - 新增 `list_atom_refs_for_atom(atom_uuid)`
+- `workspace_meta_repo.rs`
+  - 新增 `is_designated(node_uuid)`
+  - 新增 `reassign_designated(workspace_id, role, new_node_uuid)`
+  - 明确 same-workspace subtree 校验和 folder-kind 校验
+
+**阶段出口**
+
+- repo 层测试转绿；
+- 还未修改 service 前，public surface 仍可编译。
+
+### Chunk 3: 落 `TreeService` protection 和 move contract
+
+**目标**
+
+- 把 schema triggers 提前到 service 层，提供更清晰的错误语义；
+- 为 `PR-0411` 的 error-code 映射准备稳定上游。
+
+**实现项**
+
+- `TreeService` 改为组合 `TreeRepository + WorkspaceMetaRepository`
+- 新增/收紧错误变体：
+  - `WorkspaceRootProtected`
+  - `DesignatedFolderProtected`
+  - `CannotMoveWorkspaceRoot`
+  - `CannotMoveToRoot`
+  - `CrossWorkspaceMoveNotAllowed`
+- `delete_folder` 增加 workspace root / designated folder 拦截
+- `move_node` 增加：
+  - no-root
+  - no-cross-workspace
+  - no-workspace-root-move
+- canonical `get_ancestor_path(node_uuid)` 对外可用
+- 如当前 compile path 仍依赖 atom-based `ancestor_path(atom_uuid)`，在本层保留 temporary wrapper
+
+**阶段出口**
+
+- `workspace_tree.rs` 对应保护与路径测试转绿；
+- 旧 FFI 若仍依赖 atom-based path，不因本 chunk 直接断编。
+
+### Chunk 4: 落 `CreationService` 统一创建入口
+
+**目标**
+
+- 让业务创建从“直接往 root 或 parent 塞 ref”收口到“显式目标或 designated routing”；
+- 把 `origin_workspace_id` 真正接入写路径。
+
+**实现项**
+
+- 引入 `CreateAtomRequest`
+- 引入 `create_atom(&CreateAtomRequest)`
+- 内部事务顺序：
+  1. 校验输入；
+  2. 推导 `view_hint`；
+  3. 解析目标 folder；
+  4. 校验目标属于 `workspace_id` 子树；
+  5. 写 atom（含 `origin_workspace_id`）；
+  6. 写 atom_ref；
+  7. 可选写 tags；
+  8. commit
+- 现有
+  - `create_note_with_ref`
+  - `create_task_with_ref`
+  - `create_event_with_ref`
+  保留为 thin wrappers 或 compatibility entrypoints，但内部统一委托新路径
+
+**明确不允许**
+
+- designated resolve 失败后 fallback 到 root；
+- 创建跨 workspace ref；
+- 在 service 层绕过 `origin_workspace_id` 写入。
+
+### Chunk 5: 显式消费 `PR-0409` bridge，并把下游 handoff 写清楚
+
+**目标**
+
+- 让 `PR-0410` 成为 `PR-0409` bridge 的正式消费点；
+- 给 `PR-0411` 留下明确的“还能做什么、不能做什么”。
+
+**本 chunk 要写入 spec / workflow 的结论**
+
+- `PR-0409` bridge 继续保留，但仅服务 legacy root-scoped refs；
+- `CreationService` 新写入不再制造新的 bridge 依赖；
+- `service-routing` 在本 PR 落地；
+- `migration-protection` 若 service-side protection 全部补齐，可在 workflow 中收敛为 `landed`；
+- `execution-order` / `verification-gates` 补入本 PR 的证据路径；
+- `PR-0411` 负责消费：
+  - 新错误变体的 FFI 映射；
+  - node-based path 的 public export contract；
+  - 旧兼容 wrapper 的进一步收缩或下线。
+
+### Chunk 6: 全量验证与文档收口
+
+**目标**
+
+- 确保这次不是“局部测试过”，而是整个 Rust/Core/FFI 仍然绿。
+
+**必须跑的验证**
+
+```bash
+cd crates
 cargo fmt --all -- --check
 cargo clippy --all -- -D warnings
 cargo test --all
+
+cd ..
+dart run tools/ci/architecture_check.dart
 ```
 
-### Structural verification
+**本 PR 必须同步的文档**
 
-```bash
-# 验证 CreationService 存在
-grep -rn "resolve_creation_role" crates/lazynote_core/src/ --include="*.rs"
-# 预期：函数定义 + 至少一处调用
+- `docs/releases/v0.4/prs/PR-0410-tree-service-creation-service.md`
+- `docs/releases/v0.4/prs/PR-0411-guard-ffi.md`（至少同步 handoff context，若实现期需要）
+- `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md`
 
-# 验证保护规则
-grep -rn "system_node\|designated" crates/lazynote_core/src/service/tree_service.rs
-# 预期：保护逻辑相关匹配
-```
+## Workflow Update Requirements
 
-## Risk
+本 PR 完成后，至少要回填以下 ledger rows：
 
-| 风险 | 严重度 | 缓解 |
-|------|--------|------|
-| 创建路由优先级边界情况（无 designated folder 时 fallback） | LOW | `resolve_creation_role` 优先级链有明确 fallback 到 root |
-| move 硬约束与现有 move 测试冲突 | LOW | 新约束仅限跨 workspace，当前只有单 workspace |
+| Slice | 预期状态 | 说明 |
+|------|------|------|
+| `service-routing` | `landed` | TreeService / CreationService / reassign contract 落地 |
+| `migration-protection` | `landed` 或带证据的 `partial` | 取决于 service-side protection 是否完整覆盖 schema-side guard 预期 |
+| `execution-order` | `partial` | 增加 `PR-0410` 已消费 `PR-0409` bridge 的证据 |
+| `verification-gates` | `partial` | 增加 service / routing / reassign / bridge tests 的证据 |
 
-## Acceptance Criteria
+本 PR 不得直接发布 carrier，不得直接改写 `DI-15` active bundle 的主线发布面。
 
-- [ ] `get_ancestor_path` 签名修复完成
-- [ ] `list_atom_refs_for_atom` 方法可查询 atom 在树中的所有引用
-- [ ] 系统节点不可通过 TreeService 删除
-- [ ] 系统节点不可通过 TreeService 移出 workspace
-- [ ] move 操作拒绝跨 workspace 移动
-- [ ] `resolve_creation_role` 优先级：指定 folder > designated > root
-- [ ] CreationService 事务内写入 `origin_workspace_id`
-- [ ] `reassign_designated` repo/service 实现可重新指定 designated folder
-- [ ] CreationService 拒绝跨 workspace 创建
-- [ ] 现有 TreeService 测试全绿（语义不变回归）
-- [ ] `cargo test --all` 全绿
-- [ ] `cargo clippy --all -- -D warnings` 零 warning
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `service-routing` row 已更新为本 PR 的实际落地状态并附证据路径
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `migration-protection` row 已写明本 PR 覆盖的 runtime / service 保护部分与证据路径
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 service-test 部分与证据路径
-- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
-- [ ] PR spec Status updated to Merged
+## Risks And Mitigations
+
+| 风险 | 影响 | 缓解 |
+|------|------|------|
+| node-based path 直接替换导致旧 FFI 断编 | 中 | 保留临时 compatibility wrapper，到 `PR-0411` 再扩 public contract |
+| 误把 raw tree fallback 和业务创建 fallback 混为一谈 | 高 | 在 spec 中明确两类入口分离，并用测试锁死 |
+| designated reassign 校验做成“必须直挂 root”而不是“同 workspace 子树” | 高 | 测试必须覆盖 nested folder same-workspace reassign |
+| 新写入仍悄悄落 root，继续扩大 bridge 依赖 | 高 | `CreationService` 测试中显式断言新 ref 不落 root |
+| service-side protection 不完整，workflow 状态写早 | 中 | 只有 delete/move/reassign/create 保护都落地并有测试时，才允许把 `migration-protection` 标成 `landed` |
+
+## Current Acceptance Status (2026-03-15)
+
+This is the authoritative closeout checklist for the current branch. The
+historical draft checklist below is retained as planning history.
+
+- [x] canonical `get_ancestor_path(node_uuid)` is landed
+- [x] `list_atom_refs_for_atom(atom_uuid)` is landed
+- [x] `WorkspaceMetaRepository::is_designated` is landed
+- [x] `WorkspaceMetaRepository::reassign_designated` is landed
+- [x] `TreeService` enforces workspace-root and designated-folder protection
+- [x] `move_node(..., None, ...)` is rejected for ordinary nodes
+- [x] cross-workspace move is rejected
+- [x] `CreationService::create_atom` is landed
+- [x] existing creation entrypoints delegate to the canonical creation path
+- [x] `CreationService` writes `origin_workspace_id` inside the transaction
+- [x] newly created refs no longer rely on the default-workspace-root bridge
+- [x] the `PR-0409` bridge is documented as legacy-read compatibility only
+- [x] service / routing / reassign / bridge tests are landed
+- [x] `cargo fmt --all -- --check` passes
+- [x] `cargo clippy --all -- -D warnings` passes
+- [x] `cargo test --all` passes
+- [x] `dart run tools/ci/architecture_check.dart` passes
+- [x] workflow ledger is synchronized for `service-routing`,
+      `migration-protection`, `execution-order`, and `verification-gates`
+- [x] `Status` is updated to `Merged`
+
+## Historical Acceptance Draft
+
+- [ ] canonical `get_ancestor_path(node_uuid)` 已落地
+- [ ] `list_atom_refs_for_atom(atom_uuid)` 已落地
+- [ ] `WorkspaceMetaRepository::is_designated` 已落地
+- [ ] `WorkspaceMetaRepository::reassign_designated` 已落地
+- [ ] `TreeService` 已具备 workspace root / designated folder 保护
+- [ ] `move_node(..., None, ...)` 对普通节点恒拒绝
+- [ ] cross-workspace move 恒拒绝
+- [ ] `CreationService::create_atom` 已落地
+- [ ] 现有创建入口已统一委托新路径或保持明确兼容壳
+- [ ] `CreationService` 事务内写入 `origin_workspace_id`
+- [ ] 新创建 refs 不再依赖 default-workspace-root bridge
+- [ ] `PR-0409` bridge 的 legacy-only 语义已在本 spec 和 workflow 中写明
+- [ ] service / routing / reassign / bridge 测试已落地
+- [ ] `cargo fmt --all -- --check` 通过
+- [ ] `cargo clippy --all -- -D warnings` 通过
+- [ ] `cargo test --all` 通过
+- [ ] `dart run tools/ci/architecture_check.dart` 通过
+- [ ] workflow ledger 已同步 `service-routing` / `migration-protection` / `execution-order` / `verification-gates`
+- [ ] PR 合并后再将 Status 更新为 `Merged`
