@@ -93,7 +93,7 @@ String getSystemNodeId(String workspaceId, String role);
 ```
 
 **缓存结构**：`Map<(String workspaceId, String role), String nodeUUID>`
-**FFI 调用**：每个 role 调用 `workspace_resolve_designated(workspaceId, role)`（PR-0411 导出）
+**FFI 调用**：每个 role 调用 `workspace_resolve_designated(caller, workspaceId, role)`（PR-0411 导出）
 **幂等性**：同一 workspaceId 二次调用为 no-op（early return）
 
 ### FFI 适配模式
@@ -101,19 +101,37 @@ String getSystemNodeId(String workspaceId, String role);
 所有 FFI invoker 通过构造函数注入（现有模式），新增：
 
 ```dart
+FfiCallerContext buildWorkspaceCaller(String workspaceId) => FfiCallerContext(
+      identity: FfiCallerIdentity.app,
+      scopeWorkspaceId: workspaceId,
+    );
+
 typedef WorkspaceResolveDesignatedInvoker =
-    Future<WorkspaceNodeResponse> Function({
+    Future<DesignatedFolderResponse> Function({
+      required FfiCallerContext caller,
       required String workspaceId,
       required String role,
     });
+
+typedef WorkspaceReassignDesignatedInvoker =
+    Future<WorkspaceActionResponse> Function({
+      required FfiCallerContext caller,
+      required String workspaceId,
+      required String role,
+      required String newNodeUuid,
+    });
 ```
+
+硬规则：凡消费 `PR-0411` 新 FFI 的 Flutter core invoker，都必须显式传入
+`FfiCallerContext`。`workspaceId` 仍是业务目标；caller 里的
+`scopeWorkspaceId` 是访问范围声明，两者不可互相替代。
 
 PR-0412 不新增 FFI 函数——仅消费 PR-0411 已导出的函数。
 
 ### reassignDesignated 流程
 
 1. Controller 调用 `reassignDesignated(workspaceId, role, newFolderId)`
-2. FFI 调用 `workspace_reassign_designated` → Rust 更新 designated_folders
+2. FFI 调用 `workspace_reassign_designated(caller: buildWorkspaceCaller(workspaceId), ...)` → Rust 更新 designated_folders
 3. 本地缓存更新：`_systemNodeIds[(ws, role)] = newFolderId`
 4. 构建 delta：`affectedParentIds = {oldFolder.parent, newFolder.parent}`
 5. `notifyListeners()` → 消费者读 `lastMutation` 做定向刷新
@@ -173,6 +191,10 @@ grep -rn "TreeMutationDelta(" apps/lazynote_flutter/lib/ --include="*.dart"
 grep -rn "loadSystemNodes\|getSystemNodeId" apps/lazynote_flutter/lib/ --include="*.dart"
 # 预期：方法定义 + 至少一处调用
 
+# 验证 caller contract 对齐
+grep -rn "scopeWorkspaceId\|FfiCallerIdentity.app" apps/lazynote_flutter/lib/core/workspace --include="*.dart"
+# 预期：至少 2 匹配（caller helper / 调用点）
+
 # 验证 delta 载荷测试覆盖
 grep -rn "affectedParentIds" apps/lazynote_flutter/test/ --include="*.dart"
 # 预期：至少 4 匹配（create/move/delete/reassign 各一）
@@ -200,6 +222,7 @@ grep -rn "DesignatedRoleNotFoundException\|WorkspaceInitException" apps/lazynote
 - [ ] `loadSystemNodes` 成功返回系统节点信息
 - [ ] `loadSystemNodes` 失败时抛出明确异常
 - [ ] `getSystemNodeId` 正常返回指定 designated folder 的 node ID
+- [ ] WorkspaceTreeService 对 `PR-0411` caller contract 对齐：新 FFI 调用显式传入 `FfiCallerContext(identity, scopeWorkspaceId)`
 - [ ] `reassignDesignated` 成功后本地系统节点映射已刷新
 - [ ] `flutter analyze` 零 warning
 - [ ] `flutter test` 全绿

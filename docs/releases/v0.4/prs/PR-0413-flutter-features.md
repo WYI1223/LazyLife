@@ -93,6 +93,21 @@ typedef QueryAtomsInvoker =
     });
 ```
 
+同一 caller contract 适用于所有消费 `PR-0411` 新 FFI 的 typedef，
+包括 `QueryAtomsInvoker`、`AtomCreateInvoker` 和 `AtomGetInvoker`。
+
+Flutter 侧统一通过 helper 构造 caller：
+
+```dart
+FfiCallerContext buildWorkspaceCaller(String workspaceId) => FfiCallerContext(
+      identity: FfiCallerIdentity.app,
+      scopeWorkspaceId: workspaceId,
+    );
+```
+
+硬规则：`workspaceId` 仍是业务目标；`caller.scopeWorkspaceId` 是访问范围声明。
+任何示例或 typedef 都不能再把 caller 简化成单字段 `workspaceId` 模型。
+
 配套 `QueryDescriptors` 工厂类（`lib/core/query_descriptors.dart`），提供各场景的参数模板（DI-16 Q6.0 C3：只做参数填充，不含业务逻辑）：
 
 ```dart
@@ -154,7 +169,7 @@ class TasksController extends ChangeNotifier {
   Future<void> _loadInbox() async {
     final folderId = _treeService.getSystemNodeId(_workspaceId, 'tasks');
     final resp = await _queryAtoms(
-      caller: FfiCallerContext(workspaceId: _workspaceId),
+      caller: buildWorkspaceCaller(_workspaceId),
       descriptor: QueryDescriptors.tasksInbox(folderId),
       projection: FfiProjectionMode.atom,
     );
@@ -306,6 +321,10 @@ test ! -f apps/lazynote_flutter/lib/core/workspace/workspace_tree_children_loade
 # uncategorized 清零
 grep -rn "uncategorized\|synthetic" apps/ --include="*.dart" | grep -v "test" | grep -v "//"
 # 预期：零匹配（排除测试文件和注释）
+
+# caller contract 对齐
+grep -rn "scopeWorkspaceId\|FfiCallerIdentity.app" apps/lazynote_flutter/lib/ --include="*.dart"
+# 预期：至少 2 匹配（helper / 调用点）
 ```
 
 ## Risk
@@ -319,6 +338,7 @@ grep -rn "uncategorized\|synthetic" apps/ --include="*.dart" | grep -v "test" | 
 ## Acceptance Criteria
 
 - [ ] QueryAtomsInvoker 封装完成，作为 `query_atoms` FFI 的统一 Dart 消费入口
+- [ ] 所有消费 `PR-0411` 新 FFI 的 typedef/示例都已对齐 `FfiCallerContext(identity, scopeWorkspaceId)` caller contract
 - [ ] TasksController 使用 WorkspaceTreeService + QueryAtomsInvoker 加载 section 数据
 - [ ] CalendarController 使用新 query 接口
 - [ ] Notes/Tag Panel 已迁移到 `query_atoms`（不再调用 `notes_list`）
