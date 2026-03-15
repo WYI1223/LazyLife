@@ -15,6 +15,19 @@ This PR consumes the **post-0012 schema contract** from `PR-0408`. It may rely o
 
 This PR is where service-routing and designated reassignment semantics land. It should not re-specify migration/backfill behavior from `PR-0408`.
 
+### Transitional Compatibility Consumption (2026-03-14)
+
+`PR-0409` is allowed to carry a temporary section-query compatibility bridge because current creation paths still place new refs under the default workspace root. `PR-0410` must explicitly consume that bridge:
+
+- by landing creation routing (`resolve_creation_role` + designated target resolution) for new writes;
+- by deciding whether the `PR-0409` compatibility bridge can be removed, narrowed, or must remain explicit for legacy root-scoped refs;
+- by writing the chosen cutover rule into this spec and the workflow ledger rather than relying on implicit carry-over behavior.
+
+Current upstream fact from `PR-0409`:
+
+- the landed bridge is not an abstract placeholder; `TaskService` currently scopes section reads to the default workspace root so pre-`PR-0410` root-scoped refs remain visible;
+- `PR-0410` therefore must treat this as an active compatibility behavior to consume, not as undocumented historical residue.
+
 增强 TreeService（签名修复、保护规则、move 硬约束），引入 CreationService 统一 atom 创建路由（`resolve_creation_role` + `origin_workspace_id` 事务写入），实现 `reassign_designated` repo/service 层。
 
 前置条件：PR-0408（需要 Migration 0012 的 schema 和系统节点）

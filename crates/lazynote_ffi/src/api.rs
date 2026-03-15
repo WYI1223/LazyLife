@@ -17,9 +17,9 @@ use lazynote_core::{
     log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId,
     CreateEventWithRefRequest, CreationService, CreationServiceError, FolderDeleteMode,
     LogDartEventError, NoteRecord, NoteService, NoteServiceError, SearchQuery, SectionAtom,
-    SqliteAtomRepository, SqliteNoteRepository, SqliteTreeRepository, TaskService,
-    TaskServiceError, TreeRepoError, TreeService, TreeServiceError, ViewHint, WorkspaceNode,
-    WorkspaceNodeKind,
+    SqliteAtomRepository, SqliteNoteRepository, SqliteScopedQueryRepository, SqliteTreeRepository,
+    SqliteWorkspaceMetaRepository, TaskService, TaskServiceError, TreeRepoError, TreeService,
+    TreeServiceError, ViewHint, WorkspaceNode, WorkspaceNodeKind,
 };
 use log::error;
 use std::path::PathBuf;
@@ -1576,17 +1576,35 @@ fn map_task_service_error(err: TaskServiceError) -> AtomFfiError {
             AtomFfiError::InvalidTimeRange(format!("end_at ({end}) must be >= start_at ({start})"))
         }
         TaskServiceError::Repo(repo_err) => AtomFfiError::DbError(repo_err.to_string()),
+        TaskServiceError::ScopedQuery(lazynote_core::ScopedQueryError::InvalidQueryDescriptor(
+            message,
+        )) => AtomFfiError::Internal(message),
+        TaskServiceError::ScopedQuery(lazynote_core::ScopedQueryError::Repo(repo_err)) => {
+            AtomFfiError::DbError(repo_err.to_string())
+        }
+        TaskServiceError::Workspace(repo_err) => AtomFfiError::DbError(repo_err.to_string()),
     }
 }
 
 fn with_task_service<T>(
-    f: impl FnOnce(&TaskService<'_, SqliteAtomRepository<'_>>) -> Result<T, TaskServiceError>,
+    f: impl FnOnce(
+        &TaskService<
+            '_,
+            SqliteAtomRepository<'_>,
+            SqliteScopedQueryRepository<'_>,
+            SqliteWorkspaceMetaRepository<'_>,
+        >,
+    ) -> Result<T, TaskServiceError>,
 ) -> Result<T, AtomFfiError> {
     let db_path = resolve_entry_db_path();
     let conn = open_db(&db_path).map_err(|e| AtomFfiError::DbError(e.to_string()))?;
-    let repo =
+    let atom_repo =
         SqliteAtomRepository::try_new(&conn).map_err(|e| AtomFfiError::DbError(e.to_string()))?;
-    let service = TaskService::new(&repo, &conn);
+    let scoped_repo = SqliteScopedQueryRepository::try_new(&conn)
+        .map_err(|e| AtomFfiError::DbError(e.to_string()))?;
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn)
+        .map_err(|e| AtomFfiError::DbError(e.to_string()))?;
+    let service = TaskService::new(&atom_repo, &scoped_repo, &workspace_meta, &conn);
     f(&service).map_err(map_task_service_error)
 }
 
@@ -1934,6 +1952,7 @@ mod tests {
         entry_schedule_impl, entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
         map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
         note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
+        tasks_list_inbox_impl, tasks_list_today_impl, tasks_list_upcoming_impl,
         workspace_create_atom_ref_impl, workspace_create_folder_impl, workspace_delete_folder_impl,
         workspace_list_children_impl, workspace_move_node_impl, workspace_rename_node_impl,
         NotesFfiError, WorkspaceFfiError,
@@ -2465,6 +2484,58 @@ mod tests {
         assert_eq!(event.start_at, Some(start), "start_at must match");
         assert_eq!(event.end_at, Some(end), "end_at must match");
         assert!(event.task_status.is_none(), "event has no task_status");
+    }
+
+    #[test]
+    fn tasks_list_inbox_keeps_root_scoped_refs_visible_before_pr_0410() {
+        let _guard = acquire_test_db_lock();
+        let created = entry_create_note_impl("ffi inbox bridge".to_string());
+        assert!(created.ok, "{}", created.message);
+
+        let list = tasks_list_inbox_impl(Some(50), Some(0));
+        assert!(list.ok, "{}", list.message);
+        assert!(
+            list.items
+                .iter()
+                .any(|item| item.content == "ffi inbox bridge"),
+            "root-scoped inbox atom should remain visible through FFI bridge"
+        );
+    }
+
+    #[test]
+    fn tasks_list_today_keeps_root_scoped_refs_visible_before_pr_0410() {
+        let _guard = acquire_test_db_lock();
+        let start = 11_000_i64;
+        let end = 12_000_i64;
+        let created = entry_schedule_impl("ffi today bridge".to_string(), start, Some(end));
+        assert!(created.ok, "{}", created.message);
+
+        let list = tasks_list_today_impl(9_000, 13_000, Some(50), Some(0));
+        assert!(list.ok, "{}", list.message);
+        assert!(
+            list.items
+                .iter()
+                .any(|item| item.content == "ffi today bridge"),
+            "root-scoped today atom should remain visible through FFI bridge"
+        );
+    }
+
+    #[test]
+    fn tasks_list_upcoming_keeps_root_scoped_refs_visible_before_pr_0410() {
+        let _guard = acquire_test_db_lock();
+        let start = 20_000_i64;
+        let end = 22_000_i64;
+        let created = entry_schedule_impl("ffi upcoming bridge".to_string(), start, Some(end));
+        assert!(created.ok, "{}", created.message);
+
+        let list = tasks_list_upcoming_impl(13_000, Some(50), Some(0));
+        assert!(list.ok, "{}", list.message);
+        assert!(
+            list.items
+                .iter()
+                .any(|item| item.content == "ffi upcoming bridge"),
+            "root-scoped upcoming atom should remain visible through FFI bridge"
+        );
     }
 
     #[test]
