@@ -6,11 +6,12 @@
 
 use crate::db::migrations::latest_version;
 use crate::db::DbError;
-use crate::model::atom::{Atom, TaskStatus, ViewHint};
+use crate::model::atom::{Atom, AtomId, TaskStatus, ViewHint};
 use crate::repo::atom_repo::{parse_atom_row, RepoError};
 use crate::repo::tree_repo::WorkspaceNodeId;
 use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
@@ -102,6 +103,8 @@ pub struct ScopedAtomResult {
     pub representative_node_uuid: WorkspaceNodeId,
     /// Parsed canonical atom.
     pub atom: Atom,
+    /// Normalized lowercase tags for this atom.
+    pub tags: Vec<String>,
     /// Optional folder path from subtree root to direct parent folder.
     pub path: Option<String>,
     /// Atom `updated_at` in epoch ms.
@@ -188,7 +191,7 @@ impl ScopedQueryRepository for SqliteScopedQueryRepository<'_> {
         let built = build_query_sql(&query, projection);
         let mut stmt = self.conn.prepare(&built.sql)?;
         let mut rows = stmt.query(params_from_iter(built.bind_values))?;
-        let mut results = Vec::new();
+        let mut pending_results = Vec::new();
 
         while let Some(row) = rows.next()? {
             let representative_node_uuid_text: String = row.get("representative_node_uuid")?;
@@ -198,13 +201,27 @@ impl ScopedQueryRepository for SqliteScopedQueryRepository<'_> {
             )?;
             let atom = parse_atom_row(row)?;
             let updated_at: i64 = row.get("updated_at")?;
-            results.push(ScopedAtomResult {
+            pending_results.push(ScopedAtomResult {
                 representative_node_uuid,
                 atom,
+                tags: Vec::new(),
                 path: row.get("path")?,
                 updated_at,
             });
         }
+
+        let tags_by_atom =
+            load_tags_for_atoms(self.conn, pending_results.iter().map(|item| item.atom.uuid))?;
+        let results = pending_results
+            .into_iter()
+            .map(|mut item| {
+                item.tags = tags_by_atom
+                    .get(&item.atom.uuid)
+                    .cloned()
+                    .unwrap_or_default();
+                item
+            })
+            .collect();
 
         Ok(results)
     }
@@ -745,6 +762,53 @@ fn parse_uuid(value: &str, column: &'static str) -> Result<Uuid, ScopedQueryErro
     })
 }
 
+fn load_tags_for_atoms<I>(
+    conn: &Connection,
+    atom_ids: I,
+) -> Result<HashMap<AtomId, Vec<String>>, ScopedQueryError>
+where
+    I: IntoIterator<Item = AtomId>,
+{
+    let mut ordered_atom_ids = Vec::new();
+    let mut seen_atom_ids = HashSet::new();
+    for atom_id in atom_ids {
+        let atom_id_text = atom_id.to_string();
+        if seen_atom_ids.insert(atom_id_text.clone()) {
+            ordered_atom_ids.push(atom_id_text);
+        }
+    }
+
+    if ordered_atom_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let placeholders = (1..=ordered_atom_ids.len())
+        .map(|index| format!("?{index}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "SELECT atom_tags.atom_uuid, tags.name
+         FROM atom_tags
+         JOIN tags ON tags.id = atom_tags.tag_id
+         WHERE atom_tags.atom_uuid IN ({placeholders})
+         ORDER BY atom_tags.atom_uuid ASC, tags.name ASC;"
+    );
+    let bind_values = ordered_atom_ids.into_iter().map(Value::Text);
+    let mut stmt = conn.prepare(&sql)?;
+    let mut rows = stmt.query(params_from_iter(bind_values))?;
+    let mut tags_by_atom = HashMap::new();
+    while let Some(row) = rows.next()? {
+        let atom_uuid_text: String = row.get(0)?;
+        let atom_uuid = parse_uuid(&atom_uuid_text, "atom_tags.atom_uuid")?;
+        let tag: String = row.get(1)?;
+        tags_by_atom
+            .entry(atom_uuid)
+            .or_insert_with(Vec::new)
+            .push(tag);
+    }
+    Ok(tags_by_atom)
+}
+
 fn bool_to_int(value: bool) -> i64 {
     if value {
         1
@@ -786,6 +850,33 @@ mod tests {
         }
     }
 
+    fn function_source(signature: &str) -> &'static str {
+        let source = include_str!("scoped_query_repo.rs");
+        let start = source
+            .rfind(signature)
+            .unwrap_or_else(|| panic!("signature `{signature}` not found"));
+        let tail = &source[start..];
+
+        let body_start = tail
+            .find('{')
+            .unwrap_or_else(|| panic!("function `{signature}` has no body"));
+        let mut depth = 0usize;
+        for (index, ch) in tail[body_start..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return &tail[..body_start + index + 1];
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        panic!("function `{signature}` body did not terminate");
+    }
+
     #[test]
     fn ref_projection_sort_adds_representative_node_uuid_tie_breaker() {
         let updated_sql =
@@ -803,6 +894,30 @@ mod tests {
         assert!(title_sql.contains(
             "ORDER BY LOWER(title) ASC, updated_at DESC, uuid ASC, representative_node_uuid ASC"
         ));
+    }
+
+    #[test]
+    fn query_scoped_atoms_batches_tag_loading_outside_row_loop() {
+        let source = function_source("fn query_scoped_atoms(");
+        let loop_start = source
+            .find("while let Some(row) = rows.next()?")
+            .expect("row loop must exist");
+        let batched_lookup_start = source
+            .find("let tags_by_atom =")
+            .expect("batched tag lookup must exist");
+        let between = &source[loop_start..batched_lookup_start];
+        assert!(
+            source.contains("load_tags_for_atoms("),
+            "expected batched tag lookup to exist"
+        );
+        assert!(
+            !between.contains("load_tags_for_atom("),
+            "expected row loop region to avoid per-row tag lookups"
+        );
+        assert!(
+            !between.contains("load_tags_for_atoms("),
+            "expected batched tag lookup to occur after the row loop"
+        );
     }
 }
 

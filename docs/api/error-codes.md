@@ -80,6 +80,38 @@ Producer: `crates/lazynote_ffi/src/api.rs`
 | `atom_not_found` | target atom missing | stale/deleted id | show not-found state and refresh |
 | `db_error` | repository/database failure | sqlite/schema/io issue | show error and allow retry |
 
+## Guarded FFI (PR-0411)
+
+Producer: `crates/lazynote_ffi/src/api.rs`
+
+These codes are produced by the new guarded exports such as `query_atoms`,
+`atom_create`, `workspace_list`, `workspace_get_default`,
+`workspace_resolve_designated`, `workspace_reassign_designated`,
+`workspace_get_ancestor_path`, and `workspace_list_atom_refs_for_atom`.
+
+Legacy wrappers retained during the expand stage keep their existing envelopes
+and may map guarded failures back into older domain-specific code sets.
+
+| Code | Meaning | Typical Cause | UI Handling |
+| --- | --- | --- | --- |
+| `invalid_workspace_id` | workspace id format invalid | non-UUID `workspace_id` on guarded workspace APIs | show validation error and block request |
+| `invalid_node_id` | workspace node id format invalid | non-UUID `node_uuid` or malformed folder target | show validation error and block request |
+| `invalid_atom_id` | atom id format invalid | non-UUID `atom_uuid` on guarded atom/ref APIs | show validation error and block request |
+| `atom_not_found` | target atom missing | stale/deleted atom id on guarded read/write path | refresh the relevant list/view and show not-found state |
+| `invalid_caller_scope` | caller scope format invalid | malformed `scope_workspace_id` in `FfiCallerContext` | treat as programmer/integration error; block request |
+| `invalid_target_folder` | requested folder target invalid | malformed `target_folder`, root node used where folder expected, or resolved node not usable as folder target | show validation error and keep input |
+| `invalid_query_descriptor` | scoped query descriptor violates contract | missing folder id, invalid range, unsupported filter combination, bad pagination | show validation error and keep current filters |
+| `invalid_content_type` | content type unsupported | `content_type` not supported by guarded create path | show validation error and keep input |
+| `invalid_tag` | invalid tag value | blank or malformed tag input on guarded note/tag path | show validation error and keep input |
+| `invalid_time_range` | event/timed range invalid | `end_at < start_at` on create/update path | show validation error and keep current values |
+| `cross_workspace_access_denied` | caller scope does not cover target workspace | guarded request targets a workspace outside declared caller scope | block request and surface access-denied state |
+| `insufficient_capability` | caller identity lacks required capability | future/non-noop guard denies read or write capability | block request and surface access-denied state |
+| `workspace_not_found` | target workspace missing | stale or unknown `workspace_id` | refresh workspace state and show not-found message |
+| `designated_role_not_found` | designated folder mapping missing | workspace has no current mapping for `inbox/tasks/calendar` role | surface setup/state error and allow retry after refresh |
+| `target_folder_not_in_workspace` | designated or explicit target folder is outside target workspace | create/reassign request mixes folder/workspace ownership | show validation error and refresh workspace tree |
+| `db_error` | repository/database failure | sqlite/schema/io issue | show error and allow retry |
+| `internal_error` | unexpected invariant failure | uncategorized guarded-service failure | show error and capture diagnostics |
+
 ## Workspace Tree (FFI) - PR-0203 + PR-0221
 
 Producer: `crates/lazynote_ffi/src/api.rs`

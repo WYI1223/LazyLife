@@ -14,12 +14,17 @@
 use lazynote_core::db::open_db;
 use lazynote_core::{
     core_version as core_version_inner, init_logging as init_logging_inner,
-    log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AtomId,
-    CreateEventWithRefRequest, CreationService, CreationServiceError, FolderDeleteMode,
-    LogDartEventError, NoteRecord, NoteService, NoteServiceError, SearchQuery, SectionAtom,
-    SqliteAtomRepository, SqliteNoteRepository, SqliteScopedQueryRepository, SqliteTreeRepository,
-    SqliteWorkspaceMetaRepository, TaskService, TaskServiceError, TreeRepoError, TreeService,
-    TreeServiceError, ViewHint, WorkspaceNode, WorkspaceNodeKind,
+    log_dart_event as log_dart_event_inner, ping as ping_inner, search_all, AccessError,
+    AccessGuard, AtomId, CallerContext, CallerIdentity, CreateAtomRequest, CreationService,
+    CreationServiceError, FolderDeleteMode, GuardedAtomService, GuardedCreationService,
+    GuardedQueryService, GuardedServiceError, GuardedTaskService, GuardedTreeService,
+    GuardedWorkspaceService, LogDartEventError, NoopGuard, NoteRecord, NoteService,
+    NoteServiceError, ProjectionMode, ScopedAtomQuery, ScopedAtomResult, SearchHit, SearchQuery,
+    SectionAtom, SortSpec, SqliteAtomRepository, SqliteNoteRepository, SqliteScopedQueryRepository,
+    SqliteTreeRepository, SqliteWorkspaceMetaRepository, StatusFilter, TaskService,
+    TaskServiceError, TaskStatus, TimeFilter, TimeShapeFilter, TreeRepoError, TreeRepository,
+    TreeService, TreeServiceError, ViewHint, WorkspaceMetaRepository, WorkspaceMetadata,
+    WorkspaceNode, WorkspaceNodeKind,
 };
 use log::error;
 use std::path::PathBuf;
@@ -400,6 +405,286 @@ pub struct WorkspaceAncestorPathResponse {
     pub path: Vec<String>,
 }
 
+/// Caller identity for guarded FFI exports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiCallerIdentity {
+    /// Flutter app caller.
+    App,
+}
+
+/// Caller context passed to guarded FFI exports.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FfiCallerContext {
+    /// Calling identity.
+    pub identity: FfiCallerIdentity,
+    /// Optional declared workspace scope in UUID string form.
+    pub scope_workspace_id: Option<String>,
+}
+
+/// Time-filter kind for guarded queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiTimeFilterKind {
+    Any,
+    Timeless,
+    Range,
+}
+
+/// Time-shape filter for guarded queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiTimeShapeFilter {
+    Any,
+    BoundedOnly,
+}
+
+/// Status-filter kind for guarded queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiStatusFilterKind {
+    Any,
+    ActiveOnly,
+    TaskStatuses,
+}
+
+/// Sort specification for guarded queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiSortSpec {
+    UpdatedAtDesc,
+    StartAtAsc,
+    TitleAsc,
+}
+
+/// Projection mode for guarded queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiProjectionMode {
+    Atom,
+    Ref,
+}
+
+/// View-hint filter for guarded queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiViewHint {
+    Note,
+    Task,
+    Event,
+}
+
+/// Task-status enum for guarded create/query helpers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FfiTaskStatus {
+    Todo,
+    InProgress,
+    Done,
+    Cancelled,
+}
+
+/// Query descriptor for guarded subtree reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FfiScopedAtomQuery {
+    pub folder_id: String,
+    pub view_hint: Option<FfiViewHint>,
+    pub time_filter: FfiTimeFilterKind,
+    pub time_start_ms: Option<i64>,
+    pub time_end_ms: Option<i64>,
+    pub time_shape: FfiTimeShapeFilter,
+    pub status_filter: FfiStatusFilterKind,
+    pub task_statuses: Option<Vec<FfiTaskStatus>>,
+    pub tag: Option<String>,
+    pub text_query: Option<String>,
+    pub include_path: bool,
+    pub include_overdue_deadlines: bool,
+    pub sort: FfiSortSpec,
+    pub limit: u32,
+    pub offset: u32,
+}
+
+/// Canonical creation request for guarded exports.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FfiCreateAtomRequest {
+    pub workspace_id: String,
+    pub content: String,
+    pub content_type: String,
+    pub task_status: Option<FfiTaskStatus>,
+    pub start_at: Option<i64>,
+    pub end_at: Option<i64>,
+    pub tags: Option<Vec<String>>,
+    pub target_folder: Option<String>,
+    pub display_name: Option<String>,
+}
+
+/// One guarded-query result row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopedAtomItem {
+    pub uuid: String,
+    pub view_hint: String,
+    pub title: String,
+    pub content_type: String,
+    pub content: String,
+    pub preview_text: Option<String>,
+    pub preview_image: Option<String>,
+    pub tags: Vec<String>,
+    pub task_status: Option<String>,
+    pub start_at: Option<i64>,
+    pub end_at: Option<i64>,
+    pub is_deleted: bool,
+    pub updated_at: i64,
+    pub representative_node_uuid: String,
+    pub path: Option<String>,
+}
+
+/// Guarded-query response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopedQueryResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub items: Vec<ScopedAtomItem>,
+}
+
+/// Guarded atom-create response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomCreateResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub atom_uuid: Option<String>,
+    pub node_uuid: Option<String>,
+}
+
+/// Workspace metadata DTO for guarded exports.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceInfo {
+    pub workspace_id: String,
+    pub name: String,
+    pub is_default: bool,
+}
+
+/// Workspace-list response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceListResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub workspaces: Vec<WorkspaceInfo>,
+}
+
+/// Single-workspace response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceInfoResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub workspace: Option<WorkspaceInfo>,
+}
+
+/// Designated-folder resolution response.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DesignatedFolderResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub node_uuid: Option<String>,
+}
+
+/// One ancestor-path segment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PathSegment {
+    pub node_uuid: String,
+    pub display_name: String,
+}
+
+/// Node-based ancestor-path response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AncestorPathResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub segments: Vec<PathSegment>,
+}
+
+/// One atom-ref location DTO.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FfiAtomRefLocation {
+    pub node_uuid: String,
+    pub workspace_id: String,
+    pub path: String,
+    pub display_name: String,
+}
+
+/// Atom-ref locations response envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomRefLocationsResponse {
+    pub ok: bool,
+    pub error_code: Option<String>,
+    pub message: String,
+    pub locations: Vec<FfiAtomRefLocation>,
+}
+
+#[derive(Debug)]
+enum GuardedFfiError {
+    InvalidWorkspaceId(String),
+    InvalidNodeId(String),
+    InvalidAtomId(String),
+    AtomNotFound(String),
+    InvalidCallerScope(String),
+    InvalidTargetFolder(String),
+    InvalidQueryDescriptor(String),
+    InvalidContentType(String),
+    InvalidTag(String),
+    InvalidTimeRange(String),
+    CrossWorkspaceAccessDenied(String),
+    InsufficientCapability(String),
+    WorkspaceNotFound(String),
+    DesignatedRoleNotFound(String),
+    TargetFolderNotInWorkspace(String),
+    DbError(String),
+    Internal(String),
+}
+
+impl GuardedFfiError {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidWorkspaceId(_) => "invalid_workspace_id",
+            Self::InvalidNodeId(_) => "invalid_node_id",
+            Self::InvalidAtomId(_) => "invalid_atom_id",
+            Self::AtomNotFound(_) => "atom_not_found",
+            Self::InvalidCallerScope(_) => "invalid_caller_scope",
+            Self::InvalidTargetFolder(_) => "invalid_target_folder",
+            Self::InvalidQueryDescriptor(_) => "invalid_query_descriptor",
+            Self::InvalidContentType(_) => "invalid_content_type",
+            Self::InvalidTag(_) => "invalid_tag",
+            Self::InvalidTimeRange(_) => "invalid_time_range",
+            Self::CrossWorkspaceAccessDenied(_) => "cross_workspace_access_denied",
+            Self::InsufficientCapability(_) => "insufficient_capability",
+            Self::WorkspaceNotFound(_) => "workspace_not_found",
+            Self::DesignatedRoleNotFound(_) => "designated_role_not_found",
+            Self::TargetFolderNotInWorkspace(_) => "target_folder_not_in_workspace",
+            Self::DbError(_) => "db_error",
+            Self::Internal(_) => "internal_error",
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::InvalidWorkspaceId(value) => format!("invalid workspace id: {value}"),
+            Self::InvalidNodeId(value) => format!("invalid node id: {value}"),
+            Self::InvalidAtomId(value) => format!("invalid atom id: {value}"),
+            Self::AtomNotFound(value) => format!("atom not found: {value}"),
+            Self::InvalidCallerScope(value) => format!("invalid caller scope: {value}"),
+            Self::InvalidTargetFolder(value) => format!("invalid target folder: {value}"),
+            Self::InvalidQueryDescriptor(value) => value.clone(),
+            Self::InvalidContentType(value) => format!("invalid content type: {value}"),
+            Self::InvalidTag(value) => format!("invalid tag: {value}"),
+            Self::InvalidTimeRange(value) => format!("invalid time range: {value}"),
+            Self::CrossWorkspaceAccessDenied(value) => value.clone(),
+            Self::InsufficientCapability(value) => value.clone(),
+            Self::WorkspaceNotFound(value) => format!("workspace not found: {value}"),
+            Self::DesignatedRoleNotFound(value) => value.clone(),
+            Self::TargetFolderNotInWorkspace(value) => value.clone(),
+            Self::DbError(value) => format!("database error: {value}"),
+            Self::Internal(value) => value.clone(),
+        }
+    }
+}
+
 #[derive(Debug)]
 enum WorkspaceFfiError {
     InvalidNodeId(String),
@@ -538,54 +823,9 @@ fn entry_search_impl(
             };
         }
     };
-    let db_path = resolve_entry_db_path();
-    let conn = match open_db(&db_path) {
-        Ok(conn) => conn,
-        Err(err) => {
-            return EntrySearchResponse {
-                ok: false,
-                error_code: Some("db_error".to_string()),
-                items: Vec::new(),
-                message: format!("entry_search failed: {err}"),
-                applied_limit: normalized_limit,
-            };
-        }
-    };
-
-    let query = SearchQuery {
-        text: query_text,
-        view_hint: parsed_kind,
-        limit: normalized_limit,
-        raw_fts_syntax: false,
-    };
-
-    match search_all(&conn, &query) {
-        Ok(hits) => {
-            let items = hits
-                .into_iter()
-                .map(to_entry_search_item)
-                .collect::<Vec<_>>();
-            let message = if items.is_empty() {
-                "No results.".to_string()
-            } else {
-                format!("Found {} result(s).", items.len())
-            };
-            EntrySearchResponse {
-                ok: true,
-                error_code: None,
-                items,
-                message,
-                applied_limit: normalized_limit,
-            }
-        }
-        Err(err) => EntrySearchResponse {
-            ok: false,
-            error_code: Some("internal_error".to_string()),
-            items: Vec::new(),
-            message: format!("entry_search failed: {err}"),
-            applied_limit: normalized_limit,
-        },
-    }
+    // Keep the legacy FTS bridge during PR-0411 expand stage so ranking/snippet
+    // semantics stay stable until PR-0413 removes this wrapper surface.
+    legacy_entry_search_via_fts(query_text, parsed_kind, normalized_limit)
 }
 
 fn parse_entry_search_kind(raw: Option<String>) -> Result<Option<ViewHint>, String> {
@@ -621,15 +861,37 @@ pub async fn entry_create_note(content: String) -> EntryActionResponse {
 }
 
 fn entry_create_note_impl(content: String) -> EntryActionResponse {
-    match with_creation_service(|service| {
-        service.create_note_with_ref(content.trim().to_string(), None)
-    }) {
-        Ok((_, node)) => EntryActionResponse::success(
+    let workspace_id = match resolve_legacy_workspace_id(None) {
+        Ok(value) => value,
+        Err(err) => {
+            return EntryActionResponse::failure(format!(
+                "entry_create_note failed: {}",
+                err.message()
+            ))
+        }
+    };
+    let response = atom_create_impl(
+        legacy_default_caller(),
+        FfiCreateAtomRequest {
+            workspace_id,
+            content: content.trim().to_string(),
+            content_type: "markdown".to_string(),
+            task_status: None,
+            start_at: None,
+            end_at: None,
+            tags: None,
+            target_folder: None,
+            display_name: None,
+        },
+    );
+    if response.ok {
+        EntryActionResponse::success(
             "Note created.",
-            node.atom_uuid.unwrap().to_string(),
-            node.node_uuid.to_string(),
-        ),
-        Err(err) => EntryActionResponse::failure(format!("entry_create_note failed: {err}")),
+            response.atom_uuid.expect("atom uuid"),
+            response.node_uuid.expect("node uuid"),
+        )
+    } else {
+        EntryActionResponse::failure(format!("entry_create_note failed: {}", response.message))
     }
 }
 
@@ -645,15 +907,37 @@ pub async fn entry_create_task(content: String) -> EntryActionResponse {
 }
 
 fn entry_create_task_impl(content: String) -> EntryActionResponse {
-    match with_creation_service(|service| {
-        service.create_task_with_ref(content.trim().to_string(), None)
-    }) {
-        Ok((atom_id, node)) => EntryActionResponse::success(
+    let workspace_id = match resolve_legacy_workspace_id(None) {
+        Ok(value) => value,
+        Err(err) => {
+            return EntryActionResponse::failure(format!(
+                "entry_create_task failed: {}",
+                err.message()
+            ))
+        }
+    };
+    let response = atom_create_impl(
+        legacy_default_caller(),
+        FfiCreateAtomRequest {
+            workspace_id,
+            content: content.trim().to_string(),
+            content_type: "markdown".to_string(),
+            task_status: Some(FfiTaskStatus::Todo),
+            start_at: None,
+            end_at: None,
+            tags: None,
+            target_folder: None,
+            display_name: None,
+        },
+    );
+    if response.ok {
+        EntryActionResponse::success(
             "Task created.",
-            atom_id.to_string(),
-            node.node_uuid.to_string(),
-        ),
-        Err(err) => EntryActionResponse::failure(format!("entry_create_task failed: {err}")),
+            response.atom_uuid.expect("atom uuid"),
+            response.node_uuid.expect("node uuid"),
+        )
+    } else {
+        EntryActionResponse::failure(format!("entry_create_task failed: {}", response.message))
     }
 }
 
@@ -678,18 +962,37 @@ fn entry_schedule_impl(
     start_epoch_ms: i64,
     end_epoch_ms: Option<i64>,
 ) -> EntryActionResponse {
-    let request = CreateEventWithRefRequest {
-        title: title.trim().to_string(),
-        start_epoch_ms,
-        end_epoch_ms,
+    let workspace_id = match resolve_legacy_workspace_id(None) {
+        Ok(value) => value,
+        Err(err) => {
+            return EntryActionResponse::failure(format!(
+                "entry_schedule failed: {}",
+                err.message()
+            ))
+        }
     };
-    match with_creation_service(|service| service.create_event_with_ref(&request, None)) {
-        Ok((atom_id, node)) => EntryActionResponse::success(
+    let response = atom_create_impl(
+        legacy_default_caller(),
+        FfiCreateAtomRequest {
+            workspace_id,
+            content: title.trim().to_string(),
+            content_type: "markdown".to_string(),
+            task_status: None,
+            start_at: Some(start_epoch_ms),
+            end_at: end_epoch_ms,
+            tags: None,
+            target_folder: None,
+            display_name: None,
+        },
+    );
+    if response.ok {
+        EntryActionResponse::success(
             "Event scheduled.",
-            atom_id.to_string(),
-            node.node_uuid.to_string(),
-        ),
-        Err(err) => EntryActionResponse::failure(format!("entry_schedule failed: {err}")),
+            response.atom_uuid.expect("atom uuid"),
+            response.node_uuid.expect("node uuid"),
+        )
+    } else {
+        EntryActionResponse::failure(format!("entry_schedule failed: {}", response.message))
     }
 }
 
@@ -717,21 +1020,54 @@ fn note_create_impl(content: String, parent_node_id: Option<String>) -> AtomItem
             };
         }
     };
-    match with_creation_service(|service| service.create_note_with_ref(content, parsed_parent)) {
-        Ok((note, node)) => AtomItemResponse {
-            ok: true,
-            error_code: None,
-            message: "Note created.".to_string(),
-            item: Some(to_atom_list_item_from_note(note)),
-            node_uuid: Some(node.node_uuid.to_string()),
+    let workspace_id = match resolve_legacy_workspace_id(parsed_parent) {
+        Ok(value) => value,
+        Err(err) => {
+            return AtomItemResponse {
+                ok: false,
+                error_code: Some("creation_failed".to_string()),
+                message: format!("note_create failed: {}", err.message()),
+                item: None,
+                node_uuid: None,
+            };
+        }
+    };
+    let response = atom_create_impl(
+        legacy_default_caller(),
+        FfiCreateAtomRequest {
+            workspace_id,
+            content,
+            content_type: "markdown".to_string(),
+            task_status: None,
+            start_at: None,
+            end_at: None,
+            tags: None,
+            target_folder: parsed_parent.map(|value| value.to_string()),
+            display_name: None,
         },
-        Err(err) => AtomItemResponse {
+    );
+    if response.ok {
+        let atom_id = response.atom_uuid.expect("atom uuid");
+        let loaded = note_get_impl(atom_id);
+        AtomItemResponse {
+            ok: loaded.ok,
+            error_code: loaded.error_code,
+            message: if loaded.ok {
+                "Note created.".to_string()
+            } else {
+                loaded.message
+            },
+            item: loaded.item,
+            node_uuid: response.node_uuid,
+        }
+    } else {
+        AtomItemResponse {
             ok: false,
             error_code: Some("creation_failed".to_string()),
-            message: format!("note_create failed: {err}"),
+            message: format!("note_create failed: {}", response.message),
             item: None,
             node_uuid: None,
-        },
+        }
     }
 }
 
@@ -752,7 +1088,8 @@ fn note_update_impl(atom_id: String, content: String) -> AtomItemResponse {
         Err(err) => return note_failure(err),
     };
 
-    match with_note_service(|service| service.update_note(parsed_id, content)) {
+    let caller = parse_ffi_caller(legacy_default_caller()).expect("legacy caller");
+    match with_guarded_atom_service(|service| service.update_content(&caller, parsed_id, content)) {
         Ok(note) => AtomItemResponse {
             ok: true,
             error_code: None,
@@ -760,7 +1097,7 @@ fn note_update_impl(atom_id: String, content: String) -> AtomItemResponse {
             item: Some(to_atom_list_item_from_note(note)),
             node_uuid: None,
         },
-        Err(err) => note_failure(err),
+        Err(err) => note_failure(map_guarded_to_notes_error(err)),
     }
 }
 
@@ -780,11 +1117,13 @@ fn note_get_impl(atom_id: String) -> AtomItemResponse {
         Err(err) => return note_failure(err),
     };
 
-    match with_note_service(|service| {
+    let caller = parse_ffi_caller(legacy_default_caller()).expect("legacy caller");
+    match with_guarded_atom_service(|service| {
         service
-            .get_note(parsed_id)
-            .map_err(NoteServiceError::from)?
-            .ok_or(NoteServiceError::NoteNotFound(parsed_id))
+            .get_note(&caller, parsed_id)?
+            .ok_or(GuardedServiceError::Note(NoteServiceError::NoteNotFound(
+                parsed_id,
+            )))
     }) {
         Ok(note) => AtomItemResponse {
             ok: true,
@@ -793,7 +1132,7 @@ fn note_get_impl(atom_id: String) -> AtomItemResponse {
             item: Some(to_atom_list_item_from_note(note)),
             node_uuid: None,
         },
-        Err(err) => note_failure(err),
+        Err(err) => note_failure(map_guarded_to_notes_error(err)),
     }
 }
 
@@ -818,27 +1157,46 @@ fn notes_list_impl(
     offset: Option<u32>,
 ) -> AtomListResponse {
     let resolved_offset = offset.unwrap_or(0);
+    let applied_limit = lazynote_core::normalize_note_limit(limit);
+    let normalized_tag = match tag {
+        Some(value) => {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                return AtomListResponse {
+                    ok: false,
+                    error_code: Some("invalid_tag".to_string()),
+                    message: format!("invalid tag: {value}"),
+                    items: Vec::new(),
+                    applied_limit,
+                };
+            }
+            Some(trimmed.to_ascii_lowercase())
+        }
+        None => None,
+    };
+    let descriptor = match legacy_root_scoped_query(
+        Some(FfiViewHint::Note),
+        FfiTimeFilterKind::Any,
+        None,
+        None,
+        FfiTimeShapeFilter::Any,
+        FfiStatusFilterKind::Any,
+        normalized_tag,
+        None,
+        false,
+        FfiSortSpec::UpdatedAtDesc,
+        applied_limit,
+        resolved_offset,
+    ) {
+        Ok(value) => value,
+        Err(err) => return atom_list_failure(map_guarded_to_atom_error(err), applied_limit),
+    };
 
-    match with_note_service(|service| service.list_notes(tag, limit, resolved_offset)) {
-        Ok(result) => AtomListResponse {
-            ok: true,
-            error_code: None,
-            message: format!("Loaded {} note(s).", result.items.len()),
-            items: result
-                .items
-                .into_iter()
-                .map(to_atom_list_item_from_note)
-                .collect(),
-            applied_limit: result.applied_limit,
-        },
-        Err(err) => AtomListResponse {
-            ok: false,
-            error_code: Some(err.code().to_string()),
-            message: err.message(),
-            items: Vec::new(),
-            applied_limit: lazynote_core::normalize_note_limit(limit),
-        },
-    }
+    atom_list_from_scoped_query(
+        query_atoms_impl(legacy_default_caller(), descriptor, FfiProjectionMode::Atom),
+        applied_limit,
+        "note(s)",
+    )
 }
 
 /// Atomically replaces full tag set for one note.
@@ -858,7 +1216,8 @@ fn note_set_tags_impl(atom_id: String, tags: Vec<String>) -> AtomItemResponse {
         Err(err) => return note_failure(err),
     };
 
-    match with_note_service(|service| service.set_note_tags(parsed_id, tags)) {
+    let caller = parse_ffi_caller(legacy_default_caller()).expect("legacy caller");
+    match with_guarded_atom_service(|service| service.set_tags(&caller, parsed_id, tags)) {
         Ok(note) => AtomItemResponse {
             ok: true,
             error_code: None,
@@ -866,7 +1225,7 @@ fn note_set_tags_impl(atom_id: String, tags: Vec<String>) -> AtomItemResponse {
             item: Some(to_atom_list_item_from_note(note)),
             node_uuid: None,
         },
-        Err(err) => note_failure(err),
+        Err(err) => note_failure(map_guarded_to_notes_error(err)),
     }
 }
 
@@ -1124,6 +1483,1215 @@ fn workspace_ancestor_path_impl(atom_id: String) -> WorkspaceAncestorPathRespons
     }
 }
 
+/// Queries workspace-scoped atoms through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn query_atoms(
+    caller: FfiCallerContext,
+    descriptor: FfiScopedAtomQuery,
+    projection: FfiProjectionMode,
+) -> ScopedQueryResponse {
+    query_atoms_impl(caller, descriptor, projection)
+}
+
+fn query_atoms_impl(
+    caller: FfiCallerContext,
+    descriptor: FfiScopedAtomQuery,
+    projection: FfiProjectionMode,
+) -> ScopedQueryResponse {
+    query_atoms_impl_with_noop_guard(caller, descriptor, projection)
+}
+
+fn query_atoms_impl_with_noop_guard(
+    caller: FfiCallerContext,
+    descriptor: FfiScopedAtomQuery,
+    projection: FfiProjectionMode,
+) -> ScopedQueryResponse {
+    query_atoms_impl_inner(caller, descriptor, projection, Box::new(NoopGuard))
+}
+
+fn query_atoms_impl_inner(
+    caller: FfiCallerContext,
+    descriptor: FfiScopedAtomQuery,
+    projection: FfiProjectionMode,
+    guard: Box<dyn AccessGuard>,
+) -> ScopedQueryResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return scoped_query_failure(err),
+    };
+    let query = match build_scoped_query(descriptor) {
+        Ok(value) => value,
+        Err(err) => return scoped_query_failure(err),
+    };
+    let projection = map_projection_mode(projection);
+
+    match with_guarded_query_service_using_guard(guard, |service| {
+        service.query_atoms(&caller, query, projection)
+    }) {
+        Ok(items) => ScopedQueryResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} scoped atom(s).", items.len()),
+            items: items.into_iter().map(to_scoped_atom_item).collect(),
+        },
+        Err(err) => scoped_query_failure(err),
+    }
+}
+
+#[cfg(test)]
+fn query_atoms_impl_with_guard(
+    caller: FfiCallerContext,
+    descriptor: FfiScopedAtomQuery,
+    projection: FfiProjectionMode,
+    guard: Box<dyn AccessGuard>,
+) -> ScopedQueryResponse {
+    query_atoms_impl_inner(caller, descriptor, projection, guard)
+}
+
+/// Creates one atom through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn atom_create(
+    caller: FfiCallerContext,
+    request: FfiCreateAtomRequest,
+) -> AtomCreateResponse {
+    atom_create_impl(caller, request)
+}
+
+fn atom_create_impl(caller: FfiCallerContext, request: FfiCreateAtomRequest) -> AtomCreateResponse {
+    atom_create_impl_with_noop_guard(caller, request)
+}
+
+fn atom_create_impl_with_noop_guard(
+    caller: FfiCallerContext,
+    request: FfiCreateAtomRequest,
+) -> AtomCreateResponse {
+    atom_create_impl_inner(caller, request, Box::new(NoopGuard))
+}
+
+fn atom_create_impl_inner(
+    caller: FfiCallerContext,
+    request: FfiCreateAtomRequest,
+    guard: Box<dyn AccessGuard>,
+) -> AtomCreateResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return atom_create_failure(err),
+    };
+    let request = match build_create_atom_request(request) {
+        Ok(value) => value,
+        Err(err) => return atom_create_failure(err),
+    };
+
+    match with_guarded_creation_service_using_guard(guard, |service| {
+        service.create_atom(&caller, &request)
+    }) {
+        Ok(result) => AtomCreateResponse {
+            ok: true,
+            error_code: None,
+            message: "Atom created.".to_string(),
+            atom_uuid: Some(result.atom.uuid.to_string()),
+            node_uuid: Some(result.node.node_uuid.to_string()),
+        },
+        Err(err) => atom_create_failure(err),
+    }
+}
+
+#[cfg(test)]
+fn atom_create_impl_with_guard(
+    caller: FfiCallerContext,
+    request: FfiCreateAtomRequest,
+    guard: Box<dyn AccessGuard>,
+) -> AtomCreateResponse {
+    atom_create_impl_inner(caller, request, guard)
+}
+
+/// Lists workspaces through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_list(caller: FfiCallerContext) -> WorkspaceListResponse {
+    workspace_list_impl(caller)
+}
+
+fn workspace_list_impl(caller: FfiCallerContext) -> WorkspaceListResponse {
+    workspace_list_impl_with_noop_guard(caller)
+}
+
+fn workspace_list_impl_with_noop_guard(caller: FfiCallerContext) -> WorkspaceListResponse {
+    workspace_list_impl_inner(caller, Box::new(NoopGuard))
+}
+
+fn workspace_list_impl_inner(
+    caller: FfiCallerContext,
+    guard: Box<dyn AccessGuard>,
+) -> WorkspaceListResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return guarded_workspace_list_failure(err),
+    };
+
+    match with_guarded_workspace_service_using_guard(guard, |service| {
+        service.list_workspaces(&caller)
+    }) {
+        Ok(workspaces) => WorkspaceListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} workspace(s).", workspaces.len()),
+            workspaces: workspaces.into_iter().map(to_workspace_info).collect(),
+        },
+        Err(err) => guarded_workspace_list_failure(err),
+    }
+}
+
+#[cfg(test)]
+fn workspace_list_impl_with_guard(
+    caller: FfiCallerContext,
+    guard: Box<dyn AccessGuard>,
+) -> WorkspaceListResponse {
+    workspace_list_impl_inner(caller, guard)
+}
+
+/// Loads the default workspace through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_get_default(caller: FfiCallerContext) -> WorkspaceInfoResponse {
+    workspace_get_default_impl(caller)
+}
+
+fn workspace_get_default_impl(caller: FfiCallerContext) -> WorkspaceInfoResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return guarded_workspace_info_failure(err),
+    };
+
+    match with_guarded_workspace_service(|service| service.get_default_workspace(&caller)) {
+        Ok(workspace) => WorkspaceInfoResponse {
+            ok: true,
+            error_code: None,
+            message: match &workspace {
+                Some(_) => "Default workspace resolved.".to_string(),
+                None => "Default workspace not configured.".to_string(),
+            },
+            workspace: workspace.map(to_workspace_info),
+        },
+        Err(err) => guarded_workspace_info_failure(err),
+    }
+}
+
+/// Resolves one designated folder through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_resolve_designated(
+    caller: FfiCallerContext,
+    workspace_id: String,
+    role: String,
+) -> DesignatedFolderResponse {
+    workspace_resolve_designated_impl(caller, workspace_id, role)
+}
+
+fn workspace_resolve_designated_impl(
+    caller: FfiCallerContext,
+    workspace_id: String,
+    role: String,
+) -> DesignatedFolderResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return designated_folder_failure(err),
+    };
+    let workspace_id = match parse_guarded_workspace_id(workspace_id.as_str()) {
+        Ok(value) => value,
+        Err(err) => return designated_folder_failure(err),
+    };
+
+    match with_guarded_workspace_service(|service| {
+        service.resolve_designated(&caller, workspace_id, role.as_str())
+    }) {
+        Ok(Some(node_uuid)) => DesignatedFolderResponse {
+            ok: true,
+            error_code: None,
+            message: "Designated folder resolved.".to_string(),
+            node_uuid: Some(node_uuid.to_string()),
+        },
+        Ok(None) => match guarded_workspace_exists(workspace_id) {
+            Ok(true) => designated_folder_failure(GuardedFfiError::DesignatedRoleNotFound(
+                format!("designated role `{role}` not found for workspace `{workspace_id}`"),
+            )),
+            Ok(false) => designated_folder_failure(GuardedFfiError::WorkspaceNotFound(
+                workspace_id.to_string(),
+            )),
+            Err(err) => designated_folder_failure(err),
+        },
+        Err(err) => designated_folder_failure(err),
+    }
+}
+
+/// Reassigns one designated folder through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_reassign_designated(
+    caller: FfiCallerContext,
+    workspace_id: String,
+    role: String,
+    new_node_uuid: String,
+) -> WorkspaceActionResponse {
+    workspace_reassign_designated_impl(caller, workspace_id, role, new_node_uuid)
+}
+
+fn workspace_reassign_designated_impl(
+    caller: FfiCallerContext,
+    workspace_id: String,
+    role: String,
+    new_node_uuid: String,
+) -> WorkspaceActionResponse {
+    workspace_reassign_designated_impl_with_noop_guard(caller, workspace_id, role, new_node_uuid)
+}
+
+fn workspace_reassign_designated_impl_with_noop_guard(
+    caller: FfiCallerContext,
+    workspace_id: String,
+    role: String,
+    new_node_uuid: String,
+) -> WorkspaceActionResponse {
+    workspace_reassign_designated_impl_inner(
+        caller,
+        workspace_id,
+        role,
+        new_node_uuid,
+        Box::new(NoopGuard),
+    )
+}
+
+fn workspace_reassign_designated_impl_inner(
+    caller: FfiCallerContext,
+    workspace_id: String,
+    role: String,
+    new_node_uuid: String,
+    guard: Box<dyn AccessGuard>,
+) -> WorkspaceActionResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return workspace_failure_from_guarded(err),
+    };
+    let workspace_id = match parse_guarded_workspace_id(workspace_id.as_str()) {
+        Ok(value) => value,
+        Err(err) => return workspace_failure_from_guarded(err),
+    };
+    let new_node_uuid = match parse_guarded_node_id(new_node_uuid.as_str()) {
+        Ok(value) => value,
+        Err(err) => return workspace_failure_from_guarded(err),
+    };
+
+    match with_guarded_tree_service_raw_using_guard(guard, |service| {
+        service.reassign_designated(&caller, workspace_id, role.as_str(), new_node_uuid)
+    }) {
+        Ok(()) => WorkspaceActionResponse {
+            ok: true,
+            error_code: None,
+            message: "Designated folder reassigned.".to_string(),
+        },
+        Err(err) => workspace_reassign_failure(err, workspace_id, new_node_uuid),
+    }
+}
+
+/// Returns node-based ancestor path through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_get_ancestor_path(
+    caller: FfiCallerContext,
+    node_uuid: String,
+) -> AncestorPathResponse {
+    workspace_get_ancestor_path_impl(caller, node_uuid)
+}
+
+fn workspace_get_ancestor_path_impl(
+    caller: FfiCallerContext,
+    node_uuid: String,
+) -> AncestorPathResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return guarded_ancestor_path_failure(err),
+    };
+    let node_uuid = match parse_guarded_node_id(node_uuid.as_str()) {
+        Ok(value) => value,
+        Err(err) => return guarded_ancestor_path_failure(err),
+    };
+
+    match with_guarded_tree_service(|service| service.get_ancestor_path(&caller, node_uuid)) {
+        Ok(segments) => AncestorPathResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Resolved {} ancestor segment(s).", segments.len()),
+            segments: segments
+                .into_iter()
+                .map(|(node_uuid, display_name)| PathSegment {
+                    node_uuid: node_uuid.to_string(),
+                    display_name,
+                })
+                .collect(),
+        },
+        Err(err) => guarded_ancestor_path_failure(err),
+    }
+}
+
+/// Returns atom-ref locations through the guarded FFI surface.
+#[flutter_rust_bridge::frb]
+pub async fn workspace_list_atom_refs_for_atom(
+    caller: FfiCallerContext,
+    atom_uuid: String,
+) -> AtomRefLocationsResponse {
+    workspace_list_atom_refs_for_atom_impl(caller, atom_uuid)
+}
+
+fn workspace_list_atom_refs_for_atom_impl(
+    caller: FfiCallerContext,
+    atom_uuid: String,
+) -> AtomRefLocationsResponse {
+    let caller = match parse_ffi_caller(caller) {
+        Ok(value) => value,
+        Err(err) => return atom_ref_locations_failure(err),
+    };
+    let atom_uuid = match parse_guarded_atom_id(atom_uuid.as_str()) {
+        Ok(value) => value,
+        Err(err) => return atom_ref_locations_failure(err),
+    };
+
+    match with_guarded_tree_service(|service| service.list_atom_refs_for_atom(&caller, atom_uuid)) {
+        Ok(locations) => AtomRefLocationsResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Resolved {} atom ref location(s).", locations.len()),
+            locations: locations
+                .into_iter()
+                .map(|location| FfiAtomRefLocation {
+                    node_uuid: location.node_uuid.to_string(),
+                    workspace_id: location.workspace_id.to_string(),
+                    path: location.path,
+                    display_name: location.display_name,
+                })
+                .collect(),
+        },
+        Err(err) => atom_ref_locations_failure(err),
+    }
+}
+
+fn parse_ffi_caller(caller: FfiCallerContext) -> Result<CallerContext, GuardedFfiError> {
+    let identity = match caller.identity {
+        FfiCallerIdentity::App => CallerIdentity::App,
+    };
+    let scope_workspace_id = match caller.scope_workspace_id {
+        Some(value) => Some(
+            parse_guarded_workspace_id(value.as_str())
+                .map_err(|_| GuardedFfiError::InvalidCallerScope(value.to_string()))?,
+        ),
+        None => None,
+    };
+    Ok(CallerContext {
+        identity,
+        scope_workspace_id,
+    })
+}
+
+fn parse_guarded_workspace_id(raw: &str) -> Result<Uuid, GuardedFfiError> {
+    Uuid::parse_str(raw.trim()).map_err(|_| GuardedFfiError::InvalidWorkspaceId(raw.to_string()))
+}
+
+fn parse_guarded_node_id(raw: &str) -> Result<Uuid, GuardedFfiError> {
+    Uuid::parse_str(raw.trim()).map_err(|_| GuardedFfiError::InvalidNodeId(raw.to_string()))
+}
+
+fn parse_guarded_atom_id(raw: &str) -> Result<Uuid, GuardedFfiError> {
+    Uuid::parse_str(raw.trim()).map_err(|_| GuardedFfiError::InvalidAtomId(raw.to_string()))
+}
+
+fn parse_guarded_optional_node_id(raw: Option<String>) -> Result<Option<Uuid>, GuardedFfiError> {
+    match raw {
+        Some(value) => parse_guarded_node_id(value.as_str()).map(Some),
+        None => Ok(None),
+    }
+}
+
+fn map_view_hint_filter(value: Option<FfiViewHint>) -> Option<ViewHint> {
+    value.map(|hint| match hint {
+        FfiViewHint::Note => ViewHint::Note,
+        FfiViewHint::Task => ViewHint::Task,
+        FfiViewHint::Event => ViewHint::Event,
+    })
+}
+
+fn map_task_status(value: FfiTaskStatus) -> TaskStatus {
+    match value {
+        FfiTaskStatus::Todo => TaskStatus::Todo,
+        FfiTaskStatus::InProgress => TaskStatus::InProgress,
+        FfiTaskStatus::Done => TaskStatus::Done,
+        FfiTaskStatus::Cancelled => TaskStatus::Cancelled,
+    }
+}
+
+fn map_time_shape(value: FfiTimeShapeFilter) -> TimeShapeFilter {
+    match value {
+        FfiTimeShapeFilter::Any => TimeShapeFilter::Any,
+        FfiTimeShapeFilter::BoundedOnly => TimeShapeFilter::BoundedOnly,
+    }
+}
+
+fn map_sort_spec(value: FfiSortSpec) -> SortSpec {
+    match value {
+        FfiSortSpec::UpdatedAtDesc => SortSpec::UpdatedAtDesc,
+        FfiSortSpec::StartAtAsc => SortSpec::StartAtAsc,
+        FfiSortSpec::TitleAsc => SortSpec::TitleAsc,
+    }
+}
+
+fn map_projection_mode(value: FfiProjectionMode) -> ProjectionMode {
+    match value {
+        FfiProjectionMode::Atom => ProjectionMode::Atom,
+        FfiProjectionMode::Ref => ProjectionMode::Ref,
+    }
+}
+
+fn build_scoped_query(descriptor: FfiScopedAtomQuery) -> Result<ScopedAtomQuery, GuardedFfiError> {
+    let folder_id = parse_guarded_node_id(descriptor.folder_id.as_str())?;
+    let time_filter = match descriptor.time_filter {
+        FfiTimeFilterKind::Any => TimeFilter::Any,
+        FfiTimeFilterKind::Timeless => {
+            if descriptor.include_overdue_deadlines {
+                return Err(GuardedFfiError::InvalidQueryDescriptor(
+                    "include_overdue_deadlines requires range time filter".to_string(),
+                ));
+            }
+            TimeFilter::Timeless
+        }
+        FfiTimeFilterKind::Range => {
+            let start_ms = descriptor.time_start_ms.ok_or_else(|| {
+                GuardedFfiError::InvalidQueryDescriptor(
+                    "range query requires time_start_ms".to_string(),
+                )
+            })?;
+            TimeFilter::Range {
+                start_ms,
+                end_ms: descriptor.time_end_ms,
+            }
+        }
+    };
+    if descriptor.include_overdue_deadlines && !matches!(time_filter, TimeFilter::Range { .. }) {
+        return Err(GuardedFfiError::InvalidQueryDescriptor(
+            "include_overdue_deadlines requires range time filter".to_string(),
+        ));
+    }
+
+    let status_filter = match descriptor.status_filter {
+        FfiStatusFilterKind::Any => StatusFilter::Any,
+        FfiStatusFilterKind::ActiveOnly => StatusFilter::ActiveOnly,
+        FfiStatusFilterKind::TaskStatuses => {
+            let statuses = descriptor.task_statuses.ok_or_else(|| {
+                GuardedFfiError::InvalidQueryDescriptor(
+                    "task_statuses filter requires task_statuses values".to_string(),
+                )
+            })?;
+            StatusFilter::TaskStatuses(statuses.into_iter().map(map_task_status).collect())
+        }
+    };
+
+    Ok(ScopedAtomQuery {
+        folder_id,
+        view_hint: map_view_hint_filter(descriptor.view_hint),
+        time_filter,
+        time_shape: map_time_shape(descriptor.time_shape),
+        status_filter,
+        tag: descriptor.tag,
+        text_query: descriptor
+            .text_query
+            .and_then(|value| normalize_guarded_text_query(value.as_str())),
+        include_path: descriptor.include_path,
+        include_overdue_deadlines: descriptor.include_overdue_deadlines,
+        sort: map_sort_spec(descriptor.sort),
+        limit: descriptor.limit,
+        offset: descriptor.offset,
+    })
+}
+
+fn normalize_guarded_text_query(raw: &str) -> Option<String> {
+    let terms = raw
+        .split_whitespace()
+        .map(str::trim)
+        .filter(|term| !term.is_empty())
+        .map(|term| format!("\"{}\"", term.replace('"', "\"\"")))
+        .collect::<Vec<_>>();
+    if terms.is_empty() {
+        None
+    } else {
+        Some(terms.join(" AND "))
+    }
+}
+
+fn build_create_atom_request(
+    request: FfiCreateAtomRequest,
+) -> Result<CreateAtomRequest, GuardedFfiError> {
+    if request.content_type.trim() != "markdown" {
+        return Err(GuardedFfiError::InvalidContentType(
+            request.content_type.to_string(),
+        ));
+    }
+    Ok(CreateAtomRequest {
+        workspace_id: parse_guarded_workspace_id(request.workspace_id.as_str())?,
+        content: request.content,
+        content_type: request.content_type,
+        task_status: request.task_status.map(map_task_status),
+        start_at: request.start_at,
+        end_at: request.end_at,
+        tags: request.tags,
+        target_folder: parse_guarded_optional_node_id(request.target_folder).map_err(|err| {
+            match err {
+                GuardedFfiError::InvalidNodeId(value) => {
+                    GuardedFfiError::InvalidTargetFolder(value)
+                }
+                other => other,
+            }
+        })?,
+        display_name: request.display_name,
+    })
+}
+
+fn to_scoped_atom_item(item: ScopedAtomResult) -> ScopedAtomItem {
+    ScopedAtomItem {
+        uuid: item.atom.uuid.to_string(),
+        view_hint: view_hint_label(item.atom.view_hint).to_string(),
+        title: item.atom.title,
+        content_type: item.atom.content_type,
+        content: item.atom.content,
+        preview_text: item.atom.preview_text,
+        preview_image: item.atom.preview_image,
+        tags: item.tags,
+        task_status: item.atom.task_status.map(|status| {
+            match status {
+                TaskStatus::Todo => "todo",
+                TaskStatus::InProgress => "in_progress",
+                TaskStatus::Done => "done",
+                TaskStatus::Cancelled => "cancelled",
+            }
+            .to_string()
+        }),
+        start_at: item.atom.start_at,
+        end_at: item.atom.end_at,
+        is_deleted: item.atom.is_deleted,
+        updated_at: item.updated_at,
+        representative_node_uuid: item.representative_node_uuid.to_string(),
+        path: item.path,
+    }
+}
+
+fn to_workspace_info(workspace: WorkspaceMetadata) -> WorkspaceInfo {
+    WorkspaceInfo {
+        workspace_id: workspace.workspace_id.to_string(),
+        name: workspace.name,
+        is_default: workspace.is_default,
+    }
+}
+
+fn legacy_default_caller() -> FfiCallerContext {
+    FfiCallerContext {
+        identity: FfiCallerIdentity::App,
+        scope_workspace_id: None,
+    }
+}
+
+fn resolve_legacy_workspace_id(target_folder: Option<Uuid>) -> Result<String, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    match target_folder {
+        Some(target_folder) => resolve_legacy_workspace_root_for_node(&conn, target_folder)
+            .map(|value| value.to_string()),
+        None => {
+            let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn)
+                .map_err(map_guarded_tree_repo_error)?;
+            workspace_meta
+                .get_default_workspace()
+                .map_err(map_guarded_tree_repo_error)?
+                .map(|value| value.to_string())
+                .ok_or_else(|| GuardedFfiError::WorkspaceNotFound("default".to_string()))
+        }
+    }
+}
+
+fn resolve_legacy_workspace_root_for_node(
+    conn: &rusqlite::Connection,
+    node_uuid: Uuid,
+) -> Result<Uuid, GuardedFfiError> {
+    let repo = SqliteTreeRepository::try_new(conn).map_err(map_guarded_tree_repo_error)?;
+    let mut cursor = Some(node_uuid);
+    while let Some(current) = cursor {
+        let node = repo
+            .get_node(current, false)
+            .map_err(map_guarded_tree_repo_error)?
+            .ok_or_else(|| GuardedFfiError::InvalidTargetFolder(current.to_string()))?;
+        if node.kind == WorkspaceNodeKind::Workspace {
+            return Ok(node.node_uuid);
+        }
+        cursor = node.parent_uuid;
+    }
+
+    Err(GuardedFfiError::InvalidTargetFolder(node_uuid.to_string()))
+}
+
+fn to_atom_list_item_from_scoped(item: ScopedAtomItem) -> AtomListItem {
+    AtomListItem {
+        atom_id: item.uuid,
+        view_hint: item.view_hint,
+        title: item.title,
+        content_type: item.content_type,
+        content: item.content,
+        preview_text: item.preview_text,
+        preview_image: item.preview_image,
+        tags: item.tags,
+        start_at: item.start_at,
+        end_at: item.end_at,
+        task_status: item.task_status,
+        updated_at: item.updated_at,
+    }
+}
+
+fn to_entry_search_item_from_hit(hit: SearchHit) -> EntrySearchItem {
+    EntrySearchItem {
+        atom_id: hit.atom_id.to_string(),
+        view_hint: view_hint_label(hit.view_hint).to_string(),
+        title: hit.title,
+        snippet: hit.snippet,
+    }
+}
+
+fn map_guarded_to_notes_error(err: GuardedFfiError) -> NotesFfiError {
+    match err {
+        GuardedFfiError::InvalidAtomId(value) => NotesFfiError::InvalidNoteId(value),
+        GuardedFfiError::AtomNotFound(value) => NotesFfiError::NoteNotFound(value),
+        GuardedFfiError::DbError(value) => NotesFfiError::DbError(value),
+        GuardedFfiError::InvalidTag(value) => NotesFfiError::InvalidTag(value),
+        GuardedFfiError::InvalidContentType(value)
+        | GuardedFfiError::InvalidWorkspaceId(value)
+        | GuardedFfiError::InvalidNodeId(value)
+        | GuardedFfiError::InvalidCallerScope(value)
+        | GuardedFfiError::InvalidTargetFolder(value)
+        | GuardedFfiError::InvalidQueryDescriptor(value)
+        | GuardedFfiError::InvalidTimeRange(value)
+        | GuardedFfiError::WorkspaceNotFound(value)
+        | GuardedFfiError::DesignatedRoleNotFound(value)
+        | GuardedFfiError::TargetFolderNotInWorkspace(value)
+        | GuardedFfiError::CrossWorkspaceAccessDenied(value)
+        | GuardedFfiError::InsufficientCapability(value)
+        | GuardedFfiError::Internal(value) => NotesFfiError::Internal(value),
+    }
+}
+
+fn map_guarded_to_atom_error(err: GuardedFfiError) -> AtomFfiError {
+    match err {
+        GuardedFfiError::InvalidAtomId(value) => AtomFfiError::InvalidAtomId(value),
+        GuardedFfiError::AtomNotFound(value) => AtomFfiError::AtomNotFound(value),
+        GuardedFfiError::DbError(value) => AtomFfiError::DbError(value),
+        GuardedFfiError::InvalidTimeRange(value) => AtomFfiError::InvalidTimeRange(value),
+        GuardedFfiError::InvalidContentType(value)
+        | GuardedFfiError::InvalidWorkspaceId(value)
+        | GuardedFfiError::InvalidNodeId(value)
+        | GuardedFfiError::InvalidCallerScope(value)
+        | GuardedFfiError::InvalidTargetFolder(value)
+        | GuardedFfiError::InvalidQueryDescriptor(value)
+        | GuardedFfiError::InvalidTag(value)
+        | GuardedFfiError::WorkspaceNotFound(value)
+        | GuardedFfiError::DesignatedRoleNotFound(value)
+        | GuardedFfiError::TargetFolderNotInWorkspace(value)
+        | GuardedFfiError::CrossWorkspaceAccessDenied(value)
+        | GuardedFfiError::InsufficientCapability(value)
+        | GuardedFfiError::Internal(value) => AtomFfiError::Internal(value),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn legacy_root_scoped_query(
+    view_hint: Option<FfiViewHint>,
+    time_filter: FfiTimeFilterKind,
+    time_start_ms: Option<i64>,
+    time_end_ms: Option<i64>,
+    time_shape: FfiTimeShapeFilter,
+    status_filter: FfiStatusFilterKind,
+    tag: Option<String>,
+    text_query: Option<String>,
+    include_overdue_deadlines: bool,
+    sort: FfiSortSpec,
+    limit: u32,
+    offset: u32,
+) -> Result<FfiScopedAtomQuery, GuardedFfiError> {
+    Ok(FfiScopedAtomQuery {
+        folder_id: resolve_legacy_workspace_id(None)?,
+        view_hint,
+        time_filter,
+        time_start_ms,
+        time_end_ms,
+        time_shape,
+        status_filter,
+        task_statuses: None,
+        tag,
+        text_query,
+        include_path: false,
+        include_overdue_deadlines,
+        sort,
+        limit,
+        offset,
+    })
+}
+
+fn atom_list_from_scoped_query(
+    response: ScopedQueryResponse,
+    applied_limit: u32,
+    success_label: &str,
+) -> AtomListResponse {
+    if response.ok {
+        AtomListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} {success_label}.", response.items.len()),
+            items: response
+                .items
+                .into_iter()
+                .map(to_atom_list_item_from_scoped)
+                .collect(),
+            applied_limit,
+        }
+    } else {
+        AtomListResponse {
+            ok: false,
+            error_code: response.error_code,
+            message: response.message,
+            items: Vec::new(),
+            applied_limit,
+        }
+    }
+}
+
+fn legacy_entry_search_via_fts(
+    query_text: String,
+    parsed_kind: Option<ViewHint>,
+    applied_limit: u32,
+) -> EntrySearchResponse {
+    let db_path = resolve_entry_db_path();
+    let conn = match open_db(&db_path) {
+        Ok(conn) => conn,
+        Err(err) => {
+            return EntrySearchResponse {
+                ok: false,
+                error_code: Some("db_error".to_string()),
+                items: Vec::new(),
+                message: format!("entry_search failed: {err}"),
+                applied_limit,
+            };
+        }
+    };
+
+    let mut query = SearchQuery::new(query_text);
+    query.view_hint = parsed_kind;
+    query.limit = applied_limit;
+
+    match search_all(&conn, &query) {
+        Ok(hits) => {
+            let items = hits
+                .into_iter()
+                .map(to_entry_search_item_from_hit)
+                .collect::<Vec<_>>();
+            EntrySearchResponse {
+                ok: true,
+                error_code: None,
+                message: if items.is_empty() {
+                    "No results.".to_string()
+                } else {
+                    format!("Found {} result(s).", items.len())
+                },
+                items,
+                applied_limit,
+            }
+        }
+        Err(err) => EntrySearchResponse {
+            ok: false,
+            error_code: Some("internal_error".to_string()),
+            items: Vec::new(),
+            message: format!("entry_search failed: {err}"),
+            applied_limit,
+        },
+    }
+}
+
+fn map_guarded_service_error(err: GuardedServiceError) -> GuardedFfiError {
+    match err {
+        GuardedServiceError::Access(AccessError::CrossWorkspaceAccessDenied { .. }) => {
+            GuardedFfiError::CrossWorkspaceAccessDenied(err.to_string())
+        }
+        GuardedServiceError::Access(AccessError::InsufficientCapability { .. }) => {
+            GuardedFfiError::InsufficientCapability(err.to_string())
+        }
+        GuardedServiceError::Query(lazynote_core::ScopedQueryError::InvalidQueryDescriptor(
+            message,
+        )) => GuardedFfiError::InvalidQueryDescriptor(message),
+        GuardedServiceError::Query(lazynote_core::ScopedQueryError::Repo(repo_err)) => {
+            map_guarded_repo_error(repo_err)
+        }
+        GuardedServiceError::Creation(CreationServiceError::InvalidContentType(value)) => {
+            GuardedFfiError::InvalidContentType(value)
+        }
+        GuardedServiceError::Creation(CreationServiceError::Repo(
+            lazynote_core::RepoError::Validation(
+                lazynote_core::AtomValidationError::InvalidEventWindow { start, end },
+            ),
+        )) => GuardedFfiError::InvalidTimeRange(format!(
+            "end_at ({end}) must be >= start_at ({start})"
+        )),
+        GuardedServiceError::Creation(CreationServiceError::WorkspaceNotFound(workspace_id)) => {
+            GuardedFfiError::WorkspaceNotFound(workspace_id.to_string())
+        }
+        GuardedServiceError::Creation(CreationServiceError::TargetFolderNotInWorkspace {
+            workspace_id,
+            target_folder,
+        }) => GuardedFfiError::TargetFolderNotInWorkspace(format!(
+            "target folder {target_folder} does not belong to workspace {workspace_id}"
+        )),
+        GuardedServiceError::Creation(CreationServiceError::MissingDesignatedFolder {
+            workspace_id,
+            role,
+        }) => GuardedFfiError::DesignatedRoleNotFound(format!(
+            "designated folder `{role}` missing for workspace `{workspace_id}`"
+        )),
+        GuardedServiceError::Creation(CreationServiceError::Repo(repo_err)) => {
+            map_guarded_repo_error(repo_err)
+        }
+        GuardedServiceError::Creation(other) => GuardedFfiError::Internal(other.to_string()),
+        GuardedServiceError::Workspace(repo_err) => map_guarded_tree_repo_error(repo_err),
+        GuardedServiceError::Tree(service_err) => {
+            GuardedFfiError::Internal(service_err.to_string())
+        }
+        GuardedServiceError::Task(TaskServiceError::AtomNotFound(atom_id)) => {
+            GuardedFfiError::AtomNotFound(atom_id.to_string())
+        }
+        GuardedServiceError::Task(TaskServiceError::Repo(
+            lazynote_core::RepoError::Validation(
+                lazynote_core::AtomValidationError::InvalidEventWindow { start, end },
+            ),
+        )) => GuardedFfiError::InvalidTimeRange(format!(
+            "end_at ({end}) must be >= start_at ({start})"
+        )),
+        GuardedServiceError::Task(TaskServiceError::Repo(repo_err)) => {
+            map_guarded_repo_error(repo_err)
+        }
+        GuardedServiceError::Task(TaskServiceError::ScopedQuery(
+            lazynote_core::ScopedQueryError::InvalidQueryDescriptor(message),
+        )) => GuardedFfiError::InvalidQueryDescriptor(message),
+        GuardedServiceError::Task(TaskServiceError::ScopedQuery(
+            lazynote_core::ScopedQueryError::Repo(repo_err),
+        )) => map_guarded_repo_error(repo_err),
+        GuardedServiceError::Task(TaskServiceError::Workspace(repo_err)) => {
+            map_guarded_tree_repo_error(repo_err)
+        }
+        GuardedServiceError::Note(NoteServiceError::InvalidTag(value)) => {
+            GuardedFfiError::InvalidTag(value)
+        }
+        GuardedServiceError::Note(NoteServiceError::NoteNotFound(atom_id)) => {
+            GuardedFfiError::AtomNotFound(atom_id.to_string())
+        }
+        GuardedServiceError::Note(NoteServiceError::Repo(repo_err)) => {
+            map_guarded_repo_error(repo_err)
+        }
+        GuardedServiceError::Note(NoteServiceError::InconsistentState(details)) => {
+            GuardedFfiError::Internal(details.to_string())
+        }
+        GuardedServiceError::Repo(repo_err) => map_guarded_repo_error(repo_err),
+    }
+}
+
+fn map_guarded_repo_error(err: lazynote_core::RepoError) -> GuardedFfiError {
+    match err {
+        lazynote_core::RepoError::Db(db_err) => GuardedFfiError::DbError(db_err.to_string()),
+        lazynote_core::RepoError::NotFound(atom_id) => {
+            GuardedFfiError::AtomNotFound(atom_id.to_string())
+        }
+        other => GuardedFfiError::Internal(other.to_string()),
+    }
+}
+
+fn map_guarded_tree_repo_error(err: TreeRepoError) -> GuardedFfiError {
+    match err {
+        TreeRepoError::Db(db_err) => GuardedFfiError::DbError(db_err.to_string()),
+        TreeRepoError::NodeNotFound(node_id) => GuardedFfiError::InvalidNodeId(node_id.to_string()),
+        other => GuardedFfiError::Internal(other.to_string()),
+    }
+}
+
+fn map_guarded_db_error(err: lazynote_core::db::DbError) -> GuardedFfiError {
+    GuardedFfiError::DbError(err.to_string())
+}
+
+fn scoped_query_failure(error: GuardedFfiError) -> ScopedQueryResponse {
+    ScopedQueryResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        items: Vec::new(),
+    }
+}
+
+fn atom_create_failure(error: GuardedFfiError) -> AtomCreateResponse {
+    AtomCreateResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        atom_uuid: None,
+        node_uuid: None,
+    }
+}
+
+fn guarded_workspace_list_failure(error: GuardedFfiError) -> WorkspaceListResponse {
+    WorkspaceListResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        workspaces: Vec::new(),
+    }
+}
+
+fn guarded_workspace_info_failure(error: GuardedFfiError) -> WorkspaceInfoResponse {
+    WorkspaceInfoResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        workspace: None,
+    }
+}
+
+fn designated_folder_failure(error: GuardedFfiError) -> DesignatedFolderResponse {
+    DesignatedFolderResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        node_uuid: None,
+    }
+}
+
+fn guarded_ancestor_path_failure(error: GuardedFfiError) -> AncestorPathResponse {
+    AncestorPathResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        segments: Vec::new(),
+    }
+}
+
+fn atom_ref_locations_failure(error: GuardedFfiError) -> AtomRefLocationsResponse {
+    AtomRefLocationsResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+        locations: Vec::new(),
+    }
+}
+
+fn workspace_failure_from_guarded(error: GuardedFfiError) -> WorkspaceActionResponse {
+    WorkspaceActionResponse {
+        ok: false,
+        error_code: Some(error.code().to_string()),
+        message: error.message(),
+    }
+}
+
+fn workspace_reassign_failure(
+    error: GuardedServiceError,
+    workspace_id: Uuid,
+    new_node_uuid: Uuid,
+) -> WorkspaceActionResponse {
+    let mapped = match error {
+        GuardedServiceError::Tree(TreeServiceError::NodeNotFound(node_id))
+            if node_id == workspace_id =>
+        {
+            GuardedFfiError::WorkspaceNotFound(workspace_id.to_string())
+        }
+        GuardedServiceError::Tree(TreeServiceError::NodeNotFound(node_id))
+            if node_id == new_node_uuid =>
+        {
+            GuardedFfiError::InvalidNodeId(node_id.to_string())
+        }
+        GuardedServiceError::Tree(TreeServiceError::NodeMustBeFolder(node_id)) => {
+            GuardedFfiError::InvalidNodeId(node_id.to_string())
+        }
+        GuardedServiceError::Tree(TreeServiceError::DesignatedFolderWrongWorkspace {
+            workspace_id,
+            node_uuid,
+        }) => GuardedFfiError::TargetFolderNotInWorkspace(format!(
+            "target folder {node_uuid} does not belong to workspace {workspace_id}"
+        )),
+        GuardedServiceError::Tree(TreeServiceError::Repo(TreeRepoError::InvalidData(message)))
+            if message.contains("designated role") =>
+        {
+            GuardedFfiError::DesignatedRoleNotFound(message)
+        }
+        other => map_guarded_service_error(other),
+    };
+    workspace_failure_from_guarded(mapped)
+}
+
+fn with_guarded_query_service_using_guard<T>(
+    guard: Box<dyn AccessGuard>,
+    f: impl FnOnce(
+        &GuardedQueryService<'_, SqliteScopedQueryRepository<'_>, SqliteTreeRepository<'_>>,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    let scoped_repo = SqliteScopedQueryRepository::try_new(&conn).map_err(|err| match err {
+        lazynote_core::ScopedQueryError::InvalidQueryDescriptor(message) => {
+            GuardedFfiError::InvalidQueryDescriptor(message)
+        }
+        lazynote_core::ScopedQueryError::Repo(repo_err) => map_guarded_repo_error(repo_err),
+    })?;
+    let tree_repo = SqliteTreeRepository::try_new(&conn).map_err(map_guarded_tree_repo_error)?;
+    let service = GuardedQueryService::new(guard, &scoped_repo, &tree_repo);
+    f(&service).map_err(map_guarded_service_error)
+}
+
+fn with_guarded_creation_service_using_guard<T>(
+    guard: Box<dyn AccessGuard>,
+    f: impl FnOnce(&GuardedCreationService<'_, '_>) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    let service = CreationService::try_new(&conn)
+        .map_err(|err| GuardedFfiError::Internal(format!("creation service init: {err}")))?;
+    let guarded = GuardedCreationService::new(guard, &service);
+    f(&guarded).map_err(map_guarded_service_error)
+}
+
+fn guarded_workspace_exists(workspace_id: Uuid) -> Result<bool, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    let workspace_meta =
+        SqliteWorkspaceMetaRepository::try_new(&conn).map_err(map_guarded_tree_repo_error)?;
+    workspace_meta
+        .workspace_exists(workspace_id)
+        .map_err(map_guarded_tree_repo_error)
+}
+
+fn with_guarded_atom_service<T>(
+    f: impl FnOnce(
+        &mut GuardedAtomService<
+            '_,
+            SqliteNoteRepository<'_>,
+            SqliteAtomRepository<'_>,
+            SqliteScopedQueryRepository<'_>,
+            SqliteWorkspaceMetaRepository<'_>,
+            SqliteTreeRepository<'_>,
+        >,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let mut note_conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    let shared_conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+
+    let note_repo =
+        SqliteNoteRepository::try_new(&mut note_conn).map_err(map_guarded_repo_error)?;
+    let mut note_service = NoteService::new(note_repo);
+
+    let atom_repo = SqliteAtomRepository::try_new(&shared_conn).map_err(map_guarded_repo_error)?;
+    let scoped_repo =
+        SqliteScopedQueryRepository::try_new(&shared_conn).map_err(|err| match err {
+            lazynote_core::ScopedQueryError::InvalidQueryDescriptor(message) => {
+                GuardedFfiError::InvalidQueryDescriptor(message)
+            }
+            lazynote_core::ScopedQueryError::Repo(repo_err) => map_guarded_repo_error(repo_err),
+        })?;
+    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&shared_conn)
+        .map_err(map_guarded_tree_repo_error)?;
+    let task_service = TaskService::new(&atom_repo, &scoped_repo, &workspace_meta, &shared_conn);
+    let tree_repo =
+        SqliteTreeRepository::try_new(&shared_conn).map_err(map_guarded_tree_repo_error)?;
+
+    let mut guarded = GuardedAtomService::new(
+        Box::new(NoopGuard),
+        &mut note_service,
+        &task_service,
+        &tree_repo,
+    );
+    f(&mut guarded).map_err(map_guarded_service_error)
+}
+
+fn with_guarded_task_service<T>(
+    f: impl FnOnce(
+        &GuardedTaskService<
+            '_,
+            SqliteAtomRepository<'_>,
+            SqliteScopedQueryRepository<'_>,
+            SqliteWorkspaceMetaRepository<'_>,
+            SqliteTreeRepository<'_>,
+        >,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    let atom_repo = SqliteAtomRepository::try_new(&conn).map_err(map_guarded_repo_error)?;
+    let scoped_repo = SqliteScopedQueryRepository::try_new(&conn).map_err(|err| match err {
+        lazynote_core::ScopedQueryError::InvalidQueryDescriptor(message) => {
+            GuardedFfiError::InvalidQueryDescriptor(message)
+        }
+        lazynote_core::ScopedQueryError::Repo(repo_err) => map_guarded_repo_error(repo_err),
+    })?;
+    let workspace_meta =
+        SqliteWorkspaceMetaRepository::try_new(&conn).map_err(map_guarded_tree_repo_error)?;
+    let task_service = TaskService::new(&atom_repo, &scoped_repo, &workspace_meta, &conn);
+    let tree_repo = SqliteTreeRepository::try_new(&conn).map_err(map_guarded_tree_repo_error)?;
+    let guarded = GuardedTaskService::new(Box::new(NoopGuard), &task_service, &tree_repo);
+    f(&guarded).map_err(map_guarded_service_error)
+}
+
+fn with_guarded_workspace_service<T>(
+    f: impl FnOnce(
+        &GuardedWorkspaceService<'_, SqliteWorkspaceMetaRepository<'_>>,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    with_guarded_workspace_service_using_guard(Box::new(NoopGuard), f)
+}
+
+fn with_guarded_workspace_service_using_guard<T>(
+    guard: Box<dyn AccessGuard>,
+    f: impl FnOnce(
+        &GuardedWorkspaceService<'_, SqliteWorkspaceMetaRepository<'_>>,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    let db_path = resolve_entry_db_path();
+    let conn = open_db(&db_path).map_err(map_guarded_db_error)?;
+    let workspace_meta =
+        SqliteWorkspaceMetaRepository::try_new(&conn).map_err(map_guarded_tree_repo_error)?;
+    let guarded = GuardedWorkspaceService::new(guard, &workspace_meta);
+    f(&guarded).map_err(map_guarded_service_error)
+}
+
+fn with_guarded_tree_service<T>(
+    f: impl FnOnce(
+        &GuardedTreeService<'_, SqliteTreeRepository<'_>, SqliteWorkspaceMetaRepository<'_>>,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    with_guarded_tree_service_using_guard(Box::new(NoopGuard), f)
+}
+
+fn with_guarded_tree_service_using_guard<T>(
+    guard: Box<dyn AccessGuard>,
+    f: impl FnOnce(
+        &GuardedTreeService<'_, SqliteTreeRepository<'_>, SqliteWorkspaceMetaRepository<'_>>,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedFfiError> {
+    with_guarded_tree_service_raw_using_guard(guard, f).map_err(map_guarded_service_error)
+}
+
+fn with_guarded_tree_service_raw_using_guard<T>(
+    guard: Box<dyn AccessGuard>,
+    f: impl FnOnce(
+        &GuardedTreeService<'_, SqliteTreeRepository<'_>, SqliteWorkspaceMetaRepository<'_>>,
+    ) -> Result<T, GuardedServiceError>,
+) -> Result<T, GuardedServiceError> {
+    let db_path = resolve_entry_db_path();
+    let conn =
+        open_db(&db_path).map_err(|err| GuardedServiceError::Workspace(TreeRepoError::Db(err)))?;
+    let repo = SqliteTreeRepository::try_new(&conn).map_err(GuardedServiceError::Workspace)?;
+    let workspace_meta =
+        SqliteWorkspaceMetaRepository::try_new(&conn).map_err(GuardedServiceError::Workspace)?;
+    let tree_service = TreeService::with_workspace_meta(repo, workspace_meta);
+    let guarded = GuardedTreeService::new(guard, &tree_service);
+    f(&guarded)
+}
+
 fn normalize_entry_limit(limit: Option<u32>) -> u32 {
     match limit {
         Some(0) => ENTRY_DEFAULT_LIMIT,
@@ -1202,16 +2770,6 @@ fn with_tree_service<T>(
         SqliteWorkspaceMetaRepository::try_new(&conn).map_err(map_tree_repo_error)?;
     let service = TreeService::with_workspace_meta(repo, workspace_meta);
     f(&service).map_err(map_tree_service_error)
-}
-
-fn with_creation_service<T>(
-    f: impl FnOnce(&CreationService<'_>) -> Result<T, CreationServiceError>,
-) -> Result<T, String> {
-    let db_path = resolve_entry_db_path();
-    let conn = open_db(&db_path).map_err(|err| format!("entry DB open failed: {err}"))?;
-    let service =
-        CreationService::try_new(&conn).map_err(|err| format!("creation service init: {err}"))?;
-    f(&service).map_err(|err| err.to_string())
 }
 
 fn parse_folder_delete_mode(raw: &str) -> Result<FolderDeleteMode, WorkspaceFfiError> {
@@ -1474,15 +3032,6 @@ fn is_db_busy(err: &lazynote_core::db::DbError) -> bool {
     )
 }
 
-fn to_entry_search_item(hit: lazynote_core::SearchHit) -> EntrySearchItem {
-    EntrySearchItem {
-        atom_id: hit.atom_id.to_string(),
-        view_hint: view_hint_label(hit.view_hint).to_string(),
-        title: hit.title,
-        snippet: hit.snippet,
-    }
-}
-
 fn view_hint_label(hint: ViewHint) -> &'static str {
     match hint {
         ViewHint::Note => "note",
@@ -1592,47 +3141,6 @@ impl AtomFfiError {
     }
 }
 
-fn map_task_service_error(err: TaskServiceError) -> AtomFfiError {
-    match err {
-        TaskServiceError::AtomNotFound(id) => AtomFfiError::AtomNotFound(id.to_string()),
-        TaskServiceError::Repo(lazynote_core::RepoError::Validation(
-            lazynote_core::AtomValidationError::InvalidEventWindow { start, end },
-        )) => {
-            AtomFfiError::InvalidTimeRange(format!("end_at ({end}) must be >= start_at ({start})"))
-        }
-        TaskServiceError::Repo(repo_err) => AtomFfiError::DbError(repo_err.to_string()),
-        TaskServiceError::ScopedQuery(lazynote_core::ScopedQueryError::InvalidQueryDescriptor(
-            message,
-        )) => AtomFfiError::Internal(message),
-        TaskServiceError::ScopedQuery(lazynote_core::ScopedQueryError::Repo(repo_err)) => {
-            AtomFfiError::DbError(repo_err.to_string())
-        }
-        TaskServiceError::Workspace(repo_err) => AtomFfiError::DbError(repo_err.to_string()),
-    }
-}
-
-fn with_task_service<T>(
-    f: impl FnOnce(
-        &TaskService<
-            '_,
-            SqliteAtomRepository<'_>,
-            SqliteScopedQueryRepository<'_>,
-            SqliteWorkspaceMetaRepository<'_>,
-        >,
-    ) -> Result<T, TaskServiceError>,
-) -> Result<T, AtomFfiError> {
-    let db_path = resolve_entry_db_path();
-    let conn = open_db(&db_path).map_err(|e| AtomFfiError::DbError(e.to_string()))?;
-    let atom_repo =
-        SqliteAtomRepository::try_new(&conn).map_err(|e| AtomFfiError::DbError(e.to_string()))?;
-    let scoped_repo = SqliteScopedQueryRepository::try_new(&conn)
-        .map_err(|e| AtomFfiError::DbError(e.to_string()))?;
-    let workspace_meta = SqliteWorkspaceMetaRepository::try_new(&conn)
-        .map_err(|e| AtomFfiError::DbError(e.to_string()))?;
-    let service = TaskService::new(&atom_repo, &scoped_repo, &workspace_meta, &conn);
-    f(&service).map_err(map_task_service_error)
-}
-
 fn normalize_section_limit(limit: Option<u32>) -> u32 {
     match limit {
         Some(0) => SECTION_DEFAULT_LIMIT,
@@ -1690,16 +3198,29 @@ pub async fn tasks_list_inbox(limit: Option<u32>, offset: Option<u32>) -> AtomLi
 fn tasks_list_inbox_impl(limit: Option<u32>, offset: Option<u32>) -> AtomListResponse {
     let norm_limit = normalize_section_limit(limit);
     let norm_offset = offset.unwrap_or(0);
-    match with_task_service(|svc| svc.fetch_inbox(norm_limit, norm_offset)) {
-        Ok(items) => AtomListResponse {
-            ok: true,
-            error_code: None,
-            message: format!("Loaded {} inbox item(s).", items.len()),
-            items: items.into_iter().map(to_atom_list_item).collect(),
-            applied_limit: norm_limit,
-        },
-        Err(err) => atom_list_failure(err, norm_limit),
-    }
+    let descriptor = match legacy_root_scoped_query(
+        None,
+        FfiTimeFilterKind::Timeless,
+        None,
+        None,
+        FfiTimeShapeFilter::Any,
+        FfiStatusFilterKind::ActiveOnly,
+        None,
+        None,
+        false,
+        FfiSortSpec::UpdatedAtDesc,
+        norm_limit,
+        norm_offset,
+    ) {
+        Ok(value) => value,
+        Err(err) => return atom_list_failure(map_guarded_to_atom_error(err), norm_limit),
+    };
+
+    atom_list_from_scoped_query(
+        query_atoms_impl(legacy_default_caller(), descriptor, FfiProjectionMode::Atom),
+        norm_limit,
+        "inbox item(s)",
+    )
 }
 
 /// Lists atoms active today based on time-matrix rules.
@@ -1726,16 +3247,29 @@ fn tasks_list_today_impl(
 ) -> AtomListResponse {
     let norm_limit = normalize_section_limit(limit);
     let norm_offset = offset.unwrap_or(0);
-    match with_task_service(|svc| svc.fetch_today(bod_ms, eod_ms, norm_limit, norm_offset)) {
-        Ok(items) => AtomListResponse {
-            ok: true,
-            error_code: None,
-            message: format!("Loaded {} today item(s).", items.len()),
-            items: items.into_iter().map(to_atom_list_item).collect(),
-            applied_limit: norm_limit,
-        },
-        Err(err) => atom_list_failure(err, norm_limit),
-    }
+    let descriptor = match legacy_root_scoped_query(
+        None,
+        FfiTimeFilterKind::Range,
+        Some(bod_ms),
+        Some(eod_ms),
+        FfiTimeShapeFilter::Any,
+        FfiStatusFilterKind::ActiveOnly,
+        None,
+        None,
+        true,
+        FfiSortSpec::StartAtAsc,
+        norm_limit,
+        norm_offset,
+    ) {
+        Ok(value) => value,
+        Err(err) => return atom_list_failure(map_guarded_to_atom_error(err), norm_limit),
+    };
+
+    atom_list_from_scoped_query(
+        query_atoms_impl(legacy_default_caller(), descriptor, FfiProjectionMode::Atom),
+        norm_limit,
+        "today item(s)",
+    )
 }
 
 /// Lists atoms anchored entirely in the future.
@@ -1760,16 +3294,29 @@ fn tasks_list_upcoming_impl(
 ) -> AtomListResponse {
     let norm_limit = normalize_section_limit(limit);
     let norm_offset = offset.unwrap_or(0);
-    match with_task_service(|svc| svc.fetch_upcoming(eod_ms, norm_limit, norm_offset)) {
-        Ok(items) => AtomListResponse {
-            ok: true,
-            error_code: None,
-            message: format!("Loaded {} upcoming item(s).", items.len()),
-            items: items.into_iter().map(to_atom_list_item).collect(),
-            applied_limit: norm_limit,
-        },
-        Err(err) => atom_list_failure(err, norm_limit),
-    }
+    let descriptor = match legacy_root_scoped_query(
+        None,
+        FfiTimeFilterKind::Range,
+        Some(eod_ms),
+        None,
+        FfiTimeShapeFilter::Any,
+        FfiStatusFilterKind::ActiveOnly,
+        None,
+        None,
+        false,
+        FfiSortSpec::StartAtAsc,
+        norm_limit,
+        norm_offset,
+    ) {
+        Ok(value) => value,
+        Err(err) => return atom_list_failure(map_guarded_to_atom_error(err), norm_limit),
+    };
+
+    atom_list_from_scoped_query(
+        query_atoms_impl(legacy_default_caller(), descriptor, FfiProjectionMode::Atom),
+        norm_limit,
+        "upcoming item(s)",
+    )
 }
 
 /// Updates `task_status` for any atom type (universal completion).
@@ -1804,14 +3351,15 @@ fn atom_update_status_impl(atom_id: String, status: Option<String>) -> EntryActi
         }
     };
 
-    match with_task_service(|svc| svc.update_status(parsed_id, parsed_status)) {
+    let caller = parse_ffi_caller(legacy_default_caller()).expect("legacy caller");
+    match with_guarded_task_service(|svc| svc.update_status(&caller, parsed_id, parsed_status)) {
         Ok(()) => EntryActionResponse {
             ok: true,
             atom_id: Some(parsed_id.to_string()),
             node_uuid: None,
             message: "Status updated.".to_string(),
         },
-        Err(err) => EntryActionResponse::failure(err.message()),
+        Err(err) => EntryActionResponse::failure(map_guarded_to_atom_error(err).message()),
     }
 }
 
@@ -1828,18 +3376,45 @@ pub async fn atoms_list_timed() -> AtomListResponse {
 }
 
 fn atoms_list_timed_impl() -> AtomListResponse {
-    match with_task_service(|svc| svc.fetch_timed()) {
-        Ok(items) => {
-            let count = items.len();
-            AtomListResponse {
-                ok: true,
-                error_code: None,
-                message: format!("Loaded {} timed atom(s).", count),
-                items: items.into_iter().map(to_atom_list_item).collect(),
-                applied_limit: count as u32,
-            }
+    let descriptor = match legacy_root_scoped_query(
+        None,
+        FfiTimeFilterKind::Range,
+        Some(i64::MIN),
+        None,
+        FfiTimeShapeFilter::Any,
+        FfiStatusFilterKind::ActiveOnly,
+        None,
+        None,
+        false,
+        FfiSortSpec::UpdatedAtDesc,
+        u32::MAX,
+        0,
+    ) {
+        Ok(value) => value,
+        Err(err) => return atom_list_failure(map_guarded_to_atom_error(err), 0),
+    };
+    let response = query_atoms_impl(legacy_default_caller(), descriptor, FfiProjectionMode::Atom);
+    if response.ok {
+        let count = response.items.len() as u32;
+        AtomListResponse {
+            ok: true,
+            error_code: None,
+            message: format!("Loaded {} timed atom(s).", count),
+            items: response
+                .items
+                .into_iter()
+                .map(to_atom_list_item_from_scoped)
+                .collect(),
+            applied_limit: count,
         }
-        Err(err) => atom_list_failure(err, 0),
+    } else {
+        AtomListResponse {
+            ok: false,
+            error_code: response.error_code,
+            message: response.message,
+            items: Vec::new(),
+            applied_limit: 0,
+        }
     }
 }
 
@@ -1871,9 +3446,12 @@ fn atom_get_impl(atom_id: String) -> AtomItemResponse {
         }
     };
 
-    match with_task_service(|svc| {
-        svc.get_atom_record(parsed_id)?
-            .ok_or(TaskServiceError::AtomNotFound(parsed_id))
+    let caller = parse_ffi_caller(legacy_default_caller()).expect("legacy caller");
+    match with_guarded_atom_service(|svc| {
+        svc.get_atom(&caller, parsed_id)?
+            .ok_or(GuardedServiceError::Task(TaskServiceError::AtomNotFound(
+                parsed_id,
+            )))
     }) {
         Ok(sa) => AtomItemResponse {
             ok: true,
@@ -1882,13 +3460,16 @@ fn atom_get_impl(atom_id: String) -> AtomItemResponse {
             item: Some(to_atom_list_item(sa)),
             node_uuid: None,
         },
-        Err(err) => AtomItemResponse {
-            ok: false,
-            error_code: Some(err.code().to_string()),
-            message: err.message(),
-            item: None,
-            node_uuid: None,
-        },
+        Err(err) => {
+            let mapped = map_guarded_to_atom_error(err);
+            AtomItemResponse {
+                ok: false,
+                error_code: Some(mapped.code().to_string()),
+                message: mapped.message(),
+                item: None,
+                node_uuid: None,
+            }
+        }
     }
 }
 
@@ -1920,18 +3501,29 @@ fn calendar_list_by_range_impl(
 ) -> AtomListResponse {
     let norm_limit = normalize_section_limit(limit);
     let norm_offset = offset.unwrap_or(0);
-    match with_task_service(|svc| {
-        svc.fetch_by_time_range(start_ms, end_ms, norm_limit, norm_offset)
-    }) {
-        Ok(items) => AtomListResponse {
-            ok: true,
-            error_code: None,
-            message: format!("Loaded {} calendar event(s).", items.len()),
-            items: items.into_iter().map(to_atom_list_item).collect(),
-            applied_limit: norm_limit,
-        },
-        Err(err) => atom_list_failure(err, norm_limit),
-    }
+    let descriptor = match legacy_root_scoped_query(
+        None,
+        FfiTimeFilterKind::Range,
+        Some(start_ms),
+        Some(end_ms),
+        FfiTimeShapeFilter::BoundedOnly,
+        FfiStatusFilterKind::Any,
+        None,
+        None,
+        false,
+        FfiSortSpec::StartAtAsc,
+        norm_limit,
+        norm_offset,
+    ) {
+        Ok(value) => value,
+        Err(err) => return atom_list_failure(map_guarded_to_atom_error(err), norm_limit),
+    };
+
+    atom_list_from_scoped_query(
+        query_atoms_impl(legacy_default_caller(), descriptor, FfiProjectionMode::Atom),
+        norm_limit,
+        "calendar event(s)",
+    )
 }
 
 /// Updates only `start_at` and `end_at` for a calendar event.
@@ -1958,45 +3550,144 @@ fn calendar_update_event_impl(atom_id: String, start_ms: i64, end_ms: i64) -> En
         }
     };
 
-    match with_task_service(|svc| svc.update_event_times(parsed_id, start_ms, end_ms)) {
+    let caller = parse_ffi_caller(legacy_default_caller()).expect("legacy caller");
+    match with_guarded_atom_service(|svc| svc.update_time(&caller, parsed_id, start_ms, end_ms)) {
         Ok(()) => EntryActionResponse {
             ok: true,
             atom_id: Some(parsed_id.to_string()),
             node_uuid: None,
             message: "Event times updated.".to_string(),
         },
-        Err(err) => EntryActionResponse::failure(err.message()),
+        Err(err) => EntryActionResponse::failure(map_guarded_to_atom_error(err).message()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        atom_get_impl, calendar_list_by_range_impl, calendar_update_event_impl,
-        configure_entry_db_path, core_version, entry_create_note_impl, entry_create_task_impl,
-        entry_schedule_impl, entry_search_impl, init_logging, log_dart_event_impl, map_db_error,
-        map_log_dart_event_error, map_repo_error, map_workspace_db_error, note_create_impl,
-        note_get_impl, note_set_tags_impl, note_update_impl, notes_list_impl, ping, tags_list_impl,
-        tasks_list_inbox_impl, tasks_list_today_impl, tasks_list_upcoming_impl,
+        atom_create_impl, atom_create_impl_with_guard, atom_get_impl, calendar_list_by_range_impl,
+        calendar_update_event_impl, configure_entry_db_path, core_version, entry_create_note_impl,
+        entry_create_task_impl, entry_schedule_impl, entry_search_impl, init_logging,
+        log_dart_event_impl, map_db_error, map_log_dart_event_error, map_repo_error,
+        map_workspace_db_error, note_create_impl, note_get_impl, note_set_tags_impl,
+        note_update_impl, notes_list_impl, ping, query_atoms_impl, query_atoms_impl_with_guard,
+        tags_list_impl, tasks_list_inbox_impl, tasks_list_today_impl, tasks_list_upcoming_impl,
         workspace_create_atom_ref_impl, workspace_create_folder_impl, workspace_delete_folder_impl,
-        workspace_list_children_impl, workspace_move_node_impl, workspace_rename_node_impl,
-        NotesFfiError, WorkspaceFfiError,
+        workspace_get_ancestor_path_impl, workspace_get_default_impl,
+        workspace_list_atom_refs_for_atom_impl, workspace_list_children_impl, workspace_list_impl,
+        workspace_list_impl_with_guard, workspace_move_node_impl,
+        workspace_reassign_designated_impl, workspace_rename_node_impl,
+        workspace_resolve_designated_impl, FfiCallerContext, FfiCallerIdentity,
+        FfiCreateAtomRequest, FfiProjectionMode, FfiScopedAtomQuery, FfiSortSpec,
+        FfiStatusFilterKind, FfiTaskStatus, FfiTimeFilterKind, FfiTimeShapeFilter, NotesFfiError,
+        WorkspaceFfiError,
     };
     use lazynote_core::db::open_db;
     use lazynote_core::LogDartEventError;
     use lazynote_core::{
-        Atom, AtomRepository, SqliteAtomRepository, SqliteTreeRepository, TaskStatus, TreeService,
-        ViewHint,
+        search_all, AccessError, AccessGuard, Atom, AtomRepository, CallerContext, CallerIdentity,
+        Capability, SearchQuery, SqliteAtomRepository, SqliteTreeRepository, TaskStatus,
+        TreeService, ViewHint,
     };
     use std::sync::{Mutex, MutexGuard};
     use std::time::{SystemTime, UNIX_EPOCH};
+    use uuid::Uuid;
 
     static TEST_DB_LOCK: Mutex<()> = Mutex::new(());
 
     fn acquire_test_db_lock() -> MutexGuard<'static, ()> {
-        TEST_DB_LOCK
+        let guard = TEST_DB_LOCK
             .lock()
-            .expect("ffi api test db lock should not be poisoned")
+            .expect("ffi api test db lock should not be poisoned");
+        let db_path =
+            std::env::temp_dir().join(format!("lazynote_ffi_test_{}.sqlite3", unique_token("db")));
+        let configure_error = configure_entry_db_path(db_path.to_string_lossy().to_string());
+        assert!(
+            configure_error.is_empty(),
+            "configure test db path: {configure_error}"
+        );
+        guard
+    }
+
+    struct CrossWorkspaceDenyGuard;
+
+    impl AccessGuard for CrossWorkspaceDenyGuard {
+        fn check_read(
+            &self,
+            caller: &CallerContext,
+            target_workspace: &Uuid,
+        ) -> Result<(), AccessError> {
+            Err(AccessError::CrossWorkspaceAccessDenied {
+                scope: caller.scope_workspace_id.unwrap_or(*target_workspace),
+                target: *target_workspace,
+            })
+        }
+
+        fn check_write(
+            &self,
+            caller: &CallerContext,
+            target_workspace: &Uuid,
+        ) -> Result<(), AccessError> {
+            Err(AccessError::CrossWorkspaceAccessDenied {
+                scope: caller.scope_workspace_id.unwrap_or(*target_workspace),
+                target: *target_workspace,
+            })
+        }
+    }
+
+    struct CapabilityDenyGuard;
+
+    impl AccessGuard for CapabilityDenyGuard {
+        fn check_read(
+            &self,
+            _caller: &CallerContext,
+            _target_workspace: &Uuid,
+        ) -> Result<(), AccessError> {
+            Err(AccessError::InsufficientCapability {
+                identity: CallerIdentity::App,
+                required: Capability::WorkspaceRead,
+            })
+        }
+
+        fn check_write(
+            &self,
+            _caller: &CallerContext,
+            _target_workspace: &Uuid,
+        ) -> Result<(), AccessError> {
+            Err(AccessError::InsufficientCapability {
+                identity: CallerIdentity::App,
+                required: Capability::WorkspaceWrite,
+            })
+        }
+    }
+
+    struct SelectiveWorkspaceReadGuard {
+        allowed_workspace: Uuid,
+    }
+
+    impl AccessGuard for SelectiveWorkspaceReadGuard {
+        fn check_read(
+            &self,
+            _caller: &CallerContext,
+            target_workspace: &Uuid,
+        ) -> Result<(), AccessError> {
+            if *target_workspace == self.allowed_workspace {
+                Ok(())
+            } else {
+                Err(AccessError::CrossWorkspaceAccessDenied {
+                    scope: self.allowed_workspace,
+                    target: *target_workspace,
+                })
+            }
+        }
+
+        fn check_write(
+            &self,
+            _caller: &CallerContext,
+            _target_workspace: &Uuid,
+        ) -> Result<(), AccessError> {
+            Ok(())
+        }
     }
 
     #[test]
@@ -2779,6 +4470,66 @@ mod tests {
         .expect("designated folder id")
     }
 
+    fn insert_workspace_root_for_test(name: &str) -> String {
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        let workspace_id = Uuid::new_v4();
+        conn.execute(
+            "INSERT INTO workspace_nodes (
+                node_uuid, kind, parent_uuid, atom_uuid, display_name, sort_order, is_deleted
+             ) VALUES (?1, 'workspace', NULL, NULL, ?2, 10, 0);",
+            rusqlite::params![workspace_id.to_string(), name],
+        )
+        .expect("insert workspace root");
+        conn.execute(
+            "INSERT INTO workspaces (workspace_id, name, is_default)
+             VALUES (?1, ?2, 0);",
+            rusqlite::params![workspace_id.to_string(), name],
+        )
+        .expect("insert workspace metadata");
+        workspace_id.to_string()
+    }
+
+    fn default_caller() -> FfiCallerContext {
+        FfiCallerContext {
+            identity: FfiCallerIdentity::App,
+            scope_workspace_id: Some(default_workspace_node_id()),
+        }
+    }
+
+    fn base_query(folder_id: String) -> FfiScopedAtomQuery {
+        FfiScopedAtomQuery {
+            folder_id,
+            view_hint: None,
+            time_filter: FfiTimeFilterKind::Any,
+            time_start_ms: None,
+            time_end_ms: None,
+            time_shape: FfiTimeShapeFilter::Any,
+            status_filter: FfiStatusFilterKind::Any,
+            task_statuses: None,
+            tag: None,
+            text_query: None,
+            include_path: false,
+            include_overdue_deadlines: false,
+            sort: FfiSortSpec::UpdatedAtDesc,
+            limit: 50,
+            offset: 0,
+        }
+    }
+
+    fn create_task_request(content: &str) -> FfiCreateAtomRequest {
+        FfiCreateAtomRequest {
+            workspace_id: default_workspace_node_id(),
+            content: content.to_string(),
+            content_type: "markdown".to_string(),
+            task_status: Some(FfiTaskStatus::Todo),
+            start_at: None,
+            end_at: None,
+            tags: None,
+            target_folder: None,
+            display_name: None,
+        }
+    }
+
     fn create_legacy_root_scoped_atom(
         view_hint: ViewHint,
         content: &str,
@@ -2819,6 +4570,495 @@ mod tests {
             .expect("workspace node payload")
             .node_id
             .to_string()
+    }
+
+    #[test]
+    fn query_atoms_returns_scoped_items() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("guarded-query");
+        let created = note_create_impl(format!("# {token}"), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let mut descriptor = base_query(default_workspace_node_id());
+        descriptor.text_query = Some(token);
+        let response = query_atoms_impl(default_caller(), descriptor, FfiProjectionMode::Atom);
+        assert!(response.ok, "{}", response.message);
+        assert!(response.items.iter().any(|item| item.uuid == atom_id));
+    }
+
+    #[test]
+    fn atom_create_routes_task_to_designated_folder() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("guarded-create");
+        let tasks_folder = designated_folder_node_id("tasks");
+
+        let response = atom_create_impl(default_caller(), create_task_request(&token));
+        assert!(response.ok, "{}", response.message);
+        let node_uuid = response.node_uuid.expect("node uuid");
+        let atom_uuid = response.atom_uuid.expect("atom uuid");
+
+        let children = workspace_list_children_impl(Some(tasks_folder));
+        assert!(children.ok, "{}", children.message);
+        assert!(children.items.iter().any(|item| item.node_id == node_uuid));
+
+        let loaded = atom_get_impl(atom_uuid);
+        assert!(loaded.ok, "{}", loaded.message);
+        assert_eq!(
+            loaded
+                .item
+                .as_ref()
+                .and_then(|item| item.task_status.as_deref()),
+            Some("todo")
+        );
+    }
+
+    #[test]
+    fn workspace_list_returns_default_workspace() {
+        let _guard = acquire_test_db_lock();
+        let response = workspace_list_impl(default_caller());
+        assert!(response.ok, "{}", response.message);
+        assert!(response
+            .workspaces
+            .iter()
+            .any(|workspace| workspace.is_default));
+    }
+
+    #[test]
+    fn workspace_list_filters_to_readable_subset_under_guard() {
+        let _guard = acquire_test_db_lock();
+        let default_workspace = default_workspace_node_id();
+        let _other_workspace = insert_workspace_root_for_test("Other Workspace");
+
+        let response = workspace_list_impl_with_guard(
+            default_caller(),
+            Box::new(SelectiveWorkspaceReadGuard {
+                allowed_workspace: Uuid::parse_str(&default_workspace)
+                    .expect("default workspace uuid"),
+            }),
+        );
+        assert!(response.ok, "{}", response.message);
+        assert_eq!(response.workspaces.len(), 1);
+        assert_eq!(
+            response.workspaces[0].workspace_id.as_str(),
+            default_workspace.as_str()
+        );
+    }
+
+    #[test]
+    fn workspace_get_default_returns_default_workspace() {
+        let _guard = acquire_test_db_lock();
+        let expected_id = default_workspace_node_id();
+        let response = workspace_get_default_impl(default_caller());
+        assert!(response.ok, "{}", response.message);
+        assert_eq!(
+            response
+                .workspace
+                .as_ref()
+                .map(|workspace| workspace.workspace_id.as_str()),
+            Some(expected_id.as_str())
+        );
+    }
+
+    #[test]
+    fn workspace_resolve_designated_returns_inbox_folder() {
+        let _guard = acquire_test_db_lock();
+        let workspace_id = default_workspace_node_id();
+        let expected = designated_folder_node_id("inbox");
+
+        let response =
+            workspace_resolve_designated_impl(default_caller(), workspace_id, "inbox".to_string());
+        assert!(response.ok, "{}", response.message);
+        assert_eq!(response.node_uuid.as_deref(), Some(expected.as_str()));
+    }
+
+    #[test]
+    fn workspace_resolve_designated_returns_workspace_not_found_for_unknown_workspace() {
+        let _guard = acquire_test_db_lock();
+        let response = workspace_resolve_designated_impl(
+            default_caller(),
+            Uuid::new_v4().to_string(),
+            "inbox".to_string(),
+        );
+        assert!(!response.ok, "expected failure for unknown workspace");
+        assert_eq!(response.error_code.as_deref(), Some("workspace_not_found"));
+    }
+
+    #[test]
+    fn workspace_reassign_designated_updates_role_target() {
+        let _guard = acquire_test_db_lock();
+        let workspace_id = default_workspace_node_id();
+        let folder = workspace_create_folder_impl(None, unique_token("reassign-folder"));
+        assert!(folder.ok, "{}", folder.message);
+        let folder_id = folder.node.expect("folder node").node_id;
+
+        let action = workspace_reassign_designated_impl(
+            default_caller(),
+            workspace_id.clone(),
+            "inbox".to_string(),
+            folder_id.clone(),
+        );
+        assert!(action.ok, "{}", action.message);
+
+        let resolved =
+            workspace_resolve_designated_impl(default_caller(), workspace_id, "inbox".to_string());
+        assert!(resolved.ok, "{}", resolved.message);
+        assert_eq!(resolved.node_uuid.as_deref(), Some(folder_id.as_str()));
+    }
+
+    #[test]
+    fn workspace_reassign_designated_returns_workspace_not_found_for_unknown_workspace() {
+        let _guard = acquire_test_db_lock();
+        let folder = workspace_create_folder_impl(None, unique_token("missing-workspace-folder"));
+        assert!(folder.ok, "{}", folder.message);
+        let folder_id = folder.node.expect("folder node").node_id;
+
+        let action = workspace_reassign_designated_impl(
+            default_caller(),
+            Uuid::new_v4().to_string(),
+            "inbox".to_string(),
+            folder_id,
+        );
+        assert!(!action.ok, "expected missing workspace failure");
+        assert_eq!(action.error_code.as_deref(), Some("workspace_not_found"));
+    }
+
+    #[test]
+    fn workspace_reassign_designated_rejects_folder_outside_workspace() {
+        let _guard = acquire_test_db_lock();
+        let default_workspace = default_workspace_node_id();
+        let other_workspace = insert_workspace_root_for_test("Other Workspace");
+        let folder = workspace_create_folder_impl(
+            Some(other_workspace),
+            unique_token("foreign-designated-folder"),
+        );
+        assert!(folder.ok, "{}", folder.message);
+        let folder_id = folder.node.expect("folder node").node_id;
+
+        let action = workspace_reassign_designated_impl(
+            default_caller(),
+            default_workspace,
+            "inbox".to_string(),
+            folder_id,
+        );
+        assert!(!action.ok, "expected cross-workspace reassign failure");
+        assert_eq!(
+            action.error_code.as_deref(),
+            Some("target_folder_not_in_workspace")
+        );
+    }
+
+    #[test]
+    fn workspace_get_ancestor_path_returns_node_segments() {
+        let _guard = acquire_test_db_lock();
+        let folder_name = unique_token("path-folder");
+        let folder = workspace_create_folder_impl(None, folder_name.clone());
+        assert!(folder.ok, "{}", folder.message);
+        let folder_id = folder.node.expect("folder node").node_id;
+        let created = note_create_impl("path child".to_string(), Some(folder_id));
+        assert!(created.ok, "{}", created.message);
+        let node_uuid = created.node_uuid.expect("node uuid");
+
+        let response = workspace_get_ancestor_path_impl(default_caller(), node_uuid);
+        assert!(response.ok, "{}", response.message);
+        assert_eq!(
+            response
+                .segments
+                .last()
+                .map(|segment| segment.display_name.as_str()),
+            Some(folder_name.as_str())
+        );
+    }
+
+    #[test]
+    fn workspace_list_atom_refs_for_atom_returns_ref_locations() {
+        let _guard = acquire_test_db_lock();
+        let folder_name = unique_token("atom-ref-folder");
+        let folder = workspace_create_folder_impl(None, folder_name.clone());
+        assert!(folder.ok, "{}", folder.message);
+        let folder_id = folder.node.expect("folder node").node_id;
+        let created = note_create_impl("ref location".to_string(), Some(folder_id));
+        assert!(created.ok, "{}", created.message);
+        let atom_uuid = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let response = workspace_list_atom_refs_for_atom_impl(default_caller(), atom_uuid);
+        assert!(response.ok, "{}", response.message);
+        assert!(response
+            .locations
+            .iter()
+            .any(|location| location.path.contains(folder_name.as_str())));
+    }
+
+    #[test]
+    fn ffi_query_atoms_maps_cross_workspace_deny_guard_error_code() {
+        let _guard = acquire_test_db_lock();
+        let response = query_atoms_impl_with_guard(
+            FfiCallerContext {
+                identity: FfiCallerIdentity::App,
+                scope_workspace_id: Some(Uuid::new_v4().to_string()),
+            },
+            base_query(default_workspace_node_id()),
+            FfiProjectionMode::Atom,
+            Box::new(CrossWorkspaceDenyGuard),
+        );
+        assert!(!response.ok, "expected deny guard to fail query_atoms");
+        assert_eq!(
+            response.error_code.as_deref(),
+            Some("cross_workspace_access_denied")
+        );
+    }
+
+    #[test]
+    fn ffi_atom_create_maps_insufficient_capability_guard_error_code() {
+        let _guard = acquire_test_db_lock();
+        let response = atom_create_impl_with_guard(
+            default_caller(),
+            create_task_request("guard-write-denied"),
+            Box::new(CapabilityDenyGuard),
+        );
+        assert!(!response.ok, "expected deny guard to fail atom_create");
+        assert_eq!(
+            response.error_code.as_deref(),
+            Some("insufficient_capability")
+        );
+    }
+
+    #[test]
+    fn legacy_wrapper_tasks_list_inbox_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("legacy-inbox");
+        let created = entry_create_note_impl(token.clone());
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.atom_id.expect("atom id");
+
+        let response = tasks_list_inbox_impl(Some(50), Some(0));
+        assert!(response.ok, "{}", response.message);
+        assert!(response.items.iter().any(|item| item.atom_id == atom_id));
+        assert_eq!(response.error_code, None);
+    }
+
+    #[test]
+    fn legacy_wrapper_tasks_list_today_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_schedule_impl(unique_token("legacy-today"), 10_000, Some(12_000));
+        assert!(response.ok, "{}", response.message);
+        let atom_id = response.atom_id.expect("atom id");
+
+        let listed = tasks_list_today_impl(9_000, 13_000, Some(50), Some(0));
+        assert!(listed.ok, "{}", listed.message);
+        assert!(listed.items.iter().any(|item| item.atom_id == atom_id));
+    }
+
+    #[test]
+    fn legacy_wrapper_tasks_list_upcoming_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_schedule_impl(unique_token("legacy-upcoming"), 20_000, Some(21_000));
+        assert!(response.ok, "{}", response.message);
+        let atom_id = response.atom_id.expect("atom id");
+
+        let listed = tasks_list_upcoming_impl(15_000, Some(50), Some(0));
+        assert!(listed.ok, "{}", listed.message);
+        assert!(listed.items.iter().any(|item| item.atom_id == atom_id));
+    }
+
+    #[test]
+    fn legacy_wrapper_calendar_list_by_range_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_schedule_impl(unique_token("legacy-cal"), 30_000, Some(32_000));
+        assert!(response.ok, "{}", response.message);
+        let atom_id = response.atom_id.expect("atom id");
+
+        let listed = calendar_list_by_range_impl(29_000, 33_000, Some(50), Some(0));
+        assert!(listed.ok, "{}", listed.message);
+        assert!(listed.items.iter().any(|item| item.atom_id == atom_id));
+    }
+
+    #[test]
+    fn legacy_wrapper_notes_list_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("legacy-notes");
+        let created = note_create_impl(token.clone(), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let listed = notes_list_impl(None, Some(50), Some(0));
+        assert!(listed.ok, "{}", listed.message);
+        assert!(listed.items.iter().any(|item| item.atom_id == atom_id));
+    }
+
+    #[test]
+    fn legacy_wrapper_notes_list_preserves_tags() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("legacy-notes-tags");
+        let created = note_create_impl(token.clone(), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let tagged = note_set_tags_impl(
+            atom_id.clone(),
+            vec!["alpha".to_string(), "beta".to_string()],
+        );
+        assert!(tagged.ok, "{}", tagged.message);
+
+        let listed = notes_list_impl(None, Some(50), Some(0));
+        assert!(listed.ok, "{}", listed.message);
+        let listed_item = listed
+            .items
+            .iter()
+            .find(|item| item.atom_id == atom_id)
+            .expect("listed note");
+        assert_eq!(
+            listed_item.tags,
+            vec!["alpha".to_string(), "beta".to_string()]
+        );
+    }
+
+    #[test]
+    fn legacy_wrapper_entry_search_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("legacy-search");
+        let created = entry_create_note_impl(token.clone());
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.atom_id.expect("atom id");
+
+        let searched = entry_search_impl(token, None, Some(50));
+        assert!(searched.ok, "{}", searched.message);
+        assert!(searched.items.iter().any(|item| item.atom_id == atom_id));
+    }
+
+    #[test]
+    fn legacy_wrapper_entry_search_preserves_fts_snippet_and_order() {
+        let _guard = acquire_test_db_lock();
+        let token = unique_token("legacy-search-fts");
+        let strong = format!("strong {token} {token} {token}");
+        let weak = format!("weak {token}");
+
+        let created_a = entry_create_note_impl(strong);
+        assert!(created_a.ok, "{}", created_a.message);
+        let created_b = entry_create_note_impl(weak);
+        assert!(created_b.ok, "{}", created_b.message);
+
+        let conn = open_db(super::resolve_entry_db_path()).expect("open db");
+        let expected_hits = search_all(&conn, &SearchQuery::new(&token)).expect("direct search");
+        assert!(expected_hits.len() >= 2, "expected 2 direct hits");
+
+        let searched = entry_search_impl(token, None, Some(50));
+        assert!(searched.ok, "{}", searched.message);
+        assert!(searched.items.len() >= 2, "expected 2 wrapper hits");
+
+        assert_eq!(
+            searched.items[0].atom_id,
+            expected_hits[0].atom_id.to_string()
+        );
+        assert_eq!(searched.items[0].snippet, expected_hits[0].snippet);
+    }
+
+    #[test]
+    fn legacy_wrapper_atoms_list_timed_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_schedule_impl(unique_token("legacy-timed"), 40_000, Some(41_000));
+        assert!(response.ok, "{}", response.message);
+        let atom_id = response.atom_id.expect("atom id");
+
+        let listed = super::atoms_list_timed_impl();
+        assert!(listed.ok, "{}", listed.message);
+        assert!(listed.items.iter().any(|item| item.atom_id == atom_id));
+    }
+
+    #[test]
+    fn legacy_wrapper_entry_create_note_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_create_note_impl(unique_token("legacy-create-note"));
+        assert!(response.ok, "{}", response.message);
+        assert!(response.atom_id.is_some());
+        assert!(response.node_uuid.is_some());
+    }
+
+    #[test]
+    fn legacy_wrapper_entry_create_task_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_create_task_impl(unique_token("legacy-create-task"));
+        assert!(response.ok, "{}", response.message);
+        assert!(response.atom_id.is_some());
+        assert!(response.node_uuid.is_some());
+    }
+
+    #[test]
+    fn legacy_wrapper_entry_schedule_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = entry_schedule_impl(unique_token("legacy-schedule"), 50_000, Some(51_000));
+        assert!(response.ok, "{}", response.message);
+        assert!(response.atom_id.is_some());
+        assert!(response.node_uuid.is_some());
+    }
+
+    #[test]
+    fn legacy_wrapper_note_create_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let response = note_create_impl(unique_token("legacy-note-create"), None);
+        assert!(response.ok, "{}", response.message);
+        assert!(response.item.is_some());
+        assert!(response.node_uuid.is_some());
+    }
+
+    #[test]
+    fn legacy_wrapper_note_update_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let created = note_create_impl("legacy update seed".to_string(), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let updated = note_update_impl(atom_id, "legacy update body".to_string());
+        assert!(updated.ok, "{}", updated.message);
+        assert!(updated
+            .item
+            .as_ref()
+            .expect("updated payload")
+            .content
+            .contains("legacy update body"));
+    }
+
+    #[test]
+    fn legacy_wrapper_note_set_tags_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let created = note_create_impl("legacy tags seed".to_string(), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let tagged = note_set_tags_impl(atom_id, vec!["Alpha".to_string(), "Beta".to_string()]);
+        assert!(tagged.ok, "{}", tagged.message);
+        assert_eq!(
+            tagged.item.as_ref().expect("tagged payload").tags,
+            vec!["alpha".to_string(), "beta".to_string()]
+        );
+    }
+
+    #[test]
+    fn legacy_wrapper_calendar_update_event_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let created =
+            entry_schedule_impl(unique_token("legacy-update-event"), 60_000, Some(61_000));
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.atom_id.expect("atom id");
+
+        let updated = calendar_update_event_impl(atom_id.clone(), 62_000, 63_000);
+        assert!(updated.ok, "{}", updated.message);
+        assert_eq!(updated.atom_id.as_deref(), Some(atom_id.as_str()));
+    }
+
+    #[test]
+    fn legacy_wrapper_note_get_preserves_contract() {
+        let _guard = acquire_test_db_lock();
+        let created = note_create_impl("legacy get seed".to_string(), None);
+        assert!(created.ok, "{}", created.message);
+        let atom_id = created.item.as_ref().expect("note payload").atom_id.clone();
+
+        let loaded = note_get_impl(atom_id.clone());
+        assert!(loaded.ok, "{}", loaded.message);
+        assert_eq!(
+            loaded.item.as_ref().expect("loaded payload").atom_id,
+            atom_id
+        );
     }
 
     #[test]
@@ -3190,5 +5430,135 @@ mod tests {
             .expect("time went backwards")
             .as_nanos();
         format!("{prefix}-{nanos}")
+    }
+
+    fn function_source(signature: &str) -> &'static str {
+        let source = include_str!("api.rs");
+        let start = source
+            .find(signature)
+            .unwrap_or_else(|| panic!("signature `{signature}` not found"));
+        let tail = &source[start..];
+
+        let body_start = tail
+            .find('{')
+            .unwrap_or_else(|| panic!("function `{signature}` has no body"));
+        let mut depth = 0usize;
+        for (index, ch) in tail[body_start..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return &tail[..body_start + index + 1];
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        panic!("function `{signature}` body did not terminate");
+    }
+
+    fn assert_thin_wrapper(signature: &str, delegate_call: &str, forbidden: &[&str]) {
+        let source = function_source(signature);
+        assert!(
+            source.contains(delegate_call),
+            "expected `{signature}` to delegate via `{delegate_call}`"
+        );
+        for forbidden_call in forbidden {
+            assert!(
+                !source.contains(forbidden_call),
+                "expected `{signature}` to drop legacy helper `{forbidden_call}`"
+            );
+        }
+    }
+
+    #[test]
+    fn legacy_wrapper_bodies_delegate_to_approved_surfaces() {
+        assert_thin_wrapper(
+            "fn entry_create_note_impl",
+            "atom_create_impl(",
+            &["with_creation_service("],
+        );
+        assert_thin_wrapper(
+            "fn entry_create_task_impl",
+            "atom_create_impl(",
+            &["with_creation_service("],
+        );
+        assert_thin_wrapper(
+            "fn entry_schedule_impl",
+            "atom_create_impl(",
+            &["with_creation_service("],
+        );
+        assert_thin_wrapper(
+            "fn note_create_impl",
+            "atom_create_impl(",
+            &["with_creation_service("],
+        );
+        assert_thin_wrapper(
+            "fn note_update_impl",
+            "with_guarded_atom_service(",
+            &["with_note_service("],
+        );
+        assert_thin_wrapper(
+            "fn note_get_impl",
+            "with_guarded_atom_service(",
+            &["with_note_service("],
+        );
+        assert_thin_wrapper(
+            "fn note_set_tags_impl",
+            "with_guarded_atom_service(",
+            &["with_note_service("],
+        );
+        assert_thin_wrapper(
+            "fn calendar_update_event_impl",
+            "with_guarded_atom_service(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn atom_update_status_impl",
+            "with_guarded_task_service(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn atom_get_impl",
+            "with_guarded_atom_service(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn tasks_list_inbox_impl",
+            "query_atoms_impl(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn tasks_list_today_impl",
+            "query_atoms_impl(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn tasks_list_upcoming_impl",
+            "query_atoms_impl(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn atoms_list_timed_impl",
+            "query_atoms_impl(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn calendar_list_by_range_impl",
+            "query_atoms_impl(",
+            &["with_task_service("],
+        );
+        assert_thin_wrapper(
+            "fn notes_list_impl",
+            "query_atoms_impl(",
+            &["with_note_service("],
+        );
+        assert_thin_wrapper(
+            "fn entry_search_impl",
+            "legacy_entry_search_via_fts(",
+            &["search_all(", "open_db("],
+        );
     }
 }

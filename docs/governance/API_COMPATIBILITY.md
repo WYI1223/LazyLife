@@ -64,6 +64,47 @@ Default lifecycle class for newly introduced extension/provider contracts in v0.
 Stability guarantee starts at **v1.0**: from v1.0 onward, all changes to public API surfaces are subject
 to the full breaking-change process above, including migration guidance and release note updates.
 
+## PR-0411 Guarded FFI Expand Stage (v0.4)
+
+`PR-0411` introduces a guarded FFI surface as an additive expand-stage change on
+top of the workspace-topology contracts landed in `PR-0408` through `PR-0410`.
+
+Additive guarded exports:
+
+- `query_atoms(caller, descriptor, projection)`
+- `atom_create(caller, request)`
+- `workspace_list(caller)`
+- `workspace_get_default(caller)`
+- `workspace_resolve_designated(caller, workspace_id, role)`
+- `workspace_reassign_designated(caller, workspace_id, role, new_node_uuid)`
+- `workspace_get_ancestor_path(caller, node_uuid)`
+- `workspace_list_atom_refs_for_atom(caller, atom_uuid)`
+
+Additive caller/request models:
+
+- `FfiCallerContext`
+- `FfiCallerIdentity`
+- `FfiScopedAtomQuery`
+- `FfiProjectionMode`
+- guarded response envelopes such as `ScopedQueryResponse` and
+  `AtomCreateResponse`
+
+Compatibility rule for this expand stage:
+
+- legacy FFI entrypoints remain present for v0.x callers
+- each retained legacy wrapper may only preserve envelope/argument semantics and
+  delegate to one guarded facade, guarded export, or one documented
+  compatibility bridge
+- no wrapper may keep independent business logic once the guarded path exists;
+  the only allowed exception is a documented compatibility bridge whose purpose
+  is to preserve legacy contract semantics during the expand stage
+
+Breaking removal is deferred:
+
+- `PR-0411` is additive and compatibility-preserving
+- `PR-0413` owns the contract-stage removal of the legacy wrappers after Flutter
+  consumers migrate
+
 ## Planned Type Migrations
 
 ### `AtomListResponse` / `AtomListItem` (v0.1.5 → v0.3)

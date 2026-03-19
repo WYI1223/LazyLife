@@ -1,7 +1,64 @@
 # PR-0411: AccessGuard 体系 + FFI 新增（Expand 阶段）
 
 - Proposed title: `feat(ffi): access guard architecture and new guarded FFI functions`
-- Status: Draft
+- Status: Merged
+
+## Implementation Snapshot (2026-03-15)
+
+Current branch status for `PR-0411`:
+
+- guarded caller plumbing is landed in Rust Core via `CallerContext`,
+  `CallerIdentity`, `AccessGuard`, `NoopGuard`, and `GuardedServiceError`
+- guarded facades are landed for query, creation, atom, task, tree, and
+  workspace access
+- new guarded FFI exports are landed for scoped query, canonical creation, and
+  workspace-facing navigation/designated operations
+- guarded workspace designated lookup now distinguishes
+  `workspace_not_found` from `designated_role_not_found`
+- 14 expand-stage legacy wrappers now delegate through guarded exports or
+  guarded facades; `entry_search` remains a thin documented FTS compatibility
+  bridge so legacy ranking/snippet semantics stay intact without parallel
+  business logic
+- FRB bindings were regenerated after the guarded export surface was introduced
+
+Important boundary:
+
+- `guarded-ffi` is landed in this branch
+- `security-surface` is not yet fully landed because runtime still defaults to
+  `NoopGuard`; denial-path coverage exists, but production enforcement remains
+  deferred
+
+Downstream ownership that remains unchanged:
+
+- `PR-0411A` owns structure-only cleanup of `crates/lazynote_ffi/src/api.rs`
+- `PR-0413` owns contract-stage removal of the expand-stage legacy wrappers
+
+## Verification Snapshot (2026-03-15)
+
+Implementation verification executed on this branch:
+
+- `cargo fmt --all -- --check`
+- `cargo clippy --all -- -D warnings`
+- `cargo test --all`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen_bindings.ps1`
+- `cd apps/lazynote_flutter && dart format --output=none --set-exit-if-changed .`
+- `cd apps/lazynote_flutter && flutter analyze`
+- `cd apps/lazynote_flutter && flutter test`
+- `dart run tools/ci/architecture_check.dart`
+
+Key verification evidence now in-repo:
+
+- `crates/lazynote_core/tests/guard_test.rs`
+- `crates/lazynote_ffi/src/api.rs` guarded-export tests
+- `crates/lazynote_ffi/src/api.rs`
+  `workspace_resolve_designated_returns_workspace_not_found_for_unknown_workspace`
+- `crates/lazynote_ffi/src/api.rs`
+  `ffi_query_atoms_maps_cross_workspace_deny_guard_error_code`
+- `crates/lazynote_ffi/src/api.rs`
+  `ffi_atom_create_maps_insufficient_capability_guard_error_code`
+- `crates/lazynote_ffi/src/api.rs` `legacy_wrapper_*_preserves_contract` tests
+- `crates/lazynote_ffi/src/api.rs`
+  `legacy_wrapper_bodies_delegate_to_approved_surfaces`
 
 ## Goal
 
@@ -107,7 +164,8 @@ In scope:
 - AccessGuard trait + NoopGuard 默认实现
 - Guarded*Service 全套包装
 - FFI 新函数：`query_atoms`、`atom_create`、`workspace_resolve_designated`、`workspace_reassign_designated` 等
-- 旧 FFI 函数改为薄 wrapper（内部委托到 Guarded*Service）
+- 旧 FFI 函数改为薄 wrapper（内部委托到 Guarded*Service / guarded export；
+  `entry_search` 保留为薄 FTS compatibility bridge）
 - FRB 绑定重生成
 - DenyGuard 测试专用实现
 - 更新 `docs/api/ffi-contracts.md`（新函数）
@@ -138,7 +196,9 @@ Out of scope:
 
 1. 新增 guarded FFI 函数；
 2. 旧函数签名全部保留；
-3. 旧函数内部只能做一次 Guarded facade 委托，不保留独立业务逻辑；
+3. 旧函数内部只能做一次 Guarded facade/export 委托，或进入一次已文档化
+   的 compatibility bridge（当前仅 `entry_search -> legacy_entry_search_via_fts`），
+   不保留独立业务逻辑；
 4. 旧函数删除、rename、contract-stage cleanup 统一留给 `PR-0413`。
 
 这意味着本 PR 不应在 release 语义上制造 breaking removal。
@@ -409,7 +469,7 @@ pub async fn workspace_list_atom_refs_for_atom(
 | `tasks_list_upcoming` | 查询 | `GuardedQueryService::query`（`TimeFilter::Range(eod, None)` + 锚点前移） |
 | `calendar_list_by_range` | 查询 | `GuardedQueryService::query`（`TimeFilter::Range` + `TimeShapeFilter::Any`） |
 | `notes_list` | 查询 | `GuardedQueryService::query`（`view_hint=Note`） |
-| `entry_search` | 查询 | `GuardedQueryService::query`（`text_query` 参数） |
+| `entry_search` | 查询 | `legacy_entry_search_via_fts`（保留 legacy FTS `bm25` 排序与 snippet 语义，直到 `PR-0413` 删除旧入口） |
 | `atoms_list_timed` | 查询 | `GuardedQueryService::query`（`TimeFilter::Any` 排除 Timeless） |
 | `entry_create_note` | 创建 | `GuardedCreationService::create_atom`（`content_type=markdown`） |
 | `entry_create_task` | 创建 | `GuardedCreationService::create_atom`（`task_status=Some(Todo)`） |
@@ -420,9 +480,15 @@ pub async fn workspace_list_atom_refs_for_atom(
 | `calendar_update_event` | 写入 | `GuardedAtomService::update_time` |
 | `note_get` | 读取 | `GuardedAtomService::get` |
 
-所有旧 wrapper 内部构造默认 `CallerContext { identity: App, scope_workspace_id: None }` 传入 Guarded\*Service，保持无 caller 参数时的 v0.3 行为不变。
+除 `entry_search` 外，其余旧 wrapper 都在内部构造默认
+`CallerContext { identity: App, scope_workspace_id: None }` 传入
+Guarded\*Service / guarded export，保持无 caller 参数时的 v0.3 行为不变。
+`entry_search` 则保留 legacy FTS compatibility bridge，以避免在 expand
+阶段提前改变排序和 snippet 合同。
 
-**wrapper 形式约束**（Review checklist R1）：每个旧函数内部只有一次 Guarded\*Service 委托调用，不残留原有业务逻辑。
+**wrapper 形式约束**（Review checklist R1）：每个旧函数内部只有一次
+Guarded\*Service/guarded export 委托，或一次已文档化的 compatibility
+bridge 调用，不残留原有业务逻辑。
 
 **可复放验证约束**：这条规则不能只靠 reviewer 肉眼检查。实现阶段必须补一组
 legacy wrapper parity tests，按旧 FFI inventory 一一对应，证明每个 wrapper
@@ -641,7 +707,8 @@ cargo test -p lazynote_core --test guard_test -- --nocapture
 
 - 在 `api.rs` 中导出新 guarded 函数；
 - 把旧函数改成薄 wrapper；
-- 旧 wrapper 每个入口只保留一次 Guarded facade 委托。
+- 旧 wrapper 每个入口只保留一次 Guarded facade/export 委托，或一次
+  已文档化的 compatibility bridge 调用。
 
 **文件**
 
@@ -782,7 +849,7 @@ rg -n "DenyGuard|deny_guard" crates/lazynote_core/tests
 | FRB 重生成后 Flutter 编译失败 | MEDIUM | 旧 FFI 签名保留，先 replay bindings regen，再做 Flutter compile-validation |
 | 将 NoopGuard 误写成“安全已落地” | MEDIUM | 在 spec / workflow 中显式区分 `guarded-ffi` 与 `security-surface` |
 | Guard 架构引入过多 boilerplate | LOW | 先落统一 facade 模板，避免在 `api.rs` 内散落重复 guard 逻辑 |
-| 旧函数 wrapper 内部逻辑遗留 | LOW | wrapper checklist：每个旧函数只允许一次 Guarded facade 委托 |
+| 旧函数 wrapper 内部逻辑遗留 | LOW | wrapper checklist：每个旧函数只允许一次 Guarded facade/export 委托，或一次已文档化 compatibility bridge |
 
 ## Acceptance Criteria
 
@@ -791,7 +858,7 @@ rg -n "DenyGuard|deny_guard" crates/lazynote_core/tests
 - [ ] NoopGuard 默认实现
 - [ ] Guarded*Service 全套包装正确委托到底层 Service
 - [ ] FFI 新函数（`query_atoms`、`atom_create`、`workspace_resolve_designated`、`workspace_reassign_designated` 等）可调用
-- [ ] 旧 FFI 函数改为薄 wrapper（内部仅一次 Guarded*Service 委托）
+- [ ] 旧 FFI 函数改为薄 wrapper（内部仅一次 Guarded*Service/guarded export 委托，或一次已文档化 compatibility bridge 调用）
 - [ ] 15 项 legacy wrapper parity tests 已按旧 FFI inventory 落齐
 - [ ] DenyGuard 测试通过：拒绝路径返回预期错误
 - [ ] DenyGuard 测试通过：错误码映射正确（如 `cross_workspace_access_denied`、`insufficient_capability`）

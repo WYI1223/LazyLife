@@ -9,6 +9,32 @@ After `PR-0411` merges, split `crates/lazynote_ffi/src/api.rs` into a focused
 module tree without changing the public FFI contract, runtime behavior, or
 guard semantics.
 
+## Synchronization From PR-0411 (2026-03-19)
+
+`PR-0411` has now landed more internal FFI structure than the original
+`PR-0411A` draft assumed. This cleanup PR must preserve those landed internals
+while only reorganizing them:
+
+- guarded export implementations now commonly follow:
+  - `*_impl`
+  - `*_impl_with_noop_guard`
+  - `*_impl_inner`
+- shared guarded wiring now includes:
+  - `with_guarded_*_using_guard(...)`
+  - `with_guarded_tree_service_raw_using_guard(...)`
+- workspace-facing actions now include local action-specific error mapping
+  helpers in addition to shared `map_guarded_service_error(...)`
+- FFI tests now rely on per-test database isolation and guard-injection helpers
+  that were introduced during `PR-0411` closeout
+
+Implication for this PR:
+
+- `PR-0411A` must reorganize that structure cleanly
+- `PR-0411A` must not collapse those layers back together in ways that obscure
+  runtime-vs-test guard boundaries
+- `PR-0411A` must keep the test-support wiring explicit enough that guarded
+  parity and denial-path tests remain easy to audit
+
 ## Why This Is A Separate PR
 
 `PR-0411` is a behavioral landing PR: it introduces guarded FFI contracts,
@@ -36,10 +62,23 @@ cleanup sub-PR.
   response envelopes unchanged.
 - Move internal helpers into focused modules:
   - `*_impl`
+  - `*_impl_with_noop_guard`
+  - `*_impl_inner`
   - `with_*_service`
+  - `with_*_using_guard`
   - `map_*_error`
   - DTO/response mapping helpers
 - Reorganize FFI tests to match the new module structure.
+- Move shared FFI test helpers into a support location that preserves:
+  - per-test DB-path isolation
+  - guard-injection helpers
+  - common fixture/setup code
+- Preserve the landed `PR-0411` workspace-facing behavior during the split:
+  - `workspace_list` returns the readable subset under guard, not all-or-nothing
+  - `workspace_reassign_designated` continues to route through
+    `GuardedTreeService`
+  - local workspace action error mapping remains behavior-equivalent after the
+    move
 - Regenerate bindings if the module move requires it.
 
 ### Out Of Scope
@@ -61,6 +100,23 @@ cleanup sub-PR.
 - `crates/lazynote_ffi/src/api/errors.rs`
 - `crates/lazynote_ffi/src/api/mappers.rs`
 - `crates/lazynote_ffi/src/api/support.rs`
+
+Module responsibility guidance:
+
+- `workspace.rs`
+  - owns guarded workspace exports and wrappers
+  - owns workspace-facing local error mapping helpers that are not global FFI
+    error translation
+  - preserves the split between workspace metadata reads and tree-routed
+    designated reassignment
+- `support.rs`
+  - owns shared guarded wiring helpers and common setup utilities
+  - owns shared test support or re-exports the dedicated test-support location
+    used by the moduleized FFI tests
+- `errors.rs`
+  - owns reusable global FFI error translation only
+  - must not absorb workspace-specific action mapping that would blur behavior
+    ownership
 
 ## Planned File Changes
 
@@ -91,10 +147,27 @@ cd ../..
 dart run tools/ci/architecture_check.dart
 ```
 
+Targeted regression checks that must still be green after the split:
+
+```bash
+cargo test -p lazynote_ffi legacy_wrapper_ -- --nocapture
+cargo test -p lazynote_ffi workspace_ -- --nocapture
+cargo test -p lazynote_ffi api::tests::tasks_list_today_keeps_root_scoped_refs_visible_before_pr_0410 -- --exact --nocapture
+```
+
 ## Acceptance Criteria
 
 - `api.rs` is decomposed into the target module tree.
 - Public FFI contract is unchanged.
+- The landed `PR-0411` internal layering remains explicit:
+  - runtime `NoopGuard` paths are still easy to distinguish from
+    test-only/custom-guard paths
+  - workspace-specific action mapping remains locally owned and auditable
+- The landed `PR-0411` workspace-facing behavior is preserved:
+  - `workspace_list` filters to readable workspaces
+  - `workspace_reassign_designated` remains tree-routed
+  - per-test DB isolation continues to protect FFI regression tests from
+    cross-test contamination
 - Generated bindings remain valid.
 - Rust and Flutter verification gates pass.
 - No ADR, ruling, topic-map, or workspace carrier-promotion surfaces are updated

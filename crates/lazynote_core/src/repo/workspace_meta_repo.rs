@@ -28,6 +28,9 @@ pub trait WorkspaceMetaRepository {
     /// Returns all workspaces in deterministic order.
     fn list_workspaces(&self) -> TreeRepoResult<Vec<WorkspaceMetadata>>;
 
+    /// Returns whether one workspace id exists in `workspaces`.
+    fn workspace_exists(&self, workspace_id: WorkspaceNodeId) -> TreeRepoResult<bool>;
+
     /// Resolves one designated folder by workspace id and role.
     fn resolve_designated(
         &self,
@@ -107,6 +110,19 @@ impl WorkspaceMetaRepository for SqliteWorkspaceMetaRepository<'_> {
         }
 
         Ok(items)
+    }
+
+    fn workspace_exists(&self, workspace_id: WorkspaceNodeId) -> TreeRepoResult<bool> {
+        let exists: i64 = self.conn.query_row(
+            "SELECT EXISTS(
+                SELECT 1
+                FROM workspaces
+                WHERE workspace_id = ?1
+            );",
+            [workspace_id.to_string()],
+            |row| row.get(0),
+        )?;
+        Ok(exists == 1)
     }
 
     fn resolve_designated(
