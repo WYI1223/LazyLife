@@ -23,6 +23,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  AncestorPathResponse dco_decode_ancestor_path_response(dynamic raw);
+
+  @protected
+  AtomCreateResponse dco_decode_atom_create_response(dynamic raw);
+
+  @protected
   AtomItemResponse dco_decode_atom_item_response(dynamic raw);
 
   @protected
@@ -32,10 +38,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AtomListResponse dco_decode_atom_list_response(dynamic raw);
 
   @protected
+  AtomRefLocationsResponse dco_decode_atom_ref_locations_response(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
   AtomListItem dco_decode_box_autoadd_atom_list_item(dynamic raw);
+
+  @protected
+  FfiCallerContext dco_decode_box_autoadd_ffi_caller_context(dynamic raw);
+
+  @protected
+  FfiCreateAtomRequest dco_decode_box_autoadd_ffi_create_atom_request(
+    dynamic raw,
+  );
+
+  @protected
+  FfiScopedAtomQuery dco_decode_box_autoadd_ffi_scoped_atom_query(dynamic raw);
+
+  @protected
+  FfiTaskStatus dco_decode_box_autoadd_ffi_task_status(dynamic raw);
+
+  @protected
+  FfiViewHint dco_decode_box_autoadd_ffi_view_hint(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
@@ -44,7 +70,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
+  WorkspaceInfo dco_decode_box_autoadd_workspace_info(dynamic raw);
+
+  @protected
   WorkspaceNodeItem dco_decode_box_autoadd_workspace_node_item(dynamic raw);
+
+  @protected
+  DesignatedFolderResponse dco_decode_designated_folder_response(dynamic raw);
 
   @protected
   EntryActionResponse dco_decode_entry_action_response(dynamic raw);
@@ -54,6 +86,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   EntrySearchResponse dco_decode_entry_search_response(dynamic raw);
+
+  @protected
+  FfiAtomRefLocation dco_decode_ffi_atom_ref_location(dynamic raw);
+
+  @protected
+  FfiCallerContext dco_decode_ffi_caller_context(dynamic raw);
+
+  @protected
+  FfiCallerIdentity dco_decode_ffi_caller_identity(dynamic raw);
+
+  @protected
+  FfiCreateAtomRequest dco_decode_ffi_create_atom_request(dynamic raw);
+
+  @protected
+  FfiProjectionMode dco_decode_ffi_projection_mode(dynamic raw);
+
+  @protected
+  FfiScopedAtomQuery dco_decode_ffi_scoped_atom_query(dynamic raw);
+
+  @protected
+  FfiSortSpec dco_decode_ffi_sort_spec(dynamic raw);
+
+  @protected
+  FfiStatusFilterKind dco_decode_ffi_status_filter_kind(dynamic raw);
+
+  @protected
+  FfiTaskStatus dco_decode_ffi_task_status(dynamic raw);
+
+  @protected
+  FfiTimeFilterKind dco_decode_ffi_time_filter_kind(dynamic raw);
+
+  @protected
+  FfiTimeShapeFilter dco_decode_ffi_time_shape_filter(dynamic raw);
+
+  @protected
+  FfiViewHint dco_decode_ffi_view_hint(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -68,7 +139,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<EntrySearchItem> dco_decode_list_entry_search_item(dynamic raw);
 
   @protected
+  List<FfiAtomRefLocation> dco_decode_list_ffi_atom_ref_location(dynamic raw);
+
+  @protected
+  List<FfiTaskStatus> dco_decode_list_ffi_task_status(dynamic raw);
+
+  @protected
+  List<PathSegment> dco_decode_list_path_segment(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<ScopedAtomItem> dco_decode_list_scoped_atom_item(dynamic raw);
+
+  @protected
+  List<WorkspaceInfo> dco_decode_list_workspace_info(dynamic raw);
 
   @protected
   List<WorkspaceNodeItem> dco_decode_list_workspace_node_item(dynamic raw);
@@ -83,15 +169,39 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AtomListItem? dco_decode_opt_box_autoadd_atom_list_item(dynamic raw);
 
   @protected
+  FfiTaskStatus? dco_decode_opt_box_autoadd_ffi_task_status(dynamic raw);
+
+  @protected
+  FfiViewHint? dco_decode_opt_box_autoadd_ffi_view_hint(dynamic raw);
+
+  @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
 
   @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
   @protected
+  WorkspaceInfo? dco_decode_opt_box_autoadd_workspace_info(dynamic raw);
+
+  @protected
   WorkspaceNodeItem? dco_decode_opt_box_autoadd_workspace_node_item(
     dynamic raw,
   );
+
+  @protected
+  List<String>? dco_decode_opt_list_String(dynamic raw);
+
+  @protected
+  List<FfiTaskStatus>? dco_decode_opt_list_ffi_task_status(dynamic raw);
+
+  @protected
+  PathSegment dco_decode_path_segment(dynamic raw);
+
+  @protected
+  ScopedAtomItem dco_decode_scoped_atom_item(dynamic raw);
+
+  @protected
+  ScopedQueryResponse dco_decode_scoped_query_response(dynamic raw);
 
   @protected
   TagsListResponse dco_decode_tags_list_response(dynamic raw);
@@ -114,9 +224,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  WorkspaceInfo dco_decode_workspace_info(dynamic raw);
+
+  @protected
+  WorkspaceInfoResponse dco_decode_workspace_info_response(dynamic raw);
+
+  @protected
   WorkspaceListChildrenResponse dco_decode_workspace_list_children_response(
     dynamic raw,
   );
+
+  @protected
+  WorkspaceListResponse dco_decode_workspace_list_response(dynamic raw);
 
   @protected
   WorkspaceNodeItem dco_decode_workspace_node_item(dynamic raw);
@@ -128,6 +247,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AncestorPathResponse sse_decode_ancestor_path_response(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AtomCreateResponse sse_decode_atom_create_response(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   AtomItemResponse sse_decode_atom_item_response(SseDeserializer deserializer);
 
   @protected
@@ -135,6 +264,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   AtomListResponse sse_decode_atom_list_response(SseDeserializer deserializer);
+
+  @protected
+  AtomRefLocationsResponse sse_decode_atom_ref_locations_response(
+    SseDeserializer deserializer,
+  );
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
@@ -145,13 +279,48 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiCallerContext sse_decode_box_autoadd_ffi_caller_context(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiCreateAtomRequest sse_decode_box_autoadd_ffi_create_atom_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiScopedAtomQuery sse_decode_box_autoadd_ffi_scoped_atom_query(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiTaskStatus sse_decode_box_autoadd_ffi_task_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiViewHint sse_decode_box_autoadd_ffi_view_hint(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
+  WorkspaceInfo sse_decode_box_autoadd_workspace_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   WorkspaceNodeItem sse_decode_box_autoadd_workspace_node_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  DesignatedFolderResponse sse_decode_designated_folder_response(
     SseDeserializer deserializer,
   );
 
@@ -167,6 +336,61 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   EntrySearchResponse sse_decode_entry_search_response(
     SseDeserializer deserializer,
   );
+
+  @protected
+  FfiAtomRefLocation sse_decode_ffi_atom_ref_location(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiCallerContext sse_decode_ffi_caller_context(SseDeserializer deserializer);
+
+  @protected
+  FfiCallerIdentity sse_decode_ffi_caller_identity(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiCreateAtomRequest sse_decode_ffi_create_atom_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiProjectionMode sse_decode_ffi_projection_mode(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiScopedAtomQuery sse_decode_ffi_scoped_atom_query(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiSortSpec sse_decode_ffi_sort_spec(SseDeserializer deserializer);
+
+  @protected
+  FfiStatusFilterKind sse_decode_ffi_status_filter_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiTaskStatus sse_decode_ffi_task_status(SseDeserializer deserializer);
+
+  @protected
+  FfiTimeFilterKind sse_decode_ffi_time_filter_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiTimeShapeFilter sse_decode_ffi_time_shape_filter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiViewHint sse_decode_ffi_view_hint(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -185,7 +409,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<FfiAtomRefLocation> sse_decode_list_ffi_atom_ref_location(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<FfiTaskStatus> sse_decode_list_ffi_task_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<PathSegment> sse_decode_list_path_segment(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<ScopedAtomItem> sse_decode_list_scoped_atom_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<WorkspaceInfo> sse_decode_list_workspace_info(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<WorkspaceNodeItem> sse_decode_list_workspace_node_item(
@@ -206,13 +453,47 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiTaskStatus? sse_decode_opt_box_autoadd_ffi_task_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiViewHint? sse_decode_opt_box_autoadd_ffi_view_hint(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
+  WorkspaceInfo? sse_decode_opt_box_autoadd_workspace_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   WorkspaceNodeItem? sse_decode_opt_box_autoadd_workspace_node_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<String>? sse_decode_opt_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<FfiTaskStatus>? sse_decode_opt_list_ffi_task_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PathSegment sse_decode_path_segment(SseDeserializer deserializer);
+
+  @protected
+  ScopedAtomItem sse_decode_scoped_atom_item(SseDeserializer deserializer);
+
+  @protected
+  ScopedQueryResponse sse_decode_scoped_query_response(
     SseDeserializer deserializer,
   );
 
@@ -239,7 +520,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  WorkspaceInfo sse_decode_workspace_info(SseDeserializer deserializer);
+
+  @protected
+  WorkspaceInfoResponse sse_decode_workspace_info_response(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   WorkspaceListChildrenResponse sse_decode_workspace_list_children_response(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  WorkspaceListResponse sse_decode_workspace_list_response(
     SseDeserializer deserializer,
   );
 
@@ -254,10 +548,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+  void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
-  void sse_encode_String(String self, SseSerializer serializer);
+  void sse_encode_ancestor_path_response(
+    AncestorPathResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_atom_create_response(
+    AtomCreateResponse self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_atom_item_response(
@@ -275,11 +578,47 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_atom_ref_locations_response(
+    AtomRefLocationsResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_atom_list_item(
     AtomListItem self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_caller_context(
+    FfiCallerContext self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_create_atom_request(
+    FfiCreateAtomRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_scoped_atom_query(
+    FfiScopedAtomQuery self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_task_status(
+    FfiTaskStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_view_hint(
+    FfiViewHint self,
     SseSerializer serializer,
   );
 
@@ -293,8 +632,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_workspace_info(
+    WorkspaceInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_workspace_node_item(
     WorkspaceNodeItem self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_designated_folder_response(
+    DesignatedFolderResponse self,
     SseSerializer serializer,
   );
 
@@ -317,6 +668,72 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_ffi_atom_ref_location(
+    FfiAtomRefLocation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_caller_context(
+    FfiCallerContext self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_caller_identity(
+    FfiCallerIdentity self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_create_atom_request(
+    FfiCreateAtomRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_projection_mode(
+    FfiProjectionMode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_scoped_atom_query(
+    FfiScopedAtomQuery self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_sort_spec(FfiSortSpec self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_status_filter_kind(
+    FfiStatusFilterKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_task_status(FfiTaskStatus self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_time_filter_kind(
+    FfiTimeFilterKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_time_shape_filter(
+    FfiTimeShapeFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_view_hint(FfiViewHint self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
@@ -335,8 +752,38 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_ffi_atom_ref_location(
+    List<FfiAtomRefLocation> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_ffi_task_status(
+    List<FfiTaskStatus> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_path_segment(
+    List<PathSegment> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_scoped_atom_item(
+    List<ScopedAtomItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_workspace_info(
+    List<WorkspaceInfo> self,
     SseSerializer serializer,
   );
 
@@ -362,6 +809,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_ffi_task_status(
+    FfiTaskStatus? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_view_hint(
+    FfiViewHint? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_i_64(
     PlatformInt64? self,
     SseSerializer serializer,
@@ -371,8 +830,38 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_workspace_info(
+    WorkspaceInfo? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_workspace_node_item(
     WorkspaceNodeItem? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_list_String(List<String>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_ffi_task_status(
+    List<FfiTaskStatus>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_path_segment(PathSegment self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_scoped_atom_item(
+    ScopedAtomItem self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_scoped_query_response(
+    ScopedQueryResponse self,
     SseSerializer serializer,
   );
 
@@ -404,8 +893,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_workspace_info(WorkspaceInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_workspace_info_response(
+    WorkspaceInfoResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_workspace_list_children_response(
     WorkspaceListChildrenResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_workspace_list_response(
+    WorkspaceListResponse self,
     SseSerializer serializer,
   );
 
@@ -420,9 +924,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     WorkspaceNodeResponse self,
     SseSerializer serializer,
   );
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

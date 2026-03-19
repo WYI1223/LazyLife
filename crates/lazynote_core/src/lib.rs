@@ -5,6 +5,8 @@
 pub mod db;
 /// Extension kernel declaration contracts.
 pub mod extension;
+/// Access-guard contracts used by guarded FFI facades.
+pub mod guard;
 /// Structured logging initialization and status APIs.
 pub mod logging;
 /// Canonical Atom data model.
@@ -33,6 +35,11 @@ pub use extension::kernel::{
 pub use extension::manifest::{
     supported_capabilities, ExtensionManifest, ManifestEntrypoints, ManifestValidationError,
     CAPABILITY_COMMAND, CAPABILITY_PARSER, CAPABILITY_PROVIDER, CAPABILITY_UI_SLOT,
+};
+/// Re-export guard contracts and guarded facade errors.
+pub use guard::{
+    resolve_workspace_for_atom, resolve_workspace_root, AccessError, AccessGuard, CallerContext,
+    CallerIdentity, Capability, GuardedServiceError, NoopGuard,
 };
 /// Re-export logging entry points for FFI/UI layers.
 pub use logging::{
@@ -72,6 +79,13 @@ pub use service::creation_service::{
     CreateAtomRequest, CreateAtomResult, CreateEventWithRefRequest, CreationService,
     CreationServiceError,
 };
+/// Re-export guarded service facades.
+pub use service::guarded_atom_service::GuardedAtomService;
+pub use service::guarded_creation_service::GuardedCreationService;
+pub use service::guarded_query_service::GuardedQueryService;
+pub use service::guarded_task_service::GuardedTaskService;
+pub use service::guarded_tree_service::GuardedTreeService;
+pub use service::guarded_workspace_service::GuardedWorkspaceService;
 /// Re-export notes service facade and models.
 pub use service::note_service::{
     derive_markdown_preview, MarkdownPreview, NoteService, NoteServiceError, NotesListResult,

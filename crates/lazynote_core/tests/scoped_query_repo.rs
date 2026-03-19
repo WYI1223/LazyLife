@@ -222,6 +222,63 @@ fn ref_projection_returns_each_ref_with_path() {
 }
 
 #[test]
+fn ref_projection_keeps_tags_on_duplicate_refs() {
+    let conn = setup();
+    let workspace_id = default_workspace_id(&conn);
+    let project = create_folder(&conn, Some(workspace_id), "Project");
+    let child = create_folder(&conn, Some(project), "Child");
+
+    let atom = make_atom(ViewHint::Task, "Tagged duplicate", None, Some(2_000));
+    insert_atom(&conn, &atom);
+    create_atom_ref(&conn, Some(project), atom.uuid, "Tagged ref A");
+    create_atom_ref(&conn, Some(child), atom.uuid, "Tagged ref B");
+
+    conn.execute("INSERT INTO tags (name) VALUES ('alpha'), ('beta');", [])
+        .unwrap();
+    let alpha_id: i64 = conn
+        .query_row("SELECT id FROM tags WHERE name = 'alpha'", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    let beta_id: i64 = conn
+        .query_row("SELECT id FROM tags WHERE name = 'beta'", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    conn.execute(
+        "INSERT INTO atom_tags (atom_uuid, tag_id) VALUES (?1, ?2), (?1, ?3);",
+        rusqlite::params![atom.uuid.to_string(), alpha_id, beta_id],
+    )
+    .unwrap();
+
+    let repo = SqliteScopedQueryRepository::try_new(&conn).unwrap();
+    let results = repo
+        .query_scoped_atoms(
+            ScopedAtomQuery {
+                folder_id: project,
+                view_hint: None,
+                time_filter: TimeFilter::Any,
+                time_shape: TimeShapeFilter::Any,
+                status_filter: StatusFilter::Any,
+                tag: None,
+                text_query: None,
+                include_path: true,
+                include_overdue_deadlines: false,
+                sort: SortSpec::UpdatedAtDesc,
+                limit: 50,
+                offset: 0,
+            },
+            ProjectionMode::Ref,
+        )
+        .unwrap();
+
+    assert_eq!(results.len(), 2);
+    assert!(results
+        .iter()
+        .all(|item| item.tags == vec!["alpha", "beta"]));
+}
+
+#[test]
 fn ref_projection_uses_representative_node_uuid_as_stable_tie_breaker() {
     let conn = setup();
     let workspace_id = default_workspace_id(&conn);

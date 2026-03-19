@@ -7,6 +7,76 @@ This file is the consolidated index for FFI contracts.
 - Rust API: `crates/lazynote_ffi/src/api.rs`
 - Dart generated API: `apps/lazynote_flutter/lib/core/bindings/api.dart`
 
+## Guarded FFI Expand Stage (PR-0411)
+
+`PR-0411` adds a guarded FFI surface on top of the `PR-0408` to `PR-0410`
+workspace contracts while keeping legacy FFI entrypoints as compatibility
+wrappers.
+
+### Caller Contract
+
+All newly introduced guarded exports take `caller: FfiCallerContext` as the
+first parameter.
+
+- `identity`: currently `App`
+- `scope_workspace_id`: optional declared workspace scope in UUID string form
+
+Runtime note:
+
+- v0.4 production path still uses `NoopGuard` as the default runtime guard
+  implementation
+- this PR lands caller plumbing, guarded facades, and denial-path tests, but it
+  does not yet claim origin-aware production enforcement
+
+### New Guarded Exports
+
+- `query_atoms(caller, descriptor, projection) -> ScopedQueryResponse`
+- `atom_create(caller, request) -> AtomCreateResponse`
+- `workspace_list(caller) -> WorkspaceListResponse`
+- `workspace_get_default(caller) -> WorkspaceInfoResponse`
+- `workspace_resolve_designated(caller, workspace_id, role) -> DesignatedFolderResponse`
+- `workspace_reassign_designated(caller, workspace_id, role, new_node_uuid) -> WorkspaceActionResponse`
+- `workspace_get_ancestor_path(caller, node_uuid) -> AncestorPathResponse`
+- `workspace_list_atom_refs_for_atom(caller, atom_uuid) -> AtomRefLocationsResponse`
+
+### Expand-Stage Compatibility
+
+The following legacy FFI entrypoints remain present in `PR-0411`, but are now
+thin compatibility wrappers that delegate into guarded surfaces/guarded
+facades, or a documented compatibility bridge when legacy semantics must be
+preserved during the expand stage:
+
+- `tasks_list_inbox`
+- `tasks_list_today`
+- `tasks_list_upcoming`
+- `calendar_list_by_range`
+- `notes_list`
+- `entry_search`
+- `atoms_list_timed`
+- `entry_create_note`
+- `entry_create_task`
+- `entry_schedule`
+- `note_create`
+- `note_update`
+- `note_set_tags`
+- `calendar_update_event`
+- `note_get`
+
+These wrappers preserve current envelopes for v0.x callers. `entry_search`
+remains a thin legacy FTS bridge in `PR-0411` so `bm25` ordering and highlighted
+snippet behavior stay intact until `PR-0413` removes the old contract surface.
+Contract-stage removal is deferred to `PR-0413`.
+
+### New Response Types
+
+- `ScopedQueryResponse` with `items: Vec<ScopedAtomItem>`
+- `AtomCreateResponse` with `atom_uuid` and `node_uuid`
+- `WorkspaceListResponse` with `workspaces: Vec<WorkspaceInfo>`
+- `WorkspaceInfoResponse` with optional `workspace`
+- `DesignatedFolderResponse` with optional `node_uuid`
+- `AncestorPathResponse` with `segments: Vec<PathSegment>`
+- `AtomRefLocationsResponse` with `locations: Vec<FfiAtomRefLocation>`
+
 ## v0.1 Contract Sets
 
 1. Single Entry contracts:
@@ -23,6 +93,8 @@ This file is the consolidated index for FFI contracts.
   - `kind`: optional, case-insensitive `all|note|task|event`
     - `null`/`all` means no type filter
     - blank string is invalid (`invalid_kind`)
+  - `PR-0411` keeps this legacy entrypoint on the FTS-backed compatibility path
+    so ranking and snippet semantics remain unchanged during the expand stage
   - stable error codes on failure:
     - `invalid_kind` for unsupported `kind` value
     - `db_error` for DB open/bootstrap failures

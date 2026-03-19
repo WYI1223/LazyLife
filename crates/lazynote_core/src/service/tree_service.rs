@@ -152,6 +152,10 @@ impl WorkspaceMetaRepository for NoopWorkspaceMetaRepository {
         Ok(vec![])
     }
 
+    fn workspace_exists(&self, _workspace_id: WorkspaceNodeId) -> Result<bool, TreeRepoError> {
+        Ok(false)
+    }
+
     fn resolve_designated(
         &self,
         _workspace_id: WorkspaceNodeId,
@@ -476,6 +480,38 @@ impl<R: TreeRepository, W: WorkspaceMetaRepository> TreeService<R, W> {
         Err(TreeServiceError::Repo(TreeRepoError::InvalidData(
             "workspace root not found for node".to_string(),
         )))
+    }
+
+    pub(crate) fn workspace_root_for_atom(
+        &self,
+        atom_uuid: AtomId,
+    ) -> Result<WorkspaceNodeId, TreeServiceError> {
+        self.repo
+            .list_atom_refs_for_atom(atom_uuid)?
+            .into_iter()
+            .next()
+            .map(|location| location.workspace_id)
+            .ok_or(TreeServiceError::Repo(TreeRepoError::InvalidData(format!(
+                "active atom_ref location not found for atom `{atom_uuid}`"
+            ))))
+    }
+
+    pub(crate) fn default_workspace_id(&self) -> Result<Option<WorkspaceNodeId>, TreeServiceError> {
+        self.workspace_meta
+            .get_default_workspace()
+            .map_err(Into::into)
+    }
+
+    pub(crate) fn workspace_for_parent_or_default(
+        &self,
+        parent_uuid: Option<WorkspaceNodeId>,
+    ) -> Result<WorkspaceNodeId, TreeServiceError> {
+        match parent_uuid {
+            Some(parent_uuid) => self.workspace_root_for_node(parent_uuid),
+            None => self.default_workspace_id()?.ok_or(TreeServiceError::Repo(
+                TreeRepoError::InvalidData("default workspace missing".to_string()),
+            )),
+        }
     }
 }
 

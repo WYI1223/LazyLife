@@ -6,9 +6,9 @@
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:lazynote_flutter/core/bindings/frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `atom_get_impl`, `atom_list_failure`, `atom_update_status_impl`, `atoms_list_timed_impl`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `is_db_busy`, `log_dart_event_impl`, `map_db_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_repo_error`, `map_task_service_error`, `map_tree_repo_error`, `map_tree_service_error`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_folder_delete_mode`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `resolve_entry_db_path`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item`, `to_entry_search_item`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_creation_service`, `with_note_service`, `with_task_service`, `with_tree_service`, `workspace_ancestor_path_failure`, `workspace_ancestor_path_impl`, `workspace_create_atom_ref_impl`, `workspace_create_folder_impl`, `workspace_delete_folder_impl`, `workspace_failure`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_rename_node_impl`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `LogDartEventFfiError`, `NotesFfiError`, `WorkspaceFfiError`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `atom_create_failure`, `atom_create_impl_inner`, `atom_create_impl_with_noop_guard`, `atom_create_impl`, `atom_get_impl`, `atom_list_failure`, `atom_list_from_scoped_query`, `atom_ref_locations_failure`, `atom_update_status_impl`, `atoms_list_timed_impl`, `build_create_atom_request`, `build_scoped_query`, `calendar_list_by_range_impl`, `calendar_update_event_impl`, `code`, `code`, `code`, `code`, `code`, `designated_folder_failure`, `entry_create_note_impl`, `entry_create_task_impl`, `entry_schedule_impl`, `entry_search_impl`, `failure`, `guarded_ancestor_path_failure`, `guarded_workspace_exists`, `guarded_workspace_info_failure`, `guarded_workspace_list_failure`, `is_db_busy`, `legacy_default_caller`, `legacy_entry_search_via_fts`, `legacy_root_scoped_query`, `log_dart_event_impl`, `map_db_error`, `map_guarded_db_error`, `map_guarded_repo_error`, `map_guarded_service_error`, `map_guarded_to_atom_error`, `map_guarded_to_notes_error`, `map_guarded_tree_repo_error`, `map_log_dart_event_error`, `map_note_service_error`, `map_projection_mode`, `map_repo_error`, `map_sort_spec`, `map_task_status`, `map_time_shape`, `map_tree_repo_error`, `map_tree_service_error`, `map_view_hint_filter`, `map_workspace_db_error`, `message`, `message`, `message`, `message`, `message`, `normalize_entry_limit`, `normalize_guarded_text_query`, `normalize_log_dart_event_level`, `normalize_section_limit`, `note_create_impl`, `note_failure`, `note_get_impl`, `note_set_tags_impl`, `note_update_impl`, `notes_list_impl`, `parse_entry_search_kind`, `parse_ffi_caller`, `parse_folder_delete_mode`, `parse_guarded_atom_id`, `parse_guarded_node_id`, `parse_guarded_optional_node_id`, `parse_guarded_workspace_id`, `parse_note_id`, `parse_optional_parent_node_id`, `parse_workspace_atom_id`, `parse_workspace_node_id`, `query_atoms_impl_inner`, `query_atoms_impl_with_noop_guard`, `query_atoms_impl`, `resolve_entry_db_path`, `resolve_legacy_workspace_id`, `resolve_legacy_workspace_root_for_node`, `scoped_query_failure`, `set_configured_entry_db_path`, `success`, `tags_list_impl`, `tasks_list_inbox_impl`, `tasks_list_today_impl`, `tasks_list_upcoming_impl`, `to_atom_list_item_from_note`, `to_atom_list_item_from_scoped`, `to_atom_list_item`, `to_entry_search_item_from_hit`, `to_scoped_atom_item`, `to_workspace_info`, `to_workspace_node_item`, `try_log_dart_event`, `validate_log_dart_event_event_name`, `validate_log_dart_event_message`, `validate_log_dart_event_module`, `view_hint_label`, `with_guarded_atom_service`, `with_guarded_creation_service_using_guard`, `with_guarded_query_service_using_guard`, `with_guarded_task_service`, `with_guarded_tree_service_raw_using_guard`, `with_guarded_tree_service_using_guard`, `with_guarded_tree_service`, `with_guarded_workspace_service_using_guard`, `with_guarded_workspace_service`, `with_note_service`, `with_tree_service`, `workspace_ancestor_path_failure`, `workspace_ancestor_path_impl`, `workspace_create_atom_ref_impl`, `workspace_create_folder_impl`, `workspace_delete_folder_impl`, `workspace_failure_from_guarded`, `workspace_failure`, `workspace_get_ancestor_path_impl`, `workspace_get_default_impl`, `workspace_list_atom_refs_for_atom_impl`, `workspace_list_children_impl`, `workspace_list_failure`, `workspace_list_impl_inner`, `workspace_list_impl_with_noop_guard`, `workspace_list_impl`, `workspace_move_node_impl`, `workspace_node_failure`, `workspace_node_kind_label`, `workspace_reassign_designated_impl_inner`, `workspace_reassign_designated_impl_with_noop_guard`, `workspace_reassign_designated_impl`, `workspace_reassign_failure`, `workspace_rename_node_impl`, `workspace_resolve_designated_impl`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AtomFfiError`, `GuardedFfiError`, `LogDartEventFfiError`, `NotesFfiError`, `WorkspaceFfiError`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Minimal health-check API for FRB smoke integration.
 ///
@@ -199,7 +199,7 @@ Future<WorkspaceListChildrenResponse> workspaceListChildren({
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - `parent_node_id` is optional UUID string; `None` creates root-level folder.
+/// - `parent_node_id` is optional UUID string; `None` creates a folder under the default workspace root.
 Future<WorkspaceNodeResponse> workspaceCreateFolder({
   String? parentNodeId,
   required String name,
@@ -240,7 +240,7 @@ Future<WorkspaceActionResponse> workspaceRenameNode({
 ///
 /// # FFI contract
 /// - Async call, DB-backed execution.
-/// - `new_parent_id = None` moves node to root level.
+/// - `new_parent_id = None` is rejected because root level is reserved for workspace roots.
 Future<WorkspaceActionResponse> workspaceMoveNode({
   required String nodeId,
   String? newParentId,
@@ -275,6 +275,75 @@ Future<WorkspaceActionResponse> workspaceDeleteFolder({
 Future<WorkspaceAncestorPathResponse> workspaceAncestorPath({
   required String atomId,
 }) => RustLib.instance.api.crateApiWorkspaceAncestorPath(atomId: atomId);
+
+/// Queries workspace-scoped atoms through the guarded FFI surface.
+Future<ScopedQueryResponse> queryAtoms({
+  required FfiCallerContext caller,
+  required FfiScopedAtomQuery descriptor,
+  required FfiProjectionMode projection,
+}) => RustLib.instance.api.crateApiQueryAtoms(
+  caller: caller,
+  descriptor: descriptor,
+  projection: projection,
+);
+
+/// Creates one atom through the guarded FFI surface.
+Future<AtomCreateResponse> atomCreate({
+  required FfiCallerContext caller,
+  required FfiCreateAtomRequest request,
+}) => RustLib.instance.api.crateApiAtomCreate(caller: caller, request: request);
+
+/// Lists workspaces through the guarded FFI surface.
+Future<WorkspaceListResponse> workspaceList({
+  required FfiCallerContext caller,
+}) => RustLib.instance.api.crateApiWorkspaceList(caller: caller);
+
+/// Loads the default workspace through the guarded FFI surface.
+Future<WorkspaceInfoResponse> workspaceGetDefault({
+  required FfiCallerContext caller,
+}) => RustLib.instance.api.crateApiWorkspaceGetDefault(caller: caller);
+
+/// Resolves one designated folder through the guarded FFI surface.
+Future<DesignatedFolderResponse> workspaceResolveDesignated({
+  required FfiCallerContext caller,
+  required String workspaceId,
+  required String role,
+}) => RustLib.instance.api.crateApiWorkspaceResolveDesignated(
+  caller: caller,
+  workspaceId: workspaceId,
+  role: role,
+);
+
+/// Reassigns one designated folder through the guarded FFI surface.
+Future<WorkspaceActionResponse> workspaceReassignDesignated({
+  required FfiCallerContext caller,
+  required String workspaceId,
+  required String role,
+  required String newNodeUuid,
+}) => RustLib.instance.api.crateApiWorkspaceReassignDesignated(
+  caller: caller,
+  workspaceId: workspaceId,
+  role: role,
+  newNodeUuid: newNodeUuid,
+);
+
+/// Returns node-based ancestor path through the guarded FFI surface.
+Future<AncestorPathResponse> workspaceGetAncestorPath({
+  required FfiCallerContext caller,
+  required String nodeUuid,
+}) => RustLib.instance.api.crateApiWorkspaceGetAncestorPath(
+  caller: caller,
+  nodeUuid: nodeUuid,
+);
+
+/// Returns atom-ref locations through the guarded FFI surface.
+Future<AtomRefLocationsResponse> workspaceListAtomRefsForAtom({
+  required FfiCallerContext caller,
+  required String atomUuid,
+}) => RustLib.instance.api.crateApiWorkspaceListAtomRefsForAtom(
+  caller: caller,
+  atomUuid: atomUuid,
+);
 
 /// Lists inbox atoms (both `start_at` and `end_at` NULL).
 ///
@@ -387,6 +456,71 @@ Future<EntryActionResponse> calendarUpdateEvent({
   startMs: startMs,
   endMs: endMs,
 );
+
+/// Node-based ancestor-path response envelope.
+class AncestorPathResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final List<PathSegment> segments;
+
+  const AncestorPathResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    required this.segments,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ segments.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AncestorPathResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          segments == other.segments;
+}
+
+/// Guarded atom-create response envelope.
+class AtomCreateResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final String? atomUuid;
+  final String? nodeUuid;
+
+  const AtomCreateResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    this.atomUuid,
+    this.nodeUuid,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^
+      errorCode.hashCode ^
+      message.hashCode ^
+      atomUuid.hashCode ^
+      nodeUuid.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AtomCreateResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          atomUuid == other.atomUuid &&
+          nodeUuid == other.nodeUuid;
+}
 
 /// Single atom item response envelope (notes create/update/get/set_tags).
 class AtomItemResponse {
@@ -565,6 +699,64 @@ class AtomListResponse {
           appliedLimit == other.appliedLimit;
 }
 
+/// Atom-ref locations response envelope.
+class AtomRefLocationsResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final List<FfiAtomRefLocation> locations;
+
+  const AtomRefLocationsResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    required this.locations,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ locations.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AtomRefLocationsResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          locations == other.locations;
+}
+
+/// Designated-folder resolution response.
+class DesignatedFolderResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final String? nodeUuid;
+
+  const DesignatedFolderResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    this.nodeUuid,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ nodeUuid.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DesignatedFolderResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          nodeUuid == other.nodeUuid;
+}
+
 /// Generic action response envelope for single-entry command flow.
 class EntryActionResponse {
   /// Whether operation succeeded.
@@ -682,6 +874,215 @@ class EntrySearchResponse {
           appliedLimit == other.appliedLimit;
 }
 
+/// One atom-ref location DTO.
+class FfiAtomRefLocation {
+  final String nodeUuid;
+  final String workspaceId;
+  final String path;
+  final String displayName;
+
+  const FfiAtomRefLocation({
+    required this.nodeUuid,
+    required this.workspaceId,
+    required this.path,
+    required this.displayName,
+  });
+
+  @override
+  int get hashCode =>
+      nodeUuid.hashCode ^
+      workspaceId.hashCode ^
+      path.hashCode ^
+      displayName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiAtomRefLocation &&
+          runtimeType == other.runtimeType &&
+          nodeUuid == other.nodeUuid &&
+          workspaceId == other.workspaceId &&
+          path == other.path &&
+          displayName == other.displayName;
+}
+
+/// Caller context passed to guarded FFI exports.
+class FfiCallerContext {
+  /// Calling identity.
+  final FfiCallerIdentity identity;
+
+  /// Optional declared workspace scope in UUID string form.
+  final String? scopeWorkspaceId;
+
+  const FfiCallerContext({required this.identity, this.scopeWorkspaceId});
+
+  @override
+  int get hashCode => identity.hashCode ^ scopeWorkspaceId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiCallerContext &&
+          runtimeType == other.runtimeType &&
+          identity == other.identity &&
+          scopeWorkspaceId == other.scopeWorkspaceId;
+}
+
+/// Caller identity for guarded FFI exports.
+enum FfiCallerIdentity {
+  /// Flutter app caller.
+  app,
+}
+
+/// Canonical creation request for guarded exports.
+class FfiCreateAtomRequest {
+  final String workspaceId;
+  final String content;
+  final String contentType;
+  final FfiTaskStatus? taskStatus;
+  final PlatformInt64? startAt;
+  final PlatformInt64? endAt;
+  final List<String>? tags;
+  final String? targetFolder;
+  final String? displayName;
+
+  const FfiCreateAtomRequest({
+    required this.workspaceId,
+    required this.content,
+    required this.contentType,
+    this.taskStatus,
+    this.startAt,
+    this.endAt,
+    this.tags,
+    this.targetFolder,
+    this.displayName,
+  });
+
+  @override
+  int get hashCode =>
+      workspaceId.hashCode ^
+      content.hashCode ^
+      contentType.hashCode ^
+      taskStatus.hashCode ^
+      startAt.hashCode ^
+      endAt.hashCode ^
+      tags.hashCode ^
+      targetFolder.hashCode ^
+      displayName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiCreateAtomRequest &&
+          runtimeType == other.runtimeType &&
+          workspaceId == other.workspaceId &&
+          content == other.content &&
+          contentType == other.contentType &&
+          taskStatus == other.taskStatus &&
+          startAt == other.startAt &&
+          endAt == other.endAt &&
+          tags == other.tags &&
+          targetFolder == other.targetFolder &&
+          displayName == other.displayName;
+}
+
+/// Projection mode for guarded queries.
+enum FfiProjectionMode { atom, ref }
+
+/// Query descriptor for guarded subtree reads.
+class FfiScopedAtomQuery {
+  final String folderId;
+  final FfiViewHint? viewHint;
+  final FfiTimeFilterKind timeFilter;
+  final PlatformInt64? timeStartMs;
+  final PlatformInt64? timeEndMs;
+  final FfiTimeShapeFilter timeShape;
+  final FfiStatusFilterKind statusFilter;
+  final List<FfiTaskStatus>? taskStatuses;
+  final String? tag;
+  final String? textQuery;
+  final bool includePath;
+  final bool includeOverdueDeadlines;
+  final FfiSortSpec sort;
+  final int limit;
+  final int offset;
+
+  const FfiScopedAtomQuery({
+    required this.folderId,
+    this.viewHint,
+    required this.timeFilter,
+    this.timeStartMs,
+    this.timeEndMs,
+    required this.timeShape,
+    required this.statusFilter,
+    this.taskStatuses,
+    this.tag,
+    this.textQuery,
+    required this.includePath,
+    required this.includeOverdueDeadlines,
+    required this.sort,
+    required this.limit,
+    required this.offset,
+  });
+
+  @override
+  int get hashCode =>
+      folderId.hashCode ^
+      viewHint.hashCode ^
+      timeFilter.hashCode ^
+      timeStartMs.hashCode ^
+      timeEndMs.hashCode ^
+      timeShape.hashCode ^
+      statusFilter.hashCode ^
+      taskStatuses.hashCode ^
+      tag.hashCode ^
+      textQuery.hashCode ^
+      includePath.hashCode ^
+      includeOverdueDeadlines.hashCode ^
+      sort.hashCode ^
+      limit.hashCode ^
+      offset.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiScopedAtomQuery &&
+          runtimeType == other.runtimeType &&
+          folderId == other.folderId &&
+          viewHint == other.viewHint &&
+          timeFilter == other.timeFilter &&
+          timeStartMs == other.timeStartMs &&
+          timeEndMs == other.timeEndMs &&
+          timeShape == other.timeShape &&
+          statusFilter == other.statusFilter &&
+          taskStatuses == other.taskStatuses &&
+          tag == other.tag &&
+          textQuery == other.textQuery &&
+          includePath == other.includePath &&
+          includeOverdueDeadlines == other.includeOverdueDeadlines &&
+          sort == other.sort &&
+          limit == other.limit &&
+          offset == other.offset;
+}
+
+/// Sort specification for guarded queries.
+enum FfiSortSpec { updatedAtDesc, startAtAsc, titleAsc }
+
+/// Status-filter kind for guarded queries.
+enum FfiStatusFilterKind { any, activeOnly, taskStatuses }
+
+/// Task-status enum for guarded create/query helpers.
+enum FfiTaskStatus { todo, inProgress, done, cancelled }
+
+/// Time-filter kind for guarded queries.
+enum FfiTimeFilterKind { any, timeless, range }
+
+/// Time-shape filter for guarded queries.
+enum FfiTimeShapeFilter { any, boundedOnly }
+
+/// View-hint filter for guarded queries.
+enum FfiViewHint { note, task, event }
+
 /// Dart-side diagnostics logging response envelope.
 class LogDartEventResponse {
   /// Whether operation succeeded.
@@ -710,6 +1111,130 @@ class LogDartEventResponse {
           ok == other.ok &&
           errorCode == other.errorCode &&
           message == other.message;
+}
+
+/// One ancestor-path segment.
+class PathSegment {
+  final String nodeUuid;
+  final String displayName;
+
+  const PathSegment({required this.nodeUuid, required this.displayName});
+
+  @override
+  int get hashCode => nodeUuid.hashCode ^ displayName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PathSegment &&
+          runtimeType == other.runtimeType &&
+          nodeUuid == other.nodeUuid &&
+          displayName == other.displayName;
+}
+
+/// One guarded-query result row.
+class ScopedAtomItem {
+  final String uuid;
+  final String viewHint;
+  final String title;
+  final String contentType;
+  final String content;
+  final String? previewText;
+  final String? previewImage;
+  final List<String> tags;
+  final String? taskStatus;
+  final PlatformInt64? startAt;
+  final PlatformInt64? endAt;
+  final bool isDeleted;
+  final PlatformInt64 updatedAt;
+  final String representativeNodeUuid;
+  final String? path;
+
+  const ScopedAtomItem({
+    required this.uuid,
+    required this.viewHint,
+    required this.title,
+    required this.contentType,
+    required this.content,
+    this.previewText,
+    this.previewImage,
+    required this.tags,
+    this.taskStatus,
+    this.startAt,
+    this.endAt,
+    required this.isDeleted,
+    required this.updatedAt,
+    required this.representativeNodeUuid,
+    this.path,
+  });
+
+  @override
+  int get hashCode =>
+      uuid.hashCode ^
+      viewHint.hashCode ^
+      title.hashCode ^
+      contentType.hashCode ^
+      content.hashCode ^
+      previewText.hashCode ^
+      previewImage.hashCode ^
+      tags.hashCode ^
+      taskStatus.hashCode ^
+      startAt.hashCode ^
+      endAt.hashCode ^
+      isDeleted.hashCode ^
+      updatedAt.hashCode ^
+      representativeNodeUuid.hashCode ^
+      path.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScopedAtomItem &&
+          runtimeType == other.runtimeType &&
+          uuid == other.uuid &&
+          viewHint == other.viewHint &&
+          title == other.title &&
+          contentType == other.contentType &&
+          content == other.content &&
+          previewText == other.previewText &&
+          previewImage == other.previewImage &&
+          tags == other.tags &&
+          taskStatus == other.taskStatus &&
+          startAt == other.startAt &&
+          endAt == other.endAt &&
+          isDeleted == other.isDeleted &&
+          updatedAt == other.updatedAt &&
+          representativeNodeUuid == other.representativeNodeUuid &&
+          path == other.path;
+}
+
+/// Guarded-query response envelope.
+class ScopedQueryResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final List<ScopedAtomItem> items;
+
+  const ScopedQueryResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    required this.items,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ items.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScopedQueryResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          items == other.items;
 }
 
 /// Tags list response envelope.
@@ -815,6 +1340,60 @@ class WorkspaceAncestorPathResponse {
           path == other.path;
 }
 
+/// Workspace metadata DTO for guarded exports.
+class WorkspaceInfo {
+  final String workspaceId;
+  final String name;
+  final bool isDefault;
+
+  const WorkspaceInfo({
+    required this.workspaceId,
+    required this.name,
+    required this.isDefault,
+  });
+
+  @override
+  int get hashCode => workspaceId.hashCode ^ name.hashCode ^ isDefault.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceInfo &&
+          runtimeType == other.runtimeType &&
+          workspaceId == other.workspaceId &&
+          name == other.name &&
+          isDefault == other.isDefault;
+}
+
+/// Single-workspace response envelope.
+class WorkspaceInfoResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final WorkspaceInfo? workspace;
+
+  const WorkspaceInfoResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    this.workspace,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ workspace.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceInfoResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          workspace == other.workspace;
+}
+
 /// Workspace children-list response envelope.
 class WorkspaceListChildrenResponse {
   /// Whether operation succeeded.
@@ -849,6 +1428,35 @@ class WorkspaceListChildrenResponse {
           errorCode == other.errorCode &&
           message == other.message &&
           items == other.items;
+}
+
+/// Workspace-list response envelope.
+class WorkspaceListResponse {
+  final bool ok;
+  final String? errorCode;
+  final String message;
+  final List<WorkspaceInfo> workspaces;
+
+  const WorkspaceListResponse({
+    required this.ok,
+    this.errorCode,
+    required this.message,
+    required this.workspaces,
+  });
+
+  @override
+  int get hashCode =>
+      ok.hashCode ^ errorCode.hashCode ^ message.hashCode ^ workspaces.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceListResponse &&
+          runtimeType == other.runtimeType &&
+          ok == other.ok &&
+          errorCode == other.errorCode &&
+          message == other.message &&
+          workspaces == other.workspaces;
 }
 
 /// Workspace tree node DTO exposed over FFI.
