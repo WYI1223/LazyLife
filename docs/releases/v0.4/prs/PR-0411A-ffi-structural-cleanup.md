@@ -1,7 +1,61 @@
 # PR-0411A: FFI Structural Cleanup
 
 - Proposed title: `refactor(ffi): split guarded FFI surface into focused modules`
-- Status: Draft
+- Status: Merged
+
+## Implementation Snapshot (2026-03-19)
+
+Current branch state for `PR-0411A`:
+
+- the monolithic `crates/lazynote_ffi/src/api.rs` surface is now replaced by a
+  directory-backed `crates/lazynote_ffi/src/api/` module tree
+- public guarded exports are explicitly assigned to focused production modules:
+  - `query_atoms` -> `query.rs`
+  - `atom_create` -> `creation.rs`
+  - legacy entry / notes / tasks / calendar / workspace exports remain grouped
+    by domain module
+- shared FFI responsibilities are now separated into:
+  - `errors.rs`
+  - `mappers.rs`
+  - `support.rs`
+  - `mod.rs` for shared DTOs / enums / bootstrap exports
+- workspace-local action mapping remains in `workspace.rs`, preserving the
+  landed `PR-0411` audit boundary
+- the inline `api.rs` test inventory is now decomposed into `api/tests/` plus
+  `test_support.rs`, while preserving:
+  - legacy wrapper parity filters
+  - per-test DB isolation
+  - guard-injection test support
+- generated bindings were not hand-edited; this cleanup stayed within the Rust
+  FFI source layer
+
+## Verification Snapshot (2026-03-19)
+
+Closeout verification executed on this branch:
+
+- `cargo fmt --all -- --check`
+- `cargo clippy --all -- -D warnings`
+- `cargo test --all`
+- `cd apps/lazynote_flutter && dart format --output=none --set-exit-if-changed .`
+- `cd apps/lazynote_flutter && flutter analyze`
+- `cd apps/lazynote_flutter && flutter test`
+- `dart run tools/ci/architecture_check.dart`
+
+Key targeted regressions that remained green after the split:
+
+- `cargo test -p lazynote_ffi legacy_wrapper_ -- --nocapture`
+- `cargo test -p lazynote_ffi workspace_ -- --nocapture`
+- `cargo test -p lazynote_ffi api::tests::query_atoms_returns_scoped_items -- --exact --nocapture`
+- `cargo test -p lazynote_ffi api::tests::atom_create_routes_task_to_designated_folder -- --exact --nocapture`
+- `cargo test -p lazynote_ffi api::tests::tasks_list_today_keeps_root_scoped_refs_visible_before_pr_0410 -- --exact --nocapture`
+- `cargo test -p lazynote_ffi api::tests::workspace_list_filters_to_readable_subset_under_guard -- --exact --nocapture`
+- `cargo test -p lazynote_ffi api::tests::legacy_wrapper_entry_search_preserves_fts_snippet_and_order -- --exact --nocapture`
+
+Non-blocking validation note:
+
+- `architecture_check` still reports the existing size warning on generated
+  `apps/lazynote_flutter/lib/core/bindings/api.dart`; this warning pre-existed
+  `PR-0411A` and was not introduced by this cleanup.
 
 ## Goal
 

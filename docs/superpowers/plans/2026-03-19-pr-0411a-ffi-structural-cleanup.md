@@ -298,28 +298,28 @@ If output changes, confirm it is mechanical and does not alter public surface.
 - Modify: `docs/superpowers/plans/2026-03-19-pr-0411a-ffi-structural-cleanup.md`
 - Test: repo root, `crates/`, `apps/lazynote_flutter/`
 
-- [ ] **Step 1: Run Rust verification**
+- [x] **Step 1: Run Rust verification**
 
 Run:
 - `cargo fmt --all -- --check`
 - `cargo clippy --all -- -D warnings`
 - `cargo test --all`
 
-- [ ] **Step 2: Run Flutter validation**
+- [x] **Step 2: Run Flutter validation**
 
 Run from `apps/lazynote_flutter`:
 - `dart format --output=none --set-exit-if-changed .`
 - `flutter analyze`
 - `flutter test`
 
-- [ ] **Step 3: Run repository architecture validation**
+- [x] **Step 3: Run repository architecture validation**
 
 Run from repo root:
 - `dart run tools/ci/architecture_check.dart`
 
 Expected: `PASSED — no architecture violations.` A size warning on generated binding files is non-blocking unless it upgrades to failure.
 
-- [ ] **Step 4: Sync spec closeout snapshot**
+- [x] **Step 4: Sync spec closeout snapshot**
 
 Update the `PR-0411A` spec with:
 - implementation snapshot
