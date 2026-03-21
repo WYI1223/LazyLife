@@ -15,6 +15,15 @@ that concrete workspace-root id before writing `affectedParentIds`.
 
 ---
 
+## Closeout Snapshot (2026-03-20)
+
+Implementation is now merged. Review-leader sign-off, focused Flutter core
+workspace tests, full Flutter validation, and repository architecture checks
+have all been replayed green. A smoke-driven follow-up also landed in this PR:
+post-`0012` Root-target mutations now resolve to the concrete default workspace
+root id, and root create flows refresh the concrete workspace branch instead of
+depending on legacy synthetic-root semantics.
+
 ## File Responsibility Map
 
 - `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart`
@@ -43,7 +52,7 @@ that concrete workspace-root id before writing `affectedParentIds`.
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart`
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
 
-- [ ] **Step 1: Write failing tests for designated-node preload and sync lookup**
+- [x] **Step 1: Write failing tests for designated-node preload and sync lookup**
 
 Cover at minimum:
 - `loadSystemNodes(workspaceId)` loads `inbox`, `tasks`, `calendar`
@@ -51,14 +60,14 @@ Cover at minimum:
 - `getSystemNodeId(...)` throws before preload
 - `loadSystemNodes(...)` throws explicit error on missing designated role
 
-- [ ] **Step 2: Write failing tests for caller helper and typed delta metadata**
+- [x] **Step 2: Write failing tests for caller helper and typed delta metadata**
 
 Cover at minimum:
 - `buildWorkspaceCaller('ws-1')` sets `identity=app`
 - `buildWorkspaceCaller('ws-1')` sets `scopeWorkspaceId='ws-1'`
 - `TreeMutationDelta` preserves `revision`, `type`, and deduped `affectedParentIds`
 
-- [ ] **Step 3: Run the new file and confirm RED**
+- [x] **Step 3: Run the new file and confirm RED**
 
 Run:
 
@@ -74,7 +83,7 @@ Expected: FAIL because guarded typedefs, exceptions, cache behavior, and delta t
 **Files:**
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart`
 
-- [ ] **Step 1: Add guarded invoker typedefs**
+- [x] **Step 1: Add guarded invoker typedefs**
 
 Add:
 - `WorkspaceResolveDesignatedInvoker`
@@ -83,20 +92,20 @@ Add:
 
 Keep existing legacy typedefs intact.
 
-- [ ] **Step 2: Add caller helper and exceptions**
+- [x] **Step 2: Add caller helper and exceptions**
 
 Add:
 - `FfiCallerContext buildWorkspaceCaller(String workspaceId)`
 - `WorkspaceInitException`
 - `DesignatedRoleNotFoundException`
 
-- [ ] **Step 3: Add mutation-delta types**
+- [x] **Step 3: Add mutation-delta types**
 
 Add:
 - `enum TreeMutationType { create, rename, move, delete, reassign }`
 - `class TreeMutationDelta`
 
-- [ ] **Step 4: Re-run the targeted tests**
+- [x] **Step 4: Re-run the targeted tests**
 
 Run:
 
@@ -115,7 +124,7 @@ Expected: some type-level tests PASS, service-behavior tests still FAIL.
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
 - Test: `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
 
-- [ ] **Step 1: Add guarded invoker dependencies and internal cache**
+- [x] **Step 1: Add guarded invoker dependencies and internal cache**
 
 Add injected fields for:
 - `WorkspaceResolveDesignatedInvoker`
@@ -127,7 +136,7 @@ Add internal state:
 - `TreeMutationDelta? _lastMutation`
 - `int _mutationRevision`
 
-- [ ] **Step 2: Keep legacy surface intact**
+- [x] **Step 2: Keep legacy surface intact**
 
 Do not remove:
 - `workspaceTreeRevision`
@@ -135,13 +144,13 @@ Do not remove:
 - `ancestorPath({required String atomId})`
 - `WorkspaceTreeChildrenLoader`
 
-- [ ] **Step 3: Add getters for new core metadata**
+- [x] **Step 3: Add getters for new core metadata**
 
 Add at least:
 - `TreeMutationDelta? get lastMutation`
 - sync designated lookup method(s)
 
-- [ ] **Step 4: Re-run the focused tests**
+- [x] **Step 4: Re-run the focused tests**
 
 Run:
 
@@ -158,7 +167,7 @@ Expected: cache-lookup tests still fail because preload methods are not implemen
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
 - Test: `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
 
-- [ ] **Step 1: Implement designated preload through guarded FFI**
+- [x] **Step 1: Implement designated preload through guarded FFI**
 
 Behavior:
 - call `_prepare()`
@@ -166,18 +175,18 @@ Behavior:
 - cache successful ids under the requested workspace
 - treat `workspace_not_found` and `designated_role_not_found` as explicit initialization failures
 
-- [ ] **Step 2: Implement synchronous role lookup**
+- [x] **Step 2: Implement synchronous role lookup**
 
 Behavior:
 - return cached id immediately
 - throw `WorkspaceInitException` if workspace was never loaded
 - throw `DesignatedRoleNotFoundException` if role is absent after load
 
-- [ ] **Step 3: Make preload idempotent**
+- [x] **Step 3: Make preload idempotent**
 
 If the same workspace is already fully loaded, early-return instead of re-hitting FFI.
 
-- [ ] **Step 4: Run the focused tests to GREEN**
+- [x] **Step 4: Run the focused tests to GREEN**
 
 Run:
 
@@ -195,7 +204,7 @@ Expected: preload and sync lookup tests PASS.
 **Files:**
 - Modify: `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
 
-- [ ] **Step 1: Add failing tests for `createWorkspaceFolder(...)` delta**
+- [x] **Step 1: Add failing tests for `createWorkspaceFolder(...)` delta**
 
 Assert:
 - `lastMutation.type == TreeMutationType.create`
@@ -203,24 +212,24 @@ Assert:
 - when `parentNodeId == null`, `affectedParentIds` contains the concrete
   default workspace root id, not `{null}`
 
-- [ ] **Step 2: Add failing tests for `renameWorkspaceNode(...)` delta**
+- [x] **Step 2: Add failing tests for `renameWorkspaceNode(...)` delta**
 
 Stub guarded ancestor-path invoker to return the current parent chain and assert:
 - `type == rename`
 - `affectedParentIds` contains the resolved current parent only
 
-- [ ] **Step 3: Add failing tests for `moveWorkspaceNode(...)` delta**
+- [x] **Step 3: Add failing tests for `moveWorkspaceNode(...)` delta**
 
 Stub ancestor-path lookup before mutation and assert:
 - old parent and new parent both appear
 - same-parent move dedupes to one entry
 
-- [ ] **Step 4: Add failing tests for `deleteWorkspaceFolder(...)` delta**
+- [x] **Step 4: Add failing tests for `deleteWorkspaceFolder(...)` delta**
 
 Stub ancestor-path lookup before delete and assert:
 - parent of deleted folder appears in `affectedParentIds`
 
-- [ ] **Step 5: Run the service test file and confirm RED**
+- [x] **Step 5: Run the service test file and confirm RED**
 
 Run:
 
@@ -237,13 +246,13 @@ Expected: new delta tests FAIL.
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
 - Test: `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
 
-- [ ] **Step 1: Add private helpers to resolve parent ids from node-based ancestor path**
+- [x] **Step 1: Add private helpers to resolve parent ids from node-based ancestor path**
 
 Suggested helpers:
 - `_resolveParentForNode(String nodeId)`
 - `_emitMutation(TreeMutationType type, Iterable<String?> parentIds)`
 
-- [ ] **Step 2: Wire create/rename/move/delete to emit deltas only on success**
+- [x] **Step 2: Wire create/rename/move/delete to emit deltas only on success**
 
 Rules:
 - do not emit delta on failed mutation
@@ -252,7 +261,7 @@ Rules:
 - resolve create-without-parent to the real default workspace root id before
   emitting the delta
 
-- [ ] **Step 3: Re-run focused tests**
+- [x] **Step 3: Re-run focused tests**
 
 Run:
 
@@ -270,7 +279,7 @@ Expected: create/rename/move/delete delta tests PASS.
 **Files:**
 - Modify: `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
 
-- [ ] **Step 1: Add failing test for successful reassign**
+- [x] **Step 1: Add failing test for successful reassign**
 
 Assert:
 - guarded reassign invoker receives `buildWorkspaceCaller(workspaceId)`
@@ -278,14 +287,14 @@ Assert:
 - `lastMutation.type == TreeMutationType.reassign`
 - `affectedParentIds` contains both old and new parents
 
-- [ ] **Step 2: Add failing test for failed reassign**
+- [x] **Step 2: Add failing test for failed reassign**
 
 Assert:
 - cache is unchanged
 - no delta emitted
 - existing mutation error surfaces remain actionable
 
-- [ ] **Step 3: Run the focused test file and confirm RED**
+- [x] **Step 3: Run the focused test file and confirm RED**
 
 Run:
 
@@ -302,22 +311,22 @@ Expected: reassign tests FAIL.
 - Modify: `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
 - Test: `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
 
-- [ ] **Step 1: Resolve current designated folder before mutation**
+- [x] **Step 1: Resolve current designated folder before mutation**
 
 Use cached role if loaded; otherwise resolve through guarded designated lookup so the method can compute old-parent impact.
 
-- [ ] **Step 2: Resolve old/new parents through node-based ancestor path**
+- [x] **Step 2: Resolve old/new parents through node-based ancestor path**
 
 Do this before mutating so the service stays no-cache but still computes a precise delta.
 
-- [ ] **Step 3: Perform guarded reassign and refresh cache**
+- [x] **Step 3: Perform guarded reassign and refresh cache**
 
 On success:
 - update cached role mapping
 - emit `TreeMutationType.reassign`
 - notify listeners
 
-- [ ] **Step 4: Re-run the focused service tests**
+- [x] **Step 4: Re-run the focused service tests**
 
 Run:
 
@@ -335,7 +344,7 @@ Expected: reassign tests PASS.
 **Files:**
 - Test: `apps/lazynote_flutter/test/notes_controller_workspace_tree_guards_test.dart`
 
-- [ ] **Step 1: Run existing guard regression tests**
+- [x] **Step 1: Run existing guard regression tests**
 
 Run:
 
@@ -353,7 +362,7 @@ Expected: PASS, proving new core shape did not break current notes-side workspac
 - Modify: `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md`
 - Modify: `docs/superpowers/plans/2026-03-19-pr-0412-flutter-core.md`
 
-- [ ] **Step 1: Run formatting and analysis**
+- [x] **Step 1: Run formatting and analysis**
 
 Run:
 
@@ -365,7 +374,7 @@ flutter analyze
 
 Expected: PASS
 
-- [ ] **Step 2: Run Flutter tests**
+- [x] **Step 2: Run Flutter tests**
 
 Run:
 
@@ -376,7 +385,7 @@ flutter test
 
 Expected: PASS
 
-- [ ] **Step 3: Run repository architecture validation**
+- [x] **Step 3: Run repository architecture validation**
 
 Run:
 
@@ -386,7 +395,7 @@ dart run tools/ci/architecture_check.dart
 
 Expected: `PASSED - no architecture violations.`
 
-- [ ] **Step 4: Update spec and workflow closeout**
+- [x] **Step 4: Update spec and workflow closeout**
 
 Record:
 - implementation snapshot
@@ -403,8 +412,13 @@ Record:
   - `OI-042` system-node resolution ownership
   - `OI-045` execution order
   - `OI-048` verification gates
+  - note that the post-`0012` move-to-root / drag-to-root bridge and root-note
+    branch refresh were pulled into `PR-0412` as a smoke-driven operability
+    fix, leaving broader Explorer move UX cleanup with `PR-0413`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
+
+Closeout complete: the branch owner committed and merged `PR-0412`.
 
 ```bash
 git add -A apps/lazynote_flutter/lib apps/lazynote_flutter/test docs/releases/v0.4/prs/PR-0412-flutter-core.md docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md docs/superpowers/plans/2026-03-19-pr-0412-flutter-core.md

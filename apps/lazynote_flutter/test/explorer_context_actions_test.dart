@@ -55,6 +55,7 @@ rust_api.WorkspaceListChildrenResponse _ok(
 NotesCoordinator _controller({
   required Map<String, rust_api.AtomListItem> store,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
+  WorkspaceGetDefaultInvoker? workspaceGetDefaultInvoker,
 }) {
   return NotesCoordinator(
     prepare: () async {},
@@ -76,6 +77,17 @@ NotesCoordinator _controller({
       );
     },
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
+    workspaceGetDefaultInvoker:
+        workspaceGetDefaultInvoker ??
+        ({required caller}) async => const rust_api.WorkspaceInfoResponse(
+          ok: true,
+          message: 'ok',
+          workspace: rust_api.WorkspaceInfo(
+            workspaceId: 'workspace-root',
+            name: 'Default',
+            isDefault: true,
+          ),
+        ),
   );
 }
 
@@ -346,6 +358,190 @@ void main() {
       '11111111-1111-4111-8111-111111111111::22222222-2222-4222-8222-222222222222::null',
     ]);
   });
+
+  testWidgets(
+    'folder context move to Root forwards concrete default workspace root id',
+    (tester) async {
+      final moveCalls = <String>[];
+      final controller = _controller(
+        store: <String, rust_api.AtomListItem>{
+          'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+        },
+        workspaceListChildrenInvoker: ({parentNodeId}) async {
+          if (parentNodeId == null) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: '11111111-1111-4111-8111-111111111111',
+                kind: 'folder',
+                displayName: 'Folder A',
+              ),
+            ]);
+          }
+          if (parentNodeId == '11111111-1111-4111-8111-111111111111') {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: '22222222-2222-4222-8222-222222222222',
+                kind: 'folder',
+                displayName: 'Child Folder',
+                parentNodeId: '11111111-1111-4111-8111-111111111111',
+              ),
+            ]);
+          }
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      await tester.pumpWidget(
+        _harness(
+          controller: controller,
+          onMoveNodeRequested: (nodeId, parentNodeId, {targetOrder}) async {
+            moveCalls.add('$nodeId::$parentNodeId::$targetOrder');
+            return const rust_api.WorkspaceActionResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('notes_tree_toggle_11111111-1111-4111-8111-111111111111'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
+        ),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('notes_context_action_move')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('notes_move_node_target_dropdown')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Root').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('notes_move_node_confirm_button')));
+      await tester.pumpAndSettle();
+
+      expect(moveCalls, const <String>[
+        '22222222-2222-4222-8222-222222222222::workspace-root::null',
+      ]);
+    },
+  );
+
+  testWidgets(
+    'move dialog traverses workspace-root containers to list nested folder targets',
+    (tester) async {
+      final moveCalls = <String>[];
+      final controller = _controller(
+        store: <String, rust_api.AtomListItem>{
+          'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+        },
+        workspaceListChildrenInvoker: ({parentNodeId}) async {
+          if (parentNodeId == null) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                kind: 'workspace',
+                displayName: 'Default Workspace',
+              ),
+            ]);
+          }
+          if (parentNodeId == 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: '11111111-1111-4111-8111-111111111111',
+                kind: 'folder',
+                displayName: 'Folder A',
+                parentNodeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              ),
+              _node(
+                nodeId: '33333333-3333-4333-8333-333333333333',
+                kind: 'folder',
+                displayName: 'Folder B',
+                parentNodeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              ),
+            ]);
+          }
+          if (parentNodeId == '11111111-1111-4111-8111-111111111111') {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: '22222222-2222-4222-8222-222222222222',
+                kind: 'folder',
+                displayName: 'Child Folder',
+                parentNodeId: '11111111-1111-4111-8111-111111111111',
+              ),
+            ]);
+          }
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      await tester.pumpWidget(
+        _harness(
+          controller: controller,
+          onMoveNodeRequested: (nodeId, parentNodeId, {targetOrder}) async {
+            moveCalls.add('$nodeId::$parentNodeId::$targetOrder');
+            return const rust_api.WorkspaceActionResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('notes_tree_toggle_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const Key('notes_tree_toggle_11111111-1111-4111-8111-111111111111'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
+        ),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('notes_context_action_move')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('notes_move_node_target_dropdown')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Folder B'), findsNWidgets(2));
+      await tester.tap(find.text('Folder B').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('notes_move_node_confirm_button')));
+      await tester.pumpAndSettle();
+
+      expect(moveCalls, const <String>[
+        '22222222-2222-4222-8222-222222222222::33333333-3333-4333-8333-333333333333::null',
+      ]);
+    },
+  );
 
   testWidgets('folder context menu responds on toggle-icon secondary click', (
     tester,

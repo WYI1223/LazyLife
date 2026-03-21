@@ -212,7 +212,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
       final revision = widget.controller.workspaceTreeRevision;
       if (_treeObservedRevision != revision) {
         _treeObservedRevision = revision;
-        unawaited(_reloadRootTree(force: true));
+        unawaited(
+          _reloadTreeForMutation(widget.controller.lastWorkspaceMutation),
+        );
         return;
       }
       if (!listEquals(_treeVisibleNoteIds, currentVisibleIds)) {
@@ -225,6 +227,20 @@ class _NoteExplorerState extends State<NoteExplorer> {
     _treeVisibleNoteIds = currentVisibleIds;
     _treeObservedRevision = widget.controller.workspaceTreeRevision;
     unawaited(_reloadRootTree(force: true));
+  }
+
+  Future<void> _reloadTreeForMutation(TreeMutationDelta? mutation) async {
+    await _reloadRootTree(force: true);
+    if (mutation == null) {
+      return;
+    }
+    for (final parentNodeId in mutation.affectedParentIds) {
+      final normalizedParent = parentNodeId?.trim();
+      if (normalizedParent == null || normalizedParent.isEmpty) {
+        continue;
+      }
+      await _refreshParentBranch(normalizedParent);
+    }
   }
 
   Future<void> _reloadRootTree({
@@ -258,7 +274,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
     if (normalizedParent.isEmpty) {
       return;
     }
-    await _treeState.ensureExpanded(normalizedParent);
+    if (!_treeState.hasLoaded(normalizedParent) &&
+        !_treeState.isExpanded(normalizedParent)) {
+      return;
+    }
     await _treeState.retryParent(normalizedParent);
   }
 
@@ -752,6 +771,39 @@ class _NoteExplorerState extends State<NoteExplorer> {
     return normalized;
   }
 
+  String? _normalizeParentForBranchRefresh(String? parentNodeId) {
+    final normalized = parentNodeId?.trim();
+    if (normalized == null ||
+        normalized.isEmpty ||
+        normalized == _rootTargetNodeId) {
+      return null;
+    }
+    return normalized;
+  }
+
+  Future<String?> _resolveConcreteMoveTargetParentNodeId(
+    String? parentNodeId,
+  ) async {
+    final normalizedParent = _normalizeParentForMutation(parentNodeId);
+    if (normalizedParent != null) {
+      return normalizedParent;
+    }
+    return widget.controller.resolveDefaultWorkspaceRootId();
+  }
+
+  Future<String?> _resolveCreateRefreshParentNodeId(
+    String? parentNodeId,
+  ) async {
+    final refreshParentId = _normalizeParentForBranchRefresh(parentNodeId);
+    if (refreshParentId == _defaultUncategorizedFolderId) {
+      return null;
+    }
+    if (refreshParentId != null) {
+      return refreshParentId;
+    }
+    return widget.controller.resolveDefaultWorkspaceRootId();
+  }
+
   void _recordRowContextMenuTrigger(Offset globalPosition) {
     _lastRowContextMenuPosition = globalPosition;
     _lastRowContextMenuAt = DateTime.now();
@@ -887,7 +939,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
         ? ExplorerDragPayload(
             nodeId: node.nodeId,
             kind: node.kind,
-            sourceParentNodeId: _normalizeParentForMutation(node.parentNodeId),
+            sourceParentNodeId: _normalizeParentForBranchRefresh(
+              node.parentNodeId,
+            ),
           )
         : null;
 
@@ -1033,9 +1087,11 @@ class _NoteExplorerState extends State<NoteExplorer> {
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
     final revisionBefore = widget.controller.workspaceTreeRevision;
+    final actualTargetParentNodeId =
+        await _resolveConcreteMoveTargetParentNodeId(plan.newParentNodeId);
     final response = await invoker(
       payload.nodeId,
-      plan.newParentNodeId,
+      actualTargetParentNodeId,
       targetOrder: null,
     );
     if (!mounted) {
@@ -1047,7 +1103,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
       }
       await _refreshDropBranches(
         sourceParentNodeId: plan.sourceParentNodeId,
-        targetParentNodeId: plan.targetParentNodeId,
+        targetParentNodeId: actualTargetParentNodeId,
       );
       messenger
         ?..hideCurrentSnackBar()
@@ -1320,17 +1376,15 @@ class _NoteExplorerState extends State<NoteExplorer> {
       return;
     }
     if (response.ok) {
+      final actualParentNodeId = _normalizeParentForMutation(
+        response.node?.parentNodeId,
+      );
+      final refreshParentNodeId = actualParentNodeId ?? normalizedParent;
       if (widget.controller.workspaceTreeRevision == revisionBefore) {
         await _reloadRootTree(
           force: true,
-          refreshParentNodeId: normalizedParent,
+          refreshParentNodeId: refreshParentNodeId,
         );
-      } else if (normalizedParent != null && normalizedParent.isNotEmpty) {
-        // Revision refresh reloads root; child create still needs explicit parent
-        // branch refresh so new child folder appears immediately.
-        await _refreshParentBranch(normalizedParent);
-      } else {
-        await _reloadRootTree(force: true);
       }
       messenger
         ?..hideCurrentSnackBar()
@@ -1394,17 +1448,8 @@ class _NoteExplorerState extends State<NoteExplorer> {
     }
     if (response.ok) {
       final deletedParent = _normalizeParentForMutation(node.parentId);
-      final shouldRefreshParentBranch =
-          deletedParent != null &&
-          (_treeState.hasLoaded(deletedParent) ||
-              _treeState.isExpanded(deletedParent));
-      if (shouldRefreshParentBranch) {
-        // Why: deleting a child folder does not alter root set; refreshing only
-        // root can leave stale child cache visible and undeletable until reload.
-        await _treeState.retryParent(deletedParent);
-      } else if (deletedParent == null ||
-          widget.controller.workspaceTreeRevision == revisionBefore) {
-        await _reloadRootTree(force: true);
+      if (widget.controller.workspaceTreeRevision == revisionBefore) {
+        await _reloadRootTree(force: true, refreshParentNodeId: deletedParent);
       }
       messenger
         ?..hideCurrentSnackBar()
@@ -1441,6 +1486,9 @@ class _NoteExplorerState extends State<NoteExplorer> {
   }) async {
     final normalizedParent = _normalizeParentForMutation(parentNodeId);
     final messenger = ScaffoldMessenger.maybeOf(context);
+    final refreshParentNodeId = await _resolveCreateRefreshParentNodeId(
+      parentNodeId,
+    );
     final invoker = widget.onCreateNoteInFolderRequested;
     if (invoker == null) {
       await widget.onCreateNoteRequested();
@@ -1456,12 +1504,8 @@ class _NoteExplorerState extends State<NoteExplorer> {
       if (widget.controller.workspaceTreeRevision == revisionBefore) {
         await _reloadRootTree(
           force: true,
-          refreshParentNodeId: normalizedParent,
+          refreshParentNodeId: refreshParentNodeId,
         );
-      } else if (normalizedParent != null) {
-        await _refreshParentBranch(normalizedParent);
-      } else {
-        await _reloadRootTree(force: true);
       }
       messenger
         ?..hideCurrentSnackBar()
@@ -1529,16 +1573,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
     }
     if (response.ok) {
       final parentNodeId = _normalizeParentForMutation(node.parentNodeId);
-      final shouldRefreshParentBranch =
-          parentNodeId != null &&
-          (_treeState.hasLoaded(parentNodeId) ||
-              _treeState.isExpanded(parentNodeId));
-      if (shouldRefreshParentBranch) {
-        // Why: rename on child folders only affects one parent branch. Relying
-        // on root refresh alone can leave stale child labels in cached rows.
-        await _treeState.retryParent(parentNodeId);
-      } else if (parentNodeId == null ||
-          widget.controller.workspaceTreeRevision == revisionBefore) {
+      if (widget.controller.workspaceTreeRevision == revisionBefore) {
         await _reloadRootTree(force: true, refreshParentNodeId: parentNodeId);
       }
       messenger
@@ -1629,8 +1664,13 @@ class _NoteExplorerState extends State<NoteExplorer> {
     if (targetId == null || !mounted) {
       return;
     }
-    final normalizedTarget = _normalizeParentForMutation(targetId);
+    final normalizedTarget = await _resolveConcreteMoveTargetParentNodeId(
+      targetId,
+    );
     final currentParent = _normalizeParentForMutation(node.parentNodeId);
+    final currentRefreshParent = _normalizeParentForBranchRefresh(
+      node.parentNodeId,
+    );
     if (normalizedTarget == currentParent) {
       return;
     }
@@ -1641,13 +1681,10 @@ class _NoteExplorerState extends State<NoteExplorer> {
     }
     if (response.ok) {
       if (widget.controller.workspaceTreeRevision == revisionBefore) {
-        await _reloadRootTree(force: true);
-      }
-      if (currentParent != null) {
-        await _refreshParentBranch(currentParent);
-      }
-      if (normalizedTarget != null && normalizedTarget != currentParent) {
-        await _refreshParentBranch(normalizedTarget);
+        await _refreshDropBranches(
+          sourceParentNodeId: currentRefreshParent,
+          targetParentNodeId: normalizedTarget,
+        );
       }
       messenger
         ?..hideCurrentSnackBar()
@@ -1688,7 +1725,7 @@ class _NoteExplorerState extends State<NoteExplorer> {
         ),
       ),
     ];
-    final visitedFolders = <String>{};
+    final visitedContainers = <String>{};
     final pendingParents = <String?>[null];
 
     while (pendingParents.isNotEmpty) {
@@ -1700,26 +1737,29 @@ class _NoteExplorerState extends State<NoteExplorer> {
         break;
       }
       for (final item in response.items) {
-        if (item.kind != 'folder') {
-          continue;
-        }
         if (_isSyntheticRootNodeId(item.nodeId)) {
           continue;
         }
-        if (!visitedFolders.add(item.nodeId)) {
+        final isContainer = item.kind == 'folder' || item.kind == 'workspace';
+        if (!isContainer) {
+          continue;
+        }
+        if (!visitedContainers.add(item.nodeId)) {
           continue;
         }
         if (item.nodeId == node.nodeId) {
           continue;
         }
-        options.add(
-          MoveNodeDialogOption(
-            nodeId: item.nodeId,
-            label: item.displayName.trim().isEmpty
-                ? item.nodeId
-                : item.displayName,
-          ),
-        );
+        if (item.kind == 'folder') {
+          options.add(
+            MoveNodeDialogOption(
+              nodeId: item.nodeId,
+              label: item.displayName.trim().isEmpty
+                  ? item.nodeId
+                  : item.displayName,
+            ),
+          );
+        }
         pendingParents.add(item.nodeId);
       }
     }

@@ -42,6 +42,19 @@ void main() {
             message: 'ok',
           );
         },
+        workspaceGetAncestorPathInvoker:
+            ({required caller, required nodeUuid}) async =>
+                const rust_api.AncestorPathResponse(
+                  ok: true,
+                  errorCode: null,
+                  message: 'ok',
+                  segments: <rust_api.PathSegment>[
+                    rust_api.PathSegment(
+                      nodeUuid: 'workspace-root',
+                      displayName: 'Default',
+                    ),
+                  ],
+                ),
       );
       addTearDown(controller.dispose);
 
@@ -118,7 +131,7 @@ void main() {
       expect(buttonFinder, findsOneWidget);
 
       await tester.tap(buttonFinder);
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(deleteCalls, <String>[
         '11111111-1111-4111-8111-111111111111::dissolve',

@@ -44,6 +44,8 @@ NotesCoordinator _buildController({
   WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
   WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
+  WorkspaceGetAncestorPathInvoker? workspaceGetAncestorPathInvoker,
+  WorkspaceGetDefaultInvoker? workspaceGetDefaultInvoker,
 }) {
   return NotesCoordinator(
     prepare: () async {},
@@ -117,6 +119,31 @@ NotesCoordinator _buildController({
         ({required nodeId, newParentId, targetOrder}) async {
           return _okAction();
         },
+    workspaceGetAncestorPathInvoker:
+        workspaceGetAncestorPathInvoker ??
+        ({required caller, required nodeUuid}) async =>
+            const rust_api.AncestorPathResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+              segments: <rust_api.PathSegment>[
+                rust_api.PathSegment(
+                  nodeUuid: 'workspace-root',
+                  displayName: 'Default',
+                ),
+              ],
+            ),
+    workspaceGetDefaultInvoker:
+        workspaceGetDefaultInvoker ??
+        ({required caller}) async => const rust_api.WorkspaceInfoResponse(
+          ok: true,
+          message: 'ok',
+          workspace: rust_api.WorkspaceInfo(
+            workspaceId: 'workspace-root',
+            name: 'Default',
+            isDefault: true,
+          ),
+        ),
     workspaceListChildrenInvoker:
         workspaceListChildrenInvoker ??
         ({parentNodeId}) async {
@@ -261,7 +288,9 @@ void main() {
     expect(renameCalls, [
       ('11111111-1111-4111-8111-111111111111', 'Folder Renamed'),
     ]);
-    expect(moveCalls, [('11111111-1111-4111-8111-111111111111', null, null)]);
+    expect(moveCalls, [
+      ('11111111-1111-4111-8111-111111111111', 'workspace-root', null),
+    ]);
     expect(controller.activeNoteId, 'note-2');
     expect(controller.openNoteIds, contains('note-2'));
     expect(controller.detailErrorMessage, isNull);

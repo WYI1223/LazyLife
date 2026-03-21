@@ -85,6 +85,47 @@ _defaultWorkspaceAncestorPathInvoker({required String atomId}) {
   return rust_api.workspaceAncestorPath(atomId: atomId);
 }
 
+Future<rust_api.DesignatedFolderResponse>
+_defaultWorkspaceResolveDesignatedInvoker({
+  required rust_api.FfiCallerContext caller,
+  required String workspaceId,
+  required String role,
+}) {
+  return rust_api.workspaceResolveDesignated(
+    caller: caller,
+    workspaceId: workspaceId,
+    role: role,
+  );
+}
+
+Future<rust_api.WorkspaceActionResponse>
+_defaultWorkspaceReassignDesignatedInvoker({
+  required rust_api.FfiCallerContext caller,
+  required String workspaceId,
+  required String role,
+  required String newNodeUuid,
+}) {
+  return rust_api.workspaceReassignDesignated(
+    caller: caller,
+    workspaceId: workspaceId,
+    role: role,
+    newNodeUuid: newNodeUuid,
+  );
+}
+
+Future<rust_api.AncestorPathResponse> _defaultWorkspaceGetAncestorPathInvoker({
+  required rust_api.FfiCallerContext caller,
+  required String nodeUuid,
+}) {
+  return rust_api.workspaceGetAncestorPath(caller: caller, nodeUuid: nodeUuid);
+}
+
+Future<rust_api.WorkspaceInfoResponse> _defaultWorkspaceGetDefaultInvoker({
+  required rust_api.FfiCallerContext caller,
+}) {
+  return rust_api.workspaceGetDefault(caller: caller);
+}
+
 Future<void> _defaultPrepare() async {
   await RustBridge.ensureEntryDbPathConfigured();
 }

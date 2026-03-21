@@ -61,16 +61,19 @@ class ExplorerTreeBuilder {
     required int depth,
   }) {
     for (final item in items) {
-      if (item.kind == 'folder') {
+      if (item.kind == 'folder' || item.kind == 'workspace') {
         final expanded = treeState.isExpanded(item.nodeId);
         final loading = treeState.isLoading(item.nodeId);
         final error = treeState.errorMessageFor(item.nodeId);
         final isSyntheticRoot = callbacks.isSyntheticRootNodeId(item.nodeId);
+        final isWorkspaceRoot = item.kind == 'workspace';
         final canCreateChild =
             flags.canCreateFolderAction &&
             (callbacks.looksLikeUuid(item.nodeId) || isSyntheticRoot);
         final canDelete =
-            flags.canDeleteFolderAction && callbacks.looksLikeUuid(item.nodeId);
+            !isWorkspaceRoot &&
+            flags.canDeleteFolderAction &&
+            callbacks.looksLikeUuid(item.nodeId);
         final folderRow = ExplorerTreeItem.folder(
           key: Key('notes_tree_folder_row_${item.nodeId}'),
           node: item,
@@ -101,16 +104,18 @@ class ExplorerTreeBuilder {
                   ),
                 )
               : null,
-          onSecondaryTapDown: (details) {
-            callbacks.recordRowContextMenuTrigger(details.globalPosition);
-            unawaited(
-              callbacks.showFolderContextMenu(
-                context: context,
-                folderNode: item,
-                globalPosition: details.globalPosition,
-              ),
-            );
-          },
+          onSecondaryTapDown: isWorkspaceRoot
+              ? null
+              : (details) {
+                  callbacks.recordRowContextMenuTrigger(details.globalPosition);
+                  unawaited(
+                    callbacks.showFolderContextMenu(
+                      context: context,
+                      folderNode: item,
+                      globalPosition: details.globalPosition,
+                    ),
+                  );
+                },
         );
         rows.add(
           callbacks.wrapWorkspaceRowWithDrag(
