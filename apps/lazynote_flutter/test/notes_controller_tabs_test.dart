@@ -32,6 +32,7 @@ NotesCoordinator _buildController({
     required String mode,
   })?
   workspaceDeleteFolderInvoker,
+  WorkspaceGetAncestorPathInvoker? workspaceGetAncestorPathInvoker,
   Future<rust_api.AtomItemResponse> Function({
     required String atomId,
     required String content,
@@ -106,6 +107,20 @@ NotesCoordinator _buildController({
             message: 'ok',
           );
         },
+    workspaceGetAncestorPathInvoker:
+        workspaceGetAncestorPathInvoker ??
+        ({required caller, required nodeUuid}) async =>
+            const rust_api.AncestorPathResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+              segments: <rust_api.PathSegment>[
+                rust_api.PathSegment(
+                  nodeUuid: 'workspace-root',
+                  displayName: 'Default',
+                ),
+              ],
+            ),
   );
 }
 

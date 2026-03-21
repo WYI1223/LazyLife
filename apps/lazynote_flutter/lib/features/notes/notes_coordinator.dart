@@ -30,12 +30,18 @@ export 'package:lazynote_flutter/core/editor/group_layout.dart'
 
 export 'package:lazynote_flutter/core/workspace/workspace_tree_service.dart'
     show
+        TreeMutationDelta,
+        TreeMutationType,
+        WorkspaceGetAncestorPathInvoker,
         WorkspaceAncestorPathInvoker,
         WorkspaceCreateFolderInvoker,
         WorkspaceDeleteFolderInvoker,
+        WorkspaceGetDefaultInvoker,
         WorkspaceListChildrenInvoker,
         WorkspaceMoveNodeInvoker,
+        WorkspaceReassignDesignatedInvoker,
         WorkspaceRenameNodeInvoker,
+        WorkspaceResolveDesignatedInvoker,
         WorkspaceTreeService;
 
 export 'managers/note_list_manager.dart' show NoteListManager, NotesListPhase;
@@ -60,6 +66,10 @@ class NotesCoordinator extends _NotesCoordinatorImpl {
     super.workspaceMoveNodeInvoker,
     super.workspaceListChildrenInvoker,
     super.workspaceAncestorPathInvoker,
+    super.workspaceResolveDesignatedInvoker,
+    super.workspaceReassignDesignatedInvoker,
+    super.workspaceGetAncestorPathInvoker,
+    super.workspaceGetDefaultInvoker,
     super.debounceTimerFactory,
     super.prepare,
     super.listLimit = 50,

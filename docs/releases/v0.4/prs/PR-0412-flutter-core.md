@@ -1,233 +1,376 @@
-# PR-0412: Flutter Core — WorkspaceTreeService B+ 改造
-
-- Proposed title: `feat(workspace): workspace tree service enhancement with mutation delta`
-- Status: Draft
+# PR-0412: Flutter Core WorkspaceTreeService B+ and Mutation Delta
+- Proposed title: `feat(workspace): adopt guarded workspace core contracts in WorkspaceTreeService`
+- Status: Merged
 
 ## Goal
 
-### Dependency Clarification (2026-03-13)
+Land the Flutter core slice of the workspace-topology chain by upgrading
+`WorkspaceTreeService` to consume the guarded workspace FFI exported in
+`PR-0411`, own system-node resolution, expose `TreeMutationDelta`, and leave a
+stable core contract for `PR-0413` feature migration.
 
-This PR assumes the post-`0012` workspace contract has already been mediated through `PR-0409` to `PR-0411`. Flutter core should therefore consume:
+## Closeout Snapshot (2026-03-20)
 
-- workspace/designated-node behavior through FFI contracts;
-- workspace mutations through service-level deltas;
-- system-node lookup through dedicated APIs.
+Implementation is now merged and the Flutter core contract is closed. Review
+leader sign-off, focused regressions, full Flutter validation, and architecture
+checks are all complete. A smoke-driven follow-up fix also landed in this PR:
+post-`0012` "Root" mutations in Flutter no longer forward `null parent` for
+ordinary nodes, and root create flows now refresh the concrete workspace branch
+instead of relying on legacy synthetic-root semantics.
 
-It should not depend on raw migration details such as trigger names, backfill order, or direct table semantics.
+## Implementation Snapshot (2026-03-20)
 
-改造 WorkspaceTreeService 对接新 tree FFI（`workspace_resolve_designated`、`workspace_reassign_designated` 等树操作），引入 TreeMutationDelta 变更通知机制，新增 `loadSystemNodes` / `getSystemNodeId` 系统节点接口。`query_atoms` 消费迁移属于 PR-0413（feature 层）。
+The landed Flutter-core shape now includes:
 
-前置条件：PR-0411（需要新 FFI 函数就绪）
+- guarded workspace typedefs, `buildWorkspaceCaller(...)`,
+  `WorkspaceInitException`, `DesignatedRoleNotFoundException`,
+  `WorkspaceGetDefaultInvoker`, `TreeMutationType`, and `TreeMutationDelta` in
+  `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart`
+- `WorkspaceTreeService.loadSystemNodes(...)`,
+  `WorkspaceTreeService.getSystemNodeId(...)`, `lastMutation`, targeted
+  mutation-delta emission for create/rename/move/delete, and
+  `reassignDesignated(...)` cache refresh in
+  `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
+- guarded workspace default/resolve/reassign/ancestor-path wiring through
+  `NotesCoordinator` defaults and constructor plumbing in
+  `apps/lazynote_flutter/lib/features/notes/notes_coordinator.dart`,
+  `apps/lazynote_flutter/lib/features/notes/notes_coordinator_impl.dart`, and
+  `apps/lazynote_flutter/lib/features/notes/notes_coordinator_defaults.dart`
+- post-`0012` root-bridge fixes in
+  `apps/lazynote_flutter/lib/features/notes/note_explorer.dart` so move-dialog
+  "Root" targets, drag-to-root drops, and root note/folder create refreshes all
+  resolve to the concrete default workspace root id rather than a legacy
+  `null`-parent placeholder
+- focused service coverage for designated preload, sync lookup, mutation
+  deltas, and reassign behavior in
+  `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
+- focused Explorer regressions in
+  `apps/lazynote_flutter/test/explorer_context_actions_test.dart`,
+  `apps/lazynote_flutter/test/note_explorer_tree_test.dart`, and
+  `apps/lazynote_flutter/test/workspace_integration_flow_test.dart` locking the
+  concrete-root move/create bridge and post-`0012` branch-refresh behavior
 
-## Execution Contract (Canonical Inputs)
+`PR-0412` explicitly consumes:
 
-Shared promotion register:
+- `OI-035` tree navigation via guarded node-based ancestor-path usage and
+  preserved atom-based compatibility
+- `OI-036` unified creation and TreeService evolution via
+  create-without-parent delta resolution to the concrete default workspace root
+- `OI-038` FFI surface and migration bridge via guarded workspace exports wired
+  into Flutter core while legacy consumer migration remains deferred
+- `OI-039` WorkspaceTreeService B+ shape via designated-node cache only,
+  mutation metadata, and no local subtree cache
+- `OI-040` mutation-delta and targeted-reload contract via create/rename/move/
+  delete/reassign parent-impact emission
+- `OI-042` system-node resolution ownership via `loadSystemNodes(...)` and
+  `getSystemNodeId(...)`
+- `OI-045` execution order by consuming the already-landed `PR-0408` through
+  `PR-0411A` chain without pulling `PR-0413` feature migration forward
+- `OI-048` verification gates through focused workspace service tests, replayed
+  notes guard regressions, full Flutter validation, and repository architecture
+  checks
 
-- `docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`
-- This PR must leave evidence sufficient for `CPR-001`, but may not publish carrier text directly.
+## Verification Snapshot (2026-03-20)
 
-| 类型 | 引用 | 与本 PR 的关系 |
-|------|------|---------------|
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-17-flutter-thin-client.md` Q1-Q4 | WorkspaceTreeService B+ 改造、TreeMutationDelta、系统节点解析 |
-| DI 裁决 | `docs/reports/v0.3/design-discussions/DI-18-execution-plan.md` Q1（PR-0412 行）、Q4（Flutter 测试 + delta 载荷断言） | PR 定位、测试要求 |
-| 现有实现 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart` | 需改造的目标文件 |
-| 现有实现 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart` | 需扩展（加 TreeMutationDelta） |
-| Handoff workflow | `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` | `DOC-023 / DI-15` + `DOC-024 / DI-16` + `DOC-025 / DI-17` + `DOC-026 / DI-18` 的交接合同；本 PR 负责更新 `flutter-core` ledger，同时更新 `execution-order` 与本 PR 负责的 `verification-gates` rows，并显式消费 `OI-035` / `OI-036` / `OI-038`、`OI-039` / `OI-040` / `OI-042` 的 core-consumer 部分，以及 `OI-045` / 本 PR 负责的 `OI-048` 部分，不得直接发布 ADR / ruling / topic-map carrier |
-
-## Scope
-
-In scope:
-- WorkspaceTreeService 对接新 tree FFI（`workspace_resolve_designated`、`workspace_reassign_designated` 等树操作接口）
-- TreeMutationDelta 通知机制（`affectedParentIds` 供定向刷新）
-- `loadSystemNodes` / `getSystemNodeId` 系统节点接口
-- `reassignDesignated` 成功后刷新本地系统节点映射（DI-17 Q2）
-- Mock invoker 测试
-- 更新 `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md` 中 `flutter-core`、`execution-order`、以及本 PR 负责的 `verification-gates` rows，显式对齐 `OI-035` / `OI-036` / `OI-038`、`OI-039` / `OI-040` / `OI-042`、以及 `OI-045` / `OI-048` 的 core-consumer 部分，写入 landed/partial 状态与证据路径
-
-Out of scope:
-- `query_atoms` 消费迁移 / QueryAtomsInvoker（PR-0413 feature 层）
-- Tasks/Calendar/Notes/Entry controller 适配（PR-0413）
-- 旧 FFI 移除（PR-0413）
-- Explorer UI 变更 / 内部分层（PR-0413）
-- 直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `docs/architecture/adr/topic-map.md`
-
-## Design
-
-### TreeMutationDelta 结构（DI-17 Q2）
-
-```dart
-class TreeMutationDelta {
-  final int revision;
-  final TreeMutationType type;
-  final Set<String?> affectedParentIds; // null = root level
-
-  const TreeMutationDelta({
-    required this.revision,
-    required this.type,
-    required this.affectedParentIds,
-  });
-}
-
-enum TreeMutationType { create, rename, move, delete, reassign }
-```
-
-**affectedParentIds 映射规则：**
-
-| 操作 | affectedParentIds | 说明 |
-|------|-------------------|------|
-| createFolder(parent) | `{parent}` | 新节点出现在 parent 子列表 |
-| renameNode(node) | `{node.parent}` | parent 子列表中某项名称变化 |
-| moveNode(old, new) | `{oldParent, newParent}` | Set 自动去重（同 parent 内移动 → 单元素） |
-| deleteFolder(node) | `{node.parent}` | 节点从 parent 子列表消失 |
-| reassignDesignated | `{oldFolder.parent, newFolder.parent}` | 两个 parent 受影响 |
-
-### 系统节点解析 API
-
-```dart
-/// 启动时调用一次，缓存 designated role → node UUID 映射
-Future<void> loadSystemNodes(String workspaceId);
-
-/// 同步 getter，返回指定 role 的 node UUID
-/// 抛出 DesignatedRoleNotFoundException（不返回 null）
-String getSystemNodeId(String workspaceId, String role);
-```
-
-**缓存结构**：`Map<(String workspaceId, String role), String nodeUUID>`
-**FFI 调用**：每个 role 调用 `workspace_resolve_designated(caller, workspaceId, role)`（PR-0411 导出）
-**幂等性**：同一 workspaceId 二次调用为 no-op（early return）
-
-### FFI 适配模式
-
-所有 FFI invoker 通过构造函数注入（现有模式），新增：
-
-```dart
-FfiCallerContext buildWorkspaceCaller(String workspaceId) => FfiCallerContext(
-      identity: FfiCallerIdentity.app,
-      scopeWorkspaceId: workspaceId,
-    );
-
-typedef WorkspaceResolveDesignatedInvoker =
-    Future<DesignatedFolderResponse> Function({
-      required FfiCallerContext caller,
-      required String workspaceId,
-      required String role,
-    });
-
-typedef WorkspaceReassignDesignatedInvoker =
-    Future<WorkspaceActionResponse> Function({
-      required FfiCallerContext caller,
-      required String workspaceId,
-      required String role,
-      required String newNodeUuid,
-    });
-```
-
-硬规则：凡消费 `PR-0411` 新 FFI 的 Flutter core invoker，都必须显式传入
-`FfiCallerContext`。`workspaceId` 仍是业务目标；caller 里的
-`scopeWorkspaceId` 是访问范围声明，两者不可互相替代。
-
-PR-0412 不新增 FFI 函数——仅消费 PR-0411 已导出的函数。
-
-### reassignDesignated 流程
-
-1. Controller 调用 `reassignDesignated(workspaceId, role, newFolderId)`
-2. FFI 调用 `workspace_reassign_designated(caller: buildWorkspaceCaller(workspaceId), ...)` → Rust 更新 designated_folders
-3. 本地缓存更新：`_systemNodeIds[(ws, role)] = newFolderId`
-4. 构建 delta：`affectedParentIds = {oldFolder.parent, newFolder.parent}`
-5. `notifyListeners()` → 消费者读 `lastMutation` 做定向刷新
-
-### 通知策略
-
-- WorkspaceTreeService extends `ChangeNotifier`
-- 每次成功 mutation 后写入 `_lastMutation` + `notifyListeners()`
-- 消费者通过 `lastMutation.affectedParentIds` 过滤已展开文件夹，只刷新受影响的
-- Delta 是优化提示，非强保证——消费者可回退到全量刷新
-
-## Task Breakdown
-
-| Task | Lane | 内容 | 文件 | 估算 | 依赖 |
-|------|------|------|------|------|------|
-| T1 | Dart | TreeMutationDelta 类型定义 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart` | TBD | — |
-| T2 | Dart | `loadSystemNodes` / `getSystemNodeId` | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart` | TBD | — |
-| T3 | Dart | WorkspaceTreeService 对接新 FFI | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart` | TBD | T1-T2 |
-| T4 | Dart | `reassignDesignated` + 本地映射刷新 | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart` | TBD | T2-T3 |
-| T5 | Dart | delta 载荷测试（create/move/delete/reassign affectedParentIds 断言） | `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart` | TBD | T1-T4 |
-| T6 | Dart | loadSystemNodes 成功/失败 + getSystemNodeId 正常/异常测试 | `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart` | TBD | T2 |
-
-## Planned File Changes
-
-- `[edit]` apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart (对接新 FFI + 系统节点接口)
-- `[edit]` apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart (加 TreeMutationDelta + TreeMutationType + WorkspaceResolveDesignatedInvoker + 异常类)
-- `[add]` apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart
-
-## Verification
-
-### CI gates
+Fresh replay used for this closeout:
 
 ```bash
 cd apps/lazynote_flutter
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
-dart run ../../tools/ci/architecture_check.dart
+flutter test test/core/workspace/workspace_tree_service_test.dart -r compact
+flutter test test/notes_controller_workspace_tree_guards_test.dart -r compact
+flutter test test/explorer_context_actions_test.dart -r compact
+flutter test test/note_explorer_tree_test.dart -r compact
+flutter test test/workspace_integration_flow_test.dart -r compact
+
+cd ../..
+dart run tools/ci/architecture_check.dart
 ```
 
-### Structural verification
+Results:
+
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- focused workspace service tests: PASS
+- legacy notes workspace guard tests: PASS
+- focused Explorer/root-bridge regressions: PASS
+- `architecture_check`: PASS (`0` broken docs links / `0` architecture
+  violations; existing non-blocking generated-file size warning remains)
+
+## Executable Plan
+
+Implementation is tracked in:
+
+- [`docs/superpowers/plans/2026-03-19-pr-0412-flutter-core.md`](../../../superpowers/plans/2026-03-19-pr-0412-flutter-core.md)
+
+This spec is the contract. The linked plan is the step-by-step execution guide.
+
+## Dependency Clarification
+
+`PR-0412` consumes the already-landed upstream chain:
+
+- `PR-0408` schema, designated-folder, and workspace metadata contracts
+- `PR-0409` scoped-query and compatibility-bridge contracts
+- `PR-0410` canonical creation/tree-routing contracts
+- `PR-0411` guarded FFI exports and caller contract
+- `PR-0411A` structural cleanup of Rust FFI module layout
+
+Canonical implication:
+
+- Flutter core must consume workspace behavior through guarded FFI contracts,
+  never through raw schema assumptions.
+- `WorkspaceTreeService` may own a small designated-node cache and mutation
+  metadata, but it must not become a second tree store.
+- `query_atoms` consumer migration stays owned by `PR-0413`.
+
+## Workflow Inputs
+
+This PR must explicitly consume and later report against these handoff bundles:
+
+- `OI-035` tree navigation
+- `OI-036` unified creation and TreeService evolution
+- `OI-038` FFI surface and migration bridge
+- `OI-039` WorkspaceTreeService B+ shape and no-cache rule
+- `OI-040` mutation-delta and targeted-reload contract
+- `OI-042` system-node resolution ownership
+- `OI-045` execution order
+- `OI-048` verification gates
+
+Primary workflow source:
+
+- [`docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md`](../../../reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md)
+
+Shared governance decision point:
+
+- [`docs/reports/v0.4/governance-execution/carrier-promotion-decision-register.md`](../../../reports/v0.4/governance-execution/carrier-promotion-decision-register.md)
+
+`PR-0412` may land implementation and update workflow evidence, but it may not
+publish carrier text directly.
+
+## In Scope
+
+- `WorkspaceTreeService` consumption of guarded FFI:
+  - `workspace_resolve_designated`
+  - `workspace_reassign_designated`
+  - `workspace_get_ancestor_path`
+  - optionally `workspace_get_default` if needed for local bootstrap helpers
+- `FfiCallerContext(identity, scopeWorkspaceId)` helper usage inside Flutter
+  core workspace code
+- `TreeMutationDelta` and `TreeMutationType`
+- `loadSystemNodes(workspaceId)` and `getSystemNodeId(workspaceId, role)`
+- cache refresh after successful `reassignDesignated(...)`
+- dedicated service-level tests for mutation deltas, designated cache behavior,
+  and caller plumbing
+- workflow-ledger updates for `flutter-core`, `execution-order`, and the
+  `PR-0412` part of `verification-gates`
+
+## Out of Scope
+
+- `query_atoms` adoption in feature controllers
+- broader Tasks, Calendar, Notes, Entry, or Explorer consumer migration
+- synthetic uncategorized removal
+- tree UI layering changes beyond the narrow post-`0012` operability bridge
+  needed to keep concrete-root create/move behavior usable in `NoteExplorer`
+- legacy FFI removal
+- ADR, ruling, or topic-map publication
+
+`PR-0412` may still land smoke-driven `NoteExplorer` fixes when they are
+strictly required to preserve the already-landed Flutter-core contract
+(`TreeMutationDelta`, concrete default-workspace-root semantics, or guarded
+workspace wiring). Broader consumer migration, UX cleanup, and synthetic-node
+removal remain with `PR-0413`.
+
+## Historical Pre-Implementation Reality
+
+The current `WorkspaceTreeService` still reflects the pre-`PR-0411` shape:
+
+- it consumes only legacy workspace tree FFI
+- it still routes ancestor-path lookup through the atom-based compatibility API
+- it has no designated-node cache
+- it exposes only coarse `workspaceTreeRevision`, not targeted mutation deltas
+- it still depends on `WorkspaceTreeChildrenLoader`, including synthetic
+  uncategorized fallback behavior
+
+`PR-0412` must improve the service shape without prematurely pulling `PR-0413`
+feature cleanup into core.
+
+## Canonical Delivery Decisions
+
+### 1. WorkspaceTreeService owns only designated-node cache, not tree cache
+
+`WorkspaceTreeService` may cache:
+
+- designated folder node ids by `(workspaceId, role)`
+- latest `TreeMutationDelta`
+- coarse revision counters already exposed today
+
+It must not cache:
+
+- subtree child lists
+- parent/child graph snapshots
+- projected query results
+
+This preserves the `DI-17` no-cache rule while still allowing synchronous
+feature access to system-node ids.
+
+### 2. Mutation deltas are computed from request context plus ancestor-path FFI
+
+`WorkspaceTreeService` must not infer mutation impact by maintaining a local
+tree mirror.
+
+Instead:
+
+- create uses the target parent already present in the request; when the
+  request omits `parentNodeId`, Flutter core must resolve the real default
+  workspace root id and emit that concrete id instead of `{null}`
+- rename resolves the current parent through `workspace_get_ancestor_path`
+- move resolves the old parent through `workspace_get_ancestor_path` before the
+  mutation and combines it with the requested new parent
+- delete resolves the current parent through `workspace_get_ancestor_path`
+- reassign resolves both old and new designated folders and computes their
+  parents through `workspace_get_ancestor_path`
+
+This keeps delta ownership in Flutter core without violating the no-cache rule.
+
+### 3. System-node resolution is async preload plus sync lookup
+
+Canonical Flutter core contract:
+
+- `Future<void> loadSystemNodes(String workspaceId)`
+- `String getSystemNodeId(String workspaceId, String role)`
+
+`loadSystemNodes(...)` populates the designated-node cache by consuming guarded
+FFI. `getSystemNodeId(...)` is synchronous and throws explicit exceptions when
+called before a role is loaded or after a required role is missing.
+
+Recommended explicit exceptions:
+
+- `WorkspaceInitException`
+- `DesignatedRoleNotFoundException`
+
+### 4. Caller helper is mandatory for guarded workspace FFI
+
+Any new guarded workspace FFI consumption in Flutter core must pass:
+
+```dart
+FfiCallerContext(
+  identity: FfiCallerIdentity.app,
+  scopeWorkspaceId: workspaceId,
+)
+```
+
+`workspaceId` remains the business target. `scopeWorkspaceId` remains the
+declared access scope. They must not be collapsed into a single concept.
+
+### 5. Create-without-parent still resolves to the default workspace root, not
+top-level null parent
+
+`PR-0410` already tightened ordinary-node root semantics:
+
+- new writes no longer create ordinary nodes with a real `NULL` parent
+- root-level ordinary-node semantics are replaced by “attach to the default
+  workspace root”
+
+`PR-0412` must preserve that contract when computing mutation deltas.
+
+Canonical implication:
+
+- `createWorkspaceFolder(..., parentNodeId: null)` may still be a valid Flutter
+  core entrypoint for “create under default workspace”
+- but the emitted `TreeMutationDelta.affectedParentIds` must contain the real
+  default workspace root id, never `{null}`
+- if a future PR needs a top-level workspace-root sentinel, it must define that
+  sentinel explicitly instead of reusing ordinary-node `null` semantics
+
+### 6. Atom-based ancestor path remains compatibility-only in this PR
+
+`PR-0412` may keep the old atom-based `ancestorPath(atomId)` helper alive for
+current feature callers, but it must not expand that compatibility shape.
+
+The canonical new core-side path consumption is node-based:
+
+- `workspace_get_ancestor_path(caller, nodeUuid)`
+
+Full feature migration to the new path belongs to `PR-0413`.
+
+## Target File Set
+
+Primary implementation files:
+
+- `apps/lazynote_flutter/lib/core/workspace/workspace_tree_types.dart`
+- `apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart`
+- `apps/lazynote_flutter/test/core/workspace/workspace_tree_service_test.dart`
+
+Supporting documentation files:
+
+- `docs/releases/v0.4/prs/PR-0412-flutter-core.md`
+- `docs/superpowers/plans/2026-03-19-pr-0412-flutter-core.md`
+- `docs/reports/v0.4/governance-execution/PR-0403/workspace-topology-carrier-promotion-workflow.md`
+
+Only touch other Flutter files if strictly required to preserve compileability,
+existing constructor wiring, or the narrow smoke-driven `NoteExplorer`
+operability bridge for concrete-root create/move behavior.
+
+## Chunked Execution Summary
+
+1. Add RED tests for caller helper, designated cache behavior, and mutation
+   delta envelopes.
+2. Extend `workspace_tree_types.dart` with guarded invoker typedefs,
+   `TreeMutationDelta`, and explicit exceptions.
+3. Upgrade `WorkspaceTreeService` to consume guarded FFI, load designated
+   folders, and expose synchronous system-node lookup.
+4. Emit targeted mutation deltas using ancestor-path lookups instead of local
+   tree caching.
+5. Replay Flutter validation and update workflow/spec evidence.
+
+## Verification
 
 ```bash
-# 验证 TreeMutationDelta 类定义
-grep -rn "^class TreeMutationDelta" apps/lazynote_flutter/lib/ --include="*.dart"
-# 预期：1 匹配
+cd apps/lazynote_flutter
+dart format --output=none --set-exit-if-changed .
+flutter analyze
+flutter test
 
-# 验证 TreeMutationType enum 定义
-grep -rn "^enum TreeMutationType" apps/lazynote_flutter/lib/ --include="*.dart"
-# 预期：1 匹配
-
-# 验证 TreeMutationDelta 实例化（各 mutation 类型至少一次）
-grep -rn "TreeMutationDelta(" apps/lazynote_flutter/lib/ --include="*.dart"
-# 预期：至少 4 匹配（create/move/delete/reassign）
-
-# 验证系统节点接口定义
-grep -rn "loadSystemNodes\|getSystemNodeId" apps/lazynote_flutter/lib/ --include="*.dart"
-# 预期：方法定义 + 至少一处调用
-
-# 验证 caller contract 对齐
-grep -rn "scopeWorkspaceId\|FfiCallerIdentity.app" apps/lazynote_flutter/lib/core/workspace --include="*.dart"
-# 预期：至少 2 匹配（caller helper / 调用点）
-
-# 验证 delta 载荷测试覆盖
-grep -rn "affectedParentIds" apps/lazynote_flutter/test/ --include="*.dart"
-# 预期：至少 4 匹配（create/move/delete/reassign 各一）
-
-# 验证异常类定义
-grep -rn "DesignatedRoleNotFoundException\|WorkspaceInitException" apps/lazynote_flutter/lib/ --include="*.dart"
-# 预期：至少 2 匹配（类定义）
+cd ../..
+dart run tools/ci/architecture_check.dart
 ```
 
-## Risk
+Targeted replay commands that must exist in the execution plan:
 
-| 风险 | 严重度 | 缓解 |
-|------|--------|------|
-| 新旧 FFI 路径共存期间状态不一致 | LOW | PR-0412 对接新 FFI，旧路径仍在但不被 WorkspaceTreeService 使用 |
-| loadSystemNodes 在 FFI 失败时 UI 无法启动 | MEDIUM | 测试覆盖成功/失败路径，失败时有明确错误处理 |
+```bash
+cd apps/lazynote_flutter
+flutter test test/core/workspace/workspace_tree_service_test.dart -r compact
+flutter test test/notes_controller_workspace_tree_guards_test.dart -r compact
+```
 
 ## Acceptance Criteria
 
-- [ ] WorkspaceTreeService 对接新 FFI 函数
-- [ ] TreeMutationDelta 通知包含 `affectedParentIds`
-- [ ] delta 载荷测试：create 操作断言 `affectedParentIds` 正确
-- [ ] delta 载荷测试：move 操作断言 `affectedParentIds` 正确
-- [ ] delta 载荷测试：delete 操作断言 `affectedParentIds` 正确
-- [ ] delta 载荷测试：reassign_designated 操作断言 `affectedParentIds` 正确
-- [ ] `loadSystemNodes` 成功返回系统节点信息
-- [ ] `loadSystemNodes` 失败时抛出明确异常
-- [ ] `getSystemNodeId` 正常返回指定 designated folder 的 node ID
-- [ ] WorkspaceTreeService 对 `PR-0411` caller contract 对齐：新 FFI 调用显式传入 `FfiCallerContext(identity, scopeWorkspaceId)`
-- [ ] `reassignDesignated` 成功后本地系统节点映射已刷新
-- [ ] `flutter analyze` 零 warning
-- [ ] `flutter test` 全绿
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `flutter-core` row 已更新为本 PR 的实际落地状态并附证据路径，且已显式覆盖 `OI-039` / `OI-040` / `OI-042`
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `execution-order` row 已更新为本 PR 的实际顺序与依赖落地状态并附证据路径
-- [ ] `workspace-topology-carrier-promotion-workflow.md` 的 `verification-gates` row 已写明本 PR 覆盖的 Flutter core 测试部分与证据路径
-- [ ] 本 PR 未直接发布或改写 `DI-15` active bundle 的 ADR / ruling / `topic-map.md`
-- [ ] PR spec Status updated to Merged
+- [x] `WorkspaceTreeService` consumes guarded workspace FFI through explicit
+      caller helpers
+- [x] `workspace_tree_types.dart` defines `TreeMutationDelta`,
+      `TreeMutationType`, and guarded workspace invoker typedefs
+- [x] `loadSystemNodes(workspaceId)` loads `inbox`, `tasks`, and `calendar`
+      designated folders through guarded FFI
+- [x] `getSystemNodeId(workspaceId, role)` is synchronous and throws explicit
+      exceptions on missing cache entries
+- [x] successful `reassignDesignated(...)` refreshes the local designated-node
+      cache for the affected role
+- [x] successful create, rename, move, delete, and reassign operations each
+      emit `TreeMutationDelta` with correct `affectedParentIds`
+- [x] create-without-parent resolves `affectedParentIds` to the concrete
+      default workspace root id rather than `{null}`
+- [x] mutation-delta calculation uses ancestor-path FFI or request context, not
+      local subtree caching
+- [x] existing coarse `workspaceTreeRevision` behavior remains intact for
+      current consumers
+- [x] `flutter analyze` is green
+- [x] `flutter test` is green
+- [x] `workspace-topology-carrier-promotion-workflow.md` updates
+      `flutter-core`, `execution-order`, and the `PR-0412` portion of
+      `verification-gates` with evidence paths
+- [x] closeout notes explicitly cite `OI-035`, `OI-036`, `OI-038`, `OI-039`,
+      `OI-040`, `OI-042`, `OI-045`, and `OI-048`
+- [x] PR spec status remains `Draft` until landing; update to `Merged` only
+      after code, tests, and closeout evidence are landed

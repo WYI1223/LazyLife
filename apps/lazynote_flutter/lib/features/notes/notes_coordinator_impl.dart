@@ -18,6 +18,10 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
     WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
     WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
     WorkspaceAncestorPathInvoker? workspaceAncestorPathInvoker,
+    WorkspaceResolveDesignatedInvoker? workspaceResolveDesignatedInvoker,
+    WorkspaceReassignDesignatedInvoker? workspaceReassignDesignatedInvoker,
+    WorkspaceGetAncestorPathInvoker? workspaceGetAncestorPathInvoker,
+    WorkspaceGetDefaultInvoker? workspaceGetDefaultInvoker,
     DebounceTimerFactory? debounceTimerFactory,
     NotesPrepare? prepare,
     this.listLimit = 50,
@@ -46,6 +50,17 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
         workspaceMoveNodeInvoker ?? _defaultWorkspaceMoveNodeInvoker;
     final resolvedWorkspaceListChildrenInvoker =
         workspaceListChildrenInvoker ?? _defaultWorkspaceListChildrenInvoker;
+    final resolvedWorkspaceResolveDesignatedInvoker =
+        workspaceResolveDesignatedInvoker ??
+        _defaultWorkspaceResolveDesignatedInvoker;
+    final resolvedWorkspaceReassignDesignatedInvoker =
+        workspaceReassignDesignatedInvoker ??
+        _defaultWorkspaceReassignDesignatedInvoker;
+    final resolvedWorkspaceGetAncestorPathInvoker =
+        workspaceGetAncestorPathInvoker ??
+        _defaultWorkspaceGetAncestorPathInvoker;
+    final resolvedWorkspaceGetDefaultInvoker =
+        workspaceGetDefaultInvoker ?? _defaultWorkspaceGetDefaultInvoker;
 
     _noteListManager = NoteListManager(
       notesListInvoker: resolvedNotesListInvoker,
@@ -113,6 +128,12 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
       workspaceMoveNodeInvoker: resolvedWorkspaceMoveNodeInvoker,
       workspaceListChildrenInvoker: resolvedWorkspaceListChildrenInvoker,
       workspaceAncestorPathInvoker: resolvedWorkspaceAncestorPathInvoker,
+      workspaceResolveDesignatedInvoker:
+          resolvedWorkspaceResolveDesignatedInvoker,
+      workspaceReassignDesignatedInvoker:
+          resolvedWorkspaceReassignDesignatedInvoker,
+      workspaceGetAncestorPathInvoker: resolvedWorkspaceGetAncestorPathInvoker,
+      workspaceGetDefaultInvoker: resolvedWorkspaceGetDefaultInvoker,
       prepare: _prepare,
       createNoteAndGetAtomId: _createNoteAndGetAtomId,
       flushPendingSave: flushPendingSave,
@@ -258,6 +279,10 @@ class _NotesCoordinatorImpl extends ChangeNotifier {
   String? get workspaceNodeMutationErrorMessage =>
       _workspaceTreeService.workspaceNodeMutationErrorMessage;
   int get workspaceTreeRevision => _workspaceTreeService.workspaceTreeRevision;
+  TreeMutationDelta? get lastWorkspaceMutation =>
+      _workspaceTreeService.lastMutation;
+  Future<String?> resolveDefaultWorkspaceRootId() =>
+      _workspaceTreeService.resolveDefaultWorkspaceRootId();
 
   // ── Public getters: editor service ─────────────────────────────────
 

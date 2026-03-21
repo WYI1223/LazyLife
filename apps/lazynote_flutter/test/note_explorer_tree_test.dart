@@ -61,6 +61,8 @@ NotesCoordinator _controllerWithStore(
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
   WorkspaceCreateFolderInvoker? workspaceCreateFolderInvoker,
   WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
+  WorkspaceGetAncestorPathInvoker? workspaceGetAncestorPathInvoker,
+  WorkspaceGetDefaultInvoker? workspaceGetDefaultInvoker,
 }) {
   return NotesCoordinator(
     prepare: () async {},
@@ -87,6 +89,18 @@ NotesCoordinator _controllerWithStore(
     workspaceCreateFolderInvoker: workspaceCreateFolderInvoker,
     workspaceDeleteFolderInvoker: workspaceDeleteFolderInvoker,
     workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
+    workspaceGetAncestorPathInvoker: workspaceGetAncestorPathInvoker,
+    workspaceGetDefaultInvoker:
+        workspaceGetDefaultInvoker ??
+        ({required caller}) async => const rust_api.WorkspaceInfoResponse(
+          ok: true,
+          message: 'ok',
+          workspace: rust_api.WorkspaceInfo(
+            workspaceId: 'workspace-root',
+            name: 'Default',
+            isDefault: true,
+          ),
+        ),
   );
 }
 
@@ -95,6 +109,7 @@ Widget _buildHarness({
   required ValueChanged<String> onOpen,
   ValueChanged<String>? onOpenPinned,
   ExplorerNoteCreateInFolderInvoker? onCreateNoteInFolderRequested,
+  ExplorerNodeMoveInvoker? onMoveNodeRequested,
   ExplorerFolderDeleteInvoker? onDeleteFolderRequested,
   ExplorerFolderCreateInvoker? onCreateFolderRequested,
   ExplorerNodeRenameInvoker? onRenameNodeRequested,
@@ -111,6 +126,7 @@ Widget _buildHarness({
             onOpenNotePinnedRequested: onOpenPinned,
             onCreateNoteRequested: () async {},
             onCreateNoteInFolderRequested: onCreateNoteInFolderRequested,
+            onMoveNodeRequested: onMoveNodeRequested,
             onDeleteFolderRequested: onDeleteFolderRequested,
             onCreateFolderRequested: onCreateFolderRequested,
             onRenameNodeRequested: onRenameNodeRequested,
@@ -385,6 +401,292 @@ void main() {
     },
   );
 
+  testWidgets(
+    'create folder from root refreshes concrete default workspace branch after 0012',
+    (WidgetTester tester) async {
+      final store = <String, rust_api.AtomListItem>{
+        'note-1': _note(atomId: 'note-1', content: '# Note One', updatedAt: 1),
+      };
+      const workspaceRootId = '11111111-1111-4111-8111-111111111111';
+      final workspaceChildren = <rust_api.WorkspaceNodeItem>[];
+      final controller = _controllerWithStore(store);
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      Future<rust_api.WorkspaceListChildrenResponse> loader({
+        String? parentNodeId,
+      }) async {
+        if (parentNodeId == null) {
+          return _ok(const <rust_api.WorkspaceNodeItem>[
+            rust_api.WorkspaceNodeItem(
+              nodeId: workspaceRootId,
+              kind: 'workspace',
+              parentNodeId: null,
+              atomId: null,
+              displayName: 'Default Workspace',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == workspaceRootId) {
+          return _ok(List<rust_api.WorkspaceNodeItem>.from(workspaceChildren));
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      }
+
+      await tester.pumpWidget(
+        _buildHarness(
+          controller: controller,
+          onOpen: (_) {},
+          treeLoader: loader,
+          onCreateFolderRequested: (name, parentNodeId) async {
+            expect(parentNodeId, isNull);
+            final created = _node(
+              nodeId: 'folder-team',
+              kind: 'folder',
+              displayName: name,
+              parentNodeId: workspaceRootId,
+              sortOrder: 0,
+            );
+            workspaceChildren.add(created);
+            return rust_api.WorkspaceNodeResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+              node: created,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(
+          const Key('notes_tree_folder_11111111-1111-4111-8111-111111111111'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('notes_create_folder_button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('notes_create_folder_name_input')),
+        'Team',
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('notes_create_folder_confirm_button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('notes_tree_folder_folder-team')),
+        findsNothing,
+      );
+      await tester.tap(
+        find.byKey(const Key('notes_tree_toggle_$workspaceRootId')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('notes_tree_folder_folder-team')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'create note from root refreshes concrete default workspace branch after 0012',
+    (WidgetTester tester) async {
+      final store = <String, rust_api.AtomListItem>{
+        'legacy-note': _note(
+          atomId: 'legacy-note',
+          content: '# Legacy',
+          updatedAt: 1,
+        ),
+      };
+      const workspaceRootId = '11111111-1111-4111-8111-111111111111';
+      final workspaceRootAtomIds = <String>[];
+      final controller = _controllerWithStore(
+        store,
+        workspaceGetDefaultInvoker: ({required caller}) async =>
+            const rust_api.WorkspaceInfoResponse(
+              ok: true,
+              message: 'ok',
+              workspace: rust_api.WorkspaceInfo(
+                workspaceId: workspaceRootId,
+                name: 'Default',
+                isDefault: true,
+              ),
+            ),
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      Future<rust_api.WorkspaceListChildrenResponse> loader({
+        String? parentNodeId,
+      }) async {
+        if (parentNodeId == null) {
+          return _ok(const <rust_api.WorkspaceNodeItem>[
+            rust_api.WorkspaceNodeItem(
+              nodeId: workspaceRootId,
+              kind: 'workspace',
+              parentNodeId: null,
+              atomId: null,
+              displayName: 'Default Workspace',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == workspaceRootId) {
+          return _ok(
+            workspaceRootAtomIds
+                .map(
+                  (atomId) => _node(
+                    nodeId: 'ref-$atomId',
+                    kind: 'atom_ref',
+                    parentNodeId: workspaceRootId,
+                    atomId: atomId,
+                    displayName: store[atomId]?.title ?? atomId,
+                    sortOrder: 0,
+                  ),
+                )
+                .toList(growable: false),
+          );
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      }
+
+      await tester.pumpWidget(
+        _buildHarness(
+          controller: controller,
+          onOpen: (_) {},
+          treeLoader: loader,
+          onCreateNoteInFolderRequested: (parentNodeId) async {
+            expect(parentNodeId, isNull);
+            final created = _note(
+              atomId: 'note-root-created',
+              content: '# Root Created',
+              updatedAt: 2,
+              title: 'Root Created',
+            );
+            store[created.atomId] = created;
+            workspaceRootAtomIds.add(created.atomId);
+            return const rust_api.WorkspaceActionResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('notes_tree_toggle_$workspaceRootId')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('notes_list_item_note-root-created')),
+        findsNothing,
+      );
+
+      final listView = find.byKey(const Key('notes_list_view'));
+      final blankArea = tester.getBottomRight(listView) - const Offset(24, 24);
+      await tester.tapAt(blankArea, buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('notes_context_action_newNote')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('notes_list_item_note-root-created')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'dragging folder to Root forwards concrete default workspace root id',
+    (WidgetTester tester) async {
+      final moveCalls = <String>[];
+      final controller = _controllerWithStore(
+        <String, rust_api.AtomListItem>{
+          'legacy-note': _note(
+            atomId: 'legacy-note',
+            content: '# Legacy',
+            updatedAt: 1,
+          ),
+        },
+        workspaceListChildrenInvoker: ({parentNodeId}) async {
+          if (parentNodeId == null) {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: '11111111-1111-4111-8111-111111111111',
+                kind: 'folder',
+                displayName: 'Folder A',
+              ),
+            ]);
+          }
+          if (parentNodeId == '11111111-1111-4111-8111-111111111111') {
+            return _ok(<rust_api.WorkspaceNodeItem>[
+              _node(
+                nodeId: '22222222-2222-4222-8222-222222222222',
+                kind: 'folder',
+                displayName: 'Child Folder',
+                parentNodeId: '11111111-1111-4111-8111-111111111111',
+              ),
+            ]);
+          }
+          return _ok(const <rust_api.WorkspaceNodeItem>[]);
+        },
+      );
+      addTearDown(controller.dispose);
+      await controller.loadNotes();
+
+      await tester.pumpWidget(
+        _buildHarness(
+          controller: controller,
+          onOpen: (_) {},
+          onMoveNodeRequested: (nodeId, parentNodeId, {targetOrder}) async {
+            moveCalls.add('$nodeId::$parentNodeId::$targetOrder');
+            return const rust_api.WorkspaceActionResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(
+          const Key('notes_tree_toggle_11111111-1111-4111-8111-111111111111'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final childFolder = find.byKey(
+        const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
+      );
+      final gesture = await tester.startGesture(tester.getCenter(childFolder));
+      await gesture.moveBy(const Offset(0, 24));
+      await tester.pump();
+
+      final rootDropLane = find.byKey(const Key('notes_tree_root_drop_lane'));
+      expect(rootDropLane, findsOneWidget);
+
+      await gesture.moveTo(tester.getCenter(rootDropLane));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(moveCalls, const <String>[
+        '22222222-2222-4222-8222-222222222222::workspace-root::null',
+      ]);
+    },
+  );
+
   testWidgets('create folder refresh keeps uncategorized collapse state', (
     WidgetTester tester,
   ) async {
@@ -607,6 +909,14 @@ void main() {
       find.byKey(
         const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
       ),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
+      ),
       findsOneWidget,
     );
   });
@@ -660,6 +970,21 @@ void main() {
             node: null,
           );
         },
+        workspaceGetAncestorPathInvoker:
+            ({required caller, required nodeUuid}) async =>
+                rust_api.AncestorPathResponse(
+                  ok: true,
+                  errorCode: null,
+                  message: 'ok',
+                  segments: nodeUuid == parentId
+                      ? const <rust_api.PathSegment>[]
+                      : <rust_api.PathSegment>[
+                          rust_api.PathSegment(
+                            nodeUuid: parentId,
+                            displayName: 'Team',
+                          ),
+                        ],
+                ),
       );
       addTearDown(controller.dispose);
       await controller.loadNotes();
@@ -696,6 +1021,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(
+        find.byKey(
+          const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
+        ),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+      await tester.pumpAndSettle();
       expect(
         find.byKey(
           const Key('notes_tree_folder_22222222-2222-4222-8222-222222222222'),
@@ -1024,6 +1357,21 @@ void main() {
           message: 'ok',
         );
       },
+      workspaceGetAncestorPathInvoker:
+          ({required caller, required nodeUuid}) async =>
+              rust_api.AncestorPathResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+                segments: nodeUuid == parentId
+                    ? const <rust_api.PathSegment>[]
+                    : <rust_api.PathSegment>[
+                        rust_api.PathSegment(
+                          nodeUuid: parentId,
+                          displayName: 'Team',
+                        ),
+                      ],
+              ),
     );
     addTearDown(controller.dispose);
     await controller.loadNotes();
@@ -1103,6 +1451,21 @@ void main() {
           message: 'ok',
         );
       },
+      workspaceGetAncestorPathInvoker:
+          ({required caller, required nodeUuid}) async =>
+              rust_api.AncestorPathResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+                segments: nodeUuid == parentId
+                    ? const <rust_api.PathSegment>[]
+                    : <rust_api.PathSegment>[
+                        rust_api.PathSegment(
+                          nodeUuid: parentId,
+                          displayName: 'Team',
+                        ),
+                      ],
+              ),
     );
     addTearDown(controller.dispose);
     await controller.loadNotes();
@@ -1142,6 +1505,110 @@ void main() {
 
     expect(find.text('Child Renamed'), findsOneWidget);
     expect(find.text('Child'), findsNothing);
+  });
+
+  testWidgets('rename child folder keeps collapsed parent collapsed', (
+    WidgetTester tester,
+  ) async {
+    final store = <String, rust_api.AtomListItem>{
+      'note-1': _note(atomId: 'note-1', content: '# Legacy Note', updatedAt: 1),
+    };
+    const parentId = '11111111-1111-4111-8111-111111111111';
+    const childId = '22222222-2222-4222-8222-222222222222';
+    var childName = 'Child';
+    final controller = _controllerWithStore(
+      store,
+      workspaceListChildrenInvoker: ({parentNodeId}) async {
+        if (parentNodeId == null) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: parentId,
+              kind: 'folder',
+              displayName: 'Team',
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        if (parentNodeId == parentId) {
+          return _ok(<rust_api.WorkspaceNodeItem>[
+            _node(
+              nodeId: childId,
+              kind: 'folder',
+              parentNodeId: parentId,
+              displayName: childName,
+              sortOrder: 0,
+            ),
+          ]);
+        }
+        return _ok(const <rust_api.WorkspaceNodeItem>[]);
+      },
+      workspaceRenameNodeInvoker: ({required nodeId, required newName}) async {
+        if (nodeId == childId) {
+          childName = newName;
+        }
+        return const rust_api.WorkspaceActionResponse(
+          ok: true,
+          errorCode: null,
+          message: 'ok',
+        );
+      },
+      workspaceGetAncestorPathInvoker:
+          ({required caller, required nodeUuid}) async {
+            if (nodeUuid == childId) {
+              return const rust_api.AncestorPathResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+                segments: <rust_api.PathSegment>[
+                  rust_api.PathSegment(nodeUuid: parentId, displayName: 'Team'),
+                ],
+              );
+            }
+            return const rust_api.AncestorPathResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+              segments: <rust_api.PathSegment>[],
+            );
+          },
+    );
+    addTearDown(controller.dispose);
+    await controller.loadNotes();
+
+    await tester.pumpWidget(
+      _buildHarness(
+        controller: controller,
+        onOpen: (_) {},
+        onRenameNodeRequested: (nodeId, newName) {
+          return controller.renameWorkspaceNode(
+            nodeId: nodeId,
+            newName: newName,
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+    await tester.pumpAndSettle();
+    expect(find.text('Child'), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+    await tester.pumpAndSettle();
+    expect(find.text('Child'), findsNothing);
+
+    final response = await controller.renameWorkspaceNode(
+      nodeId: childId,
+      newName: 'Child Renamed',
+    );
+    expect(response.ok, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Child Renamed'), findsNothing);
+
+    await tester.tap(find.byKey(Key('notes_tree_toggle_$parentId')));
+    await tester.pumpAndSettle();
+    expect(find.text('Child Renamed'), findsOneWidget);
   });
 
   testWidgets('uncategorized note title updates after draft edit', (

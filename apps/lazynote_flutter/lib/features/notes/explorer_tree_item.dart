@@ -44,7 +44,7 @@ class ExplorerTreeItem extends StatelessWidget {
   final VoidCallback? onDeleteFolder;
   final GestureTapDownCallback? onSecondaryTapDown;
 
-  bool get isFolder => node.kind == 'folder';
+  bool get isFolder => node.kind == 'folder' || node.kind == 'workspace';
 
   String _l10nText({
     required BuildContext context,

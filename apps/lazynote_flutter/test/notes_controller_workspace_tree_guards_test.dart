@@ -31,6 +31,8 @@ NotesCoordinator _buildController({
   WorkspaceRenameNodeInvoker? workspaceRenameNodeInvoker,
   WorkspaceMoveNodeInvoker? workspaceMoveNodeInvoker,
   WorkspaceListChildrenInvoker? workspaceListChildrenInvoker,
+  WorkspaceGetAncestorPathInvoker? workspaceGetAncestorPathInvoker,
+  WorkspaceGetDefaultInvoker? workspaceGetDefaultInvoker,
 }) {
   return NotesCoordinator(
     prepare: () async {},
@@ -65,6 +67,31 @@ NotesCoordinator _buildController({
     workspaceRenameNodeInvoker: workspaceRenameNodeInvoker,
     workspaceMoveNodeInvoker: workspaceMoveNodeInvoker,
     workspaceListChildrenInvoker: workspaceListChildrenInvoker,
+    workspaceGetAncestorPathInvoker:
+        workspaceGetAncestorPathInvoker ??
+        ({required caller, required nodeUuid}) async =>
+            const rust_api.AncestorPathResponse(
+              ok: true,
+              errorCode: null,
+              message: 'ok',
+              segments: <rust_api.PathSegment>[
+                rust_api.PathSegment(
+                  nodeUuid: 'workspace-root',
+                  displayName: 'Default',
+                ),
+              ],
+            ),
+    workspaceGetDefaultInvoker:
+        workspaceGetDefaultInvoker ??
+        ({required caller}) async => const rust_api.WorkspaceInfoResponse(
+          ok: true,
+          message: 'ok',
+          workspace: rust_api.WorkspaceInfo(
+            workspaceId: 'workspace-root',
+            name: 'Default',
+            isDefault: true,
+          ),
+        ),
   );
 }
 
@@ -94,6 +121,8 @@ void main() {
 
       expect(second.ok, isFalse);
       expect(second.errorCode, 'busy');
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
       expect(createCalls, 1);
 
       completer.complete(
@@ -267,36 +296,39 @@ void main() {
     },
   );
 
-  test('moveWorkspaceNode maps __uncategorized__ target to root', () async {
-    String? movedParentNodeId;
-    int? movedTargetOrder;
-    final controller = _buildController(
-      store: <String, rust_api.AtomListItem>{
-        'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
-      },
-      workspaceMoveNodeInvoker:
-          ({required nodeId, newParentId, targetOrder}) async {
-            movedParentNodeId = newParentId;
-            movedTargetOrder = targetOrder;
-            return const rust_api.WorkspaceActionResponse(
-              ok: true,
-              errorCode: null,
-              message: 'ok',
-            );
-          },
-    );
-    addTearDown(controller.dispose);
+  test(
+    'moveWorkspaceNode maps __uncategorized__ target to concrete default workspace root',
+    () async {
+      String? movedParentNodeId;
+      int? movedTargetOrder;
+      final controller = _buildController(
+        store: <String, rust_api.AtomListItem>{
+          'note-1': _note(atomId: 'note-1', content: '# one', updatedAt: 1),
+        },
+        workspaceMoveNodeInvoker:
+            ({required nodeId, newParentId, targetOrder}) async {
+              movedParentNodeId = newParentId;
+              movedTargetOrder = targetOrder;
+              return const rust_api.WorkspaceActionResponse(
+                ok: true,
+                errorCode: null,
+                message: 'ok',
+              );
+            },
+      );
+      addTearDown(controller.dispose);
 
-    final response = await controller.moveWorkspaceNode(
-      nodeId: '11111111-1111-4111-8111-111111111111',
-      newParentNodeId: '__uncategorized__',
-      targetOrder: 7,
-    );
+      final response = await controller.moveWorkspaceNode(
+        nodeId: '11111111-1111-4111-8111-111111111111',
+        newParentNodeId: '__uncategorized__',
+        targetOrder: 7,
+      );
 
-    expect(response.ok, isTrue);
-    expect(movedParentNodeId, isNull);
-    expect(movedTargetOrder, isNull);
-  });
+      expect(response.ok, isTrue);
+      expect(movedParentNodeId, 'workspace-root');
+      expect(movedTargetOrder, isNull);
+    },
+  );
 
   test(
     'moveWorkspaceNode logs success event without blocking response',

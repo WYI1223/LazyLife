@@ -146,6 +146,17 @@ void main() {
                 ),
               );
             },
+        workspaceGetAncestorPathInvoker:
+            ({required caller, required nodeUuid}) {
+              return Future.value(
+                const rust_api.AncestorPathResponse(
+                  ok: true,
+                  errorCode: null,
+                  message: 'ok',
+                  segments: <rust_api.PathSegment>[],
+                ),
+              );
+            },
       );
       addTearDown(controller.dispose);
 
