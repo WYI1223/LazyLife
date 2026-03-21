@@ -55,6 +55,7 @@ In scope:
 - Entry Search 迁移（`entry_search` → `query_atoms` via QueryAtomsInvoker）（DI-16 Q6.1）
 - Editor/Resolver 迁移（`note_get` → `atom_get`）（DI-16 Q6.3）
 - Explorer 内部分层：基础层/特化层拆分，禁止反向耦合（DI-17 Q3）
+- Explorer/UI 正式暴露 workspace root rename；保留 workspace root delete/move 禁止，不把 root 当作普通 folder 操作面
 - synthetic uncategorized 全量删除（8 文件 48 处引用）
 - 删除 `workspace_tree_children_loader.dart`
 - 移除 15 个旧 FFI 函数（附录 A 完整清单）
@@ -195,6 +196,57 @@ class TasksController extends ChangeNotifier {
 
 **反向耦合禁止**（DI-17 Q3 规则 2）：基础层不得 import `ExplorerTreeCallbacks`、`ExplorerContextMenu` 等特化层类型。特化行为通过回调/slot 注入基础层。
 
+### 3A. Workspace root rename UI 归属
+
+`workspace_rename_node(...)` 的 Rust / FFI / Flutter-core 能力已在更早 PR 链中落地，
+但 Notes Explorer 仍未把 workspace root rename 暴露为正式 UI 合同。`PR-0413`
+必须把这件事作为 feature-layer 消费收口，而不是继续把它留在“能力存在但入口隐藏”的状态。
+
+Canonical UI contract:
+
+- workspace root 行继续作为容器节点显示，不当作普通 folder
+- workspace root 允许 rename
+- workspace root 不允许 delete
+- workspace root 不允许 move / drag-drop 重挂载
+- rename 仍复用现有 `RenameNodeDialog` 与 `renameWorkspaceNode(...)` 调用链
+- rename 后 tree targeted reload 继续依赖 `PR-0412` 已落地的 mutation-delta contract
+
+Canonical implication:
+
+- `PR-0413` 必须把 workspace root row 的 action surface 从“完全禁用 context action”
+  收敛成“允许 rename、禁止 destructive actions”的特化 UI 策略
+- 这不是新的后端能力，也不是 `PR-0412` 的 core contract 扩张；它是 feature-layer
+  漏接的一部分，和 Explorer/system-node UI 收口同属 `PR-0413`
+- post-`0012` 的低层 Root-target bridge 已不再留给本 PR：`PR-0412`
+  已经把 move dialog 的 Root 目标、drag-to-root，以及 root create 后的
+  branch refresh 收敛到 concrete workspace root id；`PR-0413`
+  仍负责更高层的 Explorer move UX polish、workspace-root rename UI、以及
+  synthetic uncategorized 移除后的最终 feature 收口
+
+### 3B. Concrete Workspace Root Move UX
+
+`PR-0413` must treat post-`0012` root semantics as workspace-scoped, not as a
+legacy global singleton root.
+
+Canonical UX contract:
+
+- In any move dialog or drag/drop affordance scoped to the current workspace,
+  `Root` means `current workspace root`, never `true null parent`.
+- If the UI keeps a generic `Root` label, the implementation must still resolve
+  it to the current concrete workspace root id; a clearer label such as
+  `Workspace Root` or the current workspace name is preferred.
+- If cross-workspace move is introduced later, the UI must enumerate concrete
+  workspace roots explicitly instead of keeping one ambiguous global `Root`
+  target.
+- `workspace` roots remain non-movable containers themselves; this contract is
+  only about what ordinary nodes mean when the user selects a root-like target.
+
+Delivery implication:
+
+- The low-level root bridge bug is already fixed by `PR-0412`; `PR-0413` owns
+  the user-facing move-target semantics and wording cleanup so the multi-
+  workspace model is no longer presented as a hidden single-root model.
+
 ### 4. Synthetic Uncategorized 全量删除（DI-17 Q6）
 
 #### 4.1 删除 `workspace_tree_children_loader.dart`
@@ -254,6 +306,7 @@ class TasksController extends ChangeNotifier {
 | T4 | Dart | Entry Search invoker 迁移 | `apps/lazynote_flutter/lib/features/entry/single_entry_controller.dart` | TBD | — |
 | T5 | Dart | Editor/Resolver invoker 迁移 | `apps/lazynote_flutter/lib/features/notes/notes_coordinator_impl.dart` | TBD | — |
 | T6 | Dart | Explorer 内部分层（基础层/特化层） | `apps/lazynote_flutter/lib/features/notes/explorer_tree_item.dart`, `explorer_tree_builder.dart` | TBD | — |
+| T6A | Dart | 暴露 workspace root rename UI，保持 delete/move 禁止 | `apps/lazynote_flutter/lib/features/notes/explorer_tree_builder.dart`, `note_explorer.dart`, `notes_page.dart` | TBD | T6 |
 | T7 | Dart | synthetic uncategorized 全量删除 | 8 文件（详见 Planned File Changes） | TBD | — |
 | T8 | Dart | 删除 workspace_tree_children_loader.dart | `apps/lazynote_flutter/lib/core/workspace/workspace_tree_children_loader.dart` | TBD | — |
 | T9 | FFI | 移除 15 个旧 FFI 函数 | `crates/lazynote_ffi/src/api.rs` | TBD | T1-T5 |
@@ -271,8 +324,10 @@ class TasksController extends ChangeNotifier {
 - `[edit]` apps/lazynote_flutter/lib/features/entry/single_entry_controller.dart (EntrySearchInvoker + EntryCreate*Invoker → QueryAtomsInvoker + AtomCreateInvoker)
 - `[add]` apps/lazynote_flutter/lib/core/query_descriptors.dart (QueryDescriptors 工厂类)
 - `[edit]` apps/lazynote_flutter/lib/features/notes/explorer_tree_item.dart (提取纯渲染基础层)
-- `[edit]` apps/lazynote_flutter/lib/features/notes/explorer_tree_builder.dart (保留特化层 + 删除 synthetic 注入)
+- `[edit]` apps/lazynote_flutter/lib/features/notes/explorer_tree_builder.dart (保留特化层 + 删除 synthetic 注入 + workspace root rename 特化策略)
 - `[edit]` apps/lazynote_flutter/lib/features/notes/explorer_tree_builder_types.dart (特化层类型边界)
+- `[edit]` apps/lazynote_flutter/lib/features/notes/note_explorer.dart (workspace root rename 入口与 UI slot 消费)
+- `[edit]` apps/lazynote_flutter/lib/features/notes/notes_page.dart (workspace root rename slot wiring / feature entry consistency)
 - `[edit]` apps/lazynote_flutter/lib/features/notes/explorer_tree_state.dart (删除 _uncategorizedNodeId + _kindRank uncategorized 分支)
 - `[edit]` apps/lazynote_flutter/lib/features/notes/note_explorer.dart (删除 _defaultUncategorizedFolderId)
 - `[edit]` apps/lazynote_flutter/lib/core/workspace/workspace_tree_service.dart (删除 _uncategorizedFolderNodeId)
@@ -285,6 +340,8 @@ class TasksController extends ChangeNotifier {
 - `[edit]` apps/lazynote_flutter/test/calendar_event_dialog_test.dart (mock 替换)
 - `[edit]` apps/lazynote_flutter/test/note_explorer_tree_test.dart (synthetic mock → 真实 Inbox folder)
 - `[edit]` apps/lazynote_flutter/test/notes_controller_workspace_tree_guards_test.dart (synthetic mock → 真实 Inbox folder)
+- `[edit]` apps/lazynote_flutter/test/notes_page_explorer_slot_wiring_test.dart (workspace root rename 入口 wiring)
+- `[edit]` apps/lazynote_flutter/test/rename_node_dialog_test.dart (workspace root rename dialog contract)
 - `[edit]` apps/lazynote_flutter/test/note_explorer_workspace_delete_test.dart (synthetic mock → 真实 Inbox folder)
 - `[edit]` apps/lazynote_flutter/test/workspace_contract_smoke_test.dart (删除 synthetic assert)
 - `[edit]` apps/lazynote_flutter/test/workspace_integration_flow_test.dart (删除 synthetic assert)
@@ -345,6 +402,8 @@ grep -rn "scopeWorkspaceId\|FfiCallerIdentity.app" apps/lazynote_flutter/lib/ --
 - [ ] Entry Search 已迁移到 `query_atoms`（不再调用 `entry_search`）
 - [ ] Editor/Resolver 已迁移到 `atom_get`（不再调用 `note_get`）
 - [ ] Explorer 已拆分为基础层/特化层，无反向耦合（DI-17 Q3）
+- [ ] workspace root 在 Explorer 中可 rename，但仍不可 delete / move，且不被当作普通 folder action 面
+- [ ] move dialog / drag UX 中的 root-like target 明确表示 current workspace root，而不再复用全局 singleton root 语义；若保留 `Root` 文案，其 concrete target 仍必须是当前 workspace root id
 - [ ] synthetic uncategorized 逻辑不存在（负向测试：确认无 BFS 合成）
 - [ ] `workspace_tree_children_loader.dart` 已删除
 - [ ] 15 个旧 FFI 函数已从 `api.rs` 移除
