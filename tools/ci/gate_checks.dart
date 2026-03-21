@@ -27,11 +27,40 @@ final Directory _repoRoot = () {
   return scriptDir.parent.parent;
 }();
 
-final Directory _appRoot =
-    Directory('${_repoRoot.path}/apps/lazynote_flutter');
+final Directory _appRoot = Directory('${_repoRoot.path}/apps/lazynote_flutter');
 final Directory _libDir = Directory('${_appRoot.path}/lib');
-final Directory _rustFfiDir =
-    Directory('${_repoRoot.path}/crates/lazynote_ffi/src');
+final Directory _rustFfiDir = Directory(
+  '${_repoRoot.path}/crates/lazynote_ffi/src',
+);
+
+Iterable<File> rustFfiSourceFilesForGateChecks({Directory? rustFfiDir}) sync* {
+  final root = rustFfiDir ?? _rustFfiDir;
+  if (!root.existsSync()) {
+    return;
+  }
+  final files =
+      root
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.rs'))
+          .toList(growable: false)
+        ..sort((a, b) => a.path.compareTo(b.path));
+  yield* files;
+}
+
+bool rustFfiContainsTestFunctionForGateChecks(
+  String testFnName, {
+  Directory? rustFfiDir,
+}) {
+  final needle = 'fn $testFnName()';
+  for (final file in rustFfiSourceFilesForGateChecks(rustFfiDir: rustFfiDir)) {
+    final content = file.readAsStringSync();
+    if (content.contains(needle)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------------------
 // Gate A checks
@@ -50,11 +79,11 @@ void _checkZeroReferences(
       .whereType<File>()
       .where((f) => f.path.endsWith('.dart'))
       .where((f) {
-    for (final glob in excludeGlobs) {
-      if (f.path.contains(glob)) return false;
-    }
-    return true;
-  });
+        for (final glob in excludeGlobs) {
+          if (f.path.contains(glob)) return false;
+        }
+        return true;
+      });
 
   final matches = <String>[];
   for (final file in files) {
@@ -86,18 +115,24 @@ void _checkTestExists(String label, String relativePath) {
 }
 
 void _checkRustTestExists(String label, String testFnName) {
-  final apiFile = File('${_rustFfiDir.path}/api.rs');
-  if (!apiFile.existsSync()) {
+  final rustFiles = rustFfiSourceFilesForGateChecks(
+    rustFfiDir: _rustFfiDir,
+  ).toList();
+  if (rustFiles.isEmpty) {
     _violations++;
-    stderr.writeln('  FAIL: $label — api.rs not found');
+    stderr.writeln('  FAIL: $label — lazynote_ffi Rust source files not found');
     return;
   }
-  final content = apiFile.readAsStringSync();
-  if (content.contains('fn $testFnName()')) {
+  if (rustFfiContainsTestFunctionForGateChecks(
+    testFnName,
+    rustFfiDir: _rustFfiDir,
+  )) {
     stdout.writeln('  PASS: $label — test fn exists');
   } else {
     _violations++;
-    stderr.writeln('  FAIL: $label — test fn $testFnName not found in api.rs');
+    stderr.writeln(
+      '  FAIL: $label — test fn $testFnName not found in lazynote_ffi/src',
+    );
   }
 }
 
@@ -142,20 +177,27 @@ bool _runGateA() {
   final calendarDir = Directory('${_libDir.path}/features/calendar');
   if (tasksDir.existsSync()) {
     _checkZeroReferences(
-        'tasks: zero ReminderScheduler refs', tasksDir, 'ReminderScheduler');
+      'tasks: zero ReminderScheduler refs',
+      tasksDir,
+      'ReminderScheduler',
+    );
   }
   if (calendarDir.existsSync()) {
     _checkZeroReferences(
-        'calendar: zero ReminderScheduler refs',
-        calendarDir,
-        'ReminderScheduler');
+      'calendar: zero ReminderScheduler refs',
+      calendarDir,
+      'ReminderScheduler',
+    );
   }
 
   // A4: S5 — entry zero ExtensionRegistry references
   final entryDir = Directory('${_libDir.path}/features/entry');
   if (entryDir.existsSync()) {
     _checkZeroReferences(
-        'entry: zero ExtensionRegistry refs', entryDir, 'ExtensionRegistry');
+      'entry: zero ExtensionRegistry refs',
+      entryDir,
+      'ExtensionRegistry',
+    );
   }
 
   return true;
@@ -168,10 +210,7 @@ bool _runGateB() {
     'EditorShellService tests',
     'test/editor_shell_service_test.dart',
   );
-  _checkTestExists(
-    'EditBuffer tests',
-    'test/edit_buffer_test.dart',
-  );
+  _checkTestExists('EditBuffer tests', 'test/edit_buffer_test.dart');
   _checkTestExists(
     'GroupLayout invariant tests',
     'test/group_layout_test.dart',
@@ -180,10 +219,7 @@ bool _runGateB() {
     'Layout persistence tests',
     'test/layout_persistence_test.dart',
   );
-  _checkTestExists(
-    'EditorResolver tests',
-    'test/editor_resolver_test.dart',
-  );
+  _checkTestExists('EditorResolver tests', 'test/editor_resolver_test.dart');
 
   return true;
 }
